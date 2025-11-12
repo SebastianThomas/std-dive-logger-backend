@@ -1,0 +1,10 @@
+package ch.sthomas.stddivelogger.model.dive.measurement;
+
+public record Gas(double o2, double n2, double he, double h2) {
+    public Gas {
+        final var sum = o2 + n2 + he + h2;
+        if (sum < 0.99 || sum > 1.01) {
+            throw new IllegalArgumentException("Gas must consist of 100%");
+        }
+    }
+}

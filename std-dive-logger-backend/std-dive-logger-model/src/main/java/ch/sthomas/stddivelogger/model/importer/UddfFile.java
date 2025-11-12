@@ -1,0 +1,213 @@
+package ch.sthomas.stddivelogger.model.importer;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+
+import jakarta.annotation.Nullable;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JacksonXmlRootElement(localName = "uddf")
+public record UddfFile(
+        String version,
+        UddfGenerator generator,
+        UddfDiver diver,
+        @JacksonXmlProperty(localName = "divesite") UddfDiveSite diveSite,
+        @JacksonXmlProperty(localName = "gasdefinitions") List<UddfGasMix> gasDefinitions,
+        @JacksonXmlProperty(localName = "decomodel") Map<String, UddfDecoModel> decoModel,
+        @JacksonXmlProperty(localName = "profiledata") UddfProfileData profileData,
+        @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfGenerator(
+            String name,
+            String type,
+            UddfManufacturer manufacturer,
+            String version,
+            Instant datetime) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfManufacturer(String id, String name, UddfAddress address, UddfContact contact) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfAddress(
+            String street, String city, String postcode, String country, String province) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfContact(String language, String phone, String fax, String email, String homepage) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfDiver(@JacksonXmlProperty(localName = "owner") UddfOwner owner, UddfBuddy buddy) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfOwner(UddfOwnerEquipment equipment) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfOwnerEquipment(
+            @JacksonXmlProperty(localName = "divecomputer")
+                    UddfOwnerEquipmentDiveComputer diveComputer) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfOwnerEquipmentDiveComputer(
+            String id,
+            String name,
+            UddfManufacturer manufacturer,
+            String model,
+            @JacksonXmlProperty(localName = "serialnumber") String serialNumber,
+            UddfNotes notes) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfNotes(
+            @JacksonXmlElementWrapper(useWrapping = false) @JacksonXmlProperty(localName = "para")
+                    List<String> parameters) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfBuddy(
+            String id, @JacksonXmlProperty(localName = "personal") UddfPersonal personal) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfPersonal(@Nullable String firstname, @Nullable String lastname) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfDiveSite(UddfSite site) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfSite(String id, UddfGeography geography) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfGeography(String location) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfGasMix(
+            String id,
+            String name,
+            double o2,
+            double he,
+            @JacksonXmlProperty(localName = "maximumpo2") double maximumPO2) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfDecoModel(
+            @JacksonXmlProperty(isAttribute = true) String id,
+            @JacksonXmlProperty(localName = "gradientfactorhigh") Integer gfHigh,
+            @JacksonXmlProperty(localName = "gradientfactorlow") Integer gfLow) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfTableGeneration(
+            @JacksonXmlProperty(localName = "calculateprofile")
+                    UddfTableGenerationCalculateProfile calculateProfile) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfTableGenerationCalculateProfile(UddfTableGenerationProfile profile) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfTableGenerationProfile(String id, int density, String decomodel) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfProfileData(
+            @JacksonXmlProperty(localName = "repetitiongroup")
+                    UddfProfileRepetitionGroup repetitionGroup) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfProfileRepetitionGroup(UddfProfileDataDive dive) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfProfileDataDive(
+            String id,
+            Object applicationdata,
+            @JacksonXmlProperty(localName = "informationbeforedive")
+                    UddfInfoBeforeDive infoBeforeDive,
+            @JacksonXmlElementWrapper(useWrapping = false) List<UddfTankData> tankdata,
+            UddfSamples samples,
+            @JacksonXmlProperty(localName = "informationafterdive")
+                    UddfInfoAfterDive infoAfterDive) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfInfoBeforeDive(
+            @JacksonXmlElementWrapper(useWrapping = false) List<Link> link,
+            int divenumber,
+            String datetime,
+            double airtemperature,
+            SurfaceIntervalBeforeDive surfaceintervalbeforedive,
+            EquipmentUsed equipmentused,
+            double surfacepressure) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfInfoAfterDive(
+            @JacksonXmlProperty(localName = "greatestdepth") double maxDepth,
+            String visibility,
+            UddfNotes notes,
+            @JacksonXmlProperty(localName = "anysymptoms") NotesContainer anySymptoms,
+            @JacksonXmlProperty(localName = "diveduration") int duration,
+            NotesContainer observations,
+            @JacksonXmlProperty(localName = "averagedepth") double avgDepth) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record NotesContainer(UddfNotes notes) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Link(@JacksonXmlProperty(isAttribute = true) String ref) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record SurfaceIntervalBeforeDive(int passedtime) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record EquipmentUsed(@JacksonXmlElementWrapper(useWrapping = false) List<Link> link) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfTankData(
+            @JacksonXmlProperty(localName = "tankpressurebegin") double pressureStart,
+            @JacksonXmlProperty(localName = "tankpressureend") double pressureEnd) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfSample(
+            @JacksonXmlProperty(localName = "batterychargecondition") double battery,
+            int cns,
+            @JacksonXmlProperty(localName = "calculatedpo2") double po2,
+            double depth,
+            @JacksonXmlProperty(localName = "divetime") int seconds,
+            @Nullable UddfSwitchMix switchmix,
+            @JacksonXmlProperty(localName = "temperature") double kelvin,
+            @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
+            @JacksonXmlProperty(localName = "nodecotime") int ndl,
+            @JacksonXmlProperty(localName = "decostop") UddfDecoStop decoStop,
+            @JacksonXmlProperty(localName = "gradientfactor") int gf) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfDecoStop(
+            @JacksonXmlProperty(isAttribute = true) String kind,
+            @JacksonXmlProperty(isAttribute = true) int decodepth,
+            @JacksonXmlProperty(localName = "duration", isAttribute = true) String seconds) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfSwitchMix(@JacksonXmlProperty(isAttribute = true) String ref) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record UddfDiveMode(@JacksonXmlProperty(isAttribute = true) String type) {}
+
+    public String exportSite() {
+        return diveSite.site().geography().location();
+    }
+
+    public String exportBuddyString() {
+        final var firstName = diver.buddy().personal().firstname();
+        final var lastName = diver.buddy().personal().lastname();
+        if (firstName == null && lastName == null) {
+            return null;
+        }
+        if (firstName == null) {
+            return lastName;
+        }
+        if (lastName == null) {
+            return firstName;
+        }
+
+        return firstName + " " + lastName;
+    }
+}

@@ -1,0 +1,16 @@
+services:
+    std_dive_logger_postgresql_db:
+        image: postgis/postgis:18-3.6
+        platform: linux/amd64
+        labels:
+            org.springframework.boot.service-connection: postgres  # this is needed since spring does not recognize postgis
+        environment:
+            POSTGRES_PASSWORD: std_dive_logger
+            POSTGRES_DB: std_dive_logger
+            POSTGRES_USER: std_dive_logger
+        ports:
+            - "5450:5432"
+        volumes:
+            - std_dive_logger_postgresql_db_data:/var/lib/postgresql
+volumes:
+    std_dive_logger_postgresql_db_data:

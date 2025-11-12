@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: std-dive-data-importer-dev-ingress-rule
+    namespace: ingress-basic
+    annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-staging
+        nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+spec:
+    ingressClassName: nginx
+    tls:
+        -   hosts:
+                - std-dive-data-importer-dev.sthomas.ch
+            secretName: tls-secret-std-dive-data-importer-dev
+    rules:
+        -   host: std-dive-data-importer-dev.sthomas.ch
+            http:
+                paths:
+                    -   backend:
+                            service:
+                                name: std-dive-data-importer-dev
+                                port:
+                                    number: 5173
+                        path: /
+                        pathType: Prefix
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: std-dive-data-importer-dev
+    namespace: ingress-basic
+spec:
+    type: ExternalName
+    externalName: std-dive-data-importer-dev.std-dive-logger.svc.cluster.local
+    ports:
+        -   port: 5173
+            targetPort: 5173
+            protocol: TCP
+            name: http5173
