@@ -20,11 +20,26 @@ public class DiveEntity {
     @Column(name = "dive_identifier")
     private String diveIdentifier;
 
-    @ManyToOne private DiveSiteEntity diveSite;
-
     @ManyToOne private UserEntity user;
 
+    @ManyToOne private DiveSiteEntity diveSite;
+
     @OneToMany private List<DiveProfileEntity> profiles;
+
+    public DiveEntity() {}
+
+    public DiveEntity(
+            final int number,
+            final String diveIdentifier,
+            final UserEntity userEntity,
+            final DiveSiteEntity diveSiteEntity,
+            final List<DiveProfileEntity> profiles) {
+        this.number = number;
+        this.diveIdentifier = diveIdentifier;
+        this.user = userEntity;
+        this.diveSite = diveSiteEntity;
+        this.profiles = profiles;
+    }
 
     public Dive toRecord() {
         return new Dive(

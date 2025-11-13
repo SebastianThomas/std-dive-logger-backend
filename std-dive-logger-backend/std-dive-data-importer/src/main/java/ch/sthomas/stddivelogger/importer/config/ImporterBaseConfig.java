@@ -42,8 +42,6 @@ public class ImporterBaseConfig {
     @Bean
     XmlMapper xmlMapper() {
         final var xmlMapper = new XmlMapper();
-        // xmlMapper.registerModule(new ProblemModule());
-        // xmlMapper.registerModule(new ConstraintViolationProblemModule());
         xmlMapper.registerModule(new Jdk8Module());
         return xmlMapper;
     }

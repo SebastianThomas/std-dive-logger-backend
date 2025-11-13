@@ -24,7 +24,7 @@ public class TestImport {
     @ValueSource(strings = "Perdix_2_A3B6F031__42_2024-12-1_15-24-0.uddf")
     void testImport(final String filename) throws IOException {
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
-            final var content = xmlMapper().readValue(inputStream, UddfFile.class);
+            final var content = xmlMapper.readValue(inputStream, UddfFile.class);
             logger.info("Reading from {}", filename);
             assertNotNull(content);
             assertEquals("Ledi-Wracks", content.exportSite());

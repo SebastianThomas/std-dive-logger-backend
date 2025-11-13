@@ -10,11 +10,11 @@ import org.springframework.stereotype.Service;
 public class UserDataService {
     private final UserRepository userRepository;
 
-    public UserDataService(UserRepository userRepository) {
+    public UserDataService(final UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
-    public User findUserById(final int userId) {
+    public User findUserById(final long userId) {
         return userRepository.findById(userId).map(UserEntity::toRecord).orElseThrow();
     }
 }

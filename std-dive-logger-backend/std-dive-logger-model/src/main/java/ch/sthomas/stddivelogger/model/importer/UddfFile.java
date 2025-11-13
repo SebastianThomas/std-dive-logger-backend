@@ -1,15 +1,22 @@
 package ch.sthomas.stddivelogger.model.importer;
 
+import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.google.common.collect.MoreCollectors;
 
 import jakarta.annotation.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JacksonXmlRootElement(localName = "uddf")
@@ -129,7 +136,7 @@ public record UddfFile(
     record UddfInfoBeforeDive(
             @JacksonXmlElementWrapper(useWrapping = false) List<Link> link,
             int divenumber,
-            String datetime,
+            Instant datetime,
             double airtemperature,
             SurfaceIntervalBeforeDive surfaceintervalbeforedive,
             EquipmentUsed equipmentused,
@@ -177,7 +184,25 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlProperty(localName = "decostop") UddfDecoStop decoStop,
-            @JacksonXmlProperty(localName = "gradientfactor") int gf) {}
+            @JacksonXmlProperty(localName = "gradientfactor") int gf) {
+        public DiveMeasurement toRecord(final Instant start, final List<UddfGasMix> mixes) {
+            return new DiveMeasurement(
+                    start.plusSeconds(seconds),
+                    new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
+                    depth,
+                    Duration.ofMinutes(ndl),
+                    Optional.ofNullable(switchmix)
+                            .flatMap(
+                                    mix ->
+                                            mixes.stream()
+                                                    .filter(
+                                                            candidate ->
+                                                                    candidate.id().equals(mix.ref))
+                                                    .collect(MoreCollectors.toOptional()))
+                            .map(mix -> new Gas(mix.o2, mix.he))
+                            .orElse(null));
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfDecoStop(
@@ -209,5 +234,31 @@ public record UddfFile(
         }
 
         return firstName + " " + lastName;
+    }
+
+    public Instant exportStart() {
+        return profileData.repetitionGroup.dive.infoBeforeDive.datetime;
+    }
+
+    public Instant exportEnd() {
+        return exportStart().plusSeconds(profileData.repetitionGroup.dive.infoAfterDive.duration);
+    }
+
+    public String exportDiveComputerManufacturer() {
+        return diver.owner.equipment.diveComputer.manufacturer.name;
+    }
+
+    public String exportDiveComputerName() {
+        return diver.owner.equipment.diveComputer.name;
+    }
+
+    public String exportDiveComputerSerialNumber() {
+        return diver.owner.equipment.diveComputer.serialNumber;
+    }
+
+    public List<DiveMeasurement> exportMeasurements() {
+        return profileData.repetitionGroup.dive.samples.waypoint.stream()
+                .map(sample -> sample.toRecord(exportStart(), gasDefinitions))
+                .toList();
     }
 }

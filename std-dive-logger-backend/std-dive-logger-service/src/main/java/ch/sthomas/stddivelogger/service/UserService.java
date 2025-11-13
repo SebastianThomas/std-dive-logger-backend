@@ -13,7 +13,7 @@ public class UserService {
         this.userDataService = userDataService;
     }
 
-    public User getUserById(final int userId) {
+    public User getUserById(final long userId) {
         return userDataService.findUserById(userId);
     }
 }

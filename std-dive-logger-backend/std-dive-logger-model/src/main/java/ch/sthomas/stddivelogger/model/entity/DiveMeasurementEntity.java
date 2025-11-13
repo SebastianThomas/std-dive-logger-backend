@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import static java.time.ZoneOffset.UTC;
+
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 
@@ -29,9 +31,17 @@ public class DiveMeasurementEntity {
     @Column(name = "ndl_minutes", nullable = false)
     private Integer ndlMinutes;
 
+    public DiveMeasurementEntity() {}
+
+    public DiveMeasurementEntity(final DiveMeasurement diveMeasurement) {
+        this.time = diveMeasurement.time().atZone(UTC);
+        this.depth = diveMeasurement.depth();
+        this.temperatureCelsius = diveMeasurement.temperature().celsius();
+        this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();
+    }
+
     public DiveMeasurement toRecord() {
         return new DiveMeasurement(
-                id,
                 time.toInstant(),
                 new Temperature(temperatureCelsius, Temperature.TemperatureUnit.CELSIUS),
                 depth,

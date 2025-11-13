@@ -7,4 +7,8 @@ public record Gas(double o2, double n2, double he, double h2) {
             throw new IllegalArgumentException("Gas must consist of 100%");
         }
     }
+
+    public Gas(final double o2, final double he) {
+        this(o2, 1 - o2 - he, he, 0.0);
+    }
 }

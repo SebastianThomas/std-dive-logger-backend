@@ -2,7 +2,9 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "t_dive_computer")
@@ -13,10 +15,50 @@ public class DiveComputerEntity {
     @Column(name = "pk_dive_computer_id", nullable = false)
     private Long id;
 
+    @Column(name = "serial_number")
+    private String serialNumber;
+
     @Column(name = "custom_identifier", nullable = false)
     private String customIdentifier;
 
+    @ManyToOne
+    @JoinColumn(name = "fk_manufacturer_id")
+    private DiveComputerManufacturerEntity manufacturer;
+
+    @ManyToOne
+    @JoinColumn(name = "fk_user_id")
+    private UserEntity user;
+
+    public DiveComputerEntity() {}
+
+    public DiveComputerEntity(
+            @Nullable final String serialNumber,
+            @NotNull final String customIdentifier,
+            final DiveComputerManufacturerEntity manufacturer,
+            final UserEntity user) {
+        this.serialNumber = serialNumber;
+        this.customIdentifier = customIdentifier;
+        this.manufacturer = manufacturer;
+        this.user = user;
+    }
+
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+
+    public DiveComputerManufacturerEntity getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(final DiveComputerManufacturerEntity manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
     public DiveComputer toRecord() {
-        return new DiveComputer(id, customIdentifier);
+        return new DiveComputer(id, manufacturer.toRecord(), serialNumber, customIdentifier);
     }
 }

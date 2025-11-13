@@ -8,10 +8,19 @@ CREATE TABLE t_users
     UNIQUE (email)
 );
 
+CREATE TABLE t_computer_manufacturer
+(
+    pk_manufacturer_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name               TEXT NOT NULL,
+    UNIQUE (name)
+);
+
 CREATE TABLE t_dive_computer
 (
     pk_dive_computer_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fk_user_id          INTEGER REFERENCES t_users (pk_user_id),
+    fk_manufacturer_id  INTEGER REFERENCES t_computer_manufacturer (pk_manufacturer_id),
+    serial_number       TEXT,
     custom_identifier   TEXT NOT NULL
 );
 
@@ -28,7 +37,8 @@ CREATE TABLE t_dive_site
     name            TEXT                  NOT NULL,
     location        Geometry(Point, 4326) NOT NULL,
     created_at      TIMESTAMPTZ,
-    updated_at      TIMESTAMPTZ
+    updated_at      TIMESTAMPTZ,
+    UNIQUE (name)
 );
 
 CREATE TABLE t_dives

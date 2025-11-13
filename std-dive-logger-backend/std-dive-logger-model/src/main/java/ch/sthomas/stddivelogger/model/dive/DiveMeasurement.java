@@ -9,9 +9,4 @@ import java.time.Duration;
 import java.time.Instant;
 
 public record DiveMeasurement(
-        long id,
-        Instant time,
-        Temperature temperature,
-        double depth,
-        Duration ndl,
-        @Nullable Gas gas) {}
+        Instant time, Temperature temperature, double depth, Duration ndl, @Nullable Gas gas) {}

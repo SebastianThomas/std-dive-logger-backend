@@ -1,9 +1,12 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import static java.time.ZoneOffset.UTC;
+
 import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 
 import jakarta.persistence.*;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -27,6 +30,19 @@ public class DiveProfileEntity {
     private ZonedDateTime profileEnd;
 
     @OneToMany private List<DiveMeasurementEntity> measurements;
+
+    public DiveProfileEntity() {}
+
+    public DiveProfileEntity(
+            final DiveComputerEntity computer,
+            final Instant start,
+            final Instant end,
+            final List<DiveMeasurementEntity> measurements) {
+        this.computer = computer;
+        this.profileStart = start.atZone(UTC);
+        this.profileEnd = end.atZone(UTC);
+        this.measurements = measurements;
+    }
 
     public DiveProfile toRecord() {
         return new DiveProfile(
