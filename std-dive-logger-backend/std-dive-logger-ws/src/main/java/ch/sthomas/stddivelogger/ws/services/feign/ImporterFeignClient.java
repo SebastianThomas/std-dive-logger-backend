@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.dive.Dive;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
         path = "v1/import",
         configuration = ImporterFeignClientConfiguration.class)
 public interface ImporterFeignClient {
-    @RequestMapping("")
+    @RequestMapping(method = RequestMethod.POST, path = "")
     Dive upload(
             @RequestPart("file") MultipartFile file,
             @RequestPart("uploadBody") UploadDiveBody uploadDiveBody);
