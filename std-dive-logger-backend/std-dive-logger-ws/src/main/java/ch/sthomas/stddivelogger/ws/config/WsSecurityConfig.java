@@ -85,7 +85,7 @@ public class WsSecurityConfig {
                 .formLogin(withDefaults())
                 .authorizeHttpRequests(
                         (auth) ->
-                                auth.requestMatchers(HttpMethod.GET, "/v1/explore")
+                                auth.requestMatchers(HttpMethod.GET, "/v1/explore**")
                                         .permitAll()
                                         .requestMatchers("/api/auth/**")
                                         .permitAll()
@@ -156,7 +156,7 @@ public class WsSecurityConfig {
     InMemoryUserDetailsManager swaggerUserDetailsService() {
         final var user =
                 User.builder()
-                        .username("ubswagger")
+                        .username("std-dive-logger-swagger")
                         .password("$2a$10$kkl4QFGZPM2i.TwQPuXhMewLtDBvF.FRohAtMp7dZ4wq8q1N.U7yy")
                         .roles(SWAGGER)
                         .build();
