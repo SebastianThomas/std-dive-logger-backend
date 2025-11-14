@@ -79,7 +79,7 @@ public class WsSecurityConfig {
             throws Exception {
         http.securityMatcher("/v1/**", "/api/**")
                 .authenticationManager(applicationAuthenticationManager)
-                .csrf(withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
                 .httpBasic(withDefaults())
                 .formLogin(withDefaults())
                 .authorizeHttpRequests(

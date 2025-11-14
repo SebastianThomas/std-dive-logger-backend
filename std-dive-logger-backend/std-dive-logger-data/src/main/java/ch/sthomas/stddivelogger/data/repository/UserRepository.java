@@ -22,4 +22,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<UserEntity> findReaders(long diveId);
 
     Optional<UserEntity> findByEmailIgnoreCase(String email);
+
+    void deleteByEmailEqualsIgnoreCase(String email);
 }

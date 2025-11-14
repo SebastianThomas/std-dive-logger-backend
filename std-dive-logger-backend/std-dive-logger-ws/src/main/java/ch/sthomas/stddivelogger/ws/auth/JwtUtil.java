@@ -1,13 +1,14 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 
 @Component
 public class JwtUtil {
@@ -18,9 +19,9 @@ public class JwtUtil {
         this.secret = secret;
     }
 
-    private SecretKeySpec getSigningKey() {
+    private SecretKey getSigningKey() {
         final var keyBytes = secret.getBytes();
-        return new SecretKeySpec(keyBytes, Jwts.SIG.HS256.getId());
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(final String username) {
@@ -28,7 +29,7 @@ public class JwtUtil {
                 .subject(username)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
-                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .signWith(getSigningKey())
                 .compact();
     }
 

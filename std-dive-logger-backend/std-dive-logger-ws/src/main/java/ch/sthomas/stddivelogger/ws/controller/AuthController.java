@@ -84,14 +84,21 @@ public class AuthController {
         logger.info("Logout of user {}", user.email().substring(user.email().indexOf('@')));
     }
 
+    @PostMapping("/deregister")
+    public void deregister(@AuthenticationPrincipal final User user) {
+        userService.deleteUser(user);
+    }
+
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<Problem> handleInvalidPasswordException(
             final InvalidPasswordException exception) {
-        throw Problem.builder()
-                .withStatus(Status.BAD_REQUEST)
-                .withTitle(exception.getMessage())
-                .withDetail(String.join(",\n", exception.details()))
-                .build();
+        return ResponseEntity.badRequest()
+                .body(
+                        Problem.builder()
+                                .withStatus(Status.BAD_REQUEST)
+                                .withTitle(exception.getMessage())
+                                .withDetail(String.join(",\n", exception.details()))
+                                .build());
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -110,7 +117,13 @@ public class AuthController {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgumentException(final IllegalArgumentException e) {
-        throw Problem.builder().withStatus(Status.BAD_REQUEST).withTitle(e.getMessage()).build();
+    public ResponseEntity<Problem> handleIllegalArgumentException(
+            final IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+                .body(
+                        Problem.builder()
+                                .withStatus(Status.BAD_REQUEST)
+                                .withTitle(e.getMessage())
+                                .build());
     }
 }
