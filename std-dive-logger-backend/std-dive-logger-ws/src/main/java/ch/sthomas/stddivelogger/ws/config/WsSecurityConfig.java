@@ -10,8 +10,10 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
@@ -41,7 +43,9 @@ public class WsSecurityConfig {
     @Profile("!no-security")
     @Bean
     SecurityFilterChain swaggerFilterChainSecurity(
-            final HttpSecurity http, final AuthenticationManager swaggerAuthenticationManager)
+            final HttpSecurity http,
+            @Qualifier("swaggerAuthManager")
+                    final AuthenticationManager swaggerAuthenticationManager)
             throws Exception {
         http.securityMatcher("/docs/**", "/docs.yaml")
                 .authenticationManager(swaggerAuthenticationManager)
@@ -99,6 +103,7 @@ public class WsSecurityConfig {
     }
 
     @Bean
+    @Primary
     public AuthenticationManager applicationAuthenticationManager(
             final CustomUserDetailsService userDetailsService,
             final PasswordEncoder passwordEncoder) {
@@ -109,6 +114,7 @@ public class WsSecurityConfig {
 
     @Profile("!no-security")
     @Bean
+    @Qualifier("swaggerAuthManager")
     public AuthenticationManager swaggerAuthenticationManager(
             final UserDetailsService swaggerUserDetailsService,
             final PasswordEncoder passwordEncoder) {
