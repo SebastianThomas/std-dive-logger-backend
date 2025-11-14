@@ -33,12 +33,18 @@ jobs:
         runs-on: ubuntu-latest
         needs: [ build ]
         strategy:
+            max-parallel: 1
             matrix:
                 module: [ ws, importer ]
         steps:
-            -   name:
+            -   name: Set module name
                 shell: bash
-                run: echo "module=$([[${{ matrix.module  }} = "ws" && "std-dive-logger-ws" || "std-dive-data-importer" ]])" >> $GITHUB_ENV
+                run: |
+                    if [[ "${{ matrix.module }}" == "ws" ]]; then
+                        echo "module=std-dive-logger-ws" >> $GITHUB_ENV
+                    else
+                        echo "module=std-dive-data-importer" >> $GITHUB_ENV
+                    fi
 
             -   name: Set TAG_NAME from image_tag
                 shell: bash
