@@ -10,12 +10,13 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
@@ -38,8 +39,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class WsSecurityConfig {
 
     private static final String SWAGGER = "SWAGGER";
+    private static final Logger logger = LoggerFactory.getLogger(WsSecurityConfig.class);
 
-    @Order(1)
     @Profile("!no-security")
     @Bean
     SecurityFilterChain swaggerFilterChainSecurity(
@@ -59,7 +60,6 @@ public class WsSecurityConfig {
         return http.build();
     }
 
-    @Order(1)
     @Profile("no-security")
     @Bean
     SecurityFilterChain swaggerFilterChainNoSecurity(final HttpSecurity http) throws Exception {
@@ -71,7 +71,6 @@ public class WsSecurityConfig {
         return http.build();
     }
 
-    @Order(2)
     @Bean
     SecurityFilterChain securityFilterChain(
             final HttpSecurity http,
@@ -84,15 +83,18 @@ public class WsSecurityConfig {
                 .httpBasic(withDefaults())
                 .formLogin(withDefaults())
                 .authorizeHttpRequests(
-                        (auth) ->
-                                auth.requestMatchers(HttpMethod.GET, "/v1/explore/**")
-                                        .permitAll()
-                                        .requestMatchers("/api/auth/**")
-                                        .permitAll()
-                                        .anyRequest()
-                                        .authenticated())
+                        (auth) -> {
+                            logger.info("Authorize Customizer");
+                            auth.requestMatchers(HttpMethod.GET, "/v1/explore/**")
+                                    .permitAll()
+                                    .requestMatchers(HttpMethod.POST, "/api/auth/logout")
+                                    .authenticated()
+                                    .requestMatchers(HttpMethod.POST, "/api/auth/**")
+                                    .permitAll()
+                                    .anyRequest()
+                                    .authenticated();
+                        })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
@@ -129,7 +131,7 @@ public class WsSecurityConfig {
         final var user =
                 User.builder()
                         .username("std-dive-logger-swagger")
-                        .password("$2a$10$kkl4QFGZPM2i.TwQPuXhMewLtDBvF.FRohAtMp7dZ4wq8q1N.U7yy")
+                        .password("$2a$10$CPPsf4Abg4qRcBQ5uVqnveDtagR83Myl3pg/JLRnGVtHHsxs4aB5i")
                         .roles(SWAGGER)
                         .build();
         return new InMemoryUserDetailsManager(user);

@@ -32,6 +32,13 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    public UserEntity() {}
+
+    public UserEntity(final String email, final String password) {
+        this.email = email;
+        this.password = password;
+    }
+
     public User toRecord() {
         return new User(id, email, password, createdAt, updatedAt);
     }

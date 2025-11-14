@@ -45,7 +45,7 @@ public class ImporterSecurityConfig {
         final var user =
                 User.builder()
                         .username("ubswagger")
-                        .password("$2a$10$kkl4QFGZPM2i.TwQPuXhMewLtDBvF.FRohAtMp7dZ4wq8q1N.U7yy")
+                        .password("$2a$10$CPPsf4Abg4qRcBQ5uVqnveDtagR83Myl3pg/JLRnGVtHHsxs4aB5i")
                         .roles(SWAGGER)
                         .build();
         return new InMemoryUserDetailsManager(user);

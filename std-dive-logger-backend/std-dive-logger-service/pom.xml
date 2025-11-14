@@ -21,6 +21,11 @@
             <version>${project.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.passay</groupId>
+            <artifactId>passay</artifactId>
+        </dependency>
+
         <!-- shared test -->
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>

@@ -13,6 +13,6 @@ public class WebConfig implements WebMvcConfigurer {
         configurer
                 .defaultContentType(MediaType.APPLICATION_JSON) // default to JSON
                 .favorParameter(false)
-                .ignoreAcceptHeader(false);
+                .ignoreAcceptHeader(true);
     }
 }

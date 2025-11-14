@@ -1,13 +1,30 @@
 package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.UserDataService;
+import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.passay.*;
 import org.springframework.stereotype.Service;
+
+import java.util.regex.Pattern;
 
 @Service
 public class UserService {
     private final UserDataService userDataService;
+
+    private final Pattern emailPattern = Pattern.compile("(?<name>)@(?<domain>)");
+    private final PasswordValidator passwordValidator =
+            new PasswordValidator(
+                    new LengthRule(8),
+                    new CharacterRule(EnglishCharacterData.UpperCase, 1),
+                    new CharacterRule(EnglishCharacterData.LowerCase, 1),
+                    new CharacterRule(EnglishCharacterData.Digit, 1),
+                    new CharacterRule(EnglishCharacterData.Special, 1),
+                    new IllegalSequenceRule(EnglishSequenceData.Alphabetical, 4, false),
+                    new IllegalSequenceRule(EnglishSequenceData.Numerical, 4, false),
+                    new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
+                    new WhitespaceRule());
 
     public UserService(final UserDataService userDataService) {
         this.userDataService = userDataService;
@@ -15,5 +32,37 @@ public class UserService {
 
     public User getUserById(final long userId) {
         return userDataService.findUserById(userId);
+    }
+
+    public User createUser(final String emailParam, final String password) {
+        final var email = emailParam.trim();
+        if (!isValidEmail(email)) {
+            throw new IllegalArgumentException("Invalid email");
+        }
+        final var passwordValidated = isValidPassword(password);
+        if (!passwordValidated.isValid()) {
+            throw new InvalidPasswordException(
+                    passwordValidated.getDetails().stream()
+                            .map(RuleResultDetail::toString)
+                            .toList());
+        }
+        return userDataService.saveUser(email, password);
+    }
+
+    private boolean isValidEmail(final String email) {
+        final var matcher = emailPattern.matcher(email);
+        if (!matcher.matches()) {
+            return false;
+        }
+        final var name = matcher.group("name");
+        final var domain = matcher.group("domain");
+        return !name.isEmpty()
+                && !domain.isEmpty()
+                && domain.indexOf('.') > 1
+                && !domain.substring(domain.lastIndexOf('.')).isBlank();
+    }
+
+    private RuleResult isValidPassword(final String password) {
+        return passwordValidator.validate(new PasswordData(password));
     }
 }

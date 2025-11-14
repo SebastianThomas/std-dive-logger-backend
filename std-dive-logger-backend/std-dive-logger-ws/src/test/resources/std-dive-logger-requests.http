@@ -1,2 +1,18 @@
-### Hello
-GET {{baseurl}}/v1/dives?userId=1
+### Get Dives for user
+GET {{baseurl}}/v1/dives
+
+### Create user
+POST {{baseurl}}/api/auth/signup
+
+{
+    email: "test@test.ch",
+    password: "abcdefg123",
+}
+
+### Login user
+POST {{baseurl}}/api/auth/login
+
+{
+    email: "test@test.ch",
+    password: "abcdefg123",
+}
