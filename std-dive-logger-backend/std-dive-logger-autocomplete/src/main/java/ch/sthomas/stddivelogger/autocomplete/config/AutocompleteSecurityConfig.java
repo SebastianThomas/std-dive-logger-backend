@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,7 +37,14 @@ public class AutocompleteSecurityConfig {
                                         .requestMatchers("/docs/**", "/docs.yaml")
                                         .hasRole(SWAGGER))
                 .httpBasic(withDefaults());
+        return http.build();
+    }
 
+    @Bean
+    SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable);
+        http.authorizeHttpRequests(
+                authorize -> authorize.requestMatchers("/v1/autocomplete/**").permitAll());
         return http.build();
     }
 

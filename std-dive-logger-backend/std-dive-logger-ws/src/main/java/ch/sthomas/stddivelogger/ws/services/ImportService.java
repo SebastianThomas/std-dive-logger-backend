@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.service;
+package ch.sthomas.stddivelogger.ws.services;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
@@ -9,12 +9,15 @@ import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.UserService;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import jakarta.annotation.Nullable;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,8 +41,11 @@ public class ImportService {
         this.userService = userService;
     }
 
-    public Dive importFile(
-            final String filename, final UploadDiveBody body, final InputStream inputStream)
+    public Dive uploadDive(final MultipartFile file, final UploadDiveBody body) throws IOException {
+        return importFile(file.getOriginalFilename(), body, file.getInputStream());
+    }
+
+    Dive importFile(final String filename, final UploadDiveBody body, final InputStream inputStream)
             throws IOException {
         return switch (body.fileType()) {
             case UDDF ->

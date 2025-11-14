@@ -7,7 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
-import ch.sthomas.stddivelogger.ws.services.ImporterService;
+import ch.sthomas.stddivelogger.ws.services.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
@@ -30,15 +30,15 @@ public class StdDiveLoggerController {
 
     private final DiveService diveService;
     private final UserService userService;
-    private final ImporterService importerService;
+    private final ImportService importService;
 
     public StdDiveLoggerController(
             final DiveService diveService,
             final UserService userService,
-            final ImporterService importerService) {
+            final ImportService importService) {
         this.diveService = diveService;
         this.userService = userService;
-        this.importerService = importerService;
+        this.importService = importService;
     }
 
     @Operation(summary = "Get Dives for User")
@@ -57,6 +57,6 @@ public class StdDiveLoggerController {
         if (user == null || user.id() != body.userId()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        return ResponseEntity.ok(importerService.uploadDive(file, body));
+        return ResponseEntity.ok(importService.uploadDive(file, body));
     }
 }

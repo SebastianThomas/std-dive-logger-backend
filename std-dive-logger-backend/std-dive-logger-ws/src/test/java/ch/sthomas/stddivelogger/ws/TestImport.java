@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.service;
+package ch.sthomas.stddivelogger.ws;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

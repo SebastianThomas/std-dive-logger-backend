@@ -11,8 +11,10 @@ import ch.sthomas.stddivelogger.model.user.User;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -75,6 +77,19 @@ public class DiveDataService {
 
     public Optional<DiveSite> findDiveSiteByName(final String diveSite) {
         return diveSiteRepository.findByNameIgnoreCase(diveSite).map(DiveSiteEntity::toRecord);
+    }
+
+    public List<DiveSite> findDiveSiteByNameContains(final String partialName) {
+        return diveSiteRepository
+                .findByNameContainingClosestMatch(partialName, Pageable.ofSize(10))
+                .stream()
+                .map(DiveSiteEntity::toRecord)
+                .sorted(
+                        Comparator.comparing(
+                                d ->
+                                        (d.name().indexOf(partialName) + 1)
+                                                * (d.name().length() - partialName.length())))
+                .toList();
     }
 
     public Optional<DiveComputer> findDiveComputerByUserAndName(

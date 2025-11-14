@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
         value = "autocompleteClient",
         url = "${ch.sthomas.stddivelogger.ws.services.feign.autocomplete.url}",
         path = "v1/autocomplete",
-        configuration = ImporterFeignClientConfiguration.class)
+        configuration = AutocompleteFeignClientConfiguration.class)
 public interface AutocompleteFeignClient {
     @RequestMapping(method = RequestMethod.GET, path = "/number")
     int getDiveNumberAutocomplete(User user);

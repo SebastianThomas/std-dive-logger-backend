@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.annotation.Nullable;
@@ -51,5 +52,9 @@ public class DiveService {
 
     public long getDiveCount() {
         return diveDataService.getDiveCount();
+    }
+
+    public List<DiveSite> getSiteByPartialName(final String locationStart) {
+        return diveDataService.findDiveSiteByNameContains(locationStart);
     }
 }
