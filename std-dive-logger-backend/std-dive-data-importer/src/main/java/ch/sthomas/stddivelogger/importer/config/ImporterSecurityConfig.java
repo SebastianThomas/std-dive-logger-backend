@@ -6,13 +6,9 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
-import jakarta.servlet.DispatcherType;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -40,38 +36,6 @@ public class ImporterSecurityConfig {
                                         .requestMatchers("/docs/**", "/docs.yaml")
                                         .hasRole(SWAGGER))
                 .httpBasic(withDefaults());
-
-        return http.build();
-    }
-
-    /**
-     * Set /v1/** to permitAll and remove oauth2ResourceServer if no authentication is used on these
-     * endpoints
-     */
-    @Bean
-    SecurityFilterChain bearerFilterChain(final HttpSecurity http) throws Exception {
-        http.securityMatcher("/v1/**")
-                .authorizeHttpRequests(
-                        customizer ->
-                                customizer
-                                        .requestMatchers(HttpMethod.OPTIONS, "/v1/**")
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.GET, "/v1/info")
-                                        .permitAll()
-                                        .requestMatchers("/v1/**")
-                                        .authenticated())
-                .oauth2ResourceServer(
-                        resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
-
-        http.authorizeHttpRequests(
-                customizer ->
-                        customizer
-                                .dispatcherTypeMatchers(DispatcherType.ERROR)
-                                .authenticated()
-                                .requestMatchers(HttpMethod.GET, "/check", "/actuator/prometheus")
-                                .permitAll()
-                                .anyRequest() // deny all others
-                                .denyAll());
 
         return http.build();
     }
