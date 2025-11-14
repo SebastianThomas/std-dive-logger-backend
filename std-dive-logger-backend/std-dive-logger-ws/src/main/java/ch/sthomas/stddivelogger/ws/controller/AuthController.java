@@ -10,11 +10,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final AuthenticationManager authManager;
+    private final AuthenticationManager applicationAuthenticationManager;
     private final JwtUtil jwtUtil;
 
-    public AuthController(final AuthenticationManager authManager, final JwtUtil jwtUtil) {
-        this.authManager = authManager;
+    public AuthController(final AuthenticationManager applicationAuthenticationManager, final JwtUtil jwtUtil) {
+        this.applicationAuthenticationManager = applicationAuthenticationManager;
         this.jwtUtil = jwtUtil;
     }
 
@@ -25,7 +25,7 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@RequestBody final AuthRequest request) {
         final var auth =
-                authManager.authenticate(
+                applicationAuthenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(
                                 request.username(), request.password()));
 
