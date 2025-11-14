@@ -1,0 +1,86 @@
+name: Build and push to Image Registry
+on:
+    push:
+        tags:
+            - v*
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v5
+
+            -   name: Set up JDK
+                uses: actions/setup-java@v5
+                with:
+                    java-version: 25
+                    distribution: 'temurin'
+
+            -   name: Cache Maven packages
+                uses: actions/cache@v4
+                with:
+                    path: ~/.m2/repository
+                    key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+                    restore-keys: |
+                        ${{ runner.os }}-m2-
+
+            -   name: Create maven central settings.xml
+                uses: whelk-io/maven-settings-xml-action@9dc09b23833fa9aa7f27b63db287951856f3433d
+
+            -   name: Build with Maven
+                run: mvn --batch-mode --update-snapshots install -DskipTests=false -f std-dive-logger-backend/pom.xml
+    docker:
+        runs-on: ubuntu-latest
+        needs: [ build ]
+        strategy:
+            matrix:
+                module: [ ws, importer ]
+        steps:
+            -   name: Set TAG_NAME from image_tag
+                shell: bash
+                run: echo "TAG_NAME=${{ inputs.ref_name }}" >> $GITHUB_ENV
+
+            -   name: Replace all characters in `\/:"<>|?*` by `-` in TAG_NAME
+                shell: bash
+                run: echo "TAG_NAME=$(echo "$TAG_NAME" | sed 's/[\/:"<>|?*+]/-/g')" >> $GITHUB_ENV
+
+            -   name: Set docker image tag and full name
+                id: set_docker_image_tag_and_full_name
+                shell: bash
+                run: |
+                    echo "docker_full_image_name=std-dive-logger-${{ matrix.module }}:${{ env.TAG_NAME }}" >> $GITHUB_ENV
+                    echo "docker_image_tag=${{ env.TAG_NAME }}" >> $GITHUB_ENV
+
+            -   name: Set VERSION from TAG_NAME
+                shell: bash
+                run: echo "VERSION=${{ env.docker_image_tag }}" >> $GITHUB_ENV
+
+            -   name: Strip leading `v` from VERSION
+                shell: bash
+                run: echo "VERSION=${VERSION##v}" >> $GITHUB_ENV
+
+            -   name: Set default docker image
+                shell: bash
+                run: |
+                    echo "DOCKER_BASE_IMAGE=eclipse-temurin:25" >> $GITHUB_ENV
+
+            -   name: Login to DockerHub
+                uses: docker/login-action@v2
+                with:
+                    username: ${{ secrets.container_registry_username }}
+                    password: ${{ secrets.container_registry_password }}
+
+            -   name: Build and push docker image
+                shell: bash
+                run: |
+                    mvn --batch-mode compile jib:build \
+                    -f std-dive-logger-backend/std-dive-logger-${{ matrix.module }}/pom.xml \
+                    -Dconfig.deploy.env=dev -Dconfig.directory=/config \
+                    -Dimage=${{ secrets.container_registry_username }}/${{ env.docker_full_image_name }} \
+                    -Djib.from.image=${{ env.DOCKER_BASE_IMAGE }} \
+                    -Djib.to.tags=latest,${{ env.VERSION }} \
+                    -Djib.to.auth.username=${{ secrets.container_registry_username }} \
+                    -Djib.to.auth.password=${{ secrets.container_registry_password }} \
+                    -Djib.container.volumes='/config/' \
+                    -Djib.container.environment=VERSION_TAG_NAME="${{ env.docker_image_tag }}",SPRING_CONFIG_LOCATION="/config/",SPRING_DOCKER_COMPOSE_ENABLED=false \
+                    -Djib.container.entrypoint='sh,-c,exec java -XX:MinRAMPercentage=60.0 -XX:MaxRAMPercentage=80.0 $ADDITIONAL_JAVA_OPTS -cp @/app/jib-classpath-file @/app/jib-main-class-file $@'
