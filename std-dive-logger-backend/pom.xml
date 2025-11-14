@@ -263,20 +263,6 @@
 
     <build>
         <plugins>
-            <!--
-            <plugin>
-                <groupId>de.westemeyer</groupId>
-                <artifactId>artifact-version-maven-plugin</artifactId>
-                <version>TODO</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>generate-service</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        -->
         </plugins>
 
         <pluginManagement>
