@@ -23,4 +23,8 @@ public record User(long id, String email, String password, Instant createdAt, In
     public String getUsername() {
         return email;
     }
+
+    public FrontendUser toFrontendModel() {
+        return new FrontendUser(id, email);
+    }
 }

@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.ws.auth.JwtUtil;
@@ -74,8 +75,8 @@ public class AuthController {
                         description = "The email or password are not valid.")
             })
     @PostMapping("/signup")
-    public ResponseEntity<User> signup(@Valid @RequestBody final SignupRequest request) {
-        return ResponseEntity.ok(userService.createUser(request.email, request.password));
+    public FrontendUser signup(@Valid @RequestBody final SignupRequest request) {
+        return userService.createUser(request.email, request.password).toFrontendModel();
     }
 
     @PostMapping("/logout")
@@ -103,17 +104,23 @@ public class AuthController {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<?> handleBadCredentialsException(final BadCredentialsException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        logger.warn("Invalid Credentials", ex);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Problem.valueOf(Status.BAD_REQUEST, "Invalid Credentials"));
     }
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<?> handleDisabledException(final DisabledException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("User disabled");
+        logger.warn("User disabled", ex);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Problem.valueOf(Status.BAD_REQUEST, "User disabled"));
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<?> handleAuthenticationException(final AuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed");
+        logger.warn("Authentication failed", ex);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Problem.valueOf(Status.BAD_REQUEST, "Authentication failed"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
