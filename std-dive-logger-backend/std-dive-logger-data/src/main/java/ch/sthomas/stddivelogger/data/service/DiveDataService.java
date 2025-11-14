@@ -80,14 +80,9 @@ public class DiveDataService {
 
     public List<DiveSite> findDiveSiteByNameContains(final String partialName) {
         return diveSiteRepository
-                .findByNameContainingClosestMatch(partialName, Pageable.ofSize(10))
+                .findByNameContainingOrderedByClosestMatch(partialName, Pageable.ofSize(10))
                 .stream()
                 .map(DiveSiteEntity::toRecord)
-                // .sorted(
-                //        Comparator.comparing(
-                //                d ->
-                //                        (d.name().indexOf(partialName) + 1)
-                //                                * (d.name().length() - partialName.length())))
                 .toList();
     }
 
