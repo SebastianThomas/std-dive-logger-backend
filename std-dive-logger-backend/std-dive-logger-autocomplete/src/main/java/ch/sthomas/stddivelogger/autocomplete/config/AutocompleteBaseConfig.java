@@ -38,11 +38,4 @@ public class AutocompleteBaseConfig {
                                         .addModule(new JtsModule(geometryFactory)))
                 .build();
     }
-
-    @Bean
-    XmlMapper xmlMapper() {
-        final var xmlMapper = new XmlMapper();
-        xmlMapper.registerModule(new Jdk8Module());
-        return xmlMapper;
-    }
 }
