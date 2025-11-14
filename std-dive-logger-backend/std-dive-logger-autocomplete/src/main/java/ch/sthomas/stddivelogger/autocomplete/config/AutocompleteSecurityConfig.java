@@ -6,6 +6,7 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -54,7 +55,8 @@ public class AutocompleteSecurityConfig {
 
     @Bean
     public AuthenticationManager swaggerAuthenticationManager(
-            final UserDetailsService swaggerUserDetailsService,
+            @Qualifier("swaggerUserDetailService")
+                    final UserDetailsService swaggerUserDetailsService,
             final PasswordEncoder passwordEncoder) {
         final var authenticationProvider = new DaoAuthenticationProvider(swaggerUserDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
@@ -62,6 +64,7 @@ public class AutocompleteSecurityConfig {
     }
 
     @Bean
+    @Qualifier("swaggerUserDetailService")
     InMemoryUserDetailsManager userDetailsService() {
         final var user =
                 User.builder()
