@@ -52,7 +52,7 @@ public class AutocompleteSecurityConfig {
     InMemoryUserDetailsManager userDetailsService() {
         final var user =
                 User.builder()
-                        .username("ubswagger")
+                        .username("std-dive-logger-swagger")
                         .password("$2a$10$CPPsf4Abg4qRcBQ5uVqnveDtagR83Myl3pg/JLRnGVtHHsxs4aB5i")
                         .roles(SWAGGER)
                         .build();
