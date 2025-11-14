@@ -10,6 +10,10 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
+    <properties>
+        <start-class>ch.sthomas.stddivelogger.importer.StdDiveDataImporterApplication</start-class>
+    </properties>
+
     <artifactId>std-dive-data-importer</artifactId>
     <name>Std Dive Data Importer</name>
 

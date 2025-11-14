@@ -293,6 +293,9 @@
                     </dependencies>
 
                     <configuration>
+                        <container>
+                            <mainClass>${start-class}</mainClass>
+                        </container>
                         <pluginExtensions>
                             <pluginExtension>
                                 <implementation>
