@@ -14,6 +14,6 @@ import java.util.Optional;
 public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> {
     Optional<DiveSiteEntity> findByNameIgnoreCase(String name);
 
-    @Query("SELECT ds FROM DiveSiteEntity ds WHERE lower(ds.name) LIKE '%' + lower(:name) + '%' ORDER BY length(ds.name) - length(:name) ASC")
+    @Query("SELECT ds FROM DiveSiteEntity ds WHERE LOCATE(LOWER(:name), ds.name) > 0 ORDER BY LOCATE(LOWER(:name), ds.name) * (length(ds.name) - length(:name)) ASC")
     List<DiveSiteEntity> findByNameContainingClosestMatch(String name, Pageable pageable);
 }

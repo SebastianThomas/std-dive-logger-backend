@@ -14,7 +14,6 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -84,11 +83,11 @@ public class DiveDataService {
                 .findByNameContainingClosestMatch(partialName, Pageable.ofSize(10))
                 .stream()
                 .map(DiveSiteEntity::toRecord)
-                .sorted(
-                        Comparator.comparing(
-                                d ->
-                                        (d.name().indexOf(partialName) + 1)
-                                                * (d.name().length() - partialName.length())))
+                // .sorted(
+                //        Comparator.comparing(
+                //                d ->
+                //                        (d.name().indexOf(partialName) + 1)
+                //                                * (d.name().length() - partialName.length())))
                 .toList();
     }
 
