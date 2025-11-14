@@ -2,13 +2,19 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import static java.time.ZoneOffset.UTC;
 
+import ch.sthomas.stddivelogger.model.dive.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "t_dive_measurements")
@@ -28,6 +34,11 @@ public class DiveMeasurementEntity {
     @Column(name = "temperature_celsius", nullable = false)
     private Double temperatureCelsius;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = DecoStopsToStringConverter.class)
+    @Column(name = "deco_stops")
+    private List<DecoStop> decoStops;
+
     @Column(name = "ndl_minutes", nullable = false)
     private Integer ndlMinutes;
 
@@ -46,6 +57,7 @@ public class DiveMeasurementEntity {
                 new Temperature(temperatureCelsius, Temperature.TemperatureUnit.CELSIUS),
                 depth,
                 Duration.ofMinutes(ndlMinutes),
+                decoStops,
                 null);
     }
 }

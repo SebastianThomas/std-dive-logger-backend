@@ -36,6 +36,10 @@ jobs:
             matrix:
                 module: [ ws, importer ]
         steps:
+            -   name:
+                shell: bash
+                run: echo "module=$([[${{ matrix.module  }} = "ws" && "std-dive-logger-ws" || "std-dive-data-importer" ]])" >> $GITHUB_ENV
+
             -   name: Set TAG_NAME from image_tag
                 shell: bash
                 run: echo "TAG_NAME=${{ inputs.ref_name }}" >> $GITHUB_ENV
@@ -48,7 +52,7 @@ jobs:
                 id: set_docker_image_tag_and_full_name
                 shell: bash
                 run: |
-                    echo "docker_full_image_name=std-dive-logger-${{ matrix.module }}:${{ env.TAG_NAME }}" >> $GITHUB_ENV
+                    echo "docker_full_image_name=${{ env.module }}:${{ env.TAG_NAME }}" >> $GITHUB_ENV
                     echo "docker_image_tag=${{ env.TAG_NAME }}" >> $GITHUB_ENV
 
             -   name: Set VERSION from TAG_NAME
@@ -74,7 +78,7 @@ jobs:
                 shell: bash
                 run: |
                     mvn --batch-mode compile jib:build \
-                    -f std-dive-logger-backend/std-dive-logger-${{ matrix.module }}/pom.xml \
+                    -f std-dive-logger-backend/${{ env.module }}/pom.xml \
                     -Dconfig.deploy.env=dev -Dconfig.directory=/config \
                     -Dimage=${{ secrets.container_registry_username }}/${{ env.docker_full_image_name }} \
                     -Djib.from.image=${{ env.DOCKER_BASE_IMAGE }} \

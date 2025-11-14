@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.importer;
 
+import ch.sthomas.stddivelogger.model.dive.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
@@ -183,7 +184,9 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "temperature") double kelvin,
             @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
-            @JacksonXmlProperty(localName = "decostop") UddfDecoStop decoStop,
+            @JacksonXmlElementWrapper(useWrapping = false)
+                    @JacksonXmlProperty(localName = "decostop")
+                    List<UddfDecoStop> decoStop,
             @JacksonXmlProperty(localName = "gradientfactor") int gf) {
         public DiveMeasurement toRecord(final Instant start, final List<UddfGasMix> mixes) {
             return new DiveMeasurement(
@@ -191,6 +194,7 @@ public record UddfFile(
                     new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
                     depth,
                     Duration.ofMinutes(ndl),
+                    decoStop.stream().map(UddfDecoStop::toRecord).toList(),
                     Optional.ofNullable(switchmix)
                             .flatMap(
                                     mix ->
@@ -208,7 +212,11 @@ public record UddfFile(
     record UddfDecoStop(
             @JacksonXmlProperty(isAttribute = true) String kind,
             @JacksonXmlProperty(isAttribute = true) int decodepth,
-            @JacksonXmlProperty(localName = "duration", isAttribute = true) String seconds) {}
+            @JacksonXmlProperty(localName = "duration", isAttribute = true) String seconds) {
+        public DecoStop toRecord() {
+            return new DecoStop(kind, decodepth, Long.parseLong(seconds));
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSwitchMix(@JacksonXmlProperty(isAttribute = true) String ref) {}

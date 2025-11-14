@@ -7,6 +7,12 @@ import jakarta.annotation.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 public record DiveMeasurement(
-        Instant time, Temperature temperature, double depth, Duration ndl, @Nullable Gas gas) {}
+        Instant time,
+        Temperature temperature,
+        double depth,
+        Duration ndl,
+        List<DecoStop> deco,
+        @Nullable Gas gas) {}

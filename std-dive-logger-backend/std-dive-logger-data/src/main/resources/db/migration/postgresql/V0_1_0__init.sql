@@ -74,6 +74,7 @@ CREATE TABLE t_dive_measurements
     time                   TIMESTAMPTZ      NOT NULL,
     depth                  DOUBLE PRECISION NOT NULL,
     temperature_celsius    DOUBLE PRECISION NOT NULL,
+    deco_stops             JSONB,
     ndl_minutes            INTEGER          NOT NULL
 );
 
