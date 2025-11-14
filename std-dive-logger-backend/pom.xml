@@ -32,7 +32,7 @@
         <module>std-dive-logger-data</module>
         <module>std-dive-logger-service</module>
         <module>std-dive-logger-ws</module>
-        <module>std-dive-data-importer</module>
+        <module>std-dive-logger-autocomplete</module>
         <module>std-dive-logger-coverage</module>
     </modules>
 

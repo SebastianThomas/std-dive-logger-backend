@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>
-            <artifactId>std-dive-data-importer</artifactId>
+            <artifactId>std-dive-logger-autocomplete</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

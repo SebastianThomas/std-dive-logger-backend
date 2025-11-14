@@ -19,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -51,7 +52,8 @@ public class StdDiveLoggerController {
     public ResponseEntity<Dive> uploadDive(
             @RequestPart("file") final MultipartFile file,
             @RequestPart("uploadBody") final UploadDiveBody body,
-            @AuthenticationPrincipal final User user) {
+            @AuthenticationPrincipal final User user)
+            throws IOException {
         if (user == null || user.id() != body.userId()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }

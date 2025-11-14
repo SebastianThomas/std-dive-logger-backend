@@ -38,7 +38,7 @@ jobs:
         strategy:
             max-parallel: 1
             matrix:
-                module: [ ws, importer ]
+                module: [ ws, autocomplete ]
         steps:
             -   uses: actions/checkout@v5
                 with:
@@ -50,7 +50,7 @@ jobs:
                     if [[ "${{ matrix.module }}" == "ws" ]]; then
                         echo "module=std-dive-logger-ws" >> $GITHUB_ENV
                     else
-                        echo "module=std-dive-data-importer" >> $GITHUB_ENV
+                        echo "module=std-dive-logger-autocomplete" >> $GITHUB_ENV
                     fi
 
             -   name: Set TAG_NAME from image_tag
@@ -92,6 +92,14 @@ jobs:
                 with:
                     java-version: 25
                     distribution: 'temurin'
+
+            -   name: Cache Maven packages
+                uses: actions/cache@v4
+                with:
+                    path: ~/.m2/repository
+                    key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+                    restore-keys: |
+                        ${{ runner.os }}-m2-
 
             -   name: Create maven central settings.xml
                 uses: whelk-io/maven-settings-xml-action@v22
