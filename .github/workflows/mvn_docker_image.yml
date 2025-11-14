@@ -37,6 +37,10 @@ jobs:
             matrix:
                 module: [ ws, importer ]
         steps:
+            -   uses: actions/checkout@v4
+                with:
+                    ref: ${{ github.ref_name }}
+
             -   name: Set module name
                 shell: bash
                 run: |
@@ -79,6 +83,15 @@ jobs:
                 with:
                     username: ${{ secrets.container_registry_username }}
                     password: ${{ secrets.container_registry_password }}
+
+            -   name: Set up JDK
+                uses: actions/setup-java@v4
+                with:
+                    java-version: 25
+                    distribution: 'temurin'
+
+            -   name: Create maven central settings.xml
+                uses: whelk-io/maven-settings-xml-action@v22
 
             -   name: Build and push docker image
                 shell: bash
