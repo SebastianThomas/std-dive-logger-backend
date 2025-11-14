@@ -80,7 +80,6 @@ public class WsSecurityConfig {
         http.securityMatcher("/v1/**", "/api/**")
                 .authenticationManager(applicationAuthenticationManager)
                 .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(withDefaults())
                 .formLogin(withDefaults())
                 .authorizeHttpRequests(
                         (auth) -> {
