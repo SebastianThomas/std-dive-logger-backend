@@ -225,6 +225,12 @@
             </dependency>
 
             <dependency>
+                <groupId>net.postgis</groupId>
+                <artifactId>postgis-jdbc</artifactId>
+                <version>2024.1.0</version>
+            </dependency>
+
+            <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
                 <version>2.21.0</version>
@@ -300,6 +306,7 @@
 
                     <configuration>
                         <container>
+                            <!--suppress UnresolvedMavenProperty -->
                             <mainClass>${start-class}</mainClass>
                         </container>
                         <pluginExtensions>
