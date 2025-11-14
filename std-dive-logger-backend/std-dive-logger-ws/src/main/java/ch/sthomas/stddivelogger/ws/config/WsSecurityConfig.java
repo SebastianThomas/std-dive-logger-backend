@@ -85,7 +85,7 @@ public class WsSecurityConfig {
                 .formLogin(withDefaults())
                 .authorizeHttpRequests(
                         (auth) ->
-                                auth.requestMatchers(HttpMethod.GET, "/v1/explore**")
+                                auth.requestMatchers(HttpMethod.GET, "/v1/explore/**")
                                         .permitAll()
                                         .requestMatchers("/api/auth/**")
                                         .permitAll()
@@ -122,34 +122,6 @@ public class WsSecurityConfig {
         authenticationProvider.setPasswordEncoder(passwordEncoder);
         return new ProviderManager(authenticationProvider);
     }
-
-    // @Bean
-    // SecurityFilterChain bearerFilterChain(final HttpSecurity http) throws Exception {
-    //     http.securityMatcher("/v1/**")
-    //             .authorizeHttpRequests(
-    //                     customizer ->
-    //                             customizer
-    //                                     .requestMatchers(HttpMethod.OPTIONS, "/v1/**")
-    //                                     .permitAll()
-    //                                     .requestMatchers(HttpMethod.GET, "/v1/info")
-    //                                     .permitAll()
-    //                                     .requestMatchers("/v1/**")
-    //                                     .authenticated())
-    //             .oauth2ResourceServer(resourceServer -> resourceServer.jwt(withDefaults()));
-
-    //     http.authorizeHttpRequests(
-    //             customizer ->
-    //                     customizer
-    //                             .dispatcherTypeMatchers(DispatcherType.ERROR)
-    //                             .authenticated()
-    //                             .requestMatchers(HttpMethod.GET, "/check",
-    // "/actuator/prometheus")
-    //                             .permitAll()
-    //                             .anyRequest() // deny all others
-    //                             .denyAll());
-
-    //     return http.build();
-    // }
 
     @Profile("!no-security")
     @Bean
