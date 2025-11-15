@@ -52,17 +52,18 @@ public class DiveDataService {
     }
 
     public Dive saveDive(
+            final User user,
             final int number,
             final String diveIdentifier,
-            final long userId,
             final long diveSiteId,
             final List<DiveProfileUpload> profiles)
             throws NoSuchElementException {
-        final var user = userRepository.findById(userId).orElseThrow();
+        final var userEntity = userRepository.findById(user.id()).orElseThrow();
         final var diveSite = diveSiteRepository.findById(diveSiteId).orElseThrow();
 
         final var profileEntities = profiles.stream().map(this::createDiveProfileEntity).toList();
-        final var entity = new DiveEntity(number, diveIdentifier, user, diveSite, profileEntities);
+        final var entity =
+                new DiveEntity(number, diveIdentifier, userEntity, diveSite, profileEntities);
         return diveRepository.save(entity).toRecord();
     }
 

@@ -14,8 +14,6 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import org.apache.commons.lang3.NotImplementedException;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,11 +35,12 @@ public class DiveService {
     }
 
     public Dive saveDive(
+            final User user,
             final UploadDiveBody body,
             final Long diveSiteId,
             final List<DiveProfileUpload> profiles) {
         return diveDataService.saveDive(
-                body.diveNumber(), body.diveIdentifier(), body.userId(), diveSiteId, profiles);
+                user, body.diveNumber(), body.diveIdentifier(), diveSiteId, profiles);
     }
 
     public Optional<DiveComputer> getDiveComputer(final User user, final String customName) {
@@ -114,9 +113,12 @@ public class DiveService {
         return hasWriteAccess(user, diveId); // TODO: Or is in table for reads
     }
 
-    public ResponseEntity<Dive> createEmptyDive(
-            final User user, @Valid @NotNull final UploadDiveBody body) {
-        // TODO: Manual Dive Profile, with deepest depth, start and end time or duration
-        throw new NotImplementedException("Backend TODO");
+    public Dive createEmptyDive(final User user, @Valid @NotNull final UploadDiveBody body) {
+        if (body.diveSiteId() == null) {
+            throw new IllegalArgumentException("Dive Site is required to save dive manually.");
+        }
+        // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
+        return diveDataService.saveDive(
+                user, body.diveNumber(), body.diveIdentifier(), body.diveSiteId(), List.of());
     }
 }

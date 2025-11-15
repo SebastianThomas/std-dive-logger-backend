@@ -62,7 +62,7 @@ public class StdDiveLoggerController {
         if (body.fileType() != UploadFileType.NONE) {
             return ResponseEntity.badRequest().build();
         }
-        return diveService.createEmptyDive(user, body);
+        return ResponseEntity.ok(diveService.createEmptyDive(user, body));
     }
 
     @Operation(summary = "Add a dive")

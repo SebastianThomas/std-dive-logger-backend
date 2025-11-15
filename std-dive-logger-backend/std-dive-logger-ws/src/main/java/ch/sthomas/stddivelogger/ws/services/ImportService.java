@@ -53,6 +53,7 @@ public class ImportService {
             final InputStream inputStream)
             throws IOException {
         return switch (body.fileType()) {
+            case NONE -> throw new IllegalArgumentException("Invalid file type " + body.fileType());
             case UDDF ->
                     importUddf(
                             user, filename, body, xmlMapper.readValue(inputStream, UddfFile.class));
@@ -66,7 +67,7 @@ public class ImportService {
             final UddfFile uddfFile) {
         final var site = getDiveSite(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
-        return diveService.saveDive(body, site, List.of(profile));
+        return diveService.saveDive(user, body, site, List.of(profile));
     }
 
     private long getDiveSite(@Nullable final Long siteId, @Nullable final String diveSite) {
