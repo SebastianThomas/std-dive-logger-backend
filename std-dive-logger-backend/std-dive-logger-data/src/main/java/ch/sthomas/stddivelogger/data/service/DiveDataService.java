@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.annotation.Nullable;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.data.domain.Pageable;
@@ -20,7 +21,8 @@ import java.util.Optional;
 
 @Service
 public class DiveDataService {
-    final DiveRepository diveRepository;
+    private final DiveRepository diveRepository;
+
     private final UserRepository userRepository;
     private final DiveSiteRepository diveSiteRepository;
     private final DiveProfileRepository diveProfileRepository;
@@ -112,5 +114,46 @@ public class DiveDataService {
 
     public long getDiveCount() {
         return diveRepository.count();
+    }
+
+    public Optional<User> findUserForDive(final long diveId) {
+        return diveRepository
+                .findById(diveId)
+                .map(DiveEntity::getUserEntity)
+                .map(UserEntity::toRecord);
+    }
+
+    public Dive updateDive(@NotNull @Valid final Dive dive) {
+        final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
+        final var diveSiteEntity =
+                Optional.ofNullable(dive.site())
+                        .map(DiveSite::id)
+                        .flatMap(diveSiteRepository::findById)
+                        .orElse(null);
+        return diveRepository
+                .save(existingDive.update(dive.number(), dive.customIdentifier(), diveSiteEntity))
+                .toRecord();
+    }
+
+    public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
+        final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
+        final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
+        baseDiveEntity.addProfiles(toAddDiveEntity.getProfiles());
+        return diveRepository.save(baseDiveEntity).toRecord();
+    }
+
+    public void deleteDiveById(final long toAddDiveId) {
+        diveRepository.deleteById(toAddDiveId);
+    }
+
+    public List<Dive> findDivesByProfileIds(final List<Long> profileIds) {
+        return diveRepository.findByProfileIds(profileIds).stream()
+                .map(DiveEntity::toRecord)
+                .toList();
+    }
+
+    public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
+        diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
+        return diveRepository.findById(targetDiveId).map(DiveEntity::toRecord).orElseThrow();
     }
 }

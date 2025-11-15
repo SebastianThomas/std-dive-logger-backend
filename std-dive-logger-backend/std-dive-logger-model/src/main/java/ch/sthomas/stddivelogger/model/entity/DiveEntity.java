@@ -2,8 +2,10 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.Dive;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -48,5 +50,30 @@ public class DiveEntity {
                 diveIdentifier,
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList());
+    }
+
+    public UserEntity getUserEntity() {
+        return user;
+    }
+
+    public DiveEntity update(
+            final int number,
+            final String diveIdentifier,
+            @Nullable final DiveSiteEntity diveSiteEntity) {
+        this.number = number;
+        this.diveIdentifier = diveIdentifier;
+        if (diveSiteEntity != null) {
+            this.diveSite = diveSiteEntity;
+        }
+        return this;
+    }
+
+    public List<DiveProfileEntity> getProfiles() {
+        return profiles;
+    }
+
+    public void addProfiles(final List<DiveProfileEntity> profiles) {
+        this.profiles = new ArrayList<>(this.profiles);
+        this.profiles.addAll(profiles);
     }
 }

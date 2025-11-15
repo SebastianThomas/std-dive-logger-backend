@@ -29,6 +29,8 @@ public class DiveProfileEntity {
     @Column(name = "dive_profile_end", nullable = false)
     private ZonedDateTime profileEnd;
 
+    @ManyToOne private DiveEntity dive;
+
     @OneToMany private List<DiveMeasurementEntity> measurements;
 
     public DiveProfileEntity() {}

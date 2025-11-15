@@ -1,8 +1,9 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
-import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
+import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -10,6 +11,9 @@ import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.ws.services.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,16 +51,69 @@ public class StdDiveLoggerController {
         return diveService.getDivesForUser(userService.getUserById(user.id()));
     }
 
+    @Operation(summary = "Create an empty new dive")
+    @PostMapping(path = "/create")
+    public ResponseEntity<Dive> createDive(
+            @Valid @NotNull @RequestBody final UploadDiveBody body,
+            @AuthenticationPrincipal final User user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        if (body.fileType() != UploadFileType.NONE) {
+            return ResponseEntity.badRequest().build();
+        }
+        return diveService.createEmptyDive(user, body);
+    }
+
     @Operation(summary = "Add a dive")
-    @PostMapping(path = "", consumes = MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Dive> uploadDive(
             @RequestPart("file") final MultipartFile file,
             @RequestPart("uploadBody") final UploadDiveBody body,
             @AuthenticationPrincipal final User user)
             throws IOException {
-        if (user == null || user.id() != body.userId()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(importService.uploadDive(file, body));
+        if (body.fileType() == UploadFileType.NONE) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(importService.uploadDive(user, file, body));
+    }
+
+    @Operation(summary = "Update a Dive")
+    @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Dive> updateDive(
+            @AuthenticationPrincipal final User user, @NotNull @Valid final Dive dive) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.updateDive(user, dive));
+    }
+
+    @Operation(summary = "Merge Dive Profiles")
+    @PostMapping(path = "/profiles/merge", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Dive> mergeDiveProfiles(
+            @AuthenticationPrincipal final User user,
+            final long baseDiveId,
+            final long toAddDiveId,
+            final boolean keepToAddDive) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.mergeProfiles(user, baseDiveId, toAddDiveId, keepToAddDive));
+    }
+
+    public record MoveProfilesRequestBody(List<Long> profileIds, long diveId) {}
+
+    @Operation(summary = "Move Profiles between dives")
+    @PostMapping(path = "/profiles/separate", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Dive> moveProfiles(
+            @AuthenticationPrincipal final User user, @RequestBody MoveProfilesRequestBody body) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.moveProfiles(user, body.diveId, body.profileIds()));
     }
 }

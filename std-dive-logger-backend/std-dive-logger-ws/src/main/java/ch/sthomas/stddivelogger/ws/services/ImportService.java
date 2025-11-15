@@ -41,19 +41,21 @@ public class ImportService {
         this.userService = userService;
     }
 
-    public Dive uploadDive(final MultipartFile file, final UploadDiveBody body) throws IOException {
-        return importFile(file.getOriginalFilename(), body, file.getInputStream());
+    public Dive uploadDive(final User user, final MultipartFile file, final UploadDiveBody body)
+            throws IOException {
+        return importFile(user, file.getOriginalFilename(), body, file.getInputStream());
     }
 
-    Dive importFile(final String filename, final UploadDiveBody body, final InputStream inputStream)
+    Dive importFile(
+            final User user,
+            final String filename,
+            final UploadDiveBody body,
+            final InputStream inputStream)
             throws IOException {
         return switch (body.fileType()) {
             case UDDF ->
                     importUddf(
-                            userService.getUserById(body.userId()),
-                            filename,
-                            body,
-                            xmlMapper.readValue(inputStream, UddfFile.class));
+                            user, filename, body, xmlMapper.readValue(inputStream, UddfFile.class));
         };
     }
 

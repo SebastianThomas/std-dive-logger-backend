@@ -1,0 +1,38 @@
+package ch.sthomas.stddivelogger.model.exception;
+
+import ch.sthomas.stddivelogger.model.user.User;
+
+import java.text.MessageFormat;
+import java.util.List;
+
+public class ForbiddenException extends RuntimeException {
+    private final User user;
+
+    private ForbiddenException(final String message, final User user) {
+        super(message);
+        this.user = user;
+    }
+
+    public static ForbiddenException forDiveId(final User user, final long baseDiveId) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) does not have required permissions for {2} {3}.",
+                        user.id(), user.email(), "Dive", baseDiveId),
+                user);
+    }
+
+    public static ForbiddenException forDiveIds(final User user, final List<Long> diveIds) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) does not have required permissions for some {2} in {3}.",
+                        user.id(), user.email(), "Dive", diveIds),
+                user);
+    }
+
+    public static ForbiddenException forUser(final User user, final long impersonated) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) is not user {2}", user.id(), user.email(), impersonated),
+                user);
+    }
+}
