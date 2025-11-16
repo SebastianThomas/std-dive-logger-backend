@@ -2,13 +2,16 @@ package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
+import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.passay.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -92,7 +95,31 @@ public class UserService {
         return userDataService.findGroupById(id);
     }
 
+    public Optional<GroupWithMembers> getGroupWithMembersById(final long id) {
+        final var groupWithMembers = userDataService.findGroupWithMembersById(id);
+        if (groupWithMembers.isEmpty()) {
+            return Optional.empty();
+        }
+        if (!hasMemberAccess(groupWithMembers.get(), id)) {
+            throw new UnauthorizedException(
+                    "You can only get group members for groups you are a member of.");
+        }
+        return groupWithMembers;
+    }
+
     public List<Group> getGroupsByPartialName(final String query) {
         return userDataService.findGroupsByClosestMatchName(query, GROUPS_PAGE_SIZE);
+    }
+
+    public GroupWithMembers saveGroup(final String name, final Collection<Long> initialMembers) {
+        return userDataService.saveGroup(name, initialMembers);
+    }
+
+    private boolean hasMemberAccess(final GroupWithMembers group, final long id) {
+        return group.members().stream().anyMatch(member -> member.id() == id);
+    }
+
+    public GroupWithMembers joinGroup(final long groupId, final long userId) {
+        return userDataService.joinGroup(groupId, userId);
     }
 }

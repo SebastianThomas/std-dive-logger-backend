@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.entity.GroupEntity;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -17,4 +18,8 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
             countQuery = "SELECT * FROM t_groups g WHERE g.group_name % :name",
             nativeQuery = true)
     List<GroupEntity> findByClosestMatchName(String name, Pageable pageable);
+
+    @Modifying
+    @Query(value = "INSERT INTO t_group_member (fk_group_id, fk_user_id) VALUES (:groupId, :userId)", nativeQuery = true)
+    void joinGroup(long groupId, long userId);
 }

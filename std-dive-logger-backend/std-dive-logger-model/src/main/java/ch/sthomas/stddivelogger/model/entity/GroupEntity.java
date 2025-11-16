@@ -1,10 +1,12 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
+import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.persistence.*;
 
-import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "t_groups")
@@ -17,9 +19,23 @@ public class GroupEntity {
     @Column(name = "group_name", unique = true)
     private String groupName;
 
-    @ManyToMany private List<UserEntity> members;
+    @ManyToMany private Set<UserEntity> members;
+
+    public GroupEntity() {}
+
+    public GroupEntity(final String groupName, final Set<UserEntity> members) {
+        this.groupName = groupName;
+        this.members = members;
+    }
 
     public Group toRecord() {
         return new Group(id, groupName);
+    }
+
+    public GroupWithMembers toRecordWithMembers() {
+        return new GroupWithMembers(
+                id,
+                groupName,
+                members.stream().map(UserEntity::toRecord).map(User::toFrontendModel).toList());
     }
 }

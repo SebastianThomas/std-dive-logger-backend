@@ -5,19 +5,26 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.DataException;
 import org.postgresql.util.PSQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserDataService {
+    private static final Logger logger = LoggerFactory.getLogger(UserDataService.class);
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
 
@@ -63,9 +70,35 @@ public class UserDataService {
         return groupRepository.findById(id).map(GroupEntity::toRecord);
     }
 
+    public Optional<GroupWithMembers> findGroupWithMembersById(final long id) {
+        return groupRepository.findById(id).map(GroupEntity::toRecordWithMembers);
+    }
+
     public List<Group> findGroupsByClosestMatchName(final String query, final int pageSize) {
         return groupRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)).stream()
                 .map(GroupEntity::toRecord)
                 .toList();
+    }
+
+    public GroupWithMembers saveGroup(final String name, final Collection<Long> initialMembers) {
+        final var members =
+                initialMembers.stream()
+                        .map(userRepository::findById)
+                        .flatMap(Optional::stream)
+                        .collect(Collectors.toSet());
+        return groupRepository.save(new GroupEntity(name, members)).toRecordWithMembers();
+    }
+
+    public GroupWithMembers joinGroup(final long groupId, final long userId) {
+        try {
+            groupRepository.joinGroup(groupId, userId);
+            return groupRepository
+                    .findById(groupId)
+                    .map(GroupEntity::toRecordWithMembers)
+                    .orElseThrow();
+        } catch (final DataException e) {
+            logger.error("Error while joining group", e);
+            throw new IllegalArgumentException("Group or user not found.");
+        }
     }
 }
