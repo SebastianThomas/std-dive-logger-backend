@@ -276,6 +276,27 @@ public record UddfFile(
         if (buddies == null) {
             return List.of();
         }
-        return Arrays.stream(buddies.trim().split(",")).map(String::trim).toList();
+
+        return getSeparator(buddies)
+                .map(
+                        separator ->
+                                Arrays.stream(buddies.trim().split(separator))
+                                        .map(String::trim)
+                                        .filter(String::isBlank)
+                                        .toList())
+                .orElseGet(() -> List.of(buddies));
+    }
+
+    private Optional<String> getSeparator(final String s) {
+        if (s.contains(",")) {
+            return Optional.of(",");
+        }
+        if (s.contains("\n")) {
+            return Optional.of("\n");
+        }
+        if (s.contains(";")) {
+            return Optional.of(";");
+        }
+        return Optional.empty();
     }
 }

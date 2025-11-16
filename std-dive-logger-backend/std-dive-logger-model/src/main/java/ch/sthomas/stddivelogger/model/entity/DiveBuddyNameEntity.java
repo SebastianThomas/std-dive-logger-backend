@@ -17,6 +17,13 @@ public class DiveBuddyNameEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    public DiveBuddyNameEntity() {}
+
+    public DiveBuddyNameEntity(final DiveEntity dive, final String name) {
+        this.dive = dive;
+        this.name = name;
+    }
+
     public DiveEntity getDive() {
         return dive;
     }

@@ -49,12 +49,15 @@ public class DiveEntity {
             final String diveIdentifier,
             final UserEntity userEntity,
             final DiveSiteEntity diveSiteEntity,
-            final List<DiveProfileEntity> profiles) {
+            final List<DiveProfileEntity> profiles,
+            final List<String> namedBuddies) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
         this.user = userEntity;
         this.diveSite = diveSiteEntity;
         this.profiles = profiles;
+        this.namedBuddies =
+                namedBuddies.stream().map(b -> new DiveBuddyNameEntity(this, b)).toList();
     }
 
     public Dive toRecord() {

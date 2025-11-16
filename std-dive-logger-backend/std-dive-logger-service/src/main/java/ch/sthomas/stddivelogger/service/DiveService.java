@@ -51,12 +51,17 @@ public class DiveService {
             final UploadDiveBody body,
             final Long diveSiteId,
             final List<DiveProfileUpload> profiles,
-            final List<String> buddies) {
+            final List<String> namedBuddies) {
         final var dive =
                 diveDataService.saveDive(
-                        user, body.diveNumber(), body.diveIdentifier(), diveSiteId, profiles);
+                        user,
+                        body.diveNumber(),
+                        body.diveIdentifier(),
+                        diveSiteId,
+                        profiles,
+                        namedBuddies);
         try {
-            diveDataService.saveBuddies(dive.id(), buddies);
+            diveDataService.saveBuddies(dive.id(), namedBuddies);
         } catch (final DataException e) {
             logger.error("Error while saving dive buddies, but continuing", e);
         }
@@ -139,7 +144,12 @@ public class DiveService {
         }
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
-                user, body.diveNumber(), body.diveIdentifier(), body.diveSiteId(), List.of());
+                user,
+                body.diveNumber(),
+                body.diveIdentifier(),
+                body.diveSiteId(),
+                List.of(),
+                List.of());
     }
 
     public Optional<DiveSite> getSiteById(final long id) {
