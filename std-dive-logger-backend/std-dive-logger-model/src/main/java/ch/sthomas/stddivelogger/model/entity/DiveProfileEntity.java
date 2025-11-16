@@ -7,7 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 import jakarta.persistence.*;
 
 import java.time.Instant;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -24,10 +24,10 @@ public class DiveProfileEntity {
     private DiveComputerEntity computer;
 
     @Column(name = "dive_profile_start", nullable = false)
-    private ZonedDateTime profileStart;
+    private OffsetDateTime profileStart;
 
     @Column(name = "dive_profile_end", nullable = false)
-    private ZonedDateTime profileEnd;
+    private OffsetDateTime profileEnd;
 
     @ManyToOne private DiveEntity dive;
 
@@ -41,8 +41,8 @@ public class DiveProfileEntity {
             final Instant end,
             final List<DiveMeasurementEntity> measurements) {
         this.computer = computer;
-        this.profileStart = start.atZone(UTC);
-        this.profileEnd = end.atZone(UTC);
+        this.profileStart = start.atOffset(UTC);
+        this.profileEnd = end.atOffset(UTC);
         this.measurements = measurements;
     }
 

@@ -13,7 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -26,7 +26,7 @@ public class DiveMeasurementEntity {
     private Long id;
 
     @Column(name = "time", nullable = false)
-    private ZonedDateTime time;
+    private OffsetDateTime time;
 
     @Column(name = "depth", nullable = false)
     private double depth;
@@ -45,7 +45,7 @@ public class DiveMeasurementEntity {
     public DiveMeasurementEntity() {}
 
     public DiveMeasurementEntity(final DiveMeasurement diveMeasurement) {
-        this.time = diveMeasurement.time().atZone(UTC);
+        this.time = diveMeasurement.time().atOffset(UTC);
         this.depth = diveMeasurement.depth();
         this.temperatureCelsius = diveMeasurement.temperature().celsius();
         this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();

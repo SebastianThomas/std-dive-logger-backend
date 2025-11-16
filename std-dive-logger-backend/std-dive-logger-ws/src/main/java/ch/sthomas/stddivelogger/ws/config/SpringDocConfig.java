@@ -33,9 +33,9 @@ public final class SpringDocConfig {
                         // Instant as millis
                         .replaceWithSchema(
                                 Instant.class, new NumberSchema()._default(nowEuZhMillis))
-                        // ZonedDateTime as millis
+                        // OffsetDateTime as millis
                         .replaceWithSchema(
-                                ZonedDateTime.class, new NumberSchema()._default(nowEuZhMillis))
+                                OffsetDateTime.class, new NumberSchema()._default(nowEuZhMillis))
                         // LocalTime as ISO HH:mm:ss and optionally nanos
                         .replaceWithSchema(
                                 LocalTime.class,

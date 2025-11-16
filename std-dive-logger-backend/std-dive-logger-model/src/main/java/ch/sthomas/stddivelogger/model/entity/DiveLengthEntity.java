@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 
 import org.hibernate.annotations.Immutable;
 
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Immutable
@@ -16,10 +16,10 @@ public class DiveLengthEntity {
     private Long id;
 
     @Column(name = "dive_start", nullable = false)
-    private ZonedDateTime startTime;
+    private OffsetDateTime startTime;
 
     @Column(name = "dive_end", nullable = false)
-    private ZonedDateTime endTime;
+    private OffsetDateTime endTime;
 
     public DiveLength toRecord() {
         return new DiveLength(startTime.toInstant(), endTime.toInstant());
