@@ -64,7 +64,9 @@ public class AuthController {
     }
 
     public record SignupRequest(
-            @NotNull @NotBlank @Email String email, @NotNull @NotBlank String password) {}
+            @NotNull @NotBlank @Email String email,
+            @NotNull @NotBlank String password,
+            @NotNull @NotBlank String name) {}
 
     @Operation(
             summary = "Create a new user",
@@ -76,7 +78,9 @@ public class AuthController {
             })
     @PostMapping("/signup")
     public FrontendUser signup(@Valid @RequestBody final SignupRequest request) {
-        return userService.createUser(request.email, request.password).toFrontendModel();
+        return userService
+                .createUser(request.email, request.password, request.name)
+                .toFrontendModel();
     }
 
     @PostMapping("/logout")

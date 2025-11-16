@@ -20,6 +20,13 @@ public class DiveSiteEntity {
     @Column(name = "location", nullable = false)
     private Coordinate location;
 
+    public DiveSiteEntity() {}
+
+    public DiveSiteEntity(final String name, final Coordinate location) {
+        this.name = name;
+        this.location = location;
+    }
+
     public DiveSite toRecord() {
         return new DiveSite(id, name, location);
     }

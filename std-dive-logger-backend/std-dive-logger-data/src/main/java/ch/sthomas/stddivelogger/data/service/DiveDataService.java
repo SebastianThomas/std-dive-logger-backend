@@ -12,6 +12,7 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -156,5 +157,24 @@ public class DiveDataService {
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
         return diveRepository.findById(targetDiveId).map(DiveEntity::toRecord).orElseThrow();
+    }
+
+    public Optional<DiveSite> findDiveSiteById(final long id) {
+        return diveSiteRepository.findById(id).map(DiveSiteEntity::toRecord);
+    }
+
+    public List<DiveSite> findDiveSitesByLocation(final Coordinate coordinate) {
+        return findDiveSiteByLocationDistanceWithin(coordinate, 0.005);
+    }
+
+    public List<DiveSite> findDiveSiteByLocationDistanceWithin(
+            final Coordinate coordinate, final double dist) {
+        return diveSiteRepository.findByLocationNear(coordinate, dist).stream()
+                .map(DiveSiteEntity::toRecord)
+                .toList();
+    }
+
+    public DiveSite saveDiveSite(final String name, final Coordinate coordinate) {
+        return diveSiteRepository.save(new DiveSiteEntity(name, coordinate)).toRecord();
     }
 }

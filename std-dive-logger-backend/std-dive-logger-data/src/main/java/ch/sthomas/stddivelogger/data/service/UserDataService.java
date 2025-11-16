@@ -21,9 +21,9 @@ public class UserDataService {
         return userRepository.findById(userId).map(UserEntity::toRecord).orElseThrow();
     }
 
-    public User saveUser(final String email, final String password) {
+    public User saveUser(final String email, final String password, final String name) {
         try {
-            return userRepository.save(new UserEntity(email, password)).toRecord();
+            return userRepository.save(new UserEntity(email, password, name)).toRecord();
         } catch (final DataIntegrityViolationException e) {
             if (e.getCause() instanceof final ConstraintViolationException c) {
                 if (c.getCause() instanceof final PSQLException p

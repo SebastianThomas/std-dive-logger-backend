@@ -38,7 +38,7 @@ public class UserService {
         return userDataService.findUserById(userId);
     }
 
-    public User createUser(final String emailParam, final String password) {
+    public User createUser(final String emailParam, final String password, final String name) {
         final var email = emailParam.trim();
         if (!isValidEmail(email)) {
             throw new IllegalArgumentException("Invalid email");
@@ -50,7 +50,7 @@ public class UserService {
                             .map(RuleResultDetail::toString)
                             .toList());
         }
-        return userDataService.saveUser(email, passwordEncoder.encode(password));
+        return userDataService.saveUser(email, passwordEncoder.encode(password), name);
     }
 
     private boolean isValidEmail(final String email) {

@@ -14,6 +14,7 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -120,5 +121,17 @@ public class DiveService {
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
                 user, body.diveNumber(), body.diveIdentifier(), body.diveSiteId(), List.of());
+    }
+
+    public Optional<DiveSite> getSiteById(final long id) {
+        return diveDataService.findDiveSiteById(id);
+    }
+
+    public List<DiveSite> getSitesByLocation(final Coordinate coordinate) {
+        return diveDataService.findDiveSitesByLocation(coordinate);
+    }
+
+    public DiveSite createDiveSite(final String name, final double lat, final double lon) {
+        return diveDataService.saveDiveSite(name, new Coordinate(lon, lat));
     }
 }

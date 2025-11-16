@@ -37,9 +37,10 @@ public class UserEntity {
 
     public UserEntity() {}
 
-    public UserEntity(final String email, final String password) {
+    public UserEntity(final String email, final String password, final String name) {
         this.email = email;
         this.password = password;
+        this.name = name;
     }
 
     public User toRecord() {
