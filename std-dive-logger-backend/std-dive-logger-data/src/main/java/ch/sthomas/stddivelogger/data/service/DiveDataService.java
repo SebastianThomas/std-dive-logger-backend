@@ -9,11 +9,14 @@ import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.annotation.Nullable;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,6 +33,9 @@ public class DiveDataService {
     private final DiveComputerRepository diveComputerRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
     private final DiveComputerManufacturerRepository diveComputerManufacturerRepository;
+    private final DiveBuddyNameRepository diveBuddyNameRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final EntityManager entityManager;
 
     public DiveDataService(
             final DiveRepository diveRepository,
@@ -38,7 +44,10 @@ public class DiveDataService {
             final DiveProfileRepository diveProfileRepository,
             final DiveComputerRepository diveComputerRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
-            DiveComputerManufacturerRepository diveComputerManufacturerRepository) {
+            final DiveComputerManufacturerRepository diveComputerManufacturerRepository,
+            final DiveBuddyNameRepository diveBuddyNameRepository,
+            final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            final EntityManager entityManager) {
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
         this.diveSiteRepository = diveSiteRepository;
@@ -46,6 +55,9 @@ public class DiveDataService {
         this.diveComputerRepository = diveComputerRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
         this.diveComputerManufacturerRepository = diveComputerManufacturerRepository;
+        this.diveBuddyNameRepository = diveBuddyNameRepository;
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.entityManager = entityManager;
     }
 
     public List<Dive> findDivesByUser(final User user) {
@@ -70,6 +82,23 @@ public class DiveDataService {
         final var entity =
                 new DiveEntity(number, diveIdentifier, userEntity, diveSite, profileEntities);
         return diveRepository.save(entity).toRecord();
+    }
+
+    public void saveBuddies(final long diveId, final List<String> buddies) {
+        entityManager.flush();
+
+        namedParameterJdbcTemplate.batchUpdate(
+                "INSERT INTO t_dive_buddy_name (fk_dive_id, name) VALUES (:diveId, :buddyName)",
+                buddies.stream()
+                        .map(
+                                buddy ->
+                                        new MapSqlParameterSource()
+                                                .addValue("diveId", diveId)
+                                                .addValue("buddyName", buddy))
+                        .toArray(MapSqlParameterSource[]::new));
+
+        // TODO: Add clear here if dive is not reloaded with all buddies
+        // entityManager.clear();
     }
 
     private DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {

@@ -90,7 +90,8 @@ CREATE TABLE t_dive_buddy
 (
     pk_dive_buddy_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fk_dive_id       INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
-    fk_buddy_dive_id INTEGER NOT NULL REFERENCES t_dives (pk_dive_id)
+    fk_buddy_dive_id INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
+    CHECK (fk_dive_id < fk_buddy_dive_id)
 );
 
 CREATE TABLE t_group_member

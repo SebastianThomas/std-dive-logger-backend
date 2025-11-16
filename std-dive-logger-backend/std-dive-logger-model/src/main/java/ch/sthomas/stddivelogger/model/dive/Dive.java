@@ -10,4 +10,6 @@ public record Dive(
         int number,
         @Nullable String customIdentifier,
         @Nullable DiveSite site,
-        @NotNull List<DiveProfile> profiles) {}
+        @NotNull List<DiveProfile> profiles,
+        @NotNull List<Dive> buddiesDives,
+        @NotNull List<String> namedBuddies) {}

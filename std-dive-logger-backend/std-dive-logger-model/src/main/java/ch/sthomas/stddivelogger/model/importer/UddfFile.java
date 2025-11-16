@@ -15,6 +15,7 @@ import jakarta.annotation.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -268,5 +269,13 @@ public record UddfFile(
         return profileData.repetitionGroup.dive.samples.waypoint.stream()
                 .map(sample -> sample.toRecord(exportStart(), gasDefinitions))
                 .toList();
+    }
+
+    public List<String> getBuddies() {
+        final var buddies = exportBuddyString();
+        if (buddies == null) {
+            return List.of();
+        }
+        return Arrays.stream(buddies.trim().split(",")).map(String::trim).toList();
     }
 }

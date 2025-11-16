@@ -67,7 +67,7 @@ public class ImportService {
             final UddfFile uddfFile) {
         final var site = getDiveSite(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
-        return diveService.saveDive(user, body, site, List.of(profile));
+        return diveService.saveDive(user, body, site, List.of(profile), uddfFile.getBuddies());
     }
 
     private long getDiveSite(@Nullable final Long siteId, @Nullable final String diveSite) {

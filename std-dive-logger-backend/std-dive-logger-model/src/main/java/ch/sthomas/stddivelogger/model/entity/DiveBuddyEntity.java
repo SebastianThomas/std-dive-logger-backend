@@ -1,8 +1,10 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.user.User;
-
 import jakarta.persistence.*;
+
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.List;
 
 @Entity
 @Table(name = "t_dive_buddy")
@@ -12,15 +14,19 @@ public class DiveBuddyEntity {
     @Column(name = "pk_dive_buddy_id", nullable = false)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "pk_dive_id")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "fk_dive_id")
     private DiveEntity dive;
 
-    @ManyToOne
-    @JoinColumn(name = "pk_user_id")
-    private UserEntity user;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "fk_buddy_dive_id")
+    private DiveEntity buddyDive;
 
-    public User getUser() {
-        return user.toRecord();
+    public DiveBuddyEntity() {}
+
+    public DiveBuddyEntity(final DiveEntity dive, final List<DiveEntity> buddyDive) {}
+
+    public Pair<DiveEntity, DiveEntity> getPair() {
+        return Pair.of(dive, buddyDive);
     }
 }

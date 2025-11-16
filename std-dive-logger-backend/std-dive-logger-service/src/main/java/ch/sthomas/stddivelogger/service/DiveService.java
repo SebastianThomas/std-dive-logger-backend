@@ -14,7 +14,10 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.hibernate.exception.DataException;
 import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +26,7 @@ import java.util.Optional;
 @Service
 public class DiveService {
 
+    private static final Logger logger = LoggerFactory.getLogger(DiveService.class);
     private final DiveDataService diveDataService;
     private final UserDataService userDataService;
 
@@ -46,9 +50,17 @@ public class DiveService {
             final User user,
             final UploadDiveBody body,
             final Long diveSiteId,
-            final List<DiveProfileUpload> profiles) {
-        return diveDataService.saveDive(
-                user, body.diveNumber(), body.diveIdentifier(), diveSiteId, profiles);
+            final List<DiveProfileUpload> profiles,
+            final List<String> buddies) {
+        final var dive =
+                diveDataService.saveDive(
+                        user, body.diveNumber(), body.diveIdentifier(), diveSiteId, profiles);
+        try {
+            diveDataService.saveBuddies(dive.id(), buddies);
+        } catch (final DataException e) {
+            logger.error("Error while saving dive buddies, but continuing", e);
+        }
+        return dive;
     }
 
     public Optional<DiveComputer> getDiveComputer(final User user, final String customName) {

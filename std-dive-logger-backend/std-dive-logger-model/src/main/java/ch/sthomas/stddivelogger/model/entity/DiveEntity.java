@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Entity
 @Table(name = "t_dives")
@@ -27,6 +28,19 @@ public class DiveEntity {
     @ManyToOne private DiveSiteEntity diveSite;
 
     @OneToMany private List<DiveProfileEntity> profiles;
+
+    @ManyToMany
+    @JoinTable(
+            name = "t_dive_buddy",
+            joinColumns = @JoinColumn(name = "fk_dive_id"),
+            inverseJoinColumns = @JoinColumn(name = "fk_buddy_dive_id"))
+    private List<DiveEntity> buddyDivesFrom;
+
+    @ManyToMany(mappedBy = "buddyDivesFrom")
+    private List<DiveEntity> buddyDivesTo;
+
+    @OneToMany(mappedBy = "dive", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DiveBuddyNameEntity> namedBuddies;
 
     public DiveEntity() {}
 
@@ -49,7 +63,11 @@ public class DiveEntity {
                 number,
                 diveIdentifier,
                 diveSite.toRecord(),
-                profiles.stream().map(DiveProfileEntity::toRecord).toList());
+                profiles.stream().map(DiveProfileEntity::toRecord).toList(),
+                Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream())
+                        .map(DiveEntity::toRecord)
+                        .toList(),
+                namedBuddies.stream().map(DiveBuddyNameEntity::getName).toList());
     }
 
     public UserEntity getUserEntity() {
