@@ -8,6 +8,7 @@ import org.passay.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -72,5 +73,9 @@ public class UserService {
 
     public void deleteUser(final User user) {
         userDataService.deleteUserByEmail(user.email());
+    }
+
+    public List<User> getUsersByPartialName(final String query, final int pageSize) {
+        return userDataService.findUsersByClosestMatchName(query, pageSize);
     }
 }

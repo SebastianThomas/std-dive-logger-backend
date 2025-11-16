@@ -7,7 +7,10 @@ import ch.sthomas.stddivelogger.model.user.User;
 import org.hibernate.exception.ConstraintViolationException;
 import org.postgresql.util.PSQLException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class UserDataService {
@@ -38,5 +41,11 @@ public class UserDataService {
 
     public void deleteUserByEmail(final String email) {
         userRepository.deleteByEmailEqualsIgnoreCase(email);
+    }
+
+    public List<User> findUsersByClosestMatchName(final String query, final int pageSize) {
+        return userRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)).stream()
+                .map(UserEntity::toRecord)
+                .toList();
     }
 }

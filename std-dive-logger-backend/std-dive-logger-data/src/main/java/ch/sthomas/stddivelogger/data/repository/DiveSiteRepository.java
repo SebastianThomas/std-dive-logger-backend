@@ -20,6 +20,13 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
     List<DiveSiteEntity> findByNameContainingOrderedByClosestMatch(String name, Pageable pageable);
 
     @Query(
+            value =
+                    "SELECT * FROM t_dive_site WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
+            countQuery = "SELECT * FROM t_dive_site WHERE name % :name",
+            nativeQuery = true)
+    List<DiveSiteEntity> findByClosestMatchName(String name, Pageable pageable);
+
+    @Query(
             value = "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist)",
             nativeQuery = true)
     List<DiveSiteEntity> findByLocationNear(Coordinate location, double dist);

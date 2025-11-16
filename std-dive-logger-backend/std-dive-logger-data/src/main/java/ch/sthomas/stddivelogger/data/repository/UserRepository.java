@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -24,4 +25,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByEmailIgnoreCase(String email);
 
     void deleteByEmailEqualsIgnoreCase(String email);
+
+    @Query(
+            value =
+                    "SELECT * FROM t_dive_site WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
+            countQuery = "SELECT * FROM t_dive_site WHERE name % :name",
+            nativeQuery = true)
+    List<UserEntity> findByClosestMatchName(String name, Pageable pageable);
 }
