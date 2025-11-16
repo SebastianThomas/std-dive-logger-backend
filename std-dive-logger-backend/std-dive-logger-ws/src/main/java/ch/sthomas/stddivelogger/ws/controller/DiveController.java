@@ -68,6 +68,15 @@ public class DiveController {
         return ResponseEntity.ok(dive);
     }
 
+    @Operation(summary = "Get next dive number")
+    @GetMapping(path = "/next")
+    public ResponseEntity<Integer> nextDiveNumber(@AuthenticationPrincipal final User user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.getNextDiveNumber(user));
+    }
+
     @Operation(
             summary = "Get Readers of a dive",
             responses = {

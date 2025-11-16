@@ -223,4 +223,8 @@ public class DiveDataService {
     public List<User> findReaders(final long diveId) {
         return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord).toList();
     }
+
+    public Optional<Integer> findMaxDiveNumber(final User user) {
+        return diveRepository.findMaxDiveNumberByUserId(user.id());
+    }
 }

@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
@@ -24,4 +25,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             nativeQuery = true)
     void setDiveIdWhereProfileIdIn(
             @Param("targetDiveId") Long targetDiveId, @Param("profileIds") List<Long> profileIds);
+
+    @Query("SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :id")
+    Optional<Integer> findMaxDiveNumberByUserId(long id);
 }
