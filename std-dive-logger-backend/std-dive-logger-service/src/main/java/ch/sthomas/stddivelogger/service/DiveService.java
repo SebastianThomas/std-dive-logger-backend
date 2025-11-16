@@ -135,7 +135,7 @@ public class DiveService {
     }
 
     public boolean hasReadAccess(final @NotNull User user, final long diveId) {
-        return hasWriteAccess(user, diveId); // TODO: Or is in table for reads
+        return hasWriteAccess(user, diveId) || diveDataService.hasReadAccess(user, diveId);
     }
 
     public Dive createEmptyDive(final User user, @Valid @NotNull final UploadDiveBody body) {
@@ -162,5 +162,12 @@ public class DiveService {
 
     public DiveSite createDiveSite(final String name, final double lat, final double lon) {
         return diveDataService.saveDiveSite(name, new Coordinate(lon, lat));
+    }
+
+    public List<User> getReaders(final @NotNull User authenticated, final long diveId) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        return diveDataService.findReaders(diveId);
     }
 }

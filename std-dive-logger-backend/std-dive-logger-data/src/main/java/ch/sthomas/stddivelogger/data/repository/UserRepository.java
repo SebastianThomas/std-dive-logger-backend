@@ -11,11 +11,15 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
+    @Query(value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
+    List<UserEntity> findReaders(long diveId);
+
     @Query(
             value =
-                    "SELECT u.* FROM t_users u INNER JOIN t_dive_privileges p ON u.pk_user_id = p.fk_user_id AND p.fk_dive_id = :diveId",
+                    "SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END "
+                            + "FROM t_readers r WHERE r.dive_id = :diveId AND r.pk_user_id = :userId",
             nativeQuery = true)
-    List<UserEntity> findReaders(long diveId);
+    boolean isReader(long diveId, long userId);
 
     Optional<UserEntity> findByEmailIgnoreCase(String email);
 

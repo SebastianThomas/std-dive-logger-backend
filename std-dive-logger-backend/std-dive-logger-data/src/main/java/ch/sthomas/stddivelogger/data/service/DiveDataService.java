@@ -217,4 +217,12 @@ public class DiveDataService {
     public DiveSite saveDiveSite(final String name, final Coordinate coordinate) {
         return diveSiteRepository.save(new DiveSiteEntity(name, coordinate)).toRecord();
     }
+
+    public boolean hasReadAccess(@NotNull final User user, final long diveId) {
+        return userRepository.isReader(diveId, user.id());
+    }
+
+    public List<User> findReaders(final long diveId) {
+        return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord).toList();
+    }
 }

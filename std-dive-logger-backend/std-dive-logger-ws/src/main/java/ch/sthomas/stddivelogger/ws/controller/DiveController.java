@@ -5,12 +5,14 @@ import static org.springframework.http.MediaType.*;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.ws.services.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -28,15 +30,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/dives")
-public class StdDiveLoggerController {
+public class DiveController {
 
-    private static final Logger logger = LoggerFactory.getLogger(StdDiveLoggerController.class);
+    private static final Logger logger = LoggerFactory.getLogger(DiveController.class);
 
     private final DiveService diveService;
     private final UserService userService;
     private final ImportService importService;
 
-    public StdDiveLoggerController(
+    public DiveController(
             final DiveService diveService,
             final UserService userService,
             final ImportService importService) {
@@ -57,13 +59,31 @@ public class StdDiveLoggerController {
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
     public ResponseEntity<Dive> getDiveById(
-            @AuthenticationPrincipal final User user, @PathVariable final Long id) {
+            @AuthenticationPrincipal final User user, @PathVariable("id") final Long id) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final var dive =
                 diveService.getDiveById(userService.getUserById(user.id()), id).orElseThrow();
         return ResponseEntity.ok(dive);
+    }
+
+    @Operation(
+            summary = "Get Readers of a dive",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Success"),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The authenticated user does not have write access")
+            })
+    @GetMapping(path = "/{id}/readers")
+    public ResponseEntity<List<FrontendUser>> getReadersOfDive(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long id) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.getReaders(user, id).stream().map(User::toFrontendModel).toList());
     }
 
     @Operation(summary = "Create an empty new dive")
