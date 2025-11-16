@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
-    List<DiveEntity> findByUser_Id(Long userId);
+    List<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
 
     @Query("SELECT d FROM DiveEntity d JOIN DiveProfileEntity p WHERE p.id IN :profileIds")
     List<DiveEntity> findByProfileIds(List<Long> profileIds);

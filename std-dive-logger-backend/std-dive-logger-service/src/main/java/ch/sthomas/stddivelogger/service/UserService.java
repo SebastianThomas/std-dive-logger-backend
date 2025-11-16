@@ -13,6 +13,8 @@ import java.util.regex.Pattern;
 
 @Service
 public class UserService {
+    public static final int USERS_PAGE_SIZE = 10;
+
     private final UserDataService userDataService;
     private final PasswordEncoder passwordEncoder;
 
@@ -75,7 +77,7 @@ public class UserService {
         userDataService.deleteUserByEmail(user.email());
     }
 
-    public List<User> getUsersByPartialName(final String query, final int pageSize) {
-        return userDataService.findUsersByClosestMatchName(query, pageSize);
+    public List<User> getUsersByPartialName(final String query) {
+        return userDataService.findUsersByClosestMatchName(query, USERS_PAGE_SIZE);
     }
 }

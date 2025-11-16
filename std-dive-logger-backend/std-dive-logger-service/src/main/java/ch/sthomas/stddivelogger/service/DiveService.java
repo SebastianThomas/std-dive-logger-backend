@@ -1,12 +1,12 @@
 package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
-import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -27,16 +27,18 @@ import java.util.Optional;
 public class DiveService {
 
     private static final Logger logger = LoggerFactory.getLogger(DiveService.class);
-    private final DiveDataService diveDataService;
-    private final UserDataService userDataService;
 
-    public DiveService(final DiveDataService diveDataService, UserDataService userDataService) {
+    public static final int SIMPLIFIED_DIVE_PAGE_SIZE = 20;
+    public static final int DIVE_SITE_PAGE_SIZE = 10;
+
+    private final DiveDataService diveDataService;
+
+    public DiveService(final DiveDataService diveDataService) {
         this.diveDataService = diveDataService;
-        this.userDataService = userDataService;
     }
 
-    public List<Dive> getDivesForUser(final User user) {
-        return diveDataService.findDivesByUser(user);
+    public List<SimplifiedDive> getDivesForUser(final User user, final int page) {
+        return diveDataService.findDivesByUser(user, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {
@@ -86,7 +88,7 @@ public class DiveService {
     }
 
     public List<DiveSite> getSiteByPartialName(final String locationStart) {
-        return diveDataService.findDiveSiteByNameContains(locationStart);
+        return diveDataService.findDiveSiteByNameContains(locationStart, DIVE_SITE_PAGE_SIZE);
     }
 
     public Dive updateDive(final @NotNull User user, @NotNull @Valid final Dive dive)

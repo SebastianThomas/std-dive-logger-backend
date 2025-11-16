@@ -5,6 +5,7 @@ import static org.springframework.http.MediaType.*;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -49,11 +50,14 @@ public class DiveController {
 
     @Operation(summary = "Get Dives for User")
     @GetMapping(path = "")
-    public ResponseEntity<List<Dive>> getDivesForUser(@AuthenticationPrincipal final User user) {
+    public ResponseEntity<List<SimplifiedDive>> getDivesForUser(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(diveService.getDivesForUser(userService.getUserById(user.id())));
+        return ResponseEntity.ok(
+                diveService.getDivesForUser(userService.getUserById(user.id()), page));
     }
 
     @Operation(summary = "Get Dive by ID")

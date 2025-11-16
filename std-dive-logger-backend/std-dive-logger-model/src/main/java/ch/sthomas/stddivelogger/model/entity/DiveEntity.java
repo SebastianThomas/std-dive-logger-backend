@@ -1,6 +1,8 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.dive.BuddyDive;
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -67,10 +69,30 @@ public class DiveEntity {
                 diveIdentifier,
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
-                Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream())
-                        .map(DiveEntity::toRecord)
-                        .toList(),
-                namedBuddies.stream().map(DiveBuddyNameEntity::getName).toList());
+                getBuddyDives().map(DiveEntity::toRecord).toList(),
+                getNamedBuddiesModels());
+    }
+
+    public SimplifiedDive toSimplifiedRecord() {
+        return new SimplifiedDive(
+                id,
+                number,
+                diveIdentifier,
+                diveSite.toRecord(),
+                getBuddyDives().map(DiveEntity::toBuddyDive).toList(),
+                getNamedBuddiesModels());
+    }
+
+    private Stream<DiveEntity> getBuddyDives() {
+        return Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream());
+    }
+
+    private BuddyDive toBuddyDive() {
+        return new BuddyDive(user.toRecord().toFrontendModel(), id);
+    }
+
+    private List<String> getNamedBuddiesModels() {
+        return namedBuddies.stream().map(DiveBuddyNameEntity::getName).toList();
     }
 
     public UserEntity getUserEntity() {

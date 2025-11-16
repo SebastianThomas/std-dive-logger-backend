@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -26,7 +27,6 @@ import java.util.Optional;
 @Service
 public class DiveDataService {
     private final DiveRepository diveRepository;
-
     private final UserRepository userRepository;
     private final DiveSiteRepository diveSiteRepository;
     private final DiveProfileRepository diveProfileRepository;
@@ -60,8 +60,13 @@ public class DiveDataService {
         this.entityManager = entityManager;
     }
 
-    public List<Dive> findDivesByUser(final User user) {
-        return diveRepository.findByUser_Id(user.id()).stream().map(DiveEntity::toRecord).toList();
+    public List<SimplifiedDive> findDivesByUser(
+            final User user, final int page, final int pageSize) {
+        return diveRepository
+                .findByUser_IdOrderByNumberDesc(user.id(), Pageable.ofSize(pageSize).withPage(page))
+                .stream()
+                .map(DiveEntity::toSimplifiedRecord)
+                .toList();
     }
 
     public Optional<Dive> findDiveById(final long id) {
@@ -122,8 +127,10 @@ public class DiveDataService {
         return diveSiteRepository.findByNameIgnoreCase(diveSite).map(DiveSiteEntity::toRecord);
     }
 
-    public List<DiveSite> findDiveSiteByNameContains(final String partialName) {
-        return diveSiteRepository.findByClosestMatchName(partialName, Pageable.ofSize(10)).stream()
+    public List<DiveSite> findDiveSiteByNameContains(final String partialName, final int pageSize) {
+        return diveSiteRepository
+                .findByClosestMatchName(partialName, Pageable.ofSize(pageSize))
+                .stream()
                 .map(DiveSiteEntity::toRecord)
                 .toList();
     }

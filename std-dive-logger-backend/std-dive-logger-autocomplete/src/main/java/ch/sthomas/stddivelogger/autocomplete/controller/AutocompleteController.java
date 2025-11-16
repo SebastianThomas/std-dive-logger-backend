@@ -27,7 +27,7 @@ public class AutocompleteController {
 
     @GetMapping("/user")
     public List<FrontendUser> user(@RequestParam(name = "query") final String query) {
-        return userService.getUsersByPartialName(query, 10).stream()
+        return userService.getUsersByPartialName(query).stream()
                 .map(User::toFrontendModel)
                 .toList();
     }
