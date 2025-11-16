@@ -52,6 +52,10 @@ public class DiveDataService {
         return diveRepository.findByUser_Id(user.id()).stream().map(DiveEntity::toRecord).toList();
     }
 
+    public Optional<Dive> findDiveById(final long id) {
+        return diveRepository.findById(id).map(DiveEntity::toRecord);
+    }
+
     public Dive saveDive(
             final User user,
             final int number,

@@ -47,8 +47,23 @@ public class StdDiveLoggerController {
 
     @Operation(summary = "Get Dives for User")
     @GetMapping(path = "")
-    public List<Dive> getDivesForUser(@AuthenticationPrincipal final User user) {
-        return diveService.getDivesForUser(userService.getUserById(user.id()));
+    public ResponseEntity<List<Dive>> getDivesForUser(@AuthenticationPrincipal final User user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.getDivesForUser(userService.getUserById(user.id())));
+    }
+
+    @Operation(summary = "Get Dive by ID")
+    @GetMapping(path = "/{id}")
+    public ResponseEntity<Dive> getDiveById(
+            @AuthenticationPrincipal final User user, @PathVariable final Long id) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        final var dive =
+                diveService.getDiveById(userService.getUserById(user.id()), id).orElseThrow();
+        return ResponseEntity.ok(dive);
     }
 
     @Operation(summary = "Create an empty new dive")

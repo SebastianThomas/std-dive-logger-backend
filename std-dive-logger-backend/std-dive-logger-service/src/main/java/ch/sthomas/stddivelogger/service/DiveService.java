@@ -35,6 +35,13 @@ public class DiveService {
         return diveDataService.findDivesByUser(user);
     }
 
+    public Optional<Dive> getDiveById(final User user, final long id) {
+        if (!hasReadAccess(user, id)) {
+            throw ForbiddenException.forDiveId(user, id);
+        }
+        return diveDataService.findDiveById(id);
+    }
+
     public Dive saveDive(
             final User user,
             final UploadDiveBody body,

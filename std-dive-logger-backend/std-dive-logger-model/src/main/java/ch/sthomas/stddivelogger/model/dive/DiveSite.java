@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -19,6 +21,7 @@ public record DiveSite(
                         example = "11.392",
                         description = "specifies the east–west position")
                 double longitude) {
+    @JsonIgnore
     public Coordinate getCoordinate() {
         return new Coordinate(longitude, latitude);
     }
