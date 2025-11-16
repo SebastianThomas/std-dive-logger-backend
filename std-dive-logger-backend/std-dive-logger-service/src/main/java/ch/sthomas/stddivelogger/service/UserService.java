@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.passay.*;
@@ -9,11 +10,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Service
 public class UserService {
     public static final int USERS_PAGE_SIZE = 10;
+    public static final int GROUPS_PAGE_SIZE = 10;
 
     private final UserDataService userDataService;
     private final PasswordEncoder passwordEncoder;
@@ -83,5 +86,13 @@ public class UserService {
 
     public long getUserCount() {
         return userDataService.countUsers();
+    }
+
+    public Optional<Group> getGroupById(final long id) {
+        return userDataService.findGroupById(id);
+    }
+
+    public List<Group> getGroupsByPartialName(final String query) {
+        return userDataService.findGroupsByClosestMatchName(query, GROUPS_PAGE_SIZE);
     }
 }

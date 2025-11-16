@@ -36,12 +36,6 @@ public class DiveSiteController {
         return diveService.getSiteById(id).orElseThrow();
     }
 
-    @Operation(summary = "Find DiveSite by name")
-    @GetMapping(path = "/name")
-    public List<DiveSite> findDiveSiteByName(@RequestParam("name") final String name) {
-        return diveService.getSiteByPartialName(name);
-    }
-
     @Operation(summary = "Find DiveSite by location")
     @GetMapping(path = "/location")
     public List<DiveSite> findDiveSiteByName(
