@@ -80,4 +80,8 @@ public class UserService {
     public List<User> getUsersByPartialName(final String query) {
         return userDataService.findUsersByClosestMatchName(query, USERS_PAGE_SIZE);
     }
+
+    public long getUserCount() {
+        return userDataService.countUsers();
+    }
 }

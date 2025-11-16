@@ -48,4 +48,8 @@ public class UserDataService {
                 .map(UserEntity::toRecord)
                 .toList();
     }
+
+    public long countUsers() {
+        return userRepository.count();
+    }
 }
