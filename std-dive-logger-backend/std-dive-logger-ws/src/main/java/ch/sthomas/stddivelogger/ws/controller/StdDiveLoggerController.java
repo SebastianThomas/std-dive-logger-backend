@@ -96,7 +96,7 @@ public class StdDiveLoggerController {
         return ResponseEntity.ok(importService.uploadDive(user, file, body));
     }
 
-    @Operation(summary = "Update a Dive")
+    @Operation(summary = "Update a Dive, interface subject to change!!")
     @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> updateDive(
             @AuthenticationPrincipal final User user, @NotNull @Valid final Dive dive) {
