@@ -7,7 +7,8 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
-public record User(long id, String email, String password, Instant createdAt, Instant updatedAt)
+public record User(
+        long id, String email, String password, String name, Instant createdAt, Instant updatedAt)
         implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -25,6 +26,6 @@ public record User(long id, String email, String password, Instant createdAt, In
     }
 
     public FrontendUser toFrontendModel() {
-        return new FrontendUser(id, email);
+        return new FrontendUser(id, name);
     }
 }

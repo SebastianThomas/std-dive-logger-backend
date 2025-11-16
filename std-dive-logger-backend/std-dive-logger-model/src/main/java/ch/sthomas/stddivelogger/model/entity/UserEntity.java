@@ -24,6 +24,9 @@ public class UserEntity {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "name", nullable = false)
+    private String name;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -40,6 +43,6 @@ public class UserEntity {
     }
 
     public User toRecord() {
-        return new User(id, email, password, createdAt, updatedAt);
+        return new User(id, email, password, name, createdAt, updatedAt);
     }
 }

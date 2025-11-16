@@ -3,6 +3,7 @@ CREATE TABLE t_users
     pk_user_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email      TEXT        NOT NULL,
     password   TEXT        NOT NULL,
+    name       TEXT        NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
     UNIQUE (email)
