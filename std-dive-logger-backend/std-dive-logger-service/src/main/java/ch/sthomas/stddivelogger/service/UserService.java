@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
-import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -91,7 +90,7 @@ public class UserService {
         return userDataService.countUsers();
     }
 
-    public Optional<Group> getGroupById(final long id) {
+    public Optional<GroupWithMembers> getGroupById(final long id) {
         return userDataService.findGroupById(id);
     }
 
@@ -107,7 +106,7 @@ public class UserService {
         return groupWithMembers;
     }
 
-    public List<Group> getGroupsByPartialName(final String query) {
+    public List<GroupWithMembers> getGroupsByPartialName(final String query) {
         return userDataService.findGroupsByClosestMatchName(query, GROUPS_PAGE_SIZE);
     }
 
@@ -116,6 +115,10 @@ public class UserService {
     }
 
     private boolean hasMemberAccess(final GroupWithMembers group, final long id) {
+        if (group.members() == null) {
+            throw new IllegalArgumentException(
+                    "Group with members should have non-null members to check access.");
+        }
         return group.members().stream().anyMatch(member -> member.id() == id);
     }
 

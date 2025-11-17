@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.autocomplete.controller;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
-import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -39,7 +39,7 @@ public class AutocompleteController {
     }
 
     @GetMapping("/group")
-    public List<Group> group(@RequestParam(name = "query") final String query) {
+    public List<GroupWithMembers> group(@RequestParam(name = "query") final String query) {
         return userService.getGroupsByPartialName(query);
     }
 }

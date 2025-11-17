@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -28,8 +27,8 @@ public class GroupEntity {
         this.members = members;
     }
 
-    public Group toRecord() {
-        return new Group(id, groupName);
+    public GroupWithMembers toRecord() {
+        return new GroupWithMembers(id, groupName, null);
     }
 
     public GroupWithMembers toRecordWithMembers() {
