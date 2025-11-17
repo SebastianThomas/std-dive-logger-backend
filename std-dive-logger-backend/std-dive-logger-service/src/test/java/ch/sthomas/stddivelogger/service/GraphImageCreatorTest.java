@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
@@ -13,11 +15,13 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +32,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class GraphImageCreatorTest {
     private static final XmlMapper xmlMapper = xmlMapper();
@@ -81,8 +86,18 @@ public class GraphImageCreatorTest {
                                     Pair.of(m -> m.temperature().celsius(), LegendType.RIGHT)),
                             Map.entry(
                                     DiveMeasurement.DiveMeasurementProperty.DEPTH,
-                                    Pair.of(DiveMeasurement::depth, LegendType.LEFT))));
+                                    Pair.of(DiveMeasurement::depth, LegendType.LEFT))),
+                    new Dimension(800, 450));
             logger.info("Created temp file with Dive Profile: {}", tempFile.getAbsolutePath());
+            try (final var expected =
+                    getClass()
+                            .getClassLoader()
+                            .getResourceAsStream("test-dive-profile-expected.svg")) {
+                assertEquals(
+                        DigestUtils.md5Hex(Objects.requireNonNull(expected)),
+                        DigestUtils.md5Hex(
+                                Files.newInputStream(tempFile.toPath().toAbsolutePath())));
+            }
         }
     }
 

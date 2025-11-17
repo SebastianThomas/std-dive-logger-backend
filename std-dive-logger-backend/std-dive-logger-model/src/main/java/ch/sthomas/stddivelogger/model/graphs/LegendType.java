@@ -5,11 +5,11 @@ public enum LegendType {
     RIGHT,
     NO_LEGEND;
 
-    public double getX(final int width) {
-        final var padding = 5;
+    public double getX(
+            final int width, final int stringWidth, final int padding, final int textPadding) {
         return switch (this) {
-            case LEFT -> padding; // Left align required
-            case RIGHT -> width - padding; // Right align required
+            case LEFT -> padding - textPadding - stringWidth; // Left align required
+            case RIGHT -> width - padding + textPadding; // Right align required
             case NO_LEGEND -> throw new IllegalArgumentException("Cannot get X of no legend");
         };
     }

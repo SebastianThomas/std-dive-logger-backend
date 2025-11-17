@@ -14,7 +14,6 @@ import org.apache.batik.svggen.SVGGraphics2D;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Element;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
@@ -33,18 +32,22 @@ public class GraphImageCreator {
     private static final String SVG_NS = "http://www.w3.org/2000/svg";
     private static final Logger logger = LoggerFactory.getLogger(GraphImageCreator.class);
 
+    private static final int PADDING = 20;
+    private static final int FONT_SIZE = 6;
+    private static final double FONT_ASCENT_MULTIPLIER = 1.0 / 3;
+    private static final int TEXT_PADDING = FONT_SIZE - 1;
+
     public static void fromDive(
             final Dive dive,
             final Writer writer,
             final Map<
                             DiveMeasurement.DiveMeasurementProperty,
                             Pair<Function<DiveMeasurement, Double>, LegendType>>
-                    extractorsAndLegendTypes)
+                    extractorsAndLegendTypes,
+            final Dimension widthHeight)
             throws IOException {
-        final var height = 100;
-        final var width = 300;
-        final var padding = 20;
-        final var fontSize = 6;
+        final var width = (int) widthHeight.getWidth();
+        final var height = (int) widthHeight.getHeight();
 
         final var domImpl = GenericDOMImplementation.getDOMImplementation();
         final var document = domImpl.createDocument(SVG_NS, "svg", null);
@@ -62,25 +65,24 @@ public class GraphImageCreator {
                         .orElseThrow()
                         .toEpochMilli();
         final DoubleUnaryOperator widthCalculator =
-                (a) -> width * (a - start) / (end - start) + padding;
+                (a) -> width * (a - start) / (end - start) + PADDING;
         final var canvasSize =
                 new Dimension(
-                        (int) Math.ceil(widthCalculator.applyAsDouble(end) + 2 * padding),
-                        height + 2 * padding);
+                        (int) Math.ceil(widthCalculator.applyAsDouble(end) + PADDING),
+                        height + 2 * PADDING);
         graphics.setSVGCanvasSize(canvasSize);
         graphics.setColor(Color.DARK_GRAY);
         graphics.fillRect(0, 0, canvasSize.width, canvasSize.height);
 
         extractorsAndLegendTypes.forEach(
                 (property, extractorAndType) -> {
-                    graphics.setFont(new Font("SansSerif", Font.BOLD, fontSize));
+                    graphics.setFont(new Font("SansSerif", Font.BOLD, FONT_SIZE));
                     final var color = getColor(property);
                     final var data = getDataRow(dive, extractorAndType.getLeft()).data().getFirst();
                     graphics.setColor(color);
-                    final var lines = data.getLines(widthCalculator, height, padding);
+                    final var lines = data.getLines(widthCalculator, height, PADDING);
                     lines.forEach(graphics::draw);
                     final var legendType = extractorAndType.getRight();
-                    // TODO: Legend based on legend type
                     if (legendType == LegendType.NO_LEGEND) {
                         return;
                     }
@@ -88,13 +90,9 @@ public class GraphImageCreator {
                     final var max = data.max();
                     logger.info("MinMax for {}: ({}, {})", property, min, max);
                     if (min == max) {
-                        // drawSingleLegend(graphics, legendType, min, width, height, padding);
+                        drawSingleLegend(graphics, legendType, min, canvasSize.width, height);
                     } else {
-                        final var legendElements =
-                                getLegendElements(graphics, legendType, 5, min, max, height);
-                        final var legendGroup = document.createElement("g");
-                        legendElements.forEach(legendGroup::appendChild);
-                        document.getFirstChild().appendChild(legendGroup);
+                        drawLegend(graphics, legendType, 5, min, max, canvasSize.width, height);
                     }
                 });
 
@@ -107,65 +105,48 @@ public class GraphImageCreator {
             final double val,
             final int width,
             final int height) {
+        final var fontMetrics = graphics.getFontMetrics();
+        final var string = String.valueOf(val);
         graphics.drawString(
-                String.valueOf(val), (int) Math.ceil(legendType.getX(width)), height / 2);
+                string,
+                (int)
+                        Math.ceil(
+                                legendType.getX(
+                                        width,
+                                        fontMetrics.stringWidth(string),
+                                        PADDING,
+                                        TEXT_PADDING)),
+                height / 2 + (int) (fontMetrics.getAscent() * FONT_ASCENT_MULTIPLIER));
     }
 
-    private static Stream<Element> getLegendElements(
+    private static void drawLegend(
             final SVGGraphics2D graphics,
             final LegendType legendType,
             final int nrOfEntries,
             final double min,
             final double max,
+            final int width,
             final int height) {
-        return IntStream.rangeClosed(0, nrOfEntries)
+        IntStream.rangeClosed(0, nrOfEntries)
                 .mapToObj(i -> Pair.of(i, min + (max - min) * i / nrOfEntries))
-                .map(
-                        p ->
-                                createAlignedText(
-                                        graphics,
-                                        String.valueOf(p.getRight()),
-                                        p.getLeft(),
-                                        height,
-                                        legendType));
-    }
-
-    public static Element createAlignedText(
-            final SVGGraphics2D svg,
-            final String text,
-            final double y,
-            final double boxHeight,
-            final LegendType legendType) {
-        final var textPadding = 5;
-        final var textEl =
-                svg.getDOMFactory().createElementNS("http://www.w3.org/2000/svg", "text");
-
-        switch (legendType) {
-            case NO_LEGEND -> throw new IllegalArgumentException("legendType cannot be NO_LEGEND");
-            case LEFT -> {
-                textEl.setAttribute("text-anchor", "start");
-            }
-            case RIGHT -> {
-                textEl.setAttribute("text-anchor", "end");
-            }
-        }
-        textEl.setAttribute("x", Double.toString(textPadding));
-
-        final var fontMetrics = svg.getFontMetrics();
-        final var ascent = fontMetrics.getAscent();
-        final var descent = fontMetrics.getDescent();
-
-        final var baselineY = y + (boxHeight / 2.0) + (ascent - (ascent + descent) / 2.0);
-
-        textEl.setAttribute("y", Double.toString(baselineY));
-
-        textEl.setAttribute("font-family", svg.getFont().getFamily());
-        textEl.setAttribute("font-size", Integer.toString(svg.getFont().getSize()));
-        textEl.setAttribute("fill", svg.getColor().toString());
-
-        textEl.setTextContent(text);
-
-        return textEl;
+                .forEach(
+                        p -> {
+                            final var string = String.valueOf(p.getRight());
+                            final var fontMetrics = graphics.getFontMetrics();
+                            final var y =
+                                    (int)
+                                            ((double) p.getLeft() / nrOfEntries * height
+                                                    + fontMetrics.getAscent()
+                                                            * FONT_ASCENT_MULTIPLIER
+                                                    + PADDING);
+                            final var x =
+                                    legendType.getX(
+                                            width,
+                                            fontMetrics.stringWidth(string),
+                                            PADDING,
+                                            TEXT_PADDING);
+                            graphics.drawString(string, (int) x, y);
+                        });
     }
 
     private static Color getColor(final DiveMeasurement.DiveMeasurementProperty property) {
