@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -170,6 +171,31 @@ public class DiveService {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
+        return diveDataService.findReaders(diveId);
+    }
+
+    public List<User> addReaders(
+            final @NotNull User authenticated, final long diveId, final List<Long> userIds) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        final var currentReaders = diveDataService.findReaders(diveId);
+        final var userIdsSet = new HashSet<>(userIds);
+        currentReaders.stream().map(User::id).forEach(userIdsSet::remove);
+        diveDataService.saveReaders(diveId, userIdsSet);
+        return diveDataService.findReaders(diveId);
+    }
+
+    public List<User> removeReaders(
+            final @NotNull User authenticated, final long diveId, final List<Long> userIds) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        final var currentReaders =
+                diveDataService.findReaders(diveId).stream().map(User::id).toList();
+        final var userIdsSet = new HashSet<>(userIds);
+        userIdsSet.removeIf(userId -> !currentReaders.contains(userId));
+        diveDataService.removeReaders(diveId, userIdsSet);
         return diveDataService.findReaders(diveId);
     }
 

@@ -20,9 +20,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class DiveDataService {
@@ -229,6 +227,36 @@ public class DiveDataService {
 
     public List<User> findReaders(final long diveId) {
         return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord).toList();
+    }
+
+    public void saveReaders(final long diveId, final Collection<Long> userIds) {
+        entityManager.flush();
+
+        namedParameterJdbcTemplate.batchUpdate(
+                "INSERT INTO t_dive_privileges (fk_dive_id, fk_user_id) VALUES (:diveId, :userId)",
+                userIds.stream()
+                        .map(
+                                userId ->
+                                        new MapSqlParameterSource()
+                                                .addValue("diveId", diveId)
+                                                .addValue("userId", userId))
+                        .toArray(MapSqlParameterSource[]::new));
+
+        // TODO: Add clear here if dive is not reloaded with privileges
+        // entityManager.clear();
+    }
+
+    public void removeReaders(final long diveId, final Collection<Long> userIdsSet) {
+        if (userIdsSet.isEmpty()) {
+            return;
+        }
+        entityManager.flush();
+
+        namedParameterJdbcTemplate.update(
+                "DELETE FROM t_dive_privileges WHERE fk_dive_id = :diveId AND fk_user_id IN (:userIds)",
+                new MapSqlParameterSource()
+                        .addValue("diveId", diveId)
+                        .addValue("userIds", userIdsSet));
     }
 
     public Optional<Integer> findMaxDiveNumber(final User user) {

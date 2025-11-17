@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.ws.services.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import jakarta.validation.Valid;
@@ -97,6 +98,46 @@ public class DiveController {
         }
         return ResponseEntity.ok(
                 diveService.getReaders(user, id).stream().map(User::toFrontendModel).toList());
+    }
+
+    @Operation(
+            summary = "Get Readers of a dive",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Success"),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The authenticated user does not have write access")
+            })
+    @PostMapping(path = "/{id}/readers")
+    public ResponseEntity<List<FrontendUser>> addReadersOfDive(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @Schema(example = "[userId1, userId2]", description = "New userIDs") @Valid @RequestBody
+                    final List<Long> userIds) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.addReaders(user, diveId, userIds).stream()
+                        .map(User::toFrontendModel)
+                        .toList());
+    }
+
+    @DeleteMapping("/{id}/readers")
+    public ResponseEntity<List<FrontendUser>> deleteReadersOfDive(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @Schema(example = "[userId1, userId2]", description = "userIDs to delete")
+                    @Valid
+                    @RequestBody
+                    final List<Long> userIds) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.removeReaders(user, diveId, userIds).stream()
+                        .map(User::toFrontendModel)
+                        .toList());
     }
 
     @Operation(summary = "Create an empty new dive")
