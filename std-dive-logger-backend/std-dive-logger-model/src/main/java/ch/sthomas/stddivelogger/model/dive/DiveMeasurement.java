@@ -15,4 +15,13 @@ public record DiveMeasurement(
         double depth,
         Duration ndl,
         List<DecoStop> deco,
-        @Nullable Gas gas) {}
+        @Nullable Gas gas) {
+    public enum DiveMeasurementProperty {
+        TEMPERATURE,
+        DEPTH,
+        NDL,
+        GAS_O2,
+        GAS_N2,
+        GAS_HE;
+    }
+}

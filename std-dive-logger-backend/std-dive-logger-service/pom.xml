@@ -26,6 +26,16 @@
             <artifactId>passay</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.xmlgraphics</groupId>
+            <artifactId>batik-svggen</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.xmlgraphics</groupId>
+            <artifactId>batik-dom</artifactId>
+        </dependency>
+
+
         <!-- shared test -->
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>

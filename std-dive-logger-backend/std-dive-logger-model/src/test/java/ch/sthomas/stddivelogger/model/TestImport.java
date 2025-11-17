@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.ws;
+package ch.sthomas.stddivelogger.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,7 +31,7 @@ public class TestImport {
         }
     }
 
-    private static XmlMapper xmlMapper() {
+    public static XmlMapper xmlMapper() {
         final var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new Jdk8Module());
         xmlMapper.registerModule(new JavaTimeModule());
