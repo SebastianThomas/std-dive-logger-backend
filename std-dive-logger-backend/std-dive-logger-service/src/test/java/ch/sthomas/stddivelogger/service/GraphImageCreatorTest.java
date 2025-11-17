@@ -17,6 +17,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public class GraphImageCreatorTest {
     private static final Logger logger = LoggerFactory.getLogger(GraphImageCreatorTest.class);
 
     @Test
+    @Disabled("MD5 not the same on Mac as on Github Runner")
     public void createGraphImage() throws IOException {
         final var start =
                 LocalDateTime.of(2025, Month.NOVEMBER, 17, 15, 25, 0).toInstant(ZoneOffset.UTC);
