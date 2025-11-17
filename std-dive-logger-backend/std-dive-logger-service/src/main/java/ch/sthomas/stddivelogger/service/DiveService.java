@@ -3,26 +3,34 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.DiveSite;
-import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
+import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
+import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.hibernate.exception.DataException;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Service
 public class DiveService {
@@ -33,9 +41,11 @@ public class DiveService {
     public static final int DIVE_SITE_PAGE_SIZE = 10;
 
     private final DiveDataService diveDataService;
+    private final StorageService storageService;
 
-    public DiveService(final DiveDataService diveDataService) {
+    public DiveService(final DiveDataService diveDataService, final StorageService storageService) {
         this.diveDataService = diveDataService;
+        this.storageService = storageService;
     }
 
     public List<SimplifiedDive> getDivesForUser(final User user, final int page) {
@@ -60,15 +70,40 @@ public class DiveService {
                         user,
                         body.diveNumber(),
                         body.diveIdentifier(),
+                        null,
                         diveSiteId,
                         profiles,
                         namedBuddies);
+        try {
+            final var d = createSaveDivePreview(dive);
+            logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);
+        } catch (final IOException e) {
+            logger.error("IOException while uploading dive preview for dive {}", dive.id(), e);
+        }
         try {
             diveDataService.saveBuddies(dive.id(), namedBuddies);
         } catch (final DataException e) {
             logger.error("Error while saving dive buddies, but continuing", e);
         }
-        return dive;
+        return diveDataService.findDiveById(dive.id()).orElseThrow();
+    }
+
+    private static final Map<
+                    DiveMeasurement.DiveMeasurementProperty,
+                    Pair<Function<DiveMeasurement, Double>, LegendType>>
+            diveMeasurementLegendExtractors = Map.ofEntries();
+
+    private Dive createSaveDivePreview(final Dive dive) throws IOException {
+        final var previewImagePath = String.format("/preview/%d-preview.svg", dive.id());
+        final var outputStream = new ByteArrayOutputStream();
+        try (final var writer = new OutputStreamWriter(outputStream)) {
+            GraphImageCreator.fromDive(
+                    dive, writer, diveMeasurementLegendExtractors, new Dimension(500, 200));
+        }
+        final var bytes = outputStream.toByteArray();
+        final var byteInput = new ByteArrayInputStream(bytes);
+        storageService.upload(previewImagePath, byteInput, "image/svg+xml", bytes.length);
+        return diveDataService.updateDiveSetPreviewImage(dive, previewImagePath);
     }
 
     public Optional<DiveComputer> getDiveComputer(final User user, final String customName) {
@@ -150,6 +185,7 @@ public class DiveService {
                 user,
                 body.diveNumber(),
                 body.diveIdentifier(),
+                null,
                 body.diveSiteId(),
                 List.of(),
                 List.of());

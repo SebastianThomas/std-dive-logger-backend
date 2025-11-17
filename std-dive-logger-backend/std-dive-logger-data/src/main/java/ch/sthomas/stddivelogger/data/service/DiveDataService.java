@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.data.service;
 
 import ch.sthomas.stddivelogger.data.repository.*;
+import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
@@ -27,39 +28,36 @@ import java.util.*;
 
 @Service
 public class DiveDataService {
+
     private static final Logger logger = LoggerFactory.getLogger(DiveDataService.class);
+
+    private final EntityManager entityManager;
     private final DiveRepository diveRepository;
     private final UserRepository userRepository;
     private final DiveSiteRepository diveSiteRepository;
-    private final DiveProfileRepository diveProfileRepository;
     private final DiveComputerRepository diveComputerRepository;
-    private final DiveMeasurementRepository diveMeasurementRepository;
     private final DiveComputerManufacturerRepository diveComputerManufacturerRepository;
-    private final DiveBuddyNameRepository diveBuddyNameRepository;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-    private final EntityManager entityManager;
+    private final StorageService storageService;
 
     public DiveDataService(
+            final EntityManager entityManager,
             final DiveRepository diveRepository,
             final UserRepository userRepository,
             final DiveSiteRepository diveSiteRepository,
-            final DiveProfileRepository diveProfileRepository,
             final DiveComputerRepository diveComputerRepository,
-            final DiveMeasurementRepository diveMeasurementRepository,
             final DiveComputerManufacturerRepository diveComputerManufacturerRepository,
-            final DiveBuddyNameRepository diveBuddyNameRepository,
             final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            final EntityManager entityManager) {
+            final StorageService storageService) {
+        this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
         this.diveSiteRepository = diveSiteRepository;
-        this.diveProfileRepository = diveProfileRepository;
         this.diveComputerRepository = diveComputerRepository;
-        this.diveMeasurementRepository = diveMeasurementRepository;
         this.diveComputerManufacturerRepository = diveComputerManufacturerRepository;
-        this.diveBuddyNameRepository = diveBuddyNameRepository;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-        this.entityManager = entityManager;
+
+        this.storageService = storageService;
     }
 
     public List<SimplifiedDive> findDivesByUser(
@@ -67,18 +65,19 @@ public class DiveDataService {
         return diveRepository
                 .findByUser_IdOrderByNumberDesc(user.id(), Pageable.ofSize(pageSize).withPage(page))
                 .stream()
-                .map(DiveEntity::toSimplifiedRecord)
+                .map(d -> d.toSimplifiedRecord(storageService.baseUrl()))
                 .toList();
     }
 
     public Optional<Dive> findDiveById(final long id) {
-        return diveRepository.findById(id).map(DiveEntity::toRecord);
+        return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl()));
     }
 
     public Dive saveDive(
             final User user,
             final int number,
             final String diveIdentifier,
+            final String previewImage,
             final long diveSiteId,
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies)
@@ -92,10 +91,11 @@ public class DiveDataService {
                         number,
                         diveIdentifier,
                         userEntity,
+                        previewImage,
                         diveSite,
                         profileEntities,
                         namedBuddies);
-        return diveRepository.save(entity).toRecord();
+        return diveRepository.save(entity).toRecord(storageService.baseUrl());
     }
 
     public void saveBuddies(final long diveId, final List<String> buddies) {
@@ -181,14 +181,21 @@ public class DiveDataService {
                         .orElse(null);
         return diveRepository
                 .save(existingDive.update(dive.number(), dive.customIdentifier(), diveSiteEntity))
-                .toRecord();
+                .toRecord(storageService.baseUrl());
+    }
+
+    public Dive updateDiveSetPreviewImage(
+            @NotNull @Valid final Dive dive, final String previewImage) {
+        final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
+        existingDive.setPreviewImage(previewImage);
+        return diveRepository.save(existingDive).toRecord(storageService.baseUrl());
     }
 
     public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
         final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
         final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
         baseDiveEntity.addProfiles(toAddDiveEntity.getProfiles());
-        return diveRepository.save(baseDiveEntity).toRecord();
+        return diveRepository.save(baseDiveEntity).toRecord(storageService.baseUrl());
     }
 
     public void deleteDiveById(final long toAddDiveId) {
@@ -197,20 +204,23 @@ public class DiveDataService {
 
     public List<Dive> findDivesByProfileIds(final List<Long> profileIds) {
         return diveRepository.findByProfileIds(profileIds).stream()
-                .map(DiveEntity::toRecord)
+                .map(d -> d.toRecord(storageService.baseUrl()))
                 .toList();
     }
 
     public List<SimplifiedDive> findByIdentifierContains(
             final long userId, final String identifier) {
         return diveRepository.findByIdentifier(userId, identifier).stream()
-                .map(DiveEntity::toSimplifiedRecord)
+                .map(d -> d.toSimplifiedRecord(storageService.baseUrl()))
                 .toList();
     }
 
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
-        return diveRepository.findById(targetDiveId).map(DiveEntity::toRecord).orElseThrow();
+        return diveRepository
+                .findById(targetDiveId)
+                .map(d -> d.toRecord(storageService.baseUrl()))
+                .orElseThrow();
     }
 
     public Optional<DiveSite> findDiveSiteById(final long id) {

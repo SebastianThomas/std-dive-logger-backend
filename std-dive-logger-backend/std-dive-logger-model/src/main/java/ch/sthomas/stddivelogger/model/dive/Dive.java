@@ -9,6 +9,7 @@ public record Dive(
         long id,
         int number,
         @Nullable String customIdentifier,
+        @Nullable String previewImage,
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,
         @NotNull List<Dive> buddiesDives,

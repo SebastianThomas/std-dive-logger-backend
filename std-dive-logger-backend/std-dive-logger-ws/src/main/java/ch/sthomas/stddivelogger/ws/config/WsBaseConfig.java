@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.entity.ObjectMapperUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -14,6 +15,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.zalando.problem.jackson.ProblemModule;
 import org.zalando.problem.violations.ConstraintViolationProblemModule;
@@ -23,6 +25,7 @@ import org.zalando.problem.violations.ConstraintViolationProblemModule;
 @EnableJpaRepositories("ch.sthomas.stddivelogger.data.repository")
 @EnableFeignClients("ch.sthomas.stddivelogger")
 @EnableTransactionManagement
+@EnableRetry
 public class WsBaseConfig {
 
     static {
@@ -45,6 +48,9 @@ public class WsBaseConfig {
     XmlMapper xmlMapper() {
         final var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new Jdk8Module());
+        xmlMapper.registerModule(new ProblemModule());
+        xmlMapper.registerModule(new ConstraintViolationProblemModule());
+        xmlMapper.registerModule(new JavaTimeModule());
         return xmlMapper;
     }
 }

@@ -9,6 +9,7 @@ public record SimplifiedDive(
         long id,
         int number,
         @Nullable String customIdentifier,
+        @Nullable String previewImage,
         @Nullable DiveSite site,
         @NotNull List<BuddyDive> buddiesDives,
         @NotNull List<String> namedBuddies) {}

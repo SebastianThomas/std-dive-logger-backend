@@ -25,6 +25,9 @@ public class DiveEntity {
     @Column(name = "dive_identifier")
     private String diveIdentifier;
 
+    @Column(name = "preview_image", nullable = false)
+    private String previewImage;
+
     @ManyToOne private UserEntity user;
 
     @ManyToOne private DiveSiteEntity diveSite;
@@ -50,34 +53,38 @@ public class DiveEntity {
             final int number,
             final String diveIdentifier,
             final UserEntity userEntity,
+            final String previewImage,
             final DiveSiteEntity diveSiteEntity,
             final List<DiveProfileEntity> profiles,
             final List<String> namedBuddies) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
         this.user = userEntity;
+        this.previewImage = previewImage;
         this.diveSite = diveSiteEntity;
         this.profiles = profiles;
         this.namedBuddies =
                 namedBuddies.stream().map(b -> new DiveBuddyNameEntity(this, b)).toList();
     }
 
-    public Dive toRecord() {
+    public Dive toRecord(final String baseUrl) {
         return new Dive(
                 id,
                 number,
                 diveIdentifier,
+                baseUrl + previewImage,
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
-                getBuddyDives().map(DiveEntity::toRecord).toList(),
+                getBuddyDives().map(d -> d.toRecord(baseUrl)).toList(),
                 getNamedBuddiesModels());
     }
 
-    public SimplifiedDive toSimplifiedRecord() {
+    public SimplifiedDive toSimplifiedRecord(final String baseUrl) {
         return new SimplifiedDive(
                 id,
                 number,
                 diveIdentifier,
+                baseUrl + previewImage,
                 diveSite.toRecord(),
                 getBuddyDives().map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels());
@@ -118,5 +125,9 @@ public class DiveEntity {
     public void addProfiles(final List<DiveProfileEntity> profiles) {
         this.profiles = new ArrayList<>(this.profiles);
         this.profiles.addAll(profiles);
+    }
+
+    public void setPreviewImage(final String previewImage) {
+        this.previewImage = previewImage;
     }
 }
