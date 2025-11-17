@@ -12,6 +12,9 @@ import jakarta.validation.constraints.NotNull;
 import org.apache.batik.dom.GenericDOMImplementation;
 import org.apache.batik.svggen.SVGGraphics2D;
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Element;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
@@ -28,6 +31,7 @@ import java.util.stream.Stream;
 
 public class GraphImageCreator {
     private static final String SVG_NS = "http://www.w3.org/2000/svg";
+    private static final Logger logger = LoggerFactory.getLogger(GraphImageCreator.class);
 
     public static void fromDive(
             final Dive dive,
@@ -39,7 +43,8 @@ public class GraphImageCreator {
             throws IOException {
         final var height = 100;
         final var width = 300;
-        final var padding = 10;
+        final var padding = 20;
+        final var fontSize = 6;
 
         final var domImpl = GenericDOMImplementation.getDOMImplementation();
         final var document = domImpl.createDocument(SVG_NS, "svg", null);
@@ -68,6 +73,7 @@ public class GraphImageCreator {
 
         extractorsAndLegendTypes.forEach(
                 (property, extractorAndType) -> {
+                    graphics.setFont(new Font("SansSerif", Font.BOLD, fontSize));
                     final var color = getColor(property);
                     final var data = getDataRow(dive, extractorAndType.getLeft()).data().getFirst();
                     graphics.setColor(color);
@@ -75,24 +81,91 @@ public class GraphImageCreator {
                     lines.forEach(graphics::draw);
                     final var legendType = extractorAndType.getRight();
                     // TODO: Legend based on legend type
-                    graphics.setFont(new Font("SansSerif", Font.BOLD, 8));
-                    final var min = data.min();
-                    final var max = data.max();
                     if (legendType == LegendType.NO_LEGEND) {
                         return;
                     }
-                    IntStream.range(0, 5)
-                            .mapToObj(i -> Pair.of(i, min + (max - min) * i))
-                            .forEach(
-                                    p ->
-                                            graphics.drawString(
-                                                    String.valueOf(p.getRight()),
-                                                    (int) Math.ceil(legendType.getX() * height)
-                                                            + padding,
-                                                    p.getLeft()));
+                    final var min = data.min();
+                    final var max = data.max();
+                    logger.info("MinMax for {}: ({}, {})", property, min, max);
+                    if (min == max) {
+                        // drawSingleLegend(graphics, legendType, min, width, height, padding);
+                    } else {
+                        final var legendElements =
+                                getLegendElements(graphics, legendType, 5, min, max, height);
+                        final var legendGroup = document.createElement("g");
+                        legendElements.forEach(legendGroup::appendChild);
+                        document.getFirstChild().appendChild(legendGroup);
+                    }
                 });
 
         graphics.stream(writer, true);
+    }
+
+    private static void drawSingleLegend(
+            final SVGGraphics2D graphics,
+            final LegendType legendType,
+            final double val,
+            final int width,
+            final int height) {
+        graphics.drawString(
+                String.valueOf(val), (int) Math.ceil(legendType.getX(width)), height / 2);
+    }
+
+    private static Stream<Element> getLegendElements(
+            final SVGGraphics2D graphics,
+            final LegendType legendType,
+            final int nrOfEntries,
+            final double min,
+            final double max,
+            final int height) {
+        return IntStream.rangeClosed(0, nrOfEntries)
+                .mapToObj(i -> Pair.of(i, min + (max - min) * i / nrOfEntries))
+                .map(
+                        p ->
+                                createAlignedText(
+                                        graphics,
+                                        String.valueOf(p.getRight()),
+                                        p.getLeft(),
+                                        height,
+                                        legendType));
+    }
+
+    public static Element createAlignedText(
+            final SVGGraphics2D svg,
+            final String text,
+            final double y,
+            final double boxHeight,
+            final LegendType legendType) {
+        final var textPadding = 5;
+        final var textEl =
+                svg.getDOMFactory().createElementNS("http://www.w3.org/2000/svg", "text");
+
+        switch (legendType) {
+            case NO_LEGEND -> throw new IllegalArgumentException("legendType cannot be NO_LEGEND");
+            case LEFT -> {
+                textEl.setAttribute("text-anchor", "start");
+            }
+            case RIGHT -> {
+                textEl.setAttribute("text-anchor", "end");
+            }
+        }
+        textEl.setAttribute("x", Double.toString(textPadding));
+
+        final var fontMetrics = svg.getFontMetrics();
+        final var ascent = fontMetrics.getAscent();
+        final var descent = fontMetrics.getDescent();
+
+        final var baselineY = y + (boxHeight / 2.0) + (ascent - (ascent + descent) / 2.0);
+
+        textEl.setAttribute("y", Double.toString(baselineY));
+
+        textEl.setAttribute("font-family", svg.getFont().getFamily());
+        textEl.setAttribute("font-size", Integer.toString(svg.getFont().getSize()));
+        textEl.setAttribute("fill", svg.getColor().toString());
+
+        textEl.setTextContent(text);
+
+        return textEl;
     }
 
     private static Color getColor(final DiveMeasurement.DiveMeasurementProperty property) {
