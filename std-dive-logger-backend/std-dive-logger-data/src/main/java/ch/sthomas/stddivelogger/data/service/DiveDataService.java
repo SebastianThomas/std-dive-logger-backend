@@ -15,6 +15,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -24,6 +27,7 @@ import java.util.*;
 
 @Service
 public class DiveDataService {
+    private static final Logger logger = LoggerFactory.getLogger(DiveDataService.class);
     private final DiveRepository diveRepository;
     private final UserRepository userRepository;
     private final DiveSiteRepository diveSiteRepository;
@@ -197,6 +201,13 @@ public class DiveDataService {
                 .toList();
     }
 
+    public List<SimplifiedDive> findByIdentifierContains(
+            final long userId, final String identifier) {
+        return diveRepository.findByIdentifier(userId, identifier).stream()
+                .map(DiveEntity::toSimplifiedRecord)
+                .toList();
+    }
+
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
         return diveRepository.findById(targetDiveId).map(DiveEntity::toRecord).orElseThrow();
@@ -226,6 +237,7 @@ public class DiveDataService {
     }
 
     public List<User> findReaders(final long diveId) {
+        // TODO: Check pagination
         return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord).toList();
     }
 
@@ -257,6 +269,34 @@ public class DiveDataService {
                 new MapSqlParameterSource()
                         .addValue("diveId", diveId)
                         .addValue("userIds", userIdsSet));
+    }
+
+    public void saveGroupReader(final long diveId, final long groupId) {
+        try {
+            entityManager.flush();
+            namedParameterJdbcTemplate.update(
+                    "INSERT INTO t_dive_privileges_groups (fk_dive_id, fk_group_id) VALUES (:diveId, :groupId)",
+                    new MapSqlParameterSource()
+                            .addValue("diveId", diveId)
+                            .addValue("groupId", groupId));
+        } catch (final DataIntegrityViolationException e) {
+            logger.error("Could not add group reader dive {} -> group {}", diveId, groupId, e);
+            throw new IllegalArgumentException("Could not save group read privileges.");
+        }
+    }
+
+    public void removeGroupReader(final long diveId, final long groupId) {
+        try {
+            entityManager.flush();
+            namedParameterJdbcTemplate.update(
+                    "DELETE FROM t_dive_privileges_groups g WHERE g.fk_dive_id = :diveId AND g.fk_group_id = :groupId",
+                    new MapSqlParameterSource()
+                            .addValue("diveId", diveId)
+                            .addValue("groupId", groupId));
+        } catch (final DataIntegrityViolationException e) {
+            logger.error("Could not remove group reader dive {} -> group {}", diveId, groupId, e);
+            throw new IllegalArgumentException("Could not remove group read privileges.");
+        }
     }
 
     public Optional<Integer> findMaxDiveNumber(final User user) {

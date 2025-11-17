@@ -73,6 +73,16 @@ public class DiveController {
         return ResponseEntity.ok(dive);
     }
 
+    @Operation(summary = "Get dives by custom identifier")
+    @GetMapping(path = "/search")
+    public ResponseEntity<List<SimplifiedDive>> searchDives(
+            @AuthenticationPrincipal final User user, @RequestParam("query") final String query) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query));
+    }
+
     @Operation(summary = "Get next dive number")
     @GetMapping(path = "/next")
     public ResponseEntity<Integer> nextDiveNumber(@AuthenticationPrincipal final User user) {
@@ -101,7 +111,7 @@ public class DiveController {
     }
 
     @Operation(
-            summary = "Get Readers of a dive",
+            summary = "Add Readers of a dive",
             responses = {
                 @ApiResponse(responseCode = "200", description = "Success"),
                 @ApiResponse(
@@ -136,6 +146,42 @@ public class DiveController {
         }
         return ResponseEntity.ok(
                 diveService.removeReaders(user, diveId, userIds).stream()
+                        .map(User::toFrontendModel)
+                        .toList());
+    }
+
+    @Operation(
+            summary = "Add a group as reader to a dive",
+            responses = {
+                @ApiResponse(responseCode = "200", description = "Success"),
+                @ApiResponse(
+                        responseCode = "403",
+                        description = "The authenticated user does not have write access")
+            })
+    @PostMapping(path = "/{id}/group-readers")
+    public ResponseEntity<List<FrontendUser>> addGroupReadersOfDive(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @RequestBody final long groupId) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.addGroupReader(user, diveId, groupId).stream()
+                        .map(User::toFrontendModel)
+                        .toList());
+    }
+
+    @DeleteMapping("/{id}/group-readers")
+    public ResponseEntity<List<FrontendUser>> deleteGroupReadersOfDive(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @RequestBody final long groupId) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(
+                diveService.removeGroupReader(user, diveId, groupId).stream()
                         .map(User::toFrontendModel)
                         .toList());
     }

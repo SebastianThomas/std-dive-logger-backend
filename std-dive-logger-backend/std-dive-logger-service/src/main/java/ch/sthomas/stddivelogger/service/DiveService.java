@@ -199,7 +199,29 @@ public class DiveService {
         return diveDataService.findReaders(diveId);
     }
 
+    public List<User> addGroupReader(
+            final @NotNull User authenticated, final long diveId, final long groupId) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        diveDataService.saveGroupReader(diveId, groupId);
+        return diveDataService.findReaders(diveId);
+    }
+
+    public List<User> removeGroupReader(
+            final @NotNull User authenticated, final long diveId, final long groupId) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        diveDataService.removeGroupReader(diveId, groupId);
+        return diveDataService.findReaders(diveId);
+    }
+
     public int getNextDiveNumber(final User user) {
         return diveDataService.findMaxDiveNumber(user).orElse(0) + 1;
+    }
+
+    public List<SimplifiedDive> getDiveByCustomIdentifier(final User user, final String query) {
+        return diveDataService.findByIdentifierContains(user.id(), query);
     }
 }

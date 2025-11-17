@@ -19,6 +19,13 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query("SELECT d FROM DiveEntity d JOIN DiveProfileEntity p WHERE p.id IN :profileIds")
     List<DiveEntity> findByProfileIds(List<Long> profileIds);
 
+    @Query(
+            value =
+                    "SELECT d.* FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :name ORDER BY similarity(d.dive_identifier, :identifier) DESC, LENGTH(d.dive_identifier) ASC",
+            countQuery = "SELECT COUNT(*) FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :identifier",
+            nativeQuery = true)
+    List<DiveEntity> findByIdentifier(long userId, String identifier);
+
     @Modifying
     @Query(
             value =
