@@ -38,4 +38,12 @@ public class AuthService {
                 jwtUtil.generateToken(auth.getName(), JwtUtil.TokenType.REFRESH_TOKEN);
         return new AuthResponse(token, refreshToken);
     }
+
+    public void logout(final String refreshToken) {
+        final var username = jwtUtil.extractUsername(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
+        if (!jwtUtil.isTokenValid(refreshToken, username, JwtUtil.TokenType.REFRESH_TOKEN)) {
+            throw new UnauthorizedException("Invalid refresh token.");
+        }
+        jwtUtil.deleteRefreshToken(refreshToken);
+    }
 }

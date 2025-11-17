@@ -33,7 +33,7 @@ public class JwtUtil {
     public JwtUtil(
             @Value("${ch.sthomas.stddivelogger.ws.jwt-secret}") final String secret,
             @Value("${ch.sthomas.stddivelogger.ws.jwt-refresh-secret}") final String refreshSecret,
-            RefreshTokenRepository refreshTokenRepository) {
+            final RefreshTokenRepository refreshTokenRepository) {
         this.secret = secret;
         this.refreshSecret = refreshSecret;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -93,6 +93,11 @@ public class JwtUtil {
         }
         final var jti = extractJtiFromRefreshToken(token);
         return refreshTokenRepository.existsByJtiAndExpiresAtAfter(jti, OffsetDateTime.now());
+    }
+
+    public void deleteRefreshToken(final String refreshToken) {
+        final var jti = extractJtiFromRefreshToken(refreshToken);
+        refreshTokenRepository.deleteByJti(jti);
     }
 
     private boolean isTokenExpired(final String token, final TokenType tokenType) {

@@ -74,10 +74,10 @@ public class AuthController {
                 .toFrontendModel();
     }
 
+    @Operation(summary = "Invalidate the given refresh token")
     @PostMapping("/logout")
-    public void logout(@AuthenticationPrincipal final User user) {
-        // TODO
-        logger.info("Logout of user {}", user.email().substring(user.email().indexOf('@')));
+    public void logout(@RequestBody final String refreshToken) {
+        authService.logout(refreshToken);
     }
 
     @PostMapping("/deregister")

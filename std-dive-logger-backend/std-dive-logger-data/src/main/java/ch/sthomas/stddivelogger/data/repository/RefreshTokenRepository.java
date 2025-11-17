@@ -10,4 +10,6 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshTokenEntity
     boolean existsByJtiAndExpiresAtAfter(String jti, OffsetDateTime expiresAtAfter);
 
     void deleteAllByExpiresAtBefore(OffsetDateTime expiresAtBefore);
+
+    void deleteByJti(String jti);
 }
