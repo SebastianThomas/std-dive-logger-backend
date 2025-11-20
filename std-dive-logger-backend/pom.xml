@@ -289,6 +289,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.garmin</groupId>
+                <artifactId>fit</artifactId>
+                <version>21.120.0</version>
+            </dependency>
+
+            <dependency>
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
                 <scope>test</scope>
