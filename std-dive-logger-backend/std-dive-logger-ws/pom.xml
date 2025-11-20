@@ -23,6 +23,11 @@
             <artifactId>std-dive-logger-service</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ch.sthomas.stddivelogger</groupId>
+            <artifactId>std-dive-logger-import-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring Boot -->
         <dependency>
@@ -72,6 +77,13 @@
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>
             <artifactId>std-dive-logger-data</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.sthomas.stddivelogger</groupId>
+            <artifactId>std-dive-logger-import-service</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>

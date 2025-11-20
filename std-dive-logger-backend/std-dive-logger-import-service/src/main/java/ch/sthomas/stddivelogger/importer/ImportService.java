@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.ws.services;
+package ch.sthomas.stddivelogger.importer;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
