@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
@@ -8,7 +9,6 @@ import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
@@ -108,6 +108,12 @@ public class DiveService {
 
     public Optional<DiveComputer> getDiveComputer(final User user, final String customName) {
         return diveDataService.findDiveComputerByUserAndName(user.id(), customName);
+    }
+
+    public Optional<DiveComputer> getDiveComputerBySerialNumber(
+            final User user, final String manufacturer, final String serialNumber) {
+        return diveDataService.findDiveComputerByUserAndSerialNumber(
+                user.id(), manufacturer, serialNumber);
     }
 
     public DiveComputer createDiveComputer(

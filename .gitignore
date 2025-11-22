@@ -22,3 +22,7 @@
 **/*.log
 **/*.log.*
 **/import
+
+std-dive-logger-backend/std-dive-logger-import-service/src/test/resources/35 Malapascua Gato Island Tunnel.fit
+std-dive-logger-backend/std-dive-logger-import-service/src/test/resources/36 Malapascua Bugtong Bato.fit
+std-dive-logger-backend/std-dive-logger-import-service/src/test/resources/51 Exmouth Lighthouse Reef Site Blizzard Ridge South.fit

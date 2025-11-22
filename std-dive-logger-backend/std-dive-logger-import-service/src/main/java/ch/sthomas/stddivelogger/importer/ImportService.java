@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.importer;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
@@ -29,16 +30,19 @@ public class ImportService {
     private final DiveService diveService;
     private final DiveDataService diveDataService;
     private final UserService userService;
+    private final FitReaderService fitReaderService;
 
     public ImportService(
             final XmlMapper xmlMapper,
             final DiveService diveService,
             final DiveDataService diveDataService,
-            final UserService userService) {
+            final UserService userService,
+            final FitReaderService fitReaderService) {
         this.xmlMapper = xmlMapper;
         this.diveService = diveService;
         this.diveDataService = diveDataService;
         this.userService = userService;
+        this.fitReaderService = fitReaderService;
     }
 
     public Dive uploadDive(final User user, final MultipartFile file, final UploadDiveBody body)
@@ -57,6 +61,8 @@ public class ImportService {
             case UDDF ->
                     importUddf(
                             user, filename, body, xmlMapper.readValue(inputStream, UddfFile.class));
+            case FIT_GARMIN ->
+                    fitReaderService.readFitAndSaveDive(user, filename, body, inputStream);
         };
     }
 
@@ -68,6 +74,12 @@ public class ImportService {
         final var site = getDiveSite(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
         return diveService.saveDive(user, body, site, List.of(profile), uddfFile.getBuddies());
+    }
+
+    private Dive importFit(
+            final User user, final String filename, final UploadDiveBody body, final Object fit) {
+        final var site = getDiveSite(body.diveSiteId(), null);
+        return null;
     }
 
     private long getDiveSite(@Nullable final Long siteId, @Nullable final String diveSite) {

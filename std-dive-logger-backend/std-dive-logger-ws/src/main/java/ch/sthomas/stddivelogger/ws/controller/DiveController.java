@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import static org.springframework.http.MediaType.*;
 
+import ch.sthomas.stddivelogger.importer.ImportService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
@@ -10,7 +11,6 @@ import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
-import ch.sthomas.stddivelogger.importer.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;

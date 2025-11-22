@@ -74,7 +74,7 @@ public class GraphImageCreatorTest {
                         new DiveMeasurement(
                                 start.plusSeconds(55), fifteenC, 0.2, ndl, null, Gas.AIR),
                         new DiveMeasurement(end, fifteenC, 0, ndl, null, Gas.AIR));
-        final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements));
+        final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
                 new Dive(0, 1, "Some Dive", null, null, profiles, List.of(), List.of("Buddy1"));
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();

@@ -144,6 +144,12 @@ public class DiveDataService {
                 .map(DiveComputerEntity::toRecord);
     }
 
+    public Optional<DiveComputer> findDiveComputerByUserAndSerialNumber(
+            final long userId, final String manufacturer, final String serialNumber) {
+        return diveComputerRepository.findByUser_IdAndManufacturer_NameAndSerialNumber(
+                userId, manufacturer, serialNumber);
+    }
+
     public DiveComputer saveDiveComputer(
             @Nullable final String serialNumber,
             @NotNull final String customIdentifier,
