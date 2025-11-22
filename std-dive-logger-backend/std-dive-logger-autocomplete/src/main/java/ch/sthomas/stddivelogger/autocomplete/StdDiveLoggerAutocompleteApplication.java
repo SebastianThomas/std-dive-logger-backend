@@ -9,14 +9,14 @@ import org.zalando.problem.spring.web.autoconfigure.security.ProblemSecurityAuto
         scanBasePackages = {
             "ch.sthomas.stddivelogger.data",
             "ch.sthomas.stddivelogger.service",
-                "ch.sthomas.stddivelogger.autocomplete",
+            "ch.sthomas.stddivelogger.autocomplete",
         },
         // exclude ErrorMvcAutoConfiguration and ProblemSecurityAutoConfiguration when using
         // zalando/problem
         exclude = {ErrorMvcAutoConfiguration.class, ProblemSecurityAutoConfiguration.class})
 public class StdDiveLoggerAutocompleteApplication {
 
-    public static void main(String[] args) {
+    static void main(final String[] args) {
         SpringApplication.run(StdDiveLoggerAutocompleteApplication.class, args);
     }
 }

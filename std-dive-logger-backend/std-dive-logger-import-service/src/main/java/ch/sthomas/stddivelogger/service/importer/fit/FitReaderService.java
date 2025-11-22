@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.importer.fit;
+package ch.sthomas.stddivelogger.service.importer.fit;
 
 import static java.time.Duration.*;
 

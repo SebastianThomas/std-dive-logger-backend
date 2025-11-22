@@ -1,7 +1,7 @@
-package ch.sthomas.stddivelogger.importer;
+package ch.sthomas.stddivelogger.service.importer;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
-import ch.sthomas.stddivelogger.importer.fit.FitReaderService;
+import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
@@ -11,7 +11,6 @@ import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
-import ch.sthomas.stddivelogger.service.UserService;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
@@ -29,19 +28,16 @@ public class ImportService {
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
     private final DiveDataService diveDataService;
-    private final UserService userService;
     private final FitReaderService fitReaderService;
 
     public ImportService(
             final XmlMapper xmlMapper,
             final DiveService diveService,
             final DiveDataService diveDataService,
-            final UserService userService,
             final FitReaderService fitReaderService) {
         this.xmlMapper = xmlMapper;
         this.diveService = diveService;
         this.diveDataService = diveDataService;
-        this.userService = userService;
         this.fitReaderService = fitReaderService;
     }
 
