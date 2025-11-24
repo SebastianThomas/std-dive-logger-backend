@@ -20,6 +20,9 @@ public class AutocompleteMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(final CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*.webdev-25.ivia.isginf.ch", "*.sthomas.ch", "localhost:*");
+                .allowedOriginPatterns(
+                        "https://*.webdev-25.ivia.isginf.ch",
+                        "https://*.sthomas.ch",
+                        "http://localhost:*");
     }
 }
