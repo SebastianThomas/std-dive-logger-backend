@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.ws.config;
 
-import ch.sthomas.stddivelogger.model.entity.ObjectMapperUtils;
+import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
