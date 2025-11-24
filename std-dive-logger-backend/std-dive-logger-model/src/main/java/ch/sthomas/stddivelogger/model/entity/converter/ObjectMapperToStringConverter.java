@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity.converter;
 
-import ch.sthomas.stddivelogger.model.entity.ObjectMapperUtils;
+import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

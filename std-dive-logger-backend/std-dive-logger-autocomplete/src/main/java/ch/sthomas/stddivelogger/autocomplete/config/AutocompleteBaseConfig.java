@@ -1,10 +1,8 @@
 package ch.sthomas.stddivelogger.autocomplete.config;
 
-import ch.sthomas.stddivelogger.model.entity.ObjectMapperUtils;
+import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
