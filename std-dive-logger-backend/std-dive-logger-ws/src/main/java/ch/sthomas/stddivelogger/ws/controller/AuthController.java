@@ -1,5 +1,8 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import static ch.sthomas.stddivelogger.utils.LogSanitizer.sanitizeEmail;
+import static ch.sthomas.stddivelogger.utils.LogSanitizer.sanitizePassword;
+
 import ch.sthomas.stddivelogger.model.controller.auth.AuthRequest;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthResponse;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
@@ -57,7 +60,15 @@ public class AuthController {
     public record SignupRequest(
             @NotNull @NotBlank @Email String email,
             @NotNull @NotBlank String password,
-            @NotNull @NotBlank String name) {}
+            @NotNull @NotBlank String name) {
+        @NotNull
+        @Override
+        public String toString() {
+            return String.format(
+                    "SignupRequest {name: %s, email: %s, password: %s}",
+                    name, sanitizeEmail(email), sanitizePassword(password));
+        }
+    }
 
     @Operation(
             summary = "Create a new user",
