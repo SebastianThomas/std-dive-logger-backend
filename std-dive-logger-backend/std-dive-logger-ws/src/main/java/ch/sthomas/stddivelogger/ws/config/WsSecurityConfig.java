@@ -92,7 +92,9 @@ public class WsSecurityConfig {
                 .authorizeHttpRequests(
                         (auth) -> {
                             logger.info("Authorize Customizer");
-                            auth.requestMatchers(HttpMethod.GET, "/v1/explore/**")
+                            auth.requestMatchers(HttpMethod.OPTIONS)
+                                    .permitAll()
+                                    .requestMatchers(HttpMethod.GET, "/v1/explore/**")
                                     .permitAll()
                                     .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
                                     .authenticated()
