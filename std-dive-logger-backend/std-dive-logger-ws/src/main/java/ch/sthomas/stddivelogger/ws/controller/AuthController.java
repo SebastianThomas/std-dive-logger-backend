@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -33,6 +32,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.zalando.problem.Problem;
 import org.zalando.problem.Status;
+
+import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -94,16 +95,11 @@ public class AuthController {
 
     @Operation(summary = "Invalidate the given refresh token")
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody final String refreshToken) {
+    public ResponseEntity<Void> logout(
+            @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = false)
+                    final String refreshToken) {
         authService.logout(refreshToken);
-        final var deleteCookie =
-                ResponseCookie.from("refresh_token", "")
-                        .httpOnly(true)
-                        .secure(true)
-                        .sameSite("Strict")
-                        .path("/api/auth/refresh")
-                        .maxAge(0)
-                        .build();
+        final var deleteCookie = authService.createRefreshTokenCookie("", Duration.ofSeconds(0));
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString()).build();
     }
 
