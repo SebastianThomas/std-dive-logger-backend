@@ -1,3 +1,11 @@
 package ch.sthomas.stddivelogger.model.controller.auth;
 
-public record AuthResponse(String accessToken, String refreshToken) {}
+import org.springframework.http.ResponseCookie;
+
+public record AuthResponse(String accessToken) {
+    public record AuthResponseWithRefreshToken(String accessToken, ResponseCookie refreshToken) {
+        public AuthResponse toAuthResponse() {
+            return new AuthResponse(accessToken);
+        }
+    }
+}

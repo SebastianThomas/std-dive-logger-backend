@@ -22,7 +22,9 @@ import jakarta.validation.constraints.NotNull;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -47,13 +49,18 @@ public class AuthController {
 
     @Operation(summary = "Log in")
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody final AuthRequest request) {
-        return authService.login(request);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody final AuthRequest request) {
+        final var login = authService.login(request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, login.refreshToken().toString())
+                .body(login.toAuthResponse());
     }
 
     @Operation(summary = "Get a new access token")
     @PostMapping("/refresh")
-    public String refresh(@Valid @RequestBody final String refreshToken) {
+    public String refresh(
+            @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = false)
+                    final String refreshToken) {
         return authService.refresh(refreshToken);
     }
 
@@ -87,8 +94,17 @@ public class AuthController {
 
     @Operation(summary = "Invalidate the given refresh token")
     @PostMapping("/logout")
-    public void logout(@RequestBody final String refreshToken) {
+    public ResponseEntity<Void> logout(@RequestBody final String refreshToken) {
         authService.logout(refreshToken);
+        final var deleteCookie =
+                ResponseCookie.from("refresh_token", "")
+                        .httpOnly(true)
+                        .secure(true)
+                        .sameSite("Strict")
+                        .path("/api/auth/refresh")
+                        .maxAge(0)
+                        .build();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString()).build();
     }
 
     @PostMapping("/deregister")
