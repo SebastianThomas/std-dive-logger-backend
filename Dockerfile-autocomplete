@@ -1,0 +1,35 @@
+# Stage 1: Build
+FROM maven:3.9.11-eclipse-temurin-25 AS build
+
+WORKDIR /app
+
+# Copy only the files needed for dependencies first (for caching)
+COPY std-dive-logger-backend/pom.xml ./pom.xml
+COPY std-dive-logger-backend/ ./
+
+RUN mvn --batch-mode dependency:go-offline
+
+ARG MODULE_NAME=std-dive-logger-autocomplete
+
+RUN mvn --batch-mode clean package -pl ${MODULE_NAME} -am \
+    -Dconfig.deploy.env=dev -Dconfig.directory=/config
+
+# Build the jar
+RUN mvn --batch-mode clean package \
+    -Dconfig.deploy.env=dev -Dconfig.directory=/config
+
+FROM eclipse-temurin:25
+LABEL authors="SebastianThomas"
+LABEL maintainer="Sebastian Thomas <tsebastian@student.ethz.ch>"
+
+WORKDIR /app
+ARG MODULE_NAME=std-dive-logger-autocomplete
+
+COPY --from=build /app/${MODULE_NAME}/target/*.jar app.jar
+
+ENV SPRING_CONFIG_LOCATION=/config/ \
+    SPRING_DOCKER_COMPOSE_ENABLED=false
+
+EXPOSE 5173
+
+ENTRYPOINT ["sh", "-c", "exec java -XX:MinRAMPercentage=60.0 -XX:MaxRAMPercentage=80.0 $ADDITIONAL_JAVA_OPTS -jar /app/app.jar"]
