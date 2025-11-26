@@ -16,6 +16,7 @@ import java.time.Duration;
 @Service
 public class AuthService {
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
+    public final String SAME_SITE_COOKIE = "None"; // Strict when deployed with same BASE_URL
 
     private final JwtUtil jwtUtil;
     private final AuthenticationManager applicationAuthenticationManager;
@@ -70,7 +71,7 @@ public class AuthService {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Strict")
+                .sameSite(SAME_SITE_COOKIE)
                 .path("/api/auth/")
                 .maxAge(maxAge.toSeconds())
                 .build();

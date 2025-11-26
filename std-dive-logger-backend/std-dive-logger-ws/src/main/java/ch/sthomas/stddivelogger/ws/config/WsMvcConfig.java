@@ -20,7 +20,7 @@ public class WsMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(final CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowCredentials(true)
+                .allowCredentials(true) // For Cookies
                 .allowedOriginPatterns(
                         "https://*.webdev-25.ivia.isginf.ch",
                         "https://*.sthomas.ch",
