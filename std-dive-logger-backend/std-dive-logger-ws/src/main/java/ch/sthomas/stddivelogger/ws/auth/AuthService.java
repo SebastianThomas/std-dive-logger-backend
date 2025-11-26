@@ -28,6 +28,9 @@ public class AuthService {
 
     public String refresh(@Nullable final String refreshToken) {
         final var username = assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
+        if (!jwtUtil.isTokenValid(refreshToken, username, JwtUtil.TokenType.REFRESH_TOKEN)) {
+            throw new UnauthorizedException("Invalid refresh token.");
+        }
         return jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);
     }
 

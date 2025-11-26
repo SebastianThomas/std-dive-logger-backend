@@ -91,8 +91,11 @@ public class JwtUtil {
         if (!extractedUsername.equals(username) || isTokenExpired(token, tokenType)) {
             return false;
         }
-        final var jti = extractJtiFromRefreshToken(token);
-        return refreshTokenRepository.existsByJtiAndExpiresAtAfter(jti, OffsetDateTime.now());
+        if (tokenType == TokenType.REFRESH_TOKEN) {
+            final var jti = extractJtiFromRefreshToken(token);
+            return refreshTokenRepository.existsByJtiAndExpiresAtAfter(jti, OffsetDateTime.now());
+        }
+        return true;
     }
 
     public void deleteRefreshToken(final String refreshToken) {

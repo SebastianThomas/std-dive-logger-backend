@@ -34,14 +34,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final var token = authHeader.substring(7);
-            final var username = jwtUtil.extractUsername(token, JwtUtil.TokenType.ACCESS_TOKEN);
+            final var claimedUsername =
+                    jwtUtil.extractUsername(token, JwtUtil.TokenType.ACCESS_TOKEN);
 
-            if (username != null
+            if (claimedUsername != null
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
-                final var userDetails = userDetailsService.loadUserByUsername(username);
+                final var userDetails = userDetailsService.loadUserByUsername(claimedUsername);
+                final var username = userDetails.getUsername();
 
-                if (jwtUtil.isTokenValid(
-                        token, userDetails.getUsername(), JwtUtil.TokenType.ACCESS_TOKEN)) {
+                if (jwtUtil.isTokenValid(token, username, JwtUtil.TokenType.ACCESS_TOKEN)) {
                     final var authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails, null, userDetails.getAuthorities());
