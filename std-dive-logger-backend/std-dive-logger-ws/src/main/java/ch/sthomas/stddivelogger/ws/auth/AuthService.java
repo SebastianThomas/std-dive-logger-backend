@@ -77,7 +77,7 @@ public class AuthService {
                 .httpOnly(true)
                 .secure(true)
                 .sameSite(sameSiteCookie ? "Strict" : "None")
-                .path("/api/auth/")
+                .path("/api/auth")
                 .maxAge(maxAge.toSeconds())
                 .build();
     }
