@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 
 import jakarta.annotation.Nullable;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,15 +17,19 @@ import java.time.Duration;
 @Service
 public class AuthService {
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
-    public final String SAME_SITE_COOKIE = "None"; // Strict when deployed with same BASE_URL
 
     private final JwtUtil jwtUtil;
     private final AuthenticationManager applicationAuthenticationManager;
+    public final boolean sameSiteCookie;
 
     public AuthService(
-            final JwtUtil jwtUtil, final AuthenticationManager applicationAuthenticationManager) {
+            final JwtUtil jwtUtil,
+            final AuthenticationManager applicationAuthenticationManager,
+            @Value("${ch.sthomas.stddivelogger.ws.security.same_site_cookie:true}")
+                    final boolean sameSiteCookie) {
         this.jwtUtil = jwtUtil;
         this.applicationAuthenticationManager = applicationAuthenticationManager;
+        this.sameSiteCookie = sameSiteCookie;
     }
 
     public String refresh(@Nullable final String refreshToken) {
@@ -71,7 +76,7 @@ public class AuthService {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite(SAME_SITE_COOKIE)
+                .sameSite(sameSiteCookie ? "Strict" : "None")
                 .path("/api/auth/")
                 .maxAge(maxAge.toSeconds())
                 .build();
