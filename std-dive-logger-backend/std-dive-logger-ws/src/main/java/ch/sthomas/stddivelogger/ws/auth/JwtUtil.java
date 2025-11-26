@@ -9,6 +9,8 @@ import ch.sthomas.stddivelogger.model.entity.RefreshTokenEntity;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,7 @@ import javax.crypto.SecretKey;
 
 @Component
 public class JwtUtil {
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
     private final String secret;
     private final String refreshSecret;
@@ -59,7 +62,7 @@ public class JwtUtil {
         final var expirationAt = new Date(System.currentTimeMillis() + expiration.toMillis());
         final var builder =
                 Jwts.builder().subject(username).issuedAt(issuedAt).expiration(expirationAt);
-        if (tokenType == TokenType.ACCESS_TOKEN) {
+        if (tokenType == TokenType.REFRESH_TOKEN) {
             final var jti = UUID.randomUUID().toString();
             builder.id(jti);
             refreshTokenRepository.save(new RefreshTokenEntity(jti, expirationAt.toInstant()));
@@ -89,13 +92,22 @@ public class JwtUtil {
             final String token, final String username, final TokenType tokenType) {
         final var extractedUsername = extractUsername(token, tokenType);
         if (!extractedUsername.equals(username) || isTokenExpired(token, tokenType)) {
+            logger.info("Invalid refresh token. Refresh token expired.");
             return false;
         }
-        if (tokenType == TokenType.REFRESH_TOKEN) {
-            final var jti = extractJtiFromRefreshToken(token);
-            return refreshTokenRepository.existsByJtiAndExpiresAtAfter(jti, OffsetDateTime.now());
-        }
-        return true;
+        return switch (tokenType) {
+            case ACCESS_TOKEN -> true;
+            case REFRESH_TOKEN -> {
+                final var jti = extractJtiFromRefreshToken(token);
+                final var exists =
+                        refreshTokenRepository.existsByJtiAndExpiresAtAfter(
+                                jti, OffsetDateTime.now());
+                if (!exists) {
+                    logger.info("Invalid refresh token. Refresh token expired or does not exist..");
+                }
+                yield exists;
+            }
+        };
     }
 
     public void deleteRefreshToken(final String refreshToken) {

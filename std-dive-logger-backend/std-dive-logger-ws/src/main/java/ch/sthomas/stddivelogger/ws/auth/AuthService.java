@@ -6,6 +6,8 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 
 import jakarta.annotation.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +19,7 @@ import java.time.Duration;
 @Service
 public class AuthService {
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     private final JwtUtil jwtUtil;
     private final AuthenticationManager applicationAuthenticationManager;
