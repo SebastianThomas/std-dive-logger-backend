@@ -187,6 +187,7 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "decostop")
+                    @Nullable
                     List<UddfDecoStop> decoStop,
             @JacksonXmlProperty(localName = "gradientfactor") int gf) {
         public DiveMeasurement toRecord(final Instant start, final List<UddfGasMix> mixes) {
@@ -195,7 +196,10 @@ public record UddfFile(
                     new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
                     depth,
                     Duration.ofMinutes(ndl),
-                    decoStop.stream().map(UddfDecoStop::toRecord).toList(),
+                    Optional.ofNullable(decoStop).stream()
+                            .flatMap(List::stream)
+                            .map(UddfDecoStop::toRecord)
+                            .toList(),
                     Optional.ofNullable(switchmix)
                             .flatMap(
                                     mix ->
