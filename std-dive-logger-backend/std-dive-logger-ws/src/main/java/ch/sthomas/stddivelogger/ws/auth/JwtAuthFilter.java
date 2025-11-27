@@ -1,6 +1,9 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
+import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.service.CustomUserDetailsService;
+
+import io.jsonwebtoken.ExpiredJwtException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,23 +35,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         final var authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            final var token = authHeader.substring(7);
-            final var claimedUsername =
-                    jwtUtil.extractUsername(token, JwtUtil.TokenType.ACCESS_TOKEN);
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                final var token = authHeader.substring(7);
+                final var claimedUsername =
+                        jwtUtil.extractUsername(token, JwtUtil.TokenType.ACCESS_TOKEN);
 
-            if (claimedUsername != null
-                    && SecurityContextHolder.getContext().getAuthentication() == null) {
-                final var userDetails = userDetailsService.loadUserByUsername(claimedUsername);
-                final var username = userDetails.getUsername();
+                if (claimedUsername != null
+                        && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    final var userDetails = userDetailsService.loadUserByUsername(claimedUsername);
+                    final var username = userDetails.getUsername();
 
-                if (jwtUtil.isTokenValid(token, username, JwtUtil.TokenType.ACCESS_TOKEN)) {
-                    final var authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    if (jwtUtil.isTokenValid(token, username, JwtUtil.TokenType.ACCESS_TOKEN)) {
+                        final var authToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities());
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
             }
+        } catch (final ExpiredJwtException e) {
+            // TODO: Can we throw here?
+            throw new UnauthorizedException("Token has expired");
         }
 
         filterChain.doFilter(request, response);

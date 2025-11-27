@@ -203,9 +203,9 @@ public class DiveController {
     @Operation(summary = "Add a dive")
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Dive> uploadDive(
-            @RequestParam("file") final MultipartFile file,
+            @AuthenticationPrincipal final User user,
             @RequestPart("uploadBody") final UploadDiveBody body,
-            @AuthenticationPrincipal final User user)
+            @RequestParam("file") final MultipartFile file)
             throws IOException {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

@@ -6,6 +6,7 @@ import static java.time.Duration.ofHours;
 import ch.sthomas.stddivelogger.data.repository.RefreshTokenRepository;
 import ch.sthomas.stddivelogger.model.entity.RefreshTokenEntity;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -70,7 +71,8 @@ public class JwtUtil {
         return builder.signWith(getSigningKey(tokenType)).compact();
     }
 
-    public String extractUsername(final String token, final TokenType tokenType) {
+    public String extractUsername(final String token, final TokenType tokenType)
+            throws ExpiredJwtException {
         return Jwts.parser()
                 .verifyWith(getSigningKey(tokenType))
                 .build()
