@@ -203,7 +203,7 @@ public class DiveController {
     @Operation(summary = "Add a dive")
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Dive> uploadDive(
-            @RequestPart("file") final MultipartFile file,
+            @RequestParam("file") final MultipartFile file,
             @RequestPart("uploadBody") final UploadDiveBody body,
             @AuthenticationPrincipal final User user)
             throws IOException {
