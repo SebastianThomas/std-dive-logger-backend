@@ -159,7 +159,10 @@ public class DiveDataService {
         final var manufacturerEntity =
                 diveComputerManufacturerRepository
                         .findByNameIgnoreCase(manufacturer)
-                        .orElseGet(() -> new DiveComputerManufacturerEntity(manufacturer));
+                        .orElseGet(
+                                () ->
+                                        diveComputerManufacturerRepository.save(
+                                                new DiveComputerManufacturerEntity(manufacturer)));
         return diveComputerRepository
                 .save(
                         new DiveComputerEntity(
