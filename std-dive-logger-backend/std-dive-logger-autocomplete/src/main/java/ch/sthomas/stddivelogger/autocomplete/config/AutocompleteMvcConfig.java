@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.autocomplete.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
@@ -8,6 +9,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class AutocompleteMvcConfig implements WebMvcConfigurer {
+
+    private final String[] allowedOrigins;
+
+    public AutocompleteMvcConfig(
+            @Value("${ch.sthomas.stddivelogger.autocomplete.cors.allowed_origins:}")
+                    final String[] allowedOrigins) {
+        this.allowedOrigins = allowedOrigins;
+    }
 
     @Override
     public void configureContentNegotiation(final ContentNegotiationConfigurer configurer) {
@@ -19,10 +28,6 @@ public class AutocompleteMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(final CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns(
-                        "https://*.webdev-25.ivia.isginf.ch",
-                        "https://*.sthomas.ch",
-                        "http://localhost:*");
+        registry.addMapping("/**").allowedOrigins(allowedOrigins);
     }
 }
