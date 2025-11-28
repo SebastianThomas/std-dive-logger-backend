@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.service;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
@@ -60,13 +61,12 @@ public class DiveDataService {
         this.storageService = storageService;
     }
 
-    public List<SimplifiedDive> findDivesByUser(
+    public PagedResponse<SimplifiedDive> findDivesByUser(
             final User user, final int page, final int pageSize) {
-        return diveRepository
-                .findByUser_IdOrderByNumberDesc(user.id(), Pageable.ofSize(pageSize).withPage(page))
-                .stream()
-                .map(d -> d.toSimplifiedRecord(storageService.baseUrl()))
-                .toList();
+        final var result =
+                diveRepository.findByUser_IdOrderByNumberDesc(
+                        user.id(), Pageable.ofSize(pageSize).withPage(page));
+        return PagedResponse.of(result, d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
     public Optional<Dive> findDiveById(final long id) {
@@ -129,12 +129,11 @@ public class DiveDataService {
         return diveSiteRepository.findByNameIgnoreCase(diveSite).map(DiveSiteEntity::toRecord);
     }
 
-    public List<DiveSite> findDiveSiteByNameContains(final String partialName, final int pageSize) {
-        return diveSiteRepository
-                .findByClosestMatchName(partialName, Pageable.ofSize(pageSize))
-                .stream()
-                .map(DiveSiteEntity::toRecord)
-                .toList();
+    public PagedResponse<DiveSite> findDiveSiteByNameContains(
+            final String partialName, final int pageSize) {
+        return PagedResponse.of(
+                diveSiteRepository.findByClosestMatchName(partialName, Pageable.ofSize(pageSize)),
+                DiveSiteEntity::toRecord);
     }
 
     public Optional<DiveComputer> findDiveComputerByUserAndName(
@@ -217,11 +216,11 @@ public class DiveDataService {
                 .toList();
     }
 
-    public List<SimplifiedDive> findByIdentifierContains(
-            final long userId, final String identifier) {
-        return diveRepository.findByIdentifier(userId, identifier).stream()
-                .map(d -> d.toSimplifiedRecord(storageService.baseUrl()))
-                .toList();
+    public PagedResponse<SimplifiedDive> findByIdentifierContains(
+            final long userId, final String identifier, final Pageable pageable) {
+        return PagedResponse.of(
+                diveRepository.findByIdentifier(userId, identifier, pageable),
+                d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
@@ -255,9 +254,8 @@ public class DiveDataService {
         return userRepository.isReader(diveId, user.id());
     }
 
-    public List<User> findReaders(final long diveId) {
-        // TODO: Check pagination
-        return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord).toList();
+    public PagedResponse<User> findReaders(final long diveId, final Pageable pageable) {
+        return PagedResponse.of(userRepository.findReaders(diveId, pageable), UserEntity::toRecord);
     }
 
     public void saveReaders(final long diveId, final Collection<Long> userIds) {

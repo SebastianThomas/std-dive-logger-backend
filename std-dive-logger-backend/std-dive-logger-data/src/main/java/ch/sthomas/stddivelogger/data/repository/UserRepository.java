@@ -2,18 +2,18 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
-    List<UserEntity> findReaders(long diveId);
+    Page<UserEntity> findReaders(long diveId, Pageable pageable);
 
     @Query(
             value =
@@ -31,5 +31,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                     "SELECT * FROM t_dive_site WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
             countQuery = "SELECT * FROM t_dive_site WHERE name % :name",
             nativeQuery = true)
-    List<UserEntity> findByClosestMatchName(String name, Pageable pageable);
+    Page<UserEntity> findByClosestMatchName(String name, Pageable pageable);
 }

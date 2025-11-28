@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.service;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.GroupRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
@@ -55,10 +56,10 @@ public class UserDataService {
         userRepository.deleteByEmailEqualsIgnoreCase(email);
     }
 
-    public List<User> findUsersByClosestMatchName(final String query, final int pageSize) {
-        return userRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)).stream()
-                .map(UserEntity::toRecord)
-                .toList();
+    public PagedResponse<User> findUsersByClosestMatchName(final String query, final int pageSize) {
+        return PagedResponse.of(
+                userRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)),
+                UserEntity::toRecord);
     }
 
     public long countUsers() {

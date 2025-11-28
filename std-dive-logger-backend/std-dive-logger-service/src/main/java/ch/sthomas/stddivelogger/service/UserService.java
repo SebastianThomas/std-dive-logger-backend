@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -82,7 +83,7 @@ public class UserService {
         userDataService.deleteUserByEmail(user.email());
     }
 
-    public List<User> getUsersByPartialName(final String query) {
+    public PagedResponse<User> getUsersByPartialName(final String query) {
         return userDataService.findUsersByClosestMatchName(query, USERS_PAGE_SIZE);
     }
 

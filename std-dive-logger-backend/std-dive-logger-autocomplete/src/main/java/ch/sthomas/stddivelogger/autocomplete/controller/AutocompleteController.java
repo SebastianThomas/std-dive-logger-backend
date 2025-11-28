@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.autocomplete.controller;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
@@ -27,14 +28,12 @@ public class AutocompleteController {
     }
 
     @GetMapping("/user")
-    public List<FrontendUser> user(@RequestParam(name = "query") final String query) {
-        return userService.getUsersByPartialName(query).stream()
-                .map(User::toFrontendModel)
-                .toList();
+    public PagedResponse<FrontendUser> user(@RequestParam(name = "query") final String query) {
+        return userService.getUsersByPartialName(query).map(User::toFrontendModel);
     }
 
     @GetMapping("/site")
-    public List<DiveSite> location(@RequestParam(name = "query") final String query) {
+    public PagedResponse<DiveSite> location(@RequestParam(name = "query") final String query) {
         return diveService.getSiteByPartialName(query);
     }
 

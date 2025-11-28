@@ -1,22 +1,27 @@
 package ch.sthomas.stddivelogger.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 
-import ch.sthomas.stddivelogger.data.service.DiveDataService;
-import ch.sthomas.stddivelogger.model.user.User;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.entity.UserEntity;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public class DiveServiceTest {
     @Test
-    void testGetDive() {
-        final var diveDataService = mock(DiveDataService.class);
-        final var storageService = mock(StorageService.class);
-        final var service = new DiveService(diveDataService, storageService);
-        assertEquals(List.of(), service.getDivesForUser(mock(User.class), 0));
+    void testPagedResponse() {
+        final var users =
+                List.of(
+                        new UserEntity(1, "email@email.ch", "abc123", "name"),
+                        new UserEntity(2, "email2@email.ch", "abc", "other"));
+        final var pageable = Pageable.ofSize(5);
+        final var response =
+                PagedResponse.of(new PageImpl<>(users, pageable, 2), UserEntity::toRecord);
+        assertEquals(users.stream().map(UserEntity::toRecord).toList(), response.result());
+        assertEquals(pageable.getPageSize(), response.pageSize());
     }
 }

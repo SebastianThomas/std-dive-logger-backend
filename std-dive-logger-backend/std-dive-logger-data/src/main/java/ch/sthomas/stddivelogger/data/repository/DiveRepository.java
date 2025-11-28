@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,7 +15,7 @@ import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
-    List<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
+    Page<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
 
     @Query("SELECT d FROM DiveEntity d JOIN DiveProfileEntity p WHERE p.id IN :profileIds")
     List<DiveEntity> findByProfileIds(List<Long> profileIds);
@@ -22,9 +23,10 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     "SELECT d.* FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :name ORDER BY similarity(d.dive_identifier, :identifier) DESC, LENGTH(d.dive_identifier) ASC",
-            countQuery = "SELECT COUNT(*) FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :identifier",
+            countQuery =
+                    "SELECT COUNT(*) FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :identifier",
             nativeQuery = true)
-    List<DiveEntity> findByIdentifier(long userId, String identifier);
+    Page<DiveEntity> findByIdentifier(long userId, String identifier, Pageable pageable);
 
     @Modifying
     @Query(

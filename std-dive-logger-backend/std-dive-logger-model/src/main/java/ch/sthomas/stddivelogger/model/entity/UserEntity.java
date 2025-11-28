@@ -43,6 +43,13 @@ public class UserEntity {
         this.name = name;
     }
 
+    public UserEntity(final long id, final String email, final String password, final String name) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.name = name;
+    }
+
     public User toRecord() {
         return new User(id, email, password, name, createdAt, updatedAt);
     }

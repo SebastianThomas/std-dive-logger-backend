@@ -38,7 +38,7 @@ public class DiveSiteController {
 
     @Operation(summary = "Find DiveSite by location")
     @GetMapping(path = "/location")
-    public List<DiveSite> findDiveSiteByName(
+    public List<DiveSite> findDiveSiteByLocation(
             @RequestParam("lat") final double lat, @RequestParam("lon") final double lon) {
         return diveService.getSitesByLocation(new Coordinate(lon, lat));
     }

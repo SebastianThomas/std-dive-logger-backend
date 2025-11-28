@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
@@ -19,6 +20,7 @@ import org.hibernate.exception.DataException;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
@@ -39,6 +41,7 @@ public class DiveService {
 
     public static final int SIMPLIFIED_DIVE_PAGE_SIZE = 20;
     public static final int DIVE_SITE_PAGE_SIZE = 10;
+    public static final int USER_PAGE_SIZE = 30;
 
     private final DiveDataService diveDataService;
     private final StorageService storageService;
@@ -48,7 +51,7 @@ public class DiveService {
         this.storageService = storageService;
     }
 
-    public List<SimplifiedDive> getDivesForUser(final User user, final int page) {
+    public PagedResponse<SimplifiedDive> getDivesForUser(final User user, final int page) {
         return diveDataService.findDivesByUser(user, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
@@ -129,7 +132,7 @@ public class DiveService {
         return diveDataService.getDiveCount();
     }
 
-    public List<DiveSite> getSiteByPartialName(final String locationStart) {
+    public PagedResponse<DiveSite> getSiteByPartialName(final String locationStart) {
         return diveDataService.findDiveSiteByNameContains(locationStart, DIVE_SITE_PAGE_SIZE);
     }
 
@@ -209,61 +212,65 @@ public class DiveService {
         return diveDataService.saveDiveSite(name, new Coordinate(lon, lat));
     }
 
-    public List<User> getReaders(final @NotNull User authenticated, final long diveId) {
+    public PagedResponse<User> getReaders(final @NotNull User authenticated, final long diveId) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
-        return diveDataService.findReaders(diveId);
+        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
 
-    public List<User> addReaders(
+    public PagedResponse<User> addReaders(
             final @NotNull User authenticated, final long diveId, final List<Long> userIds) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
-        final var currentReaders = diveDataService.findReaders(diveId);
+        final var currentReaders = diveDataService.findReaders(diveId, Pageable.unpaged());
         final var userIdsSet = new HashSet<>(userIds);
-        currentReaders.stream().map(User::id).forEach(userIdsSet::remove);
+        currentReaders.result().stream().map(User::id).forEach(userIdsSet::remove);
         diveDataService.saveReaders(diveId, userIdsSet);
-        return diveDataService.findReaders(diveId);
+        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
 
-    public List<User> removeReaders(
+    public PagedResponse<User> removeReaders(
             final @NotNull User authenticated, final long diveId, final List<Long> userIds) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
         final var currentReaders =
-                diveDataService.findReaders(diveId).stream().map(User::id).toList();
+                diveDataService.findReaders(diveId, Pageable.unpaged()).result().stream()
+                        .map(User::id)
+                        .toList();
         final var userIdsSet = new HashSet<>(userIds);
         userIdsSet.removeIf(userId -> !currentReaders.contains(userId));
         diveDataService.removeReaders(diveId, userIdsSet);
-        return diveDataService.findReaders(diveId);
+        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
 
-    public List<User> addGroupReader(
+    public PagedResponse<User> addGroupReader(
             final @NotNull User authenticated, final long diveId, final long groupId) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
         diveDataService.saveGroupReader(diveId, groupId);
-        return diveDataService.findReaders(diveId);
+        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
 
-    public List<User> removeGroupReader(
+    public PagedResponse<User> removeGroupReader(
             final @NotNull User authenticated, final long diveId, final long groupId) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
         diveDataService.removeGroupReader(diveId, groupId);
-        return diveDataService.findReaders(diveId);
+        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
 
     public int getNextDiveNumber(final User user) {
         return diveDataService.findMaxDiveNumber(user).orElse(0) + 1;
     }
 
-    public List<SimplifiedDive> getDiveByCustomIdentifier(final User user, final String query) {
-        return diveDataService.findByIdentifierContains(user.id(), query);
+    public PagedResponse<SimplifiedDive> getDiveByCustomIdentifier(
+            final User user, final String query) {
+        return diveDataService.findByIdentifierContains(
+                user.id(), query, Pageable.ofSize(SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 }
