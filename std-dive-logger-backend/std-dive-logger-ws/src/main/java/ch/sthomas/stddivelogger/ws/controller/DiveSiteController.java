@@ -1,6 +1,8 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -11,8 +13,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,12 +47,12 @@ public class DiveSiteController {
 
     @Operation(summary = "Create new DiveSite")
     @PostMapping(path = "")
-    public ResponseEntity<DiveSite> createDive(
+    public DiveSite createDive(
             @Valid @NotNull @RequestBody final CreateDiveSiteBody body,
             @AuthenticationPrincipal final User user) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to create a dive site");
         }
-        return ResponseEntity.ok(diveService.createDiveSite(body.name, body.lat, body.lon));
+        return diveService.createDiveSite(body.name, new Location(body.lat, body.lon));
     }
 }

@@ -33,8 +33,10 @@ public class AutocompleteController {
     }
 
     @GetMapping("/site")
-    public PagedResponse<DiveSite> location(@RequestParam(name = "query") final String query) {
-        return diveService.getSiteByPartialName(query);
+    public PagedResponse<DiveSite> location(
+            @RequestParam(name = "query") final String query,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return diveService.getSiteByPartialName(query, page);
     }
 
     @GetMapping("/group")

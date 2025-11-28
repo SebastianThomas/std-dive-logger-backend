@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
@@ -20,10 +21,11 @@ import org.hibernate.exception.DataException;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.awt.*;
+import java.awt.Dimension;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -132,8 +134,9 @@ public class DiveService {
         return diveDataService.getDiveCount();
     }
 
-    public PagedResponse<DiveSite> getSiteByPartialName(final String locationStart) {
-        return diveDataService.findDiveSiteByNameContains(locationStart, DIVE_SITE_PAGE_SIZE);
+    public PagedResponse<DiveSite> getSiteByPartialName(
+            final String locationStart, final int page) {
+        return diveDataService.findDiveSiteByNameContains(locationStart, page, DIVE_SITE_PAGE_SIZE);
     }
 
     public Dive updateDive(final @NotNull User user, @NotNull @Valid final Dive dive)
@@ -189,10 +192,12 @@ public class DiveService {
         if (body.diveSiteId() == null) {
             throw new IllegalArgumentException("Dive Site is required to save dive manually.");
         }
+        final var diveNumber =
+                body.diveNumber() != null ? body.diveNumber() : getNextDiveNumber(user);
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
                 user,
-                body.diveNumber(),
+                diveNumber,
                 body.diveIdentifier(),
                 null,
                 body.diveSiteId(),
@@ -208,15 +213,16 @@ public class DiveService {
         return diveDataService.findDiveSitesByLocation(coordinate);
     }
 
-    public DiveSite createDiveSite(final String name, final double lat, final double lon) {
-        return diveDataService.saveDiveSite(name, new Coordinate(lon, lat));
+    public DiveSite createDiveSite(final String name, final Location location) {
+        return diveDataService.saveDiveSite(name, location);
     }
 
-    public PagedResponse<User> getReaders(final @NotNull User authenticated, final long diveId) {
+    public PagedResponse<User> getReaders(
+            final @NotNull User authenticated, final long diveId, final int page) {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
-        return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
+        return diveDataService.findReaders(diveId, PageRequest.of(page, USER_PAGE_SIZE));
     }
 
     public PagedResponse<User> addReaders(
@@ -269,8 +275,8 @@ public class DiveService {
     }
 
     public PagedResponse<SimplifiedDive> getDiveByCustomIdentifier(
-            final User user, final String query) {
+            final User user, final String query, final int page) {
         return diveDataService.findByIdentifierContains(
-                user.id(), query, Pageable.ofSize(SIMPLIFIED_DIVE_PAGE_SIZE));
+                user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 }

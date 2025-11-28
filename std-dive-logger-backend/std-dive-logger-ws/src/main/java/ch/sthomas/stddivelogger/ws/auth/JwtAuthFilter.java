@@ -1,9 +1,8 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
-import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.service.CustomUserDetailsService;
 
-import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -54,9 +53,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
-        } catch (final ExpiredJwtException e) {
+        } catch (final JwtException e) {
             // TODO: Can we throw here?
-            throw new UnauthorizedException("Token has expired");
         }
 
         filterChain.doFilter(request, response);

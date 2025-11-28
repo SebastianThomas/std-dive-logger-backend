@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.entity.*;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.annotation.Nullable;
@@ -20,6 +21,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -130,9 +132,10 @@ public class DiveDataService {
     }
 
     public PagedResponse<DiveSite> findDiveSiteByNameContains(
-            final String partialName, final int pageSize) {
+            final String partialName, final int page, final int pageSize) {
         return PagedResponse.of(
-                diveSiteRepository.findByClosestMatchName(partialName, Pageable.ofSize(pageSize)),
+                diveSiteRepository.findByClosestMatchName(
+                        partialName, PageRequest.of(page, pageSize)),
                 DiveSiteEntity::toRecord);
     }
 
@@ -246,8 +249,8 @@ public class DiveDataService {
                 .toList();
     }
 
-    public DiveSite saveDiveSite(final String name, final Coordinate coordinate) {
-        return diveSiteRepository.save(new DiveSiteEntity(name, coordinate)).toRecord();
+    public DiveSite saveDiveSite(final String name, final Location coordinate) {
+        return diveSiteRepository.save(new DiveSiteEntity(name, coordinate.toPoint())).toRecord();
     }
 
     public boolean hasReadAccess(@NotNull final User user, final long diveId) {

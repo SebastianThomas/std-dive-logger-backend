@@ -1,10 +1,11 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import jakarta.persistence.*;
 
-import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Table(name = "t_dive_site")
@@ -18,16 +19,16 @@ public class DiveSiteEntity {
     private String name;
 
     @Column(name = "location", nullable = false)
-    private Coordinate location;
+    private Point location;
 
     public DiveSiteEntity() {}
 
-    public DiveSiteEntity(final String name, final Coordinate location) {
+    public DiveSiteEntity(final String name, final Point location) {
         this.name = name;
         this.location = location;
     }
 
     public DiveSite toRecord() {
-        return new DiveSite(id, name, location);
+        return new DiveSite(id, name, new Location(location.getCoordinate()));
     }
 }

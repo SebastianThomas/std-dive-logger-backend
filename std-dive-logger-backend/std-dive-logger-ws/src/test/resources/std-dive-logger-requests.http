@@ -7,7 +7,8 @@ Content-Type: application/json
 
 {
   "email": "test1@test.ch",
-  "password": "AcBd321#"
+  "password": "AcBd321#",
+  "name": "Test1User"
 }
 
 ### Login user
@@ -17,4 +18,15 @@ Content-Type: application/json
 {
   "email": "test1@test.ch",
   "password": "AcBd321#"
+}
+
+### Create Dive Site
+POST {{baseurl}}/v1/dives/sites
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0MUB0ZXN0LmNoIiwiaWF0IjoxNzY0MzY1NjY3LCJleHAiOjE3NjQzNjkyNjd9.hflTk0Jv_wx_0--aEQqd23GLwLmWGXYNrVpLJsXm2b4t8vDbpVpZTCOTk_OAQLT_
+
+{
+  "lat": 46.123,
+  "lon": 9.123,
+  "name": "Test Site"
 }

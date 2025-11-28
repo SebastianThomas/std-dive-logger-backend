@@ -78,20 +78,22 @@ public class DiveController {
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
     public ResponseEntity<PagedResponse<SimplifiedDive>> searchDives(
-            @AuthenticationPrincipal final User user, @RequestParam("query") final String query) {
+            @AuthenticationPrincipal final User user,
+            @RequestParam("query") final String query,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query));
+        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query, page));
     }
 
     @Operation(summary = "Get next dive number")
     @GetMapping(path = "/next")
-    public ResponseEntity<Integer> nextDiveNumber(@AuthenticationPrincipal final User user) {
+    public int nextDiveNumber(@AuthenticationPrincipal final User user) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to get your next dive number");
         }
-        return ResponseEntity.ok(diveService.getNextDiveNumber(user));
+        return diveService.getNextDiveNumber(user);
     }
 
     @Operation(
@@ -104,11 +106,13 @@ public class DiveController {
             })
     @GetMapping(path = "/{id}/readers")
     public PagedResponse<FrontendUser> getReadersOfDive(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long id) {
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long id,
+            @RequestParam final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view readers");
         }
-        return diveService.getReaders(user, id).map(User::toFrontendModel);
+        return diveService.getReaders(user, id, page).map(User::toFrontendModel);
     }
 
     @Operation(

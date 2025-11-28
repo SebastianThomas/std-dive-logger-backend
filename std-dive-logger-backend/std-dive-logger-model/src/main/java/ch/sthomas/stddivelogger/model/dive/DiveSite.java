@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.geometry.Location;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,7 +28,7 @@ public record DiveSite(
         return new Coordinate(longitude, latitude);
     }
 
-    public DiveSite(final long id, final String name, final Coordinate coordinate) {
-        this(id, name, coordinate.y, coordinate.x);
+    public DiveSite(final long id, final String name, final Location location) {
+        this(id, name, location.lat(), location.lon());
     }
 }

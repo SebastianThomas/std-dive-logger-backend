@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
@@ -66,8 +67,7 @@ public class FitReaderService {
                 diveService.createDiveSite(
                         MessageFormat.format(
                                 "unnamed-{0}-{1}", startCoordinateLat, startCoordinateLon),
-                        startCoordinateLat,
-                        startCoordinateLon);
+                        new Location(startCoordinateLat, startCoordinateLon));
 
         final var gases =
                 messages.getDiveGasMesgs().stream()
