@@ -206,7 +206,7 @@ public class DiveController {
         if (body.fileType() == UploadFileType.NONE) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(importService.uploadDive(user, file, body));
+        return ResponseEntity.ok(importService.importDiveFile(user, file, body));
     }
 
     @Operation(summary = "Update a Dive, interface subject to change!!")

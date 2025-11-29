@@ -30,10 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 @Service
@@ -73,7 +70,7 @@ public class DiveService {
         final var dive =
                 diveDataService.saveDive(
                         user,
-                        body.diveNumber(),
+                        getNextDiveNumber(user, body),
                         body.diveIdentifier(),
                         null,
                         diveSiteId,
@@ -192,12 +189,10 @@ public class DiveService {
         if (body.diveSiteId() == null) {
             throw new IllegalArgumentException("Dive Site is required to save dive manually.");
         }
-        final var diveNumber =
-                body.diveNumber() != null ? body.diveNumber() : getNextDiveNumber(user);
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
                 user,
-                diveNumber,
+                getNextDiveNumber(user, body),
                 body.diveIdentifier(),
                 null,
                 body.diveSiteId(),
@@ -268,6 +263,10 @@ public class DiveService {
         }
         diveDataService.removeGroupReader(diveId, groupId);
         return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
+    }
+
+    public int getNextDiveNumber(final User user, final UploadDiveBody body) {
+        return body.diveNumber() != null ? body.diveNumber() : getNextDiveNumber(user);
     }
 
     public int getNextDiveNumber(final User user) {

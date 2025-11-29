@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.service.importer.fit;
+package ch.sthomas.stddivelogger.service.importer.garmin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

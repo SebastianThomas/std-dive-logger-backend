@@ -2,12 +2,13 @@ package ch.sthomas.stddivelogger.model.controller.dive;
 
 import jakarta.annotation.Nullable;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.IntSupplier;
 
 public record UploadDiveBody(
         @Nullable Integer diveNumber,
-        String diveIdentifier,
+        @Nullable String diveIdentifier,
         @Nullable Long diveSiteId,
         UploadFileType fileType) {
     public UploadDiveBody withDiveNumber(final IntSupplier diveNumber) {
@@ -16,5 +17,9 @@ public record UploadDiveBody(
                 diveIdentifier,
                 diveSiteId,
                 fileType);
+    }
+
+    public String diveIdentifier() {
+        return Objects.requireNonNullElse(diveIdentifier, "");
     }
 }
