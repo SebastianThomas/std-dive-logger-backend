@@ -23,7 +23,7 @@ public class WsMvcConfig implements WebMvcConfigurer {
         configurer
                 .defaultContentType(MediaType.APPLICATION_JSON) // default to JSON
                 .favorParameter(false)
-                .ignoreAcceptHeader(true);
+                .ignoreAcceptHeader(false);
     }
 
     @Override
