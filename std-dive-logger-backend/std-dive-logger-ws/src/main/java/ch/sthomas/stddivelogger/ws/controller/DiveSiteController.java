@@ -47,7 +47,7 @@ public class DiveSiteController {
 
     @Operation(summary = "Create new DiveSite")
     @PostMapping(path = "")
-    public DiveSite createDive(
+    public DiveSite createDiveSite(
             @Valid @NotNull @RequestBody final CreateDiveSiteBody body,
             @AuthenticationPrincipal final User user) {
         if (user == null) {

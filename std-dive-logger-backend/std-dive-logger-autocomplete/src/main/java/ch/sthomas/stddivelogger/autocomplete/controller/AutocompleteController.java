@@ -22,14 +22,16 @@ public class AutocompleteController {
     private final DiveService diveService;
     private final UserService userService;
 
-    public AutocompleteController(final DiveService diveService, UserService userService) {
+    public AutocompleteController(final DiveService diveService, final UserService userService) {
         this.diveService = diveService;
         this.userService = userService;
     }
 
     @GetMapping("/user")
-    public PagedResponse<FrontendUser> user(@RequestParam(name = "query") final String query) {
-        return userService.getUsersByPartialName(query).map(User::toFrontendModel);
+    public PagedResponse<FrontendUser> user(
+            @RequestParam(name = "query") final String query,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return userService.getUsersByPartialName(query, page).map(User::toFrontendModel);
     }
 
     @GetMapping("/site")
@@ -40,7 +42,9 @@ public class AutocompleteController {
     }
 
     @GetMapping("/group")
-    public List<GroupWithMembers> group(@RequestParam(name = "query") final String query) {
-        return userService.getGroupsByPartialName(query);
+    public List<GroupWithMembers> group(
+            @RequestParam(name = "query") final String query,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return userService.getGroupsByPartialName(query, page);
     }
 }

@@ -56,10 +56,10 @@ public class UserDataService {
         userRepository.deleteByEmailEqualsIgnoreCase(email);
     }
 
-    public PagedResponse<User> findUsersByClosestMatchName(final String query, final int pageSize) {
+    public PagedResponse<User> findUsersByClosestMatchName(
+            final String query, final Pageable pageable) {
         return PagedResponse.of(
-                userRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)),
-                UserEntity::toRecord);
+                userRepository.findByClosestMatchName(query, pageable), UserEntity::toRecord);
     }
 
     public long countUsers() {
@@ -75,8 +75,8 @@ public class UserDataService {
     }
 
     public List<GroupWithMembers> findGroupsByClosestMatchName(
-            final String query, final int pageSize) {
-        return groupRepository.findByClosestMatchName(query, Pageable.ofSize(pageSize)).stream()
+            final String query, final Pageable pageable) {
+        return groupRepository.findByClosestMatchName(query, pageable).stream()
                 .map(GroupEntity::toRecord)
                 .toList();
     }

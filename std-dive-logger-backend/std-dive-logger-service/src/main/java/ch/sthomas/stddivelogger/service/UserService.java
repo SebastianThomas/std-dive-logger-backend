@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.passay.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -83,8 +84,9 @@ public class UserService {
         userDataService.deleteUserByEmail(user.email());
     }
 
-    public PagedResponse<User> getUsersByPartialName(final String query) {
-        return userDataService.findUsersByClosestMatchName(query, USERS_PAGE_SIZE);
+    public PagedResponse<User> getUsersByPartialName(final String query, final int page) {
+        return userDataService.findUsersByClosestMatchName(
+                query, PageRequest.of(page, USERS_PAGE_SIZE));
     }
 
     public long getUserCount() {
@@ -107,8 +109,9 @@ public class UserService {
         return groupWithMembers;
     }
 
-    public List<GroupWithMembers> getGroupsByPartialName(final String query) {
-        return userDataService.findGroupsByClosestMatchName(query, GROUPS_PAGE_SIZE);
+    public List<GroupWithMembers> getGroupsByPartialName(final String query, final int page) {
+        return userDataService.findGroupsByClosestMatchName(
+                query, PageRequest.of(page, GROUPS_PAGE_SIZE));
     }
 
     public GroupWithMembers saveGroup(final String name, final Collection<Long> initialMembers) {

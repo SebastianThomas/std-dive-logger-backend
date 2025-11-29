@@ -80,7 +80,7 @@ public class DiveController {
     public ResponseEntity<PagedResponse<SimplifiedDive>> searchDives(
             @AuthenticationPrincipal final User user,
             @RequestParam("query") final String query,
-            @RequestParam(name = "page", defaultValue = "0") final int page) {
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -108,7 +108,7 @@ public class DiveController {
     public PagedResponse<FrontendUser> getReadersOfDive(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long id,
-            @RequestParam final int page) {
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view readers");
         }
