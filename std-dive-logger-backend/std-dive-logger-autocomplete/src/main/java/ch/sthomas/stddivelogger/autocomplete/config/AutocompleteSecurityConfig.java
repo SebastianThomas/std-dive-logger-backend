@@ -49,7 +49,12 @@ public class AutocompleteSecurityConfig {
     SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(
-                authorize -> authorize.requestMatchers("/v1/autocomplete/**").permitAll());
+                authorize ->
+                        authorize
+                                .requestMatchers("/v1/autocomplete/**")
+                                .permitAll()
+                                .requestMatchers("/actuator/**")
+                                .permitAll());
         return http.build();
     }
 
