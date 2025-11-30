@@ -195,7 +195,7 @@ public class DiveController {
 
     @Operation(summary = "Add a dive")
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<List<Dive>> uploadDive(
+    public ResponseEntity<List<SimplifiedDive>> uploadDive(
             @AuthenticationPrincipal final User user,
             @RequestPart("uploadBody") final UploadDiveBody body,
             @RequestParam("file") final MultipartFile file)

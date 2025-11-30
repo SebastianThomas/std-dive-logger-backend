@@ -75,6 +75,10 @@ public class DiveDataService {
         return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl()));
     }
 
+    public Optional<SimplifiedDive> findSimplifiedDiveById(final long id) {
+        return diveRepository.findById(id).map(d -> d.toSimplifiedRecord(storageService.baseUrl()));
+    }
+
     public Dive saveDive(
             final User user,
             final int number,

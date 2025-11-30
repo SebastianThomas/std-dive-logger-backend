@@ -38,7 +38,7 @@ public class FitReaderService {
         this.diveService = diveService;
     }
 
-    public Dive readFitAndSaveDive(
+    public SimplifiedDive readFitAndSaveDive(
             final User user,
             final String filename,
             final UploadDiveBody body,

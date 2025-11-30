@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.service.importer;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
@@ -42,13 +42,13 @@ public class ImportService {
         this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;
     }
 
-    public List<Dive> uploadDive(
+    public List<SimplifiedDive> uploadDive(
             final User user, final MultipartFile file, final UploadDiveBody body)
             throws IOException {
         return importFile(user, file.getOriginalFilename(), body, file.getInputStream());
     }
 
-    List<Dive> importFile(
+    List<SimplifiedDive> importFile(
             final User user,
             final String filename,
             final UploadDiveBody body,

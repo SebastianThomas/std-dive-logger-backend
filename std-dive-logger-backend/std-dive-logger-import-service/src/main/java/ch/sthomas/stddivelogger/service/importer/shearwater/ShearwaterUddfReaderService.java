@@ -3,10 +3,7 @@ package ch.sthomas.stddivelogger.service.importer.shearwater;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -36,7 +33,7 @@ public class ShearwaterUddfReaderService {
         this.diveDataService = diveDataService;
     }
 
-    public Dive importUddf(
+    public SimplifiedDive importUddf(
             final User user,
             final String filename,
             final UploadDiveBody body,
@@ -45,7 +42,7 @@ public class ShearwaterUddfReaderService {
         return importUddf(user, filename, body, xmlMapper.readValue(inputStream, UddfFile.class));
     }
 
-    private Dive importUddf(
+    private SimplifiedDive importUddf(
             final User user,
             final String filename,
             final UploadDiveBody body,

@@ -6,10 +6,7 @@ import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.parseUnt
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
@@ -45,7 +42,7 @@ public class SubsurfaceXmlReaderService {
         this.diveSiteRepository = diveSiteRepository;
     }
 
-    public List<Dive> importSubsurfaceXml(
+    public List<SimplifiedDive> importSubsurfaceXml(
             final User user,
             final String filename,
             final UploadDiveBody body,
@@ -83,7 +80,7 @@ public class SubsurfaceXmlReaderService {
         return Pair.of(computer.model(), computer.deviceid());
     }
 
-    private Dive importSubsurfaceXmlDive(
+    private SimplifiedDive importSubsurfaceXmlDive(
             final User user,
             final UploadDiveBody body,
             final SubsurfaceXmlFile.SubsurfaceDive dive,

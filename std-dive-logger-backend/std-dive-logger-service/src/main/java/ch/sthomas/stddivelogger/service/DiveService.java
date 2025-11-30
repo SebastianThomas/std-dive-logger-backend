@@ -64,7 +64,7 @@ public class DiveService {
         return diveDataService.findDiveById(id);
     }
 
-    public Dive saveDive(
+    public SimplifiedDive saveDive(
             final User user,
             final UploadDiveBody body,
             final Long diveSiteId,
@@ -90,7 +90,7 @@ public class DiveService {
         } catch (final DataException e) {
             logger.error("Error while saving dive buddies, but continuing", e);
         }
-        return diveDataService.findDiveById(dive.id()).orElseThrow();
+        return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
     }
 
     private static final Map<
