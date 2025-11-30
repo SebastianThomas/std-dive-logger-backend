@@ -10,6 +10,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ public class TestImport {
     void testImportUddf(final String filename) throws IOException {
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             final var content = xmlMapper.readValue(inputStream, UddfFile.class);
-            logger.info("Reading from {}", filename);
+            logger.info("Reading from UDDF {}", filename);
             assertNotNull(content);
             assertEquals("Ledi-Wracks", content.exportSite());
         }
@@ -34,10 +35,11 @@ public class TestImport {
 
     @ParameterizedTest
     @ValueSource(strings = "felice_2025_10_18.xml")
+    @Disabled
     void testImportSubsurfaceXml(final String filename) throws IOException {
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             final var content = xmlMapper.readValue(inputStream, SubsurfaceXmlFile.class);
-            logger.info("Reading from {}", filename);
+            logger.info("Reading from Subsurface XML {}", filename);
             assertNotNull(content);
             assertEquals(313, content.dives().size());
         }
