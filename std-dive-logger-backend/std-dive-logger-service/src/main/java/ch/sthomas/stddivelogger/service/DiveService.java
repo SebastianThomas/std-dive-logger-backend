@@ -115,6 +115,18 @@ public class DiveService {
         return diveDataService.findDiveComputerByUserAndName(user.id(), customName);
     }
 
+    public DiveComputer getOrCreateDiveComputer(
+            final User user,
+            final String manufacturer,
+            final String serialNumber,
+            final String customName) {
+        return getDiveComputerBySerialNumber(user, manufacturer, serialNumber)
+                .orElseGet(
+                        () ->
+                                createDiveComputer(
+                                        serialNumber, customName, manufacturer, user.id()));
+    }
+
     public Optional<DiveComputer> getDiveComputerBySerialNumber(
             final User user, final String manufacturer, final String serialNumber) {
         return diveDataService.findDiveComputerByUserAndSerialNumber(

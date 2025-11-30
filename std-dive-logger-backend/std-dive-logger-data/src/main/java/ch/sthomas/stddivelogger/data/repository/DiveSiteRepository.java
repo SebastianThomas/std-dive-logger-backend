@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.data.repository;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,4 +32,10 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
             value = "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist)",
             nativeQuery = true)
     List<DiveSiteEntity> findByLocationNear(Coordinate location, double dist);
+
+    @Query(
+            value =
+                    "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) AND name % :name ORDER BY similarity(name, :name) LIMIT 1",
+            nativeQuery = true)
+    Optional<DiveSiteEntity> findByLocationNearAndName(Point location, double dist, String name);
 }
