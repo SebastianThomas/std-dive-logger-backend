@@ -3,12 +3,15 @@ package ch.sthomas.stddivelogger.model.dive;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import jakarta.annotation.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record DiveMeasurement(
         Instant time,
         Temperature temperature,
