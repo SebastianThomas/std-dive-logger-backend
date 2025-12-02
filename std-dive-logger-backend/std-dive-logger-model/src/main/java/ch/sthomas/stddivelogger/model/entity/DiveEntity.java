@@ -36,7 +36,7 @@ public class DiveEntity {
     @ManyToOne(cascade = CascadeType.PERSIST)
     private DiveSiteEntity diveSite;
 
-    @OneToMany(cascade = CascadeType.PERSIST)
+    @OneToMany(mappedBy = "dive", cascade = CascadeType.PERSIST)
     private List<DiveProfileEntity> profiles;
 
     @ManyToMany
