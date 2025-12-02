@@ -35,6 +35,6 @@ COPY --from=build /app/${MODULE_NAME}/target/*.jar app.jar
 ENV SPRING_CONFIG_LOCATION=/config/ \
     SPRING_DOCKER_COMPOSE_ENABLED=false
 
-EXPOSE 5173
+EXPOSE 8080
 
 ENTRYPOINT ["sh", "-c", "exec java -XX:MinRAMPercentage=60.0 -XX:MaxRAMPercentage=80.0 $ADDITIONAL_JAVA_OPTS -jar /app/app.jar"]
