@@ -95,10 +95,12 @@ public class ShearwaterUddfReaderService {
         final var serialNumber = uddfFile.exportDiveComputerSerialNumber();
         final var customIdentifier = uddfFile.exportDiveComputerName();
         final var manufacturer = uddfFile.exportDiveComputerManufacturer();
-        final var existingComputer = diveService.getDiveComputer(user, customIdentifier);
-        return existingComputer.orElseGet(
-                () ->
-                        diveService.createDiveComputer(
-                                serialNumber, customIdentifier, manufacturer, user.id()));
+        return diveService
+                .getDiveComputerBySerialNumber(user, manufacturer, serialNumber)
+                .or(() -> diveService.getDiveComputer(user, customIdentifier))
+                .orElseGet(
+                        () ->
+                                diveService.createDiveComputer(
+                                        serialNumber, customIdentifier, manufacturer, user.id()));
     }
 }
