@@ -28,9 +28,13 @@ public class DiveEntity {
     @Column(name = "preview_image", nullable = false)
     private String previewImage;
 
-    @ManyToOne private UserEntity user;
+    @JoinColumn(name = "fk_diver_id")
+    @ManyToOne
+    private UserEntity user;
 
-    @ManyToOne private DiveSiteEntity diveSite;
+    @JoinColumn(name = "dive_site")
+    @ManyToOne
+    private DiveSiteEntity diveSite;
 
     @OneToMany private List<DiveProfileEntity> profiles;
 

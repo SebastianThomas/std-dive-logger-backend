@@ -18,7 +18,12 @@ public class GroupEntity {
     @Column(name = "group_name", unique = true)
     private String groupName;
 
-    @ManyToMany private Set<UserEntity> members;
+    @JoinTable(
+            name = "t_group_member",
+            joinColumns = {@JoinColumn(name = "fk_group_id")},
+            inverseJoinColumns = {@JoinColumn(name = "fk_user_id")})
+    @ManyToMany
+    private Set<UserEntity> members;
 
     public GroupEntity() {}
 

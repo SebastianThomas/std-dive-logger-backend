@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "t_dive_profile")
+@Table(name = "t_dive_profiles")
 public class DiveProfileEntity {
 
     @Id
@@ -20,7 +20,7 @@ public class DiveProfileEntity {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "fk_dive_computer_id")
+    @JoinColumn(name = "fk_dive_computer")
     private DiveComputerEntity computer;
 
     @Column(name = "dive_profile_start", nullable = false)
@@ -29,9 +29,13 @@ public class DiveProfileEntity {
     @Column(name = "dive_profile_end", nullable = false)
     private OffsetDateTime profileEnd;
 
-    @ManyToOne private DiveEntity dive;
+    @JoinColumn(name = "fk_dive_id")
+    @ManyToOne
+    private DiveEntity dive;
 
-    @OneToMany private List<DiveMeasurementEntity> measurements;
+    @JoinColumn(name = "fk_dive_profile_id")
+    @OneToMany
+    private List<DiveMeasurementEntity> measurements;
 
     public DiveProfileEntity() {}
 
