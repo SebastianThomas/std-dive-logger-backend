@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
@@ -27,6 +28,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Array;
+import java.sql.SQLException;
 import java.util.*;
 
 @Service
@@ -332,5 +335,32 @@ public class DiveDataService {
 
     public Optional<Integer> findMaxDiveNumber(final User user) {
         return diveRepository.findMaxDiveNumberByUserId(user.id());
+    }
+
+    public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(final long userId) {
+        return diveSiteRepository.findByDivesUserId(userId).stream()
+                .map(
+                        d ->
+                                new DiveSiteWithDives<>(
+                                        d.site().toRecord(), getLongListFromSqlObject(d.diveIds())))
+                .toList();
+    }
+
+    private List<Long> getLongListFromSqlObject(final Object o) {
+        return switch (o) {
+            case final Array sqlArray -> {
+                try {
+                    yield Arrays.stream((Long[]) sqlArray.getArray()).toList();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            case final Long[] longArr -> Arrays.asList(longArr);
+            case null -> Collections.emptyList();
+            default -> {
+                logger.warn("Unrecognized SQL object (tried to get as List<Long>): {}", o);
+                yield Collections.emptyList();
+            }
+        };
     }
 }

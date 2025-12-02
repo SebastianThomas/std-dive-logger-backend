@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -38,4 +39,15 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                     "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) AND name % :name ORDER BY similarity(name, :name) LIMIT 1",
             nativeQuery = true)
     Optional<DiveSiteEntity> findByLocationNearAndName(Point location, double dist, String name);
+
+    @Query(
+            value =
+                    """
+                                SELECT d, ARRAY_AGG(de.pk_dive_id) AS dive_ids
+                                FROM t_dive_site d
+                                INNER JOIN t_dives de ON de.dive_site = d.pk_dive_site_id
+                                GROUP BY d.pk_dive_site_id
+                            """,
+            nativeQuery = true)
+    List<DiveSiteWithDives<DiveSiteEntity, Object>> findByDivesUserId(long id);
 }

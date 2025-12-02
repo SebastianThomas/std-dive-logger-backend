@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -28,6 +29,15 @@ public class DiveSiteController {
     public DiveSiteController(final DiveService diveService, final UserService userService) {
         this.diveService = diveService;
         this.userService = userService;
+    }
+
+    @Operation(
+            summary = "Get all DiveSites for this user",
+            description = "May need to be paginated for too many dive sites")
+    @GetMapping(path = "")
+    public List<DiveSiteWithDives<DiveSite, List<Long>>> getAllDiveSites(
+            @AuthenticationPrincipal final User user) {
+        return diveService.getSitesByUser(user);
     }
 
     @Operation(summary = "Get DiveSite by id")

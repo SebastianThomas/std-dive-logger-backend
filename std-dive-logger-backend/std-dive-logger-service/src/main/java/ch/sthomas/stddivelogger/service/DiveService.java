@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
@@ -294,5 +295,10 @@ public class DiveService {
             final User user, final String query, final int page) {
         return diveDataService.searchDives(
                 user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+    }
+
+    // TODO: Implement pagination later?
+    public List<DiveSiteWithDives<DiveSite, List<Long>>> getSitesByUser(final User user) {
+        return diveDataService.findDiveSitesByUser(user.id());
     }
 }
