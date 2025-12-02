@@ -1,9 +1,8 @@
 package ch.sthomas.stddivelogger.data.repository;
 
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
-
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,7 +13,8 @@ public interface DiveComputerRepository extends JpaRepository<DiveComputerEntity
     Optional<DiveComputerEntity> findByCustomIdentifierAndUser_Id(
             String customIdentifier, Long userId);
 
-    Optional<DiveComputer> findByUser_IdAndManufacturer_NameAndSerialNumber(Long userId, String manufacturerName, String serialNumber);
+    Optional<DiveComputerEntity> findByUser_IdAndManufacturer_NameAndSerialNumber(
+            Long userId, String manufacturerName, String serialNumber);
 
     Long user(UserEntity user);
 }

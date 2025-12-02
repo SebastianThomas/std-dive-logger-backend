@@ -21,6 +21,11 @@ public class DiveComputerManufacturerEntity {
         this.name = name;
     }
 
+    public DiveComputerManufacturerEntity(final long id, final String name) {
+        this.id = id;
+        this.name = name;
+    }
+
     public DiveComputerManufacturer toRecord() {
         return new DiveComputerManufacturer(id, name);
     }

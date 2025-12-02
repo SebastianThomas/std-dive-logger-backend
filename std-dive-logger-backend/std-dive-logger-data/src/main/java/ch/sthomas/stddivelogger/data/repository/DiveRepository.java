@@ -36,8 +36,8 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     void setDiveIdWhereProfileIdIn(
             @Param("targetDiveId") Long targetDiveId, @Param("profileIds") List<Long> profileIds);
 
-    @Query("SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :id")
-    Optional<Integer> findMaxDiveNumberByUserId(long id);
+    @Query("SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :userId")
+    Optional<Integer> findMaxDiveNumberByUserId(long userId);
 
     @Query(
             value =
