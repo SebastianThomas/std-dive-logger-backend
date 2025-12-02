@@ -34,7 +34,7 @@ public class DiveProfileEntity {
     private DiveEntity dive;
 
     @JoinColumn(name = "fk_dive_profile_id")
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
 
     public DiveProfileEntity() {}
@@ -47,7 +47,7 @@ public class DiveProfileEntity {
         this.computer = computer;
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
-        this.measurements = measurements;
+        this.measurements = measurements.stream().map(m -> m.setProfile(this)).toList();
     }
 
     public DiveProfile toRecord() {
@@ -58,5 +58,10 @@ public class DiveProfileEntity {
                 profileEnd.toInstant(),
                 measurements.stream().map(DiveMeasurementEntity::toRecord).toList(),
                 null);
+    }
+
+    public DiveProfileEntity setDive(final DiveEntity diveEntity) {
+        this.dive = diveEntity;
+        return this;
     }
 }

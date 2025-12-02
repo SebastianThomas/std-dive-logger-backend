@@ -67,7 +67,7 @@ public class DiveEntity {
         this.user = userEntity;
         this.previewImage = previewImage;
         this.diveSite = diveSiteEntity;
-        this.profiles = profiles;
+        this.profiles = profiles.stream().map(p -> p.setDive(this)).toList();
         this.namedBuddies =
                 namedBuddies.stream().map(b -> new DiveBuddyNameEntity(this, b)).toList();
     }

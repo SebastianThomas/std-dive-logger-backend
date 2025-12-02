@@ -42,6 +42,10 @@ public class DiveMeasurementEntity {
     @Column(name = "ndl_minutes", nullable = false)
     private Integer ndlMinutes;
 
+    @JoinColumn(name = "fk_dive_profile_id")
+    @ManyToOne(cascade = CascadeType.PERSIST)
+    private DiveProfileEntity profile;
+
     public DiveMeasurementEntity() {}
 
     public DiveMeasurementEntity(final DiveMeasurement diveMeasurement) {
@@ -59,5 +63,10 @@ public class DiveMeasurementEntity {
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
                 null);
+    }
+
+    public DiveMeasurementEntity setProfile(final DiveProfileEntity diveProfileEntity) {
+        this.profile = diveProfileEntity;
+        return this;
     }
 }
