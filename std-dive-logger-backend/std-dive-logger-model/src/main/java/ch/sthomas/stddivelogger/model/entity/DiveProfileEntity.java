@@ -33,7 +33,6 @@ public class DiveProfileEntity {
     @ManyToOne(cascade = CascadeType.PERSIST)
     private DiveEntity dive;
 
-    @JoinColumn(name = "fk_dive_profile_id")
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
 
