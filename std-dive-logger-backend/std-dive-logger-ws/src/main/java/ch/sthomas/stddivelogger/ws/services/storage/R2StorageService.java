@@ -87,6 +87,7 @@ public class R2StorageService implements StorageService {
             final var fallbackPartSize = 8 * 1024 * 1024;
             final var partSize = contentLength > 0 ? -1 : fallbackPartSize;
 
+            logger.info("Put Object: bucket {} -> {}", bucket, path);
             final var putObjectArgs =
                     PutObjectArgs.builder()
                             .bucket(bucket)
