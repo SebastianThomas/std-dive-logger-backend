@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Dimension;
 import java.io.ByteArrayInputStream;
@@ -64,21 +65,18 @@ public class DiveService {
         return diveDataService.findDiveById(id);
     }
 
+    @Transactional
     public SimplifiedDive saveDive(
             final User user,
-            final UploadDiveBody body,
+            final Optional<Integer> diveNumberOptional,
+            final String diveIdentifier,
             final Long diveSiteId,
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies) {
+        final var diveNumber = diveNumberOptional.orElseGet(() -> getNextDiveNumber(user));
         final var dive =
                 diveDataService.saveDive(
-                        user,
-                        body.diveNumber(),
-                        body.diveIdentifier(),
-                        null,
-                        diveSiteId,
-                        profiles,
-                        namedBuddies);
+                        user, diveNumber, diveIdentifier, null, diveSiteId, profiles, namedBuddies);
         try {
             final var d = createSaveDivePreview(dive);
             logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);

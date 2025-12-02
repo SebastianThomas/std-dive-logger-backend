@@ -97,7 +97,13 @@ public class SubsurfaceXmlReaderService {
         final var profile = getProfiles(computers, dive);
         final var buddies =
                 dive.buddy().stream().flatMap(s -> Arrays.stream(s.split(","))).toList();
-        return diveService.saveDive(user, body, site.id(), profile, buddies);
+        return diveService.saveDive(
+                user,
+                Optional.ofNullable(body.diveNumber()),
+                body.diveIdentifier(),
+                site.id(),
+                profile,
+                buddies);
     }
 
     public List<DiveProfileUpload> getProfiles(

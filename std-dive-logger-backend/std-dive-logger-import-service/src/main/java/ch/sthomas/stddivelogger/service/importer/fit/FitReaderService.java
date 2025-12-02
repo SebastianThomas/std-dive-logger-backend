@@ -47,14 +47,7 @@ public class FitReaderService {
         final var summaryMessages = messages.getDiveSummaryMesgs();
 
         final var computers = saveComputers(user, messages);
-        final var bodyWithNumber =
-                body.withDiveNumber(
-                        () ->
-                                getDiveNumber(summaryMessages)
-                                        .orElseThrow(
-                                                () ->
-                                                        new IllegalArgumentException(
-                                                                "No dive number provided.")));
+        final var diveNumber = getDiveNumber(summaryMessages);
         final var summary = getSummary(summaryMessages);
 
         if (messages.getSessionMesgs().size() != 1) {
@@ -99,7 +92,8 @@ public class FitReaderService {
         final var profile =
                 getDiveProfile(messages.getRecordMesgs(), events, gases, computer, summary);
         final var buddies = List.<String>of();
-        return diveService.saveDive(user, bodyWithNumber, diveSite.id(), List.of(profile), buddies);
+        return diveService.saveDive(
+                user, diveNumber, body.diveIdentifier(), diveSite.id(), List.of(profile), buddies);
     }
 
     private DiveProfileUpload getDiveProfile(

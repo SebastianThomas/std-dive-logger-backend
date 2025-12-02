@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 public class ShearwaterUddfReaderService {
@@ -49,7 +50,13 @@ public class ShearwaterUddfReaderService {
             final UddfFile uddfFile) {
         final var site = getDiveSiteId(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
-        return diveService.saveDive(user, body, site, List.of(profile), uddfFile.getBuddies());
+        return diveService.saveDive(
+                user,
+                Optional.ofNullable(body.diveNumber()),
+                body.diveIdentifier(),
+                site,
+                List.of(profile),
+                uddfFile.getBuddies());
     }
 
     private long getDiveSiteId(@Nullable final Long siteId, @Nullable final String diveSite) {
