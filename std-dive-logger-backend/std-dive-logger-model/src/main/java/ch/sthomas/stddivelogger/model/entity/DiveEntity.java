@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,12 +75,19 @@ public class DiveEntity {
                 namedBuddies.stream().map(b -> new DiveBuddyNameEntity(this, b)).toList();
     }
 
+    private String getPreviewImage(@NotNull final String baseUrl) {
+        if (previewImage == null) {
+            return null;
+        }
+        return baseUrl + previewImage;
+    }
+
     public Dive toRecord(final String baseUrl) {
         return new Dive(
                 id,
                 number,
                 diveIdentifier,
-                baseUrl + previewImage,
+                getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
                 getBuddyDives().map(d -> d.toRecord(baseUrl)).toList(),
@@ -91,7 +99,7 @@ public class DiveEntity {
                 id,
                 number,
                 diveIdentifier,
-                baseUrl + previewImage,
+                getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 getBuddyDives().map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels());
