@@ -29,14 +29,15 @@ public class DiveEntity {
     private String previewImage;
 
     @JoinColumn(name = "fk_diver_id")
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     private UserEntity user;
 
     @JoinColumn(name = "dive_site")
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     private DiveSiteEntity diveSite;
 
-    @OneToMany private List<DiveProfileEntity> profiles;
+    @OneToMany(cascade = CascadeType.PERSIST)
+    private List<DiveProfileEntity> profiles;
 
     @ManyToMany
     @JoinTable(

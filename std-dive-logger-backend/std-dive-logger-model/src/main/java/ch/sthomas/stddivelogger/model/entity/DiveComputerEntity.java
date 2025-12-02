@@ -21,11 +21,11 @@ public class DiveComputerEntity {
     @Column(name = "custom_identifier", nullable = false)
     private String customIdentifier;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_manufacturer_id")
     private DiveComputerManufacturerEntity manufacturer;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
 

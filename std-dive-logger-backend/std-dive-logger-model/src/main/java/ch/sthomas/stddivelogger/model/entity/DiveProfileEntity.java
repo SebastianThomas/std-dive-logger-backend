@@ -19,7 +19,7 @@ public class DiveProfileEntity {
     @Column(name = "pk_dive_profile_id", nullable = false)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_dive_computer")
     private DiveComputerEntity computer;
 
@@ -30,11 +30,11 @@ public class DiveProfileEntity {
     private OffsetDateTime profileEnd;
 
     @JoinColumn(name = "fk_dive_id")
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     private DiveEntity dive;
 
     @JoinColumn(name = "fk_dive_profile_id")
-    @OneToMany
+    @OneToMany(cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
 
     public DiveProfileEntity() {}

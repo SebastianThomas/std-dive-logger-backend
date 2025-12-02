@@ -10,7 +10,7 @@ public class DiveBuddyNameEntity {
     @Column(name = "pk_dive_buddy_name_id")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_dive_id")
     private DiveEntity dive;
 
