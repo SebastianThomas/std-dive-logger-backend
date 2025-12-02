@@ -62,9 +62,6 @@ public class AuthController {
     public String refresh(
             @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = true)
                     final String refreshToken) {
-        logger.info(
-                "Getting refresh token request with token {}",
-                refreshToken == null ? null : refreshToken.substring(0, 5));
         return authService.refresh(refreshToken);
     }
 
