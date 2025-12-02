@@ -38,4 +38,15 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     @Query("SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :id")
     Optional<Integer> findMaxDiveNumberByUserId(long id);
+
+    @Query(
+            value =
+                    """
+                            SELECT dive.*
+                                    FROM fuzzy_search_dives_for_user(:searchTerm, :userId) AS f(dive, relevance_score)
+                                    ORDER BY relevance_score DESC
+                                    LIMIT :limit OFFSET :offset
+                            """,
+            nativeQuery = true)
+    Page<DiveEntity> searchDives(long userId, String query, Pageable pageable);
 }

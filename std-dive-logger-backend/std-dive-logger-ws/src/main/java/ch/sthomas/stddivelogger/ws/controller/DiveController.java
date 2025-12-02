@@ -76,6 +76,18 @@ public class DiveController {
     }
 
     @Operation(summary = "Get dives by custom identifier")
+    @GetMapping(path = "/custom-name")
+    public ResponseEntity<PagedResponse<SimplifiedDive>> searchDivesByIdentifier(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("query") final String query,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query, page));
+    }
+
+    @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
     public ResponseEntity<PagedResponse<SimplifiedDive>> searchDives(
             @AuthenticationPrincipal final User user,
@@ -84,7 +96,7 @@ public class DiveController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query, page));
+        return ResponseEntity.ok(diveService.searchDives(user, query, page));
     }
 
     @Operation(summary = "Get next dive number")

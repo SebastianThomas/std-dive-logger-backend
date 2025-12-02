@@ -289,4 +289,10 @@ public class DiveService {
         return diveDataService.findByIdentifierContains(
                 user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
+
+    public PagedResponse<SimplifiedDive> searchDives(
+            final User user, final String query, final int page) {
+        return diveDataService.searchDives(
+                user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+    }
 }

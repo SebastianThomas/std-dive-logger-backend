@@ -230,6 +230,13 @@ public class DiveDataService {
                 d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
+    public PagedResponse<SimplifiedDive> searchDives(
+            final long userId, final String query, final Pageable pageable) {
+        return PagedResponse.of(
+                diveRepository.searchDives(userId, query, pageable),
+                d -> d.toSimplifiedRecord(storageService.baseUrl()));
+    }
+
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
         return diveRepository
