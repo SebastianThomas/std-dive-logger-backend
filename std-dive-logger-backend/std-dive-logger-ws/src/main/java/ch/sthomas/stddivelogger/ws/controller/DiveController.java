@@ -256,4 +256,18 @@ public class DiveController {
         }
         return ResponseEntity.ok(diveService.moveProfiles(user, body.diveId, body.profileIds()));
     }
+
+    @Operation(summary = "Generate or regenerate Preview image")
+    @PostMapping(path = "/{id}/preview")
+    public ResponseEntity<Dive> generatePreview(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        final var result = diveService.createSaveDivePreview(user, diveId);
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+        return ResponseEntity.ok(result);
+    }
 }

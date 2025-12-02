@@ -78,12 +78,7 @@ public class DiveService {
         final var dive =
                 diveDataService.saveDive(
                         user, diveNumber, diveIdentifier, null, diveSiteId, profiles, namedBuddies);
-        try {
-            final var d = createSaveDivePreview(dive);
-            logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);
-        } catch (final IOException e) {
-            logger.error("IOException while uploading dive preview for dive {}", dive.id(), e);
-        }
+        createSaveDivePreview(dive);
         try {
             diveDataService.saveBuddies(dive.id(), namedBuddies);
         } catch (final DataException e) {
@@ -95,9 +90,33 @@ public class DiveService {
     private static final Map<
                     DiveMeasurement.DiveMeasurementProperty,
                     Pair<Function<DiveMeasurement, Double>, LegendType>>
-            diveMeasurementLegendExtractors = Map.ofEntries();
+            diveMeasurementLegendExtractors =
+                    Map.ofEntries(
+                            Map.entry(
+                                    DiveMeasurement.DiveMeasurementProperty.DEPTH,
+                                    Pair.of(DiveMeasurement::depth, LegendType.RIGHT)));
 
-    private Dive createSaveDivePreview(final Dive dive) throws IOException {
+    public Dive createSaveDivePreview(final User user, final long diveId) {
+        final var dive = getDiveById(user, diveId).orElseThrow();
+        final var result = createSaveDivePreview(dive);
+        if (result == null || result.previewImage() == null) {
+            return null;
+        }
+        return result;
+    }
+
+    public Dive createSaveDivePreview(final Dive dive) {
+        try {
+            final var d = createSaveDivePreviewUnsafe(dive);
+            logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);
+            return d;
+        } catch (final IOException | IllegalArgumentException e) {
+            logger.error("IOException while uploading dive preview for dive {}", dive.id(), e);
+            return null;
+        }
+    }
+
+    private Dive createSaveDivePreviewUnsafe(final Dive dive) throws IOException {
         final var previewImagePath = String.format("/preview/%d-preview.svg", dive.id());
         final var outputStream = new ByteArrayOutputStream();
         try (final var writer = new OutputStreamWriter(outputStream)) {
