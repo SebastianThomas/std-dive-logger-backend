@@ -104,9 +104,7 @@ public class DiveDataService {
                         diveSite,
                         profileEntities,
                         namedBuddies);
-        final var saved = diveRepository.saveAndFlush(entity);
-        entityManager.flush(); // Flush as the id was not generated
-        return saved.toRecord(storageService.baseUrl());
+        return diveRepository.save(entity).toRecord(storageService.baseUrl());
     }
 
     public void saveBuddies(final long diveId, final List<String> buddies) {
