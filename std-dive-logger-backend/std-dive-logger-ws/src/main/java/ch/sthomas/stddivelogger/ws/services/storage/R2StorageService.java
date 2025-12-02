@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotNull;
 
 import okhttp3.OkHttpClient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.retry.annotation.Backoff;
@@ -28,16 +30,31 @@ import java.util.Objects;
 @Primary
 public class R2StorageService implements StorageService {
 
+    private static final Logger logger = LoggerFactory.getLogger(R2StorageService.class);
     private final String bucket;
     private final MinioClient client;
     private final String baseUrl;
 
     public R2StorageService(
-            @Value("${ch.sthomas.stddivelogger.storage.r2.bucket}") final String bucket,
-            @Value("${ch.sthomas.stddivelogger.storage.r2.account-id}") final String accountId,
-            @Value("${ch.sthomas.stddivelogger.storage.r2.access-key}") final String accessKey,
-            @Value("${ch.sthomas.stddivelogger.storage.r2.secret-key}") final String secretKey,
-            @Value("${ch.sthomas.stddivelogger.storage.r2.base-url}") final String baseUrl) {
+            @Value("${ch.sthomas.stddivelogger.storage.r2.bucket}") @NotNull final String bucket,
+            @Value("${ch.sthomas.stddivelogger.storage.r2.account-id}") @NotNull
+                    final String accountId,
+            @Value("${ch.sthomas.stddivelogger.storage.r2.access-key}") @NotNull
+                    final String accessKey,
+            @Value("${ch.sthomas.stddivelogger.storage.r2.secret-key}") @NotNull
+                    final String secretKey,
+            @Value("${ch.sthomas.stddivelogger.storage.r2.base-url}") @NotNull
+                    final String baseUrl) {
+        if (bucket == null || accountId == null || accessKey == null || secretKey == null) {
+            logger.info(
+                    "One is invalid: Bucket, Account Id, Access Key, Secret Key: {}, {}, {}, {}",
+                    bucket,
+                    accountId,
+                    accessKey,
+                    secretKey);
+            throw new IllegalArgumentException(
+                    "One of bucket, accountId, accessKey, secretKey is null.");
+        }
         this.bucket = bucket;
         this.baseUrl = baseUrl;
         final var timeout = Duration.ofSeconds(15);
