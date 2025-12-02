@@ -33,7 +33,7 @@ CREATE TABLE t_dive_computer
     fk_manufacturer_id  INTEGER REFERENCES t_computer_manufacturer (pk_manufacturer_id),
     serial_number       TEXT,
     custom_identifier   TEXT NOT NULL,
-    UNIQUE (fk_manufacturer_id, serial_number),
+    UNIQUE (fk_user_id, fk_manufacturer_id, serial_number),
     UNIQUE (fk_user_id, custom_identifier)
 );
 -- GROUPS
