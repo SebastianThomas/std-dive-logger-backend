@@ -114,7 +114,7 @@ public class AuthController {
         return ResponseEntity.badRequest()
                 .body(
                         Problem.builder()
-                                .withStatus(Status.UNAUTHORIZED)
+                                .withStatus(Status.BAD_REQUEST)
                                 .withTitle(exception.getMessage())
                                 .withDetail(String.join(",\n", exception.details()))
                                 .build());
