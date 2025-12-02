@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.entity.*;
+import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -104,7 +105,11 @@ public class DiveDataService {
                         diveSite,
                         profileEntities,
                         namedBuddies);
-        return diveRepository.save(entity).toRecord(storageService.baseUrl());
+        try {
+            return diveRepository.save(entity).toRecord(storageService.baseUrl());
+        } catch (final DataIntegrityViolationException e) {
+            throw new DiveConstraintException("Could not save dive", e);
+        }
     }
 
     public void saveBuddies(final long diveId, final List<String> buddies) {
