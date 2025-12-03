@@ -394,11 +394,6 @@ public class DiveDataService {
         return diveSiteRepository.findSitesByDiveWithUserId(userId).stream()
                 .map(
                         row -> {
-                            logger.info(
-                                    "DiveSite (should be entity?): {} {}",
-                                    row[0].getClass(),
-                                    row[0]);
-                            logger.info("IDs: {}, {}", row[1].getClass(), row[1]);
                             final var site = (DiveSiteEntity) row[0];
                             final var diveIds = getLongListFromSqlObject(row[1]);
                             return new DiveSiteWithDives<>(site, diveIds);
@@ -419,9 +414,11 @@ public class DiveDataService {
             case final long[] longArr -> Arrays.stream(longArr).boxed().toList();
             case null -> Collections.emptyList();
             default -> {
-                if (o instanceof final Long[] longArr) {
+                try {
                     logger.info("if in default for Long[]: This should never be reached.");
-                    yield Arrays.asList(longArr);
+                    yield Arrays.asList((Long[]) o);
+                } catch (final ClassCastException e) {
+                    logger.info("Unrecognized, could not cast to Long[]");
                 }
                 if (o.getClass().isArray()) {
                     logger.info(
@@ -429,7 +426,10 @@ public class DiveDataService {
                             o.getClass());
                     yield Arrays.stream((Object[]) o).map(l -> (Long) l).toList();
                 }
-                logger.warn("Unrecognized SQL object (tried to convert to List<Long>): {}", o);
+                logger.warn(
+                        "Unrecognized SQL object (tried to convert to List<Long>): class {} with value {}",
+                        o.getClass(),
+                        o);
                 yield Collections.emptyList();
             }
         };
