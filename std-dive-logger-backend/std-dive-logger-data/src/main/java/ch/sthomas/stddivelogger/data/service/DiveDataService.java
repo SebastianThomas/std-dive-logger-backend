@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
 import java.sql.SQLException;
@@ -67,6 +68,7 @@ public class DiveDataService {
         this.storageService = storageService;
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByUser(
             final User user, final int page, final int pageSize) {
         final var result =
@@ -75,14 +77,17 @@ public class DiveDataService {
         return PagedResponse.of(result, d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
+    @Transactional(readOnly = true)
     public Optional<Dive> findDiveById(final long id) {
         return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl()));
     }
 
+    @Transactional(readOnly = true)
     public Optional<SimplifiedDive> findSimplifiedDiveById(final long id) {
         return diveRepository.findById(id).map(d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
+    @Transactional
     public Dive saveDive(
             final User user,
             final int number,
@@ -112,6 +117,7 @@ public class DiveDataService {
         }
     }
 
+    @Transactional
     public void saveBuddies(final long diveId, final List<String> buddies) {
         entityManager.flush();
 
@@ -209,6 +215,7 @@ public class DiveDataService {
                 .toRecord(storageService.baseUrl());
     }
 
+    @Transactional
     public Dive updateDiveSetPreviewImage(
             @NotNull @Valid final Dive dive, final String previewImage) {
         final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
@@ -216,6 +223,7 @@ public class DiveDataService {
         return diveRepository.save(existingDive).toRecord(storageService.baseUrl());
     }
 
+    @Transactional
     public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
         final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
         final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
@@ -223,16 +231,19 @@ public class DiveDataService {
         return diveRepository.save(baseDiveEntity).toRecord(storageService.baseUrl());
     }
 
+    @Transactional
     public void deleteDiveById(final long toAddDiveId) {
         diveRepository.deleteById(toAddDiveId);
     }
 
+    @Transactional
     public List<Dive> findDivesByProfileIds(final List<Long> profileIds) {
         return diveRepository.findByProfileIds(profileIds).stream()
                 .map(d -> d.toRecord(storageService.baseUrl()))
                 .toList();
     }
 
+    @Transactional
     public PagedResponse<SimplifiedDive> findByIdentifierContains(
             final long userId, final String identifier, final Pageable pageable) {
         return PagedResponse.of(
@@ -240,6 +251,7 @@ public class DiveDataService {
                 d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> searchDives(
             final long userId, final String query, final Pageable pageable) {
         return PagedResponse.of(
@@ -247,6 +259,7 @@ public class DiveDataService {
                 d -> d.toSimplifiedRecord(storageService.baseUrl()));
     }
 
+    @Transactional
     public Dive moveProfiles(final Long targetDiveId, final List<Long> profileIds) {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
         return diveRepository
@@ -255,14 +268,17 @@ public class DiveDataService {
                 .orElseThrow();
     }
 
+    @Transactional(readOnly = true)
     public Optional<DiveSite> findDiveSiteById(final long id) {
         return diveSiteRepository.findById(id).map(DiveSiteEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public List<DiveSite> findDiveSitesByLocation(final Coordinate coordinate) {
         return findDiveSiteByLocationDistanceWithin(coordinate, 0.005);
     }
 
+    @Transactional(readOnly = true)
     public List<DiveSite> findDiveSiteByLocationDistanceWithin(
             final Coordinate coordinate, final double dist) {
         return diveSiteRepository.findByLocationNear(coordinate, dist).stream()
@@ -270,18 +286,22 @@ public class DiveDataService {
                 .toList();
     }
 
+    @Transactional
     public DiveSite saveDiveSite(final String name, final Location coordinate) {
         return diveSiteRepository.save(new DiveSiteEntity(name, coordinate.toPoint())).toRecord();
     }
 
+    @Transactional(readOnly = true)
     public boolean hasReadAccess(@NotNull final User user, final long diveId) {
         return userRepository.isReader(diveId, user.id());
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<User> findReaders(final long diveId, final Pageable pageable) {
         return PagedResponse.of(userRepository.findReaders(diveId, pageable), UserEntity::toRecord);
     }
 
+    @Transactional
     public void saveReaders(final long diveId, final Collection<Long> userIds) {
         entityManager.flush();
 
@@ -299,6 +319,7 @@ public class DiveDataService {
         // entityManager.clear();
     }
 
+    @Transactional
     public void removeReaders(final long diveId, final Collection<Long> userIdsSet) {
         if (userIdsSet.isEmpty()) {
             return;
@@ -312,6 +333,7 @@ public class DiveDataService {
                         .addValue("userIds", userIdsSet));
     }
 
+    @Transactional
     public void saveGroupReader(final long diveId, final long groupId) {
         try {
             entityManager.flush();
@@ -326,6 +348,7 @@ public class DiveDataService {
         }
     }
 
+    @Transactional
     public void removeGroupReader(final long diveId, final long groupId) {
         try {
             entityManager.flush();
@@ -340,10 +363,12 @@ public class DiveDataService {
         }
     }
 
+    @Transactional(readOnly = true)
     public Optional<Integer> findMaxDiveNumber(final User user) {
         return diveRepository.findMaxDiveNumberByUserId(user.id());
     }
 
+    @Transactional(readOnly = true)
     public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(final long userId) {
         return diveSiteRepository.findByDivesUserId(userId).stream()
                 .map(
