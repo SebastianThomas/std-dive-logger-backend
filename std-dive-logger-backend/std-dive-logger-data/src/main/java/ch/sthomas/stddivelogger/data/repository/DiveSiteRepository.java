@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 
 import org.locationtech.jts.geom.Coordinate;

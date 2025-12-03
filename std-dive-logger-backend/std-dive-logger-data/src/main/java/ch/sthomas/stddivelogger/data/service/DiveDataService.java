@@ -395,9 +395,8 @@ public class DiveDataService {
                 .map(
                         row -> {
                             final var site = (DiveSiteEntity) row[0];
-                            final var diveIdsObj = row[1];
-                            return new DiveSiteWithDives<>(
-                                    site, getLongListFromSqlObject(diveIdsObj));
+                            final var diveIds = getLongListFromSqlObject(row[1]);
+                            return new DiveSiteWithDives<>(site, diveIds);
                         })
                 .toList();
     }
