@@ -2,8 +2,6 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 
-import jakarta.persistence.Tuple;
-
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Page;
@@ -52,7 +50,7 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                         GROUP BY d.pk_dive_site_id
                     """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
-    List<Tuple> findSitesByDiveWithUserId(long userId);
+    List<Object[]> findSitesByDiveWithUserId(long userId);
 
     @NativeQuery(
             value =
@@ -65,5 +63,5 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                         GROUP BY d.pk_dive_site_id
                     """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
-    List<Tuple> findSitesByDiveWithReaderUserId(long userId);
+    List<Object[]> findSitesByDiveWithReaderUserId(long userId);
 }
