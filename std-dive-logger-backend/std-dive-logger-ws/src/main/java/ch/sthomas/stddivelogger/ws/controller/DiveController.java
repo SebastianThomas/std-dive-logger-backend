@@ -4,7 +4,6 @@ import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -198,9 +197,6 @@ public class DiveController {
             @AuthenticationPrincipal final User user) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        if (body.fileType() != UploadFileType.NONE) {
-            return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(diveService.createEmptyDive(user, body));
     }

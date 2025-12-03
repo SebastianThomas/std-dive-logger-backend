@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
@@ -38,7 +37,7 @@ public class FitReaderServiceTest {
                     service.readFitAndSaveDive(
                             new User(0, "", "", "", Instant.now(), Instant.now()),
                             filename,
-                            new UploadDiveBody(1, "TestID", null, UploadFileType.FIT_GARMIN),
+                            new UploadDiveBody(1, "TestID", null),
                             inputStream);
             assertNotNull(result);
         }
