@@ -137,6 +137,7 @@ public class DiveDataService {
         // entityManager.clear();
     }
 
+    @Transactional
     private DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {
         final var computer =
                 diveComputerRepository.findById(diveProfileUpload.diveComputerId()).orElseThrow();
@@ -147,10 +148,12 @@ public class DiveDataService {
                 diveProfileUpload.measurements().stream().map(DiveMeasurementEntity::new).toList());
     }
 
+    @Transactional(readOnly = true)
     public Optional<DiveSite> findDiveSiteByName(final String diveSite) {
         return diveSiteRepository.findByNameIgnoreCase(diveSite).map(DiveSiteEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<DiveSite> findDiveSiteByNameContains(
             final String partialName, final int page, final int pageSize) {
         return PagedResponse.of(
@@ -159,6 +162,7 @@ public class DiveDataService {
                 DiveSiteEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public Optional<DiveComputer> findDiveComputerByUserAndName(
             final long userId, final String customName) {
         return diveComputerRepository
@@ -166,6 +170,7 @@ public class DiveDataService {
                 .map(DiveComputerEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public Optional<DiveComputer> findDiveComputerByUserAndSerialNumber(
             final long userId, final String manufacturer, final String serialNumber) {
         return diveComputerRepository
@@ -174,6 +179,7 @@ public class DiveDataService {
                 .map(DiveComputerEntity::toRecord);
     }
 
+    @Transactional
     public DiveComputer saveDiveComputer(
             @Nullable final String serialNumber,
             @NotNull final String customIdentifier,
@@ -194,10 +200,12 @@ public class DiveDataService {
                 .toRecord();
     }
 
+    @Transactional(readOnly = true)
     public long getDiveCount() {
         return diveRepository.count();
     }
 
+    @Transactional(readOnly = true)
     public Optional<User> findUserForDive(final long diveId) {
         return diveRepository
                 .findById(diveId)
@@ -205,6 +213,7 @@ public class DiveDataService {
                 .map(UserEntity::toRecord);
     }
 
+    @Transactional
     public Dive updateDive(@NotNull @Valid final Dive dive) {
         final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
         final var diveSiteEntity =
