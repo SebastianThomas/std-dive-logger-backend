@@ -35,6 +35,6 @@ Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0MUB0ZXN0LmNoIiwiaWF0I
 GET {{baseurl}}/v1/dives
 Authorization: Bearer
 
-### Upload Dive Image
+### Generate Preview Dive Image
 POST {{baseurl}}/v1/dives/14/preview
 Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJrb250YWt0QHN0aG9tYXMuY2giLCJpYXQiOjE3NjQ3NzE1ODAsImV4cCI6MTc2NDc3NTE4MH0.v1UOPjn1i8PqkGLjAIR9D5Qa6MxTosG2F-QiAQ2IMei2InJOqqpdvaWMbT7RYizluWKQydI_DzbaAT9pRQ7UQw

@@ -215,9 +215,6 @@ public class DiveController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        if (body.fileType() == UploadFileType.NONE) {
-            return ResponseEntity.badRequest().build();
-        }
         return ResponseEntity.ok(importService.uploadDive(user, file, body));
     }
 

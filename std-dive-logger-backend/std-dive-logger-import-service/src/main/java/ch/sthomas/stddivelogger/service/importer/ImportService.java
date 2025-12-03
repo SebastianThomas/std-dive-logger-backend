@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.service.importer;
 
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.MessageFormat;
 import java.util.List;
 
 @Service
@@ -54,8 +56,13 @@ public class ImportService {
             final UploadDiveBody body,
             final InputStream inputStream)
             throws IOException {
-        return switch (body.fileType()) {
-            case NONE -> throw new IllegalArgumentException("Invalid file type " + body.fileType());
+        final var fileType = UploadFileType.fromFilename(filename);
+        return switch (fileType) {
+            case NONE ->
+                    throw new IllegalArgumentException(
+                            MessageFormat.format(
+                                    "Could not resolve file type for filename {0}, supported extensions: {1}",
+                                    filename, UploadFileType.supportedExtensions()));
             case UDDF_SHEARWATER ->
                     List.of(
                             shearwaterUddfReaderService.importUddf(
