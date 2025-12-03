@@ -138,7 +138,7 @@ public class DiveDataService {
     }
 
     @Transactional
-    private DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {
+    protected DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {
         final var computer =
                 diveComputerRepository.findById(diveProfileUpload.diveComputerId()).orElseThrow();
         return new DiveProfileEntity(
@@ -391,16 +391,16 @@ public class DiveDataService {
 
     private List<DiveSiteWithDives<DiveSiteEntity, List<Long>>> findDiveSiteEntitiesByUser(
             final long userId) {
-        return diveSiteRepository.findByDivesUserId(userId).stream()
+        return diveSiteRepository.findSitesByDiveWithUserId(userId).stream()
                 .map(
                         row -> {
                             logger.info(
                                     "DiveSite (should be entity?): {} {}",
-                                    row[0].getClass(),
-                                    row[0]);
-                            final var site = (DiveSiteEntity) row[0];
-                            logger.info("IDs: {}, {}", row[1].getClass(), row[1]);
-                            final var diveIds = getLongListFromSqlObject(row[1]);
+                                    row.get(0).getClass(),
+                                    row.get(0));
+                            logger.info("IDs: {}, {}", row.get(1).getClass(), row.get(1));
+                            final var site = (DiveSiteEntity) row.get(0);
+                            final var diveIds = getLongListFromSqlObject(row.get(1));
                             return new DiveSiteWithDives<>(site, diveIds);
                         })
                 .toList();

@@ -1,13 +1,15 @@
 package ch.sthomas.stddivelogger.data.repository;
 
-import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
+
+import jakarta.persistence.Tuple;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -40,14 +42,24 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
             nativeQuery = true)
     Optional<DiveSiteEntity> findByLocationNearAndName(Point location, double dist, String name);
 
-    @Query(
-            value =
-                    """
-                                SELECT d, ARRAY_AGG(de.pk_dive_id) AS dive_ids
-                                FROM t_dive_site d
-                                INNER JOIN t_dives de ON de.dive_site = d.pk_dive_site_id
-                                GROUP BY d.pk_dive_site_id
-                            """,
-            nativeQuery = true)
-    List<Object[]> findByDivesUserId(long id);
+    @NativeQuery(
+            """
+                        SELECT d.*, ARRAY_AGG(de.pk_dive_id) AS dive_ids
+                        FROM t_dives de
+                        INNER JOIN t_dive_site d
+                            ON de.fk_diver_id = :userId AND de.dive_site = d.pk_dive_site_id
+                        GROUP BY d.pk_dive_site_id
+                    """)
+    List<Tuple> findSitesByDiveWithUserId(long userId);
+
+    @NativeQuery(
+            """
+                        SELECT d.*, ARRAY_AGG(r.dive_id) AS dive_ids
+                        FROM t_readers r
+                        INNER JOIN t_dives de
+                            ON r.pk_user_id = :userId AND r.dive_id = de.pk_dive_id
+                        INNER JOIN t_dive_site d ON de.dive_site = d.pk_dive_site_id
+                        GROUP BY d.pk_dive_site_id
+                    """)
+    List<Tuple> findSitesByDiveWithReaderUserId(long userId);
 }
