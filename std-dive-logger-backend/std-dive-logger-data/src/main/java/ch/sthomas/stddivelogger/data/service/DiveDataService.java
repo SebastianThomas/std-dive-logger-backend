@@ -396,11 +396,11 @@ public class DiveDataService {
                         row -> {
                             logger.info(
                                     "DiveSite (should be entity?): {} {}",
-                                    row.get(0).getClass(),
-                                    row.get(0));
-                            logger.info("IDs: {}, {}", row.get(1).getClass(), row.get(1));
-                            final var site = (DiveSiteEntity) row.get(0);
-                            final var diveIds = getLongListFromSqlObject(row.get(1));
+                                    row[0].getClass(),
+                                    row[0]);
+                            logger.info("IDs: {}, {}", row[1].getClass(), row[1]);
+                            final var site = (DiveSiteEntity) row[0];
+                            final var diveIds = getLongListFromSqlObject(row[1]);
                             return new DiveSiteWithDives<>(site, diveIds);
                         })
                 .toList();
