@@ -394,7 +394,12 @@ public class DiveDataService {
         return diveSiteRepository.findByDivesUserId(userId).stream()
                 .map(
                         row -> {
+                            logger.info(
+                                    "DiveSite (should be entity?): {} {}",
+                                    row[0].getClass(),
+                                    row[0]);
                             final var site = (DiveSiteEntity) row[0];
+                            logger.info("IDs: {}, {}", row[1].getClass(), row[1]);
                             final var diveIds = getLongListFromSqlObject(row[1]);
                             return new DiveSiteWithDives<>(site, diveIds);
                         })
