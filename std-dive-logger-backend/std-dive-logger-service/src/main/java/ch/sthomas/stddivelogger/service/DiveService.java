@@ -220,7 +220,7 @@ public class DiveService {
             throw new IllegalArgumentException("Dive Site is required to save dive manually.");
         }
         final var diveNumber =
-                body.diveNumber() != null ? body.diveNumber() : getNextDiveNumber(user);
+                Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
                 user,
