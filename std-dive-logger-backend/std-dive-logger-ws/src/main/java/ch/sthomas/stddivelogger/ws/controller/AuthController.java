@@ -98,6 +98,9 @@ public class AuthController {
     public ResponseEntity<Void> logout(
             @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = false)
                     final String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.status(HttpStatus.OK).build();
+        }
         authService.logout(refreshToken);
         final var deleteCookie = authService.createRefreshTokenCookie("", Duration.ofSeconds(0));
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, deleteCookie.toString()).build();
