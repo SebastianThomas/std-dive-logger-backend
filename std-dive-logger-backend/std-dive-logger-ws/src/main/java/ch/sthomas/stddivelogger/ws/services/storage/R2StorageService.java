@@ -75,7 +75,7 @@ public class R2StorageService implements StorageService {
 
     @Override
     @Retryable(maxAttempts = 5, backoff = @Backoff(delay = 1000))
-    public final void upload(
+    public void upload(
             final @NotNull String path,
             final @NotNull InputStream output,
             final @NotNull String contentType,

@@ -6,7 +6,6 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.zalando.problem.Problem;
@@ -19,12 +18,6 @@ public interface UnauthorizedAdviceTrait extends AdviceTrait {
     default ResponseEntity<Problem> handleConstraintException(
             final UnauthorizedException exception, final NativeWebRequest request) {
         return create(Status.UNAUTHORIZED, exception, request);
-    }
-
-    @ExceptionHandler
-    default ResponseEntity<Problem> handleAuthenticationException(
-            final AuthenticationException ex, final NativeWebRequest request) {
-        return create(Status.UNAUTHORIZED, ex, request);
     }
 
     @ExceptionHandler
