@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Entity
@@ -73,11 +74,16 @@ public class DiveEntity {
         this.user = userEntity;
         this.previewImage = previewImage;
         this.diveSite = diveSiteEntity;
-        this.profiles = profiles.stream().map(p -> p.setDive(this)).toList();
-        this.buddyDivesFrom = List.of();
-        this.buddyDivesTo = List.of();
+        this.profiles =
+                profiles.stream()
+                        .map(p -> p.setDive(this))
+                        .collect(Collectors.toCollection(ArrayList::new));
+        this.buddyDivesFrom = new ArrayList<>();
+        this.buddyDivesTo = new ArrayList<>();
         this.namedBuddies =
-                namedBuddies.stream().map(b -> new DiveBuddyNameEntity(this, b)).toList();
+                namedBuddies.stream()
+                        .map(b -> new DiveBuddyNameEntity(this, b))
+                        .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private String getPreviewImage(@NotNull final String baseUrl) {
