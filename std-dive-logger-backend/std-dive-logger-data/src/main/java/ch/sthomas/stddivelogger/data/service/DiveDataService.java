@@ -411,14 +411,25 @@ public class DiveDataService {
             case final Array sqlArray -> {
                 try {
                     yield Arrays.stream((Long[]) sqlArray.getArray()).toList();
-                } catch (SQLException e) {
+                } catch (final SQLException e) {
                     throw new RuntimeException(e);
                 }
             }
             case final Long[] longArr -> Arrays.asList(longArr);
+            case final long[] longArr -> Arrays.stream(longArr).boxed().toList();
             case null -> Collections.emptyList();
             default -> {
-                logger.warn("Unrecognized SQL object (tried to get as List<Long>): {}", o);
+                if (o instanceof final Long[] longArr) {
+                    logger.info("if in default for Long[]: This should never be reached.");
+                    yield Arrays.asList(longArr);
+                }
+                if (o.getClass().isArray()) {
+                    logger.info(
+                            "if for isArray: This should never be reached, got class: {}.",
+                            o.getClass());
+                    yield Arrays.stream((Object[]) o).map(l -> (Long) l).toList();
+                }
+                logger.warn("Unrecognized SQL object (tried to convert to List<Long>): {}", o);
                 yield Collections.emptyList();
             }
         };
