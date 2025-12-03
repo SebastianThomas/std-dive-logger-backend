@@ -8,7 +8,9 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "t_dive_profiles")
@@ -46,7 +48,10 @@ public class DiveProfileEntity {
         this.computer = computer;
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
-        this.measurements = measurements.stream().map(m -> m.setProfile(this)).toList();
+        this.measurements =
+                measurements.stream()
+                        .map(m -> m.setProfile(this))
+                        .collect(Collectors.toCollection(ArrayList::new));
     }
 
     public DiveProfile toRecord() {
