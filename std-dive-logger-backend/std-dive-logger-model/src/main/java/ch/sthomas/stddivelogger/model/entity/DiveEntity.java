@@ -50,7 +50,11 @@ public class DiveEntity {
     @ManyToMany(mappedBy = "buddyDivesFrom", fetch = FetchType.EAGER)
     private List<DiveEntity> buddyDivesTo;
 
-    @OneToMany(mappedBy = "dive", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "dive",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true)
     private List<DiveBuddyNameEntity> namedBuddies;
 
     public DiveEntity() {}
