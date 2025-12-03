@@ -380,18 +380,20 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(final long userId) {
-        return findDiveSiteEntitiesByUser(userId).stream()
-                .map(
-                        d ->
-                                new DiveSiteWithDives<>(
-                                        d.site().toRecord(), getLongListFromSqlObject(d.diveIds())))
+    public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(
+            final long userId, final boolean onlyOwn) {
+        return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()
+                .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveIds()))
                 .toList();
     }
 
     private List<DiveSiteWithDives<DiveSiteEntity, List<Long>>> findDiveSiteEntitiesByUser(
-            final long userId) {
-        return diveSiteRepository.findSitesByDiveWithUserId(userId).stream()
+            final long userId, final boolean onlyOwn) {
+        final var result =
+                onlyOwn
+                        ? diveSiteRepository.findSitesByDiveWithUserId(userId)
+                        : diveSiteRepository.findSitesByDiveWithReaderUserId(userId);
+        return result.stream()
                 .map(
                         row -> {
                             final var site = (DiveSiteEntity) row[0];

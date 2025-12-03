@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -33,11 +34,20 @@ public class DiveSiteController {
 
     @Operation(
             summary = "Get all DiveSites for this user",
-            description = "May need to be paginated for too many dive sites")
+            description = "May need to be paginated for too many dive sites",
+            parameters = {
+                @Parameter(
+                        name = "includeReader",
+                        description =
+                                "`false`, to only get own logged dives, "
+                                        + "`true`, to include dives where the user only has reader privileges")
+            })
     @GetMapping(path = "")
     public List<DiveSiteWithDives<DiveSite, List<Long>>> getAllDiveSites(
-            @AuthenticationPrincipal final User user) {
-        return diveService.getSitesByUser(user);
+            @AuthenticationPrincipal final User user,
+            @RequestParam(value = "includeReader", defaultValue = "false")
+                    final boolean includeReader) {
+        return diveService.getSitesByUser(user, !includeReader);
     }
 
     @Operation(summary = "Get DiveSite by id")

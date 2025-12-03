@@ -314,7 +314,8 @@ public class DiveService {
     }
 
     // TODO: Implement pagination later?
-    public List<DiveSiteWithDives<DiveSite, List<Long>>> getSitesByUser(final User user) {
-        return diveDataService.findDiveSitesByUser(user.id());
+    public List<DiveSiteWithDives<DiveSite, List<Long>>> getSitesByUser(
+            final User user, final boolean onlyOwn) {
+        return diveDataService.findDiveSitesByUser(user.id(), onlyOwn);
     }
 }
