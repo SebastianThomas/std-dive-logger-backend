@@ -40,14 +40,14 @@ public class DiveEntity {
     @OneToMany(mappedBy = "dive", cascade = CascadeType.PERSIST)
     private List<DiveProfileEntity> profiles;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "t_dive_buddy",
             joinColumns = @JoinColumn(name = "fk_dive_id"),
             inverseJoinColumns = @JoinColumn(name = "fk_buddy_dive_id"))
     private List<DiveEntity> buddyDivesFrom;
 
-    @ManyToMany(mappedBy = "buddyDivesFrom")
+    @ManyToMany(mappedBy = "buddyDivesFrom", fetch = FetchType.EAGER)
     private List<DiveEntity> buddyDivesTo;
 
     @OneToMany(mappedBy = "dive", cascade = CascadeType.ALL, orphanRemoval = true)

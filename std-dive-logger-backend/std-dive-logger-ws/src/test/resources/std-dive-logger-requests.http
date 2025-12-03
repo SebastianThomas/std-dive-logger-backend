@@ -30,3 +30,7 @@ Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0MUB0ZXN0LmNoIiwiaWF0I
   "lon": 9.123,
   "name": "Test Site"
 }
+
+### Get Dives
+GET {{baseurl}}/v1/dives
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJrb250YWt0QHN0aG9tYXMuY2giLCJpYXQiOjE3NjQ3NjcyMDAsImV4cCI6MTc2NDc3MDgwMH0.UQFywBZxMaeGX3RlqPdYBIBRRJ_PLvTH9pwuS3cz0EHp9KDvKa8cIS-aTjtlOrwYC4_OhcPisoqidb5Nn1CI8A
