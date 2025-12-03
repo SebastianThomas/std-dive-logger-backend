@@ -8,6 +8,7 @@ import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -83,10 +84,10 @@ public class DiveEntity {
         if (previewImage == null) {
             return null;
         }
-        return baseUrl + previewImage;
+        return URI.create(baseUrl).resolve(previewImage).toString();
     }
 
-    public Dive toRecord(final String baseUrl) {
+    public Dive toRecord(final String baseUrl, final boolean includeBuddyDives) {
         return new Dive(
                 id,
                 number,
@@ -94,22 +95,26 @@ public class DiveEntity {
                 getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
-                getBuddyDives().map(d -> d.toRecord(baseUrl)).toList(),
+                getBuddyDives(includeBuddyDives).map(d -> d.toRecord(baseUrl, false)).toList(),
                 getNamedBuddiesModels());
     }
 
-    public SimplifiedDive toSimplifiedRecord(final String baseUrl) {
+    public SimplifiedDive toSimplifiedRecord(
+            final String baseUrl, final boolean includeBuddyDives) {
         return new SimplifiedDive(
                 id,
                 number,
                 diveIdentifier,
                 getPreviewImage(baseUrl),
                 diveSite.toRecord(),
-                getBuddyDives().map(DiveEntity::toBuddyDive).toList(),
+                getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels());
     }
 
-    private Stream<DiveEntity> getBuddyDives() {
+    private Stream<DiveEntity> getBuddyDives(final boolean includeBuddyDives) {
+        if (!includeBuddyDives) {
+            return Stream.empty();
+        }
         return Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream());
     }
 

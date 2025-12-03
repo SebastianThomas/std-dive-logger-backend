@@ -28,10 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Dimension;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +114,7 @@ public class DiveService {
     }
 
     private Dive createSaveDivePreviewUnsafe(final Dive dive) throws IOException {
-        final var previewImagePath = String.format("/preview/%d-preview.svg", dive.id());
+        final var previewImagePath = String.format("preview/%d.svg", dive.id());
         final var outputStream = new ByteArrayOutputStream();
         try (final var writer = new OutputStreamWriter(outputStream)) {
             GraphImageCreator.fromDive(

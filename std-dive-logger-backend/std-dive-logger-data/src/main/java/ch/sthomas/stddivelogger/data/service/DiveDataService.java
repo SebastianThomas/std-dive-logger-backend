@@ -74,17 +74,19 @@ public class DiveDataService {
         final var result =
                 diveRepository.findByUser_IdOrderByNumberDesc(
                         user.id(), Pageable.ofSize(pageSize).withPage(page));
-        return PagedResponse.of(result, d -> d.toSimplifiedRecord(storageService.baseUrl()));
+        return PagedResponse.of(result, d -> d.toSimplifiedRecord(storageService.baseUrl(), true));
     }
 
     @Transactional(readOnly = true)
     public Optional<Dive> findDiveById(final long id) {
-        return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl()));
+        return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl(), true));
     }
 
     @Transactional(readOnly = true)
     public Optional<SimplifiedDive> findSimplifiedDiveById(final long id) {
-        return diveRepository.findById(id).map(d -> d.toSimplifiedRecord(storageService.baseUrl()));
+        return diveRepository
+                .findById(id)
+                .map(d -> d.toSimplifiedRecord(storageService.baseUrl(), true));
     }
 
     @Transactional
@@ -111,7 +113,7 @@ public class DiveDataService {
                         profileEntities,
                         namedBuddies);
         try {
-            return diveRepository.save(entity).toRecord(storageService.baseUrl());
+            return diveRepository.save(entity).toRecord(storageService.baseUrl(), true);
         } catch (final DataIntegrityViolationException e) {
             throw new DiveConstraintException("Could not save dive", e);
         }
@@ -212,7 +214,7 @@ public class DiveDataService {
                         .orElse(null);
         return diveRepository
                 .save(existingDive.update(dive.number(), dive.customIdentifier(), diveSiteEntity))
-                .toRecord(storageService.baseUrl());
+                .toRecord(storageService.baseUrl(), true);
     }
 
     @Transactional
@@ -220,7 +222,7 @@ public class DiveDataService {
             @NotNull @Valid final Dive dive, final String previewImage) {
         final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
         existingDive.setPreviewImage(previewImage);
-        return diveRepository.save(existingDive).toRecord(storageService.baseUrl());
+        return diveRepository.save(existingDive).toRecord(storageService.baseUrl(), true);
     }
 
     @Transactional
@@ -228,7 +230,7 @@ public class DiveDataService {
         final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
         final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
         baseDiveEntity.addProfiles(toAddDiveEntity.getProfiles());
-        return diveRepository.save(baseDiveEntity).toRecord(storageService.baseUrl());
+        return diveRepository.save(baseDiveEntity).toRecord(storageService.baseUrl(), true);
     }
 
     @Transactional
@@ -239,7 +241,7 @@ public class DiveDataService {
     @Transactional
     public List<Dive> findDivesByProfileIds(final List<Long> profileIds) {
         return diveRepository.findByProfileIds(profileIds).stream()
-                .map(d -> d.toRecord(storageService.baseUrl()))
+                .map(d -> d.toRecord(storageService.baseUrl(), true))
                 .toList();
     }
 
@@ -248,7 +250,7 @@ public class DiveDataService {
             final long userId, final String identifier, final Pageable pageable) {
         return PagedResponse.of(
                 diveRepository.findByIdentifier(userId, identifier, pageable),
-                d -> d.toSimplifiedRecord(storageService.baseUrl()));
+                d -> d.toSimplifiedRecord(storageService.baseUrl(), true));
     }
 
     @Transactional(readOnly = true)
@@ -256,7 +258,7 @@ public class DiveDataService {
             final long userId, final String query, final Pageable pageable) {
         return PagedResponse.of(
                 diveRepository.searchDives(userId, query, pageable),
-                d -> d.toSimplifiedRecord(storageService.baseUrl()));
+                d -> d.toSimplifiedRecord(storageService.baseUrl(), true));
     }
 
     @Transactional
@@ -264,7 +266,7 @@ public class DiveDataService {
         diveRepository.setDiveIdWhereProfileIdIn(targetDiveId, profileIds);
         return diveRepository
                 .findById(targetDiveId)
-                .map(d -> d.toRecord(storageService.baseUrl()))
+                .map(d -> d.toRecord(storageService.baseUrl(), true))
                 .orElseThrow();
     }
 
