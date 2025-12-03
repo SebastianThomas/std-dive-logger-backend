@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.data.repository;
 
-import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -49,5 +48,5 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                                 GROUP BY d.pk_dive_site_id
                             """,
             nativeQuery = true)
-    List<DiveSiteWithDives<DiveSiteEntity, Object>> findByDivesUserId(long id);
+    List<Object[]> findByDivesUserId(long id);
 }

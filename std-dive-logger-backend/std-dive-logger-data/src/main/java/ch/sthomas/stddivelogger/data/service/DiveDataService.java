@@ -381,11 +381,24 @@ public class DiveDataService {
 
     @Transactional(readOnly = true)
     public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(final long userId) {
-        return diveSiteRepository.findByDivesUserId(userId).stream()
+        return findDiveSiteEntitiesByUser(userId).stream()
                 .map(
                         d ->
                                 new DiveSiteWithDives<>(
                                         d.site().toRecord(), getLongListFromSqlObject(d.diveIds())))
+                .toList();
+    }
+
+    private List<DiveSiteWithDives<DiveSiteEntity, List<Long>>> findDiveSiteEntitiesByUser(
+            final long userId) {
+        return diveSiteRepository.findByDivesUserId(userId).stream()
+                .map(
+                        row -> {
+                            final var site = (DiveSiteEntity) row[0];
+                            final var diveIdsObj = row[1];
+                            return new DiveSiteWithDives<>(
+                                    site, getLongListFromSqlObject(diveIdsObj));
+                        })
                 .toList();
     }
 
