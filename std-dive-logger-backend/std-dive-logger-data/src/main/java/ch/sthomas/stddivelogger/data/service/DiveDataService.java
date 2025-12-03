@@ -401,37 +401,36 @@ public class DiveDataService {
                 .toList();
     }
 
+    @SuppressWarnings("unchecked")
     private List<Long> getLongListFromSqlObject(final Object o) {
-        return switch (o) {
-            case final Array sqlArray -> {
-                try {
-                    yield Arrays.stream((Long[]) sqlArray.getArray()).toList();
-                } catch (final SQLException e) {
-                    throw new RuntimeException(e);
+        if (o == null) {
+            return Collections.emptyList();
+        }
+        try {
+            return switch (o) {
+                case final Array sqlArray -> {
+                    try {
+                        yield Arrays.stream((Long[]) sqlArray.getArray()).toList();
+                    } catch (final SQLException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
-            }
-            case final Long[] longArr -> Arrays.asList(longArr);
-            case final long[] longArr -> Arrays.stream(longArr).boxed().toList();
-            case null -> Collections.emptyList();
-            default -> {
-                try {
-                    logger.info("if in default for Long[]: This should never be reached.");
-                    yield Arrays.asList((Long[]) o);
-                } catch (final ClassCastException e) {
-                    logger.info("Unrecognized, could not cast to Long[]");
+                case final Long[] longArr -> Arrays.asList(longArr);
+                case final long[] longArr -> Arrays.stream(longArr).boxed().toList();
+                case final List<?> list -> (List<Long>) list;
+                case final Collection<?> collection ->
+                        collection.stream().map(l -> (Long) l).toList();
+                default -> {
+                    logger.warn(
+                            "Unrecognized SQL object (tried to convert to List<Long>): class {} with value {}",
+                            o.getClass(),
+                            o);
+                    yield Collections.emptyList();
                 }
-                if (o.getClass().isArray()) {
-                    logger.info(
-                            "if for isArray: This should never be reached, got class: {}.",
-                            o.getClass());
-                    yield Arrays.stream((Object[]) o).map(l -> (Long) l).toList();
-                }
-                logger.warn(
-                        "Unrecognized SQL object (tried to convert to List<Long>): class {} with value {}",
-                        o.getClass(),
-                        o);
-                yield Collections.emptyList();
-            }
-        };
+            };
+        } catch (final ClassCastException e) {
+            logger.warn("Could not convert {} to List<Long>", o.getClass(), e);
+            return Collections.emptyList();
+        }
     }
 }
