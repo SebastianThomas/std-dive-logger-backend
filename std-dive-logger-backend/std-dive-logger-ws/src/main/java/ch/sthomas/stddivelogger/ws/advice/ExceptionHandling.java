@@ -10,5 +10,7 @@ public class ExceptionHandling
         implements ProblemHandling,
                 SecurityAdviceTrait,
                 NoSuchElementAdviceTrait,
+                IllegalArgumentAdviceTrait,
                 ConstraintViolationAdviceTrait,
-                DiveConstraintAdviceTrait {}
+                DiveConstraintAdviceTrait,
+                UnauthorizedAdviceTrait {}

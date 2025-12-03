@@ -7,12 +7,10 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.Status;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
-import java.util.NoSuchElementException;
-
 public interface IllegalArgumentAdviceTrait extends AdviceTrait {
     @ExceptionHandler
-    default ResponseEntity<Problem> handleUnsupportedOperation(
-            final NoSuchElementException exception, final NativeWebRequest request) {
+    default ResponseEntity<Problem> handleIllegalArgumentOperation(
+            final IllegalArgumentException exception, final NativeWebRequest request) {
         return create(Status.BAD_REQUEST, exception, request);
     }
 }
