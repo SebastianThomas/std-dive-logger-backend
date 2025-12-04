@@ -18,7 +18,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.hibernate.exception.DataException;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,11 +75,6 @@ public class DiveService {
                 diveDataService.saveDive(
                         user, diveNumber, diveIdentifier, null, diveSiteId, profiles, namedBuddies);
         createSaveDivePreview(dive);
-        try {
-            diveDataService.saveBuddies(dive.id(), namedBuddies);
-        } catch (final DataException e) {
-            logger.error("Error while saving dive buddies, but continuing", e);
-        }
         return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
     }
 

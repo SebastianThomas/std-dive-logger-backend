@@ -126,6 +126,7 @@ public class DiveDataService {
         namedParameterJdbcTemplate.batchUpdate(
                 "INSERT INTO t_dive_buddy_name (fk_dive_id, name) VALUES (:diveId, :buddyName)",
                 buddies.stream()
+                        .distinct()
                         .map(
                                 buddy ->
                                         new MapSqlParameterSource()
