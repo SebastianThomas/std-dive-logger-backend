@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import ch.sthomas.stddivelogger.utils.MoreGatherers;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -26,9 +27,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
-public class SubsurfaceXmlReaderService {
+public class SubsurfaceXmlReaderService extends BaseReaderService {
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
     private final DiveSiteRepository diveSiteRepository;
@@ -69,8 +71,17 @@ public class SubsurfaceXmlReaderService {
                                                             c.deviceid(),
                                                             c.model())))
                             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            return subsurfaceFile.dives().stream()
-                    .map(dive -> importSubsurfaceXmlDive(user, body, dive, computers, sites))
+            return IntStream.range(0, subsurfaceFile.dives().size())
+                    .mapToObj(i -> Pair.of(i, subsurfaceFile.dives().get(i)))
+                    .map(
+                            dive ->
+                                    importSubsurfaceXmlDive(
+                                            user,
+                                            body,
+                                            dive.getValue(),
+                                            computers,
+                                            sites,
+                                            getDiveName(body, filename) + "-" + dive.getKey()))
                     .toList();
         }
     }
@@ -85,7 +96,8 @@ public class SubsurfaceXmlReaderService {
             final UploadDiveBody body,
             final SubsurfaceXmlFile.SubsurfaceDive dive,
             final Map<String, DiveComputer> computers,
-            final Map<String, DiveSite> sites) {
+            final Map<String, DiveSite> sites,
+            final String diveName) {
         final var site =
                 Objects.requireNonNullElseGet(
                         sites.get(dive.divesiteid()),
@@ -100,7 +112,7 @@ public class SubsurfaceXmlReaderService {
         return diveService.saveDive(
                 user,
                 Optional.ofNullable(body.diveNumber()),
-                body.diveIdentifier(),
+                diveName,
                 site.id(),
                 profile,
                 buddies);

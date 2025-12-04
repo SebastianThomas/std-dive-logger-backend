@@ -210,20 +210,15 @@ public class DiveService {
     }
 
     public Dive createEmptyDive(final User user, @Valid @NotNull final UploadDiveBody body) {
-        if (body.diveSiteId() == null) {
+        final var diveSiteId = body.diveSiteId();
+        if (diveSiteId == null) {
             throw new IllegalArgumentException("Dive Site is required to save dive manually.");
         }
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
-                user,
-                diveNumber,
-                body.diveIdentifier(),
-                null,
-                body.diveSiteId(),
-                List.of(),
-                List.of());
+                user, diveNumber, body.diveIdentifier(), null, diveSiteId, List.of(), List.of());
     }
 
     public Optional<DiveSite> getSiteById(final long id) {

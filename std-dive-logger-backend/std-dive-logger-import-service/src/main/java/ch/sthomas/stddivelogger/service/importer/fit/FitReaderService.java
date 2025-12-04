@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 
 import com.garmin.fit.*;
 import com.google.common.base.CaseFormat;
@@ -29,7 +30,7 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 @Service
-public class FitReaderService {
+public class FitReaderService extends BaseReaderService {
     private static final Instant garminEpochOffset = Instant.ofEpochMilli(DateTime.OFFSET);
     private static final Logger logger = LoggerFactory.getLogger(FitReaderService.class);
     private final DiveService diveService;
@@ -92,8 +93,9 @@ public class FitReaderService {
         final var profile =
                 getDiveProfile(messages.getRecordMesgs(), events, gases, computer, summary);
         final var buddies = List.<String>of();
+        final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
-                user, diveNumber, body.diveIdentifier(), diveSite.id(), List.of(profile), buddies);
+                user, diveNumber, diveName, diveSite.id(), List.of(profile), buddies);
     }
 
     private DiveProfileUpload getDiveProfile(

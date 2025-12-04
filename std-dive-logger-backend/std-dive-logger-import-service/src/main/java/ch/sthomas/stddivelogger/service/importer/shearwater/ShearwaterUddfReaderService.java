@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
@@ -22,13 +23,15 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
-public class ShearwaterUddfReaderService {
+public class ShearwaterUddfReaderService extends BaseReaderService {
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
     private final DiveDataService diveDataService;
 
     public ShearwaterUddfReaderService(
-            final XmlMapper xmlMapper, DiveService diveService, DiveDataService diveDataService) {
+            final XmlMapper xmlMapper,
+            final DiveService diveService,
+            final DiveDataService diveDataService) {
         this.xmlMapper = xmlMapper;
         this.diveService = diveService;
         this.diveDataService = diveDataService;
@@ -50,10 +53,11 @@ public class ShearwaterUddfReaderService {
             final UddfFile uddfFile) {
         final var site = getDiveSiteId(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
+        final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
                 user,
                 Optional.ofNullable(body.diveNumber()),
-                body.diveIdentifier(),
+                diveName,
                 site,
                 List.of(profile),
                 uddfFile.getBuddies());
