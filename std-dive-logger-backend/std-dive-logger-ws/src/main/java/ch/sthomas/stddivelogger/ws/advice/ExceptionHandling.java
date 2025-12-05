@@ -13,5 +13,4 @@ public class ExceptionHandling
                 IllegalArgumentAdviceTrait,
                 ConstraintViolationAdviceTrait,
                 DiveConstraintAdviceTrait,
-                MissingValueAdviceTrait,
                 UnauthorizedAdviceTrait {}
