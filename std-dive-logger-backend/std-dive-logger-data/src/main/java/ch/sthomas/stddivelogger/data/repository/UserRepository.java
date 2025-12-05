@@ -28,8 +28,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @Query(
             value =
-                    "SELECT * FROM t_dive_site WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
-            countQuery = "SELECT * FROM t_dive_site WHERE name % :name",
+                    "SELECT * FROM t_users WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
+            countQuery = "SELECT * FROM t_users WHERE name % :name",
             nativeQuery = true)
     Page<UserEntity> findByClosestMatchName(String name, Pageable pageable);
 }
