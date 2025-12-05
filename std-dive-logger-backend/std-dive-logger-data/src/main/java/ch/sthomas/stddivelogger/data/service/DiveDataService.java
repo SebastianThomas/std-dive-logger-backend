@@ -78,6 +78,15 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByUserAndComputer(
+            final User user, final DiveComputer computer, final int page, final int pageSize) {
+        final var result =
+                diveRepository.findByUser_IdAndComputer(
+                        user.id(), computer.id(), Pageable.ofSize(pageSize).withPage(page));
+        return PagedResponse.of(result, d -> d.toSimplifiedRecord(storageService.baseUrl(), true));
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Dive> findDiveById(final long id) {
         return diveRepository.findById(id).map(d -> d.toRecord(storageService.baseUrl(), true));
     }
@@ -161,6 +170,29 @@ public class DiveDataService {
                 diveSiteRepository.findByClosestMatchName(
                         partialName, PageRequest.of(page, pageSize)),
                 DiveSiteEntity::toRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<DiveComputer> findDiveComputerByUserAndId(
+            final long userId, final long computerId) {
+        return diveComputerRepository.findByIdAndUser_Id(computerId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<DiveComputer> findDiveComputersByUser(
+            final long userId, final int page, final int pageSize) {
+        return PagedResponse.of(
+                diveComputerRepository.findByUser_Id(userId, PageRequest.of(page, pageSize)),
+                DiveComputerEntity::toRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<DiveComputer> findDiveComputersByUserAndName(
+            final long userId, final String customName, final int page, final int pageSize) {
+        return PagedResponse.of(
+                diveComputerRepository.findAllByCustomIdentifierAndUser_Id(
+                        userId, customName, PageRequest.of(page, pageSize)),
+                DiveComputerEntity::toRecord);
     }
 
     @Transactional(readOnly = true)

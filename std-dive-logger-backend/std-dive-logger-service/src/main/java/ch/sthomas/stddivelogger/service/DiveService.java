@@ -28,10 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.Dimension;
 import java.io.*;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 @Service
@@ -41,6 +38,7 @@ public class DiveService {
 
     public static final int SIMPLIFIED_DIVE_PAGE_SIZE = 20;
     public static final int DIVE_SITE_PAGE_SIZE = 10;
+    public static final int DIVE_COMPUTER_PAGE_SIZE = 10;
     public static final int USER_PAGE_SIZE = 30;
 
     private final DiveDataService diveDataService;
@@ -118,6 +116,20 @@ public class DiveService {
         final var byteInput = new ByteArrayInputStream(bytes);
         storageService.upload(previewImagePath, byteInput, "image/svg+xml", bytes.length);
         return diveDataService.updateDiveSetPreviewImage(dive, previewImagePath);
+    }
+
+    public PagedResponse<DiveComputer> getDiveComputers(final User user, final int page) {
+        return diveDataService.findDiveComputersByUser(user.id(), page, DIVE_COMPUTER_PAGE_SIZE);
+    }
+
+    public PagedResponse<DiveComputer> getDiveComputers(
+            final User user, final String customName, final int page) {
+        return diveDataService.findDiveComputersByUserAndName(
+                user.id(), customName, page, DIVE_COMPUTER_PAGE_SIZE);
+    }
+
+    public Optional<DiveComputer> getDiveComputerById(final User user, final long id) {
+        return diveDataService.findDiveComputerByUserAndId(user.id(), id);
     }
 
     public Optional<DiveComputer> getDiveComputer(final User user, final String customName) {
@@ -294,6 +306,18 @@ public class DiveService {
             final User user, final String query, final int page) {
         return diveDataService.findByIdentifierContains(
                 user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+    }
+
+    public PagedResponse<SimplifiedDive> getDivesByComputer(
+            final User user, final long computerId, final int page) {
+        final var computer =
+                getDiveComputerById(user, computerId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Cannot find computer with id " + computerId));
+        return diveDataService.findDivesByUserAndComputer(
+                user, computer, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
     public PagedResponse<SimplifiedDive> searchDives(

@@ -15,9 +15,14 @@ import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
+    @Query(
+            "SELECT d FROM DiveEntity d JOIN DiveProfileEntity dp ON dp.dive = d AND dp.computer.id = :computerId")
+    Page<DiveEntity> findByUser_IdAndComputer(Long userId, Long computerId, Pageable pageable);
+
     Page<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
 
-    @Query("SELECT d FROM DiveEntity d JOIN DiveProfileEntity p WHERE p.id IN :profileIds")
+    @Query(
+            "SELECT d FROM DiveEntity d JOIN DiveProfileEntity p ON p.dive = d WHERE p.id IN :profileIds")
     List<DiveEntity> findByProfileIds(List<Long> profileIds);
 
     @Query(

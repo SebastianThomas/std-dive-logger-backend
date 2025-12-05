@@ -76,26 +76,38 @@ public class DiveController {
 
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/custom-name")
-    public ResponseEntity<PagedResponse<SimplifiedDive>> searchDivesByIdentifier(
+    public PagedResponse<SimplifiedDive> searchDivesByIdentifier(
             @AuthenticationPrincipal final User user,
             @RequestParam("query") final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to view your dives.");
         }
-        return ResponseEntity.ok(diveService.getDiveByCustomIdentifier(user, query, page));
+        return diveService.getDiveByCustomIdentifier(user, query, page);
+    }
+
+    @Operation(summary = "Get dives by dive computer id")
+    @GetMapping(path = "/computer")
+    public PagedResponse<SimplifiedDive> getDivesByComputer(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("computerId") final int computerId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        return diveService.getDivesByComputer(user, computerId, page);
     }
 
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
-    public ResponseEntity<PagedResponse<SimplifiedDive>> searchDives(
+    public PagedResponse<SimplifiedDive> searchDives(
             @AuthenticationPrincipal final User user,
             @RequestParam("query") final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to view your dives.");
         }
-        return ResponseEntity.ok(diveService.searchDives(user, query, page));
+        return diveService.searchDives(user, query, page);
     }
 
     @Operation(summary = "Get next dive number")
