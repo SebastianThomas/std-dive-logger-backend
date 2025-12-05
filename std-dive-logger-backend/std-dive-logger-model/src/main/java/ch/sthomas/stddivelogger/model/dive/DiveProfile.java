@@ -10,5 +10,5 @@ public record DiveProfile(
         DiveComputer diveComputer,
         Instant start,
         Instant end,
-        List<DiveMeasurement> measurements,
+        List<DiveMeasurementWithId> measurements,
         @Nullable DiveProfileSummary summary) {}

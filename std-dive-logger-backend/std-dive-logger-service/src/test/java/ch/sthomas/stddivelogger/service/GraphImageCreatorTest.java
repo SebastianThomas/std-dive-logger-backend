@@ -2,10 +2,7 @@ package ch.sthomas.stddivelogger.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
@@ -50,30 +47,54 @@ public class GraphImageCreatorTest {
         final var fifteenC = new Temperature(15, Temperature.TemperatureUnit.CELSIUS);
         final var measurements =
                 List.of(
-                        new DiveMeasurement(start, fifteenC, 1, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(5), fifteenC, 1.3, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(10), fifteenC, 1.5, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(15), fifteenC, 1.8, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(20), fifteenC, 2.1, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(25), fifteenC, 2.5, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(30), fifteenC, 3.0, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(35), fifteenC, 2.2, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(40), fifteenC, 1.5, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(45), fifteenC, 1.0, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(50), fifteenC, 0.5, ndl, null, Gas.AIR),
-                        new DiveMeasurement(
-                                start.plusSeconds(55), fifteenC, 0.2, ndl, null, Gas.AIR),
-                        new DiveMeasurement(end, fifteenC, 0, ndl, null, Gas.AIR));
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(start, fifteenC, 1, ndl, null, Gas.AIR), 0),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(5), fifteenC, 1.3, ndl, null, Gas.AIR),
+                                1),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(10), fifteenC, 1.5, ndl, null, Gas.AIR),
+                                2),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(15), fifteenC, 1.8, ndl, null, Gas.AIR),
+                                3),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(20), fifteenC, 2.1, ndl, null, Gas.AIR),
+                                4),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(25), fifteenC, 2.5, ndl, null, Gas.AIR),
+                                5),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(30), fifteenC, 3.0, ndl, null, Gas.AIR),
+                                6),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(35), fifteenC, 2.2, ndl, null, Gas.AIR),
+                                7),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(40), fifteenC, 1.5, ndl, null, Gas.AIR),
+                                8),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(45), fifteenC, 1.0, ndl, null, Gas.AIR),
+                                9),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(50), fifteenC, 0.5, ndl, null, Gas.AIR),
+                                10),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(
+                                        start.plusSeconds(55), fifteenC, 0.2, ndl, null, Gas.AIR),
+                                11),
+                        new DiveMeasurementWithId(
+                                new DiveMeasurement(end, fifteenC, 0, ndl, null, Gas.AIR), 12));
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
                 new Dive(0, 1, "Some Dive", null, null, profiles, List.of(), List.of("Buddy1"));

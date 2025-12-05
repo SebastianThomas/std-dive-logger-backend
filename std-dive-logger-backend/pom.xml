@@ -34,6 +34,7 @@
         <module>std-dive-logger-import-service</module>
         <module>std-dive-logger-ws</module>
         <module>std-dive-logger-autocomplete</module>
+        <module>std-dive-logger-analytics</module>
         <module>std-dive-logger-coverage</module>
     </modules>
 

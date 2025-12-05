@@ -4,6 +4,7 @@ import static java.time.ZoneOffset.UTC;
 
 import ch.sthomas.stddivelogger.model.dive.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
 
@@ -55,6 +56,11 @@ public class DiveMeasurementEntity {
         this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();
     }
 
+    public DiveMeasurementEntity(final DiveMeasurementWithId diveMeasurementWithId) {
+        this(diveMeasurementWithId.measurement());
+        this.id = diveMeasurementWithId.id();
+    }
+
     public DiveMeasurement toRecord() {
         return new DiveMeasurement(
                 time.toInstant(),
@@ -63,6 +69,10 @@ public class DiveMeasurementEntity {
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
                 null);
+    }
+
+    public DiveMeasurementWithId toRecordWithId() {
+        return new DiveMeasurementWithId(toRecord(), id);
     }
 
     public DiveMeasurementEntity setProfile(final DiveProfileEntity diveProfileEntity) {
