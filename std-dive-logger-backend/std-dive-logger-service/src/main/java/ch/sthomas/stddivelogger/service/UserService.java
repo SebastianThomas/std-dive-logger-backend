@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -93,7 +94,7 @@ public class UserService {
         return userDataService.countUsers();
     }
 
-    public Optional<GroupWithMembers> getGroupById(final long id) {
+    public Optional<Group> getGroupById(final long id) {
         return userDataService.findGroupById(id);
     }
 
@@ -109,7 +110,7 @@ public class UserService {
         return groupWithMembers;
     }
 
-    public List<GroupWithMembers> getGroupsByPartialName(final String query, final int page) {
+    public List<Group> getGroupsByPartialName(final String query, final int page) {
         return userDataService.findGroupsByClosestMatchName(
                 query, PageRequest.of(page, GROUPS_PAGE_SIZE));
     }

@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -64,7 +65,7 @@ public class UserEntity {
         return new User(id, email, password, name, createdAt, updatedAt);
     }
 
-    public List<GroupWithMembers> getGroupsWithoutMembers() {
+    public List<Group> getGroupsWithoutMembers() {
         return groups.stream().map(GroupEntity::toRecord).toList();
     }
 

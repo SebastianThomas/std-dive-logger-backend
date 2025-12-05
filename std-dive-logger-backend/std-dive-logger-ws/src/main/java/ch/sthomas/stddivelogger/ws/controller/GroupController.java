@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -21,7 +22,7 @@ public class GroupController {
     }
 
     @GetMapping("/{id}")
-    public GroupWithMembers group(@PathVariable final long id) {
+    public Group group(@PathVariable final long id) {
         return userService.getGroupById(id).orElseThrow();
     }
 

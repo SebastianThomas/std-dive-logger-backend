@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.data.repository.GroupRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -66,7 +67,7 @@ public class UserDataService {
         return userRepository.count();
     }
 
-    public Optional<GroupWithMembers> findGroupById(final long id) {
+    public Optional<Group> findGroupById(final long id) {
         return groupRepository.findById(id).map(GroupEntity::toRecord);
     }
 
@@ -74,8 +75,7 @@ public class UserDataService {
         return groupRepository.findById(id).map(GroupEntity::toRecordWithMembers);
     }
 
-    public List<GroupWithMembers> findGroupsByClosestMatchName(
-            final String query, final Pageable pageable) {
+    public List<Group> findGroupsByClosestMatchName(final String query, final Pageable pageable) {
         return groupRepository.findByClosestMatchName(query, pageable).stream()
                 .map(GroupEntity::toRecord)
                 .toList();
