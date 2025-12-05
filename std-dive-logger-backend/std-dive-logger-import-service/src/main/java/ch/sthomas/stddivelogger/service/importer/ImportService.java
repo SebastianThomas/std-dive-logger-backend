@@ -1,16 +1,12 @@
 package ch.sthomas.stddivelogger.service.importer;
 
-import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.user.User;
-import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.service.importer.shearwater.ShearwaterUddfReaderService;
 import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderService;
-
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,23 +18,14 @@ import java.util.List;
 
 @Service
 public class ImportService {
-    private final XmlMapper xmlMapper;
-    private final DiveService diveService;
-    private final DiveDataService diveDataService;
     private final FitReaderService fitReaderService;
     private final ShearwaterUddfReaderService shearwaterUddfReaderService;
     private final SubsurfaceXmlReaderService subsurfaceXmlReaderService;
 
     public ImportService(
-            final XmlMapper xmlMapper,
-            final DiveService diveService,
-            final DiveDataService diveDataService,
             final FitReaderService fitReaderService,
-            ShearwaterUddfReaderService shearwaterUddfReaderService,
-            SubsurfaceXmlReaderService subsurfaceXmlReaderService) {
-        this.xmlMapper = xmlMapper;
-        this.diveService = diveService;
-        this.diveDataService = diveDataService;
+            final ShearwaterUddfReaderService shearwaterUddfReaderService,
+            final SubsurfaceXmlReaderService subsurfaceXmlReaderService) {
         this.fitReaderService = fitReaderService;
         this.shearwaterUddfReaderService = shearwaterUddfReaderService;
         this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;

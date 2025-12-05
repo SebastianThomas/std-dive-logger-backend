@@ -4,6 +4,9 @@ import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
+import ch.sthomas.stddivelogger.model.exception.MissingValueException;
+import ch.sthomas.stddivelogger.model.exception.MissingValueField;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -17,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -51,7 +53,7 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
             final String filename,
             final UploadDiveBody body,
             final UddfFile uddfFile) {
-        final var site = getDiveSiteId(body.diveSiteId(), uddfFile.exportSite());
+        final var site = getDiveSiteIdForImport(body.diveSiteId(), uddfFile.exportSite());
         final var profile = getProfile(user, uddfFile);
         final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
@@ -63,23 +65,24 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
                 uddfFile.getBuddies());
     }
 
-    private long getDiveSiteId(@Nullable final Long siteId, @Nullable final String diveSite) {
+    private long getDiveSiteIdForImport(
+            @Nullable final Long siteId, @Nullable final String diveSite) {
         final var isSiteId = siteId != null;
         if (!isSiteId && diveSite == null) {
-            throw new IllegalArgumentException("DiveSite must be defined.");
+            throw new MissingValueException(MissingValueField.DIVE_SITE);
         }
         final var site =
                 isSiteId
-                        ? diveDataService.findDiveSiteById(siteId)
-                        : diveDataService.findDiveSiteByName(diveSite);
-        return site.map(DiveSite::id)
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        MessageFormat.format(
-                                                "DiveSite not found by {0} {1}.",
-                                                isSiteId ? "ID" : "Name",
-                                                isSiteId ? siteId : diveSite)));
+                        ? diveDataService
+                                .findDiveSiteById(siteId)
+                                .orElseThrow(
+                                        () ->
+                                                new NoSuchElementException(
+                                                        "Could not find DiveSite by ID " + siteId))
+                        : diveDataService
+                                .findDiveSiteByName(diveSite)
+                                .orElseThrow(() -> new MissingDiveSiteValueException(diveSite));
+        return site.id();
     }
 
     private DiveProfileUpload getProfile(final User user, final UddfFile uddfFile) {
