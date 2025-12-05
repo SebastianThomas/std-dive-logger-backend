@@ -23,7 +23,7 @@ Content-Type: application/json
 ### Create Dive Site
 POST {{baseurl}}/v1/dives/sites
 Content-Type: application/json
-Authorization: Bearer
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjQ5MjQzODcsImV4cCI6MTc2NDkyNzk4N30.HqHk7rZKDzrbgWR553ZnThGE9t7DGrVgn-6HSFGN_K22LykWr2v38ou2qH89V0T4
 
 {
   "lat": 46.123,
@@ -40,5 +40,14 @@ POST {{baseurl}}/v1/dives/14/preview
 Authorization: Bearer
 
 ### Get List<DiveSite> for user
-GET {{baseurl}}/v1/dives/sites/
-Authorization: Bearer
+GET {{baseurl}}/v1/dives/sites
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjQ5MjQzODcsImV4cCI6MTc2NDkyNzk4N30.HqHk7rZKDzrbgWR553ZnThGE9t7DGrVgn-6HSFGN_K22LykWr2v38ou2qH89V0T4
+
+### Local Login
+POST {{baseurl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.ch",
+  "password": "abc123"
+}

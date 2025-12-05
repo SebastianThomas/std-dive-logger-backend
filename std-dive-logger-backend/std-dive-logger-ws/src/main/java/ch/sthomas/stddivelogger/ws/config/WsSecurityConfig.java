@@ -109,14 +109,14 @@ public class WsSecurityConfig {
 
     @Bean
     public JwtAuthFilter jwtAuthFilter(
-            final JwtUtil jwtUtil, final CustomUserDetailsService customUserDetailsService) {
+            final JwtUtil jwtUtil, final UserDetailsService customUserDetailsService) {
         return new JwtAuthFilter(jwtUtil, customUserDetailsService);
     }
 
     @Bean
     @Primary
     public AuthenticationManager applicationAuthenticationManager(
-            final CustomUserDetailsService userDetailsService,
+            final UserDetailsService userDetailsService,
             final PasswordEncoder passwordEncoder) {
         final var authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
