@@ -2,7 +2,6 @@ package ch.sthomas.stddivelogger.ws.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
-import ch.sthomas.stddivelogger.service.CustomUserDetailsService;
 import ch.sthomas.stddivelogger.ws.auth.JwtAuthFilter;
 import ch.sthomas.stddivelogger.ws.auth.JwtUtil;
 
@@ -116,8 +115,7 @@ public class WsSecurityConfig {
     @Bean
     @Primary
     public AuthenticationManager applicationAuthenticationManager(
-            final UserDetailsService userDetailsService,
-            final PasswordEncoder passwordEncoder) {
+            final UserDetailsService userDetailsService, final PasswordEncoder passwordEncoder) {
         final var authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
         return new ProviderManager(authenticationProvider);
@@ -127,7 +125,8 @@ public class WsSecurityConfig {
     @Bean
     @Qualifier("swaggerAuthManager")
     public AuthenticationManager swaggerAuthenticationManager(
-            final UserDetailsService swaggerUserDetailsService,
+            @Qualifier("swaggerUserDetailsService")
+                    final UserDetailsService swaggerUserDetailsService,
             final PasswordEncoder passwordEncoder) {
         final var authenticationProvider = new DaoAuthenticationProvider(swaggerUserDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder);
@@ -136,6 +135,7 @@ public class WsSecurityConfig {
 
     @Profile("!no-security")
     @Bean
+    @Qualifier("swaggerUserDetailsService")
     InMemoryUserDetailsManager swaggerUserDetailsService() {
         final var user =
                 User.builder()
