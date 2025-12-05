@@ -19,7 +19,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -318,14 +317,14 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<DiveSite> findDiveSitesByLocation(final Coordinate coordinate) {
+    public List<DiveSite> findDiveSitesByLocation(final Location coordinate) {
         return findDiveSiteByLocationDistanceWithin(coordinate, 0.005);
     }
 
     @Transactional(readOnly = true)
     public List<DiveSite> findDiveSiteByLocationDistanceWithin(
-            final Coordinate coordinate, final double dist) {
-        return diveSiteRepository.findByLocationNear(coordinate, dist).stream()
+            final Location coordinate, final double dist) {
+        return diveSiteRepository.findByLocationNear(coordinate.toPoint(), dist).stream()
                 .map(DiveSiteEntity::toRecord)
                 .toList();
     }

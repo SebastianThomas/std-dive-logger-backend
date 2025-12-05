@@ -26,9 +26,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.awt.Dimension;
+import java.awt.*;
 import java.io.*;
 import java.util.*;
+import java.util.List;
 import java.util.function.Function;
 
 @Service
@@ -237,7 +238,7 @@ public class DiveService {
         return diveDataService.findDiveSiteById(id);
     }
 
-    public List<DiveSite> getSitesByLocation(final Coordinate coordinate) {
+    public List<DiveSite> getSitesByLocation(final Location coordinate) {
         return diveDataService.findDiveSitesByLocation(coordinate);
     }
 

@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import org.locationtech.jts.geom.Coordinate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,7 +59,7 @@ public class DiveSiteController {
     @GetMapping(path = "/location")
     public List<DiveSite> findDiveSiteByLocation(
             @RequestParam("lat") final double lat, @RequestParam("lon") final double lon) {
-        return diveService.getSitesByLocation(new Coordinate(lon, lat));
+        return diveService.getSitesByLocation(new Location(lat, lon));
     }
 
     public record CreateDiveSiteBody(String name, double lat, double lon) {}
