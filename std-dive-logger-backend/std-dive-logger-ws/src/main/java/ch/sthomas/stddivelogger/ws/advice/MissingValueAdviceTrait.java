@@ -15,5 +15,6 @@ public interface MissingValueAdviceTrait extends AdviceTrait {
     default ResponseEntity<Problem> handleConstraintException(
             final MissingValueException exception, final NativeWebRequest request) {
         return create(Status.BAD_REQUEST, exception, request);
+
     }
 }
