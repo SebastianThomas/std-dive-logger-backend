@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -28,10 +29,12 @@ public class AnalyticsDataService {
         this.storageService = storageService;
     }
 
+    @Transactional(readOnly = true)
     public Optional<Long> findLatestAnalyticsDepthVarianceDiveId(final long version) {
         return analyticsDepthVarianceEntityRepository.findMaxDiveIdByVersion(version);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<Dive> findAllDivesSince(
             final Optional<Long> lastId, final Pageable pageable) {
         final var result =
@@ -39,6 +42,7 @@ public class AnalyticsDataService {
         return PagedResponse.of(result, d -> d.toRecord(storageService.baseUrl(), false));
     }
 
+    @Transactional
     public AnalyticsDepthVariance save(final AnalyticsDepthVariance depthAnalytics) {
         final var result =
                 analyticsDepthVarianceEntityRepository.save(
