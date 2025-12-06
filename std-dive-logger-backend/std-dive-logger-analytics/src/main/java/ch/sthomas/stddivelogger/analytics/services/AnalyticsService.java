@@ -67,9 +67,9 @@ public class AnalyticsService {
     private AnalyticsResult computeAnalytics(final Dive dive) {
         final var splits = createSegments(dive);
         final var savedAnalytics =
-                splits.stream().map(this::createAnalytics).map(analyticsDataService::save).count();
+                splits.stream().map(this::createAnalytics).map(analyticsDataService::save).toList();
         return new AnalyticsResult(
-                true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics)));
+                true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics.size())));
     }
 
     private Collection<DiveProfileSegment> createSegments(final Dive dive) {

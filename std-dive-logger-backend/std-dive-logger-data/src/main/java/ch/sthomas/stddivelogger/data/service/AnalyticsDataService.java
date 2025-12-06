@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -48,5 +49,12 @@ public class AnalyticsDataService {
                 analyticsDepthVarianceEntityRepository.save(
                         new AnalyticsDepthVarianceEntity(depthAnalytics));
         return result.toRecord();
+    }
+
+    public List<AnalyticsDepthVariance> findDepthVarianceAnalyticsByDiveId(
+            final long userId, final long diveId) {
+        return analyticsDepthVarianceEntityRepository.findByReaderAndDiveId(userId, diveId).stream()
+                .map(AnalyticsDepthVarianceEntity::toRecord)
+                .toList();
     }
 }
