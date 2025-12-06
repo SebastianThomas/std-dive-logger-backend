@@ -19,11 +19,19 @@ public class AnalyticsDepthVarianceId implements Serializable {
     @Column(name = "fk_measurement_end")
     private Long measurementEndId;
 
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     public AnalyticsDepthVarianceId() {}
 
     public AnalyticsDepthVarianceId(final AnalyticsDepthVariance record) {
         this.profileId = record.profile().id();
         this.measurementStartId = record.measurementStart().id();
         this.measurementEndId = record.measurementEnd().id();
+        this.version = record.version();
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

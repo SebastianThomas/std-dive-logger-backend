@@ -5,7 +5,6 @@ import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
 
 import com.google.common.math.Stats;
@@ -16,36 +15,47 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 
 @Service
 public class AnalyticsService {
+    public static final long ANALYTICS_VERSION = 1;
     private static final long MAX_DIVES_PER_RUN = 100;
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsService.class);
 
     private final AnalyticsDataService analyticsDataService;
+    private final AnalyticsSegmentService analyticsSegmentService;
 
-    public AnalyticsService(final AnalyticsDataService analyticsDataService) {
+    public AnalyticsService(
+            final AnalyticsDataService analyticsDataService,
+            AnalyticsSegmentService analyticsSegmentService) {
         this.analyticsDataService = analyticsDataService;
+        this.analyticsSegmentService = analyticsSegmentService;
     }
 
     public AnalyticsResult computeAnalytics() {
-        final var lastAnalyticsDive = analyticsDataService.findLatestAnalyticsDepthVarianceDiveId();
+        final var lastAnalyticsDive =
+                analyticsDataService.findLatestAnalyticsDepthVarianceDiveId(ANALYTICS_VERSION);
         final var divesSinceLast =
                 analyticsDataService.findAllDivesSince(lastAnalyticsDive, PageRequest.of(0, 100));
+        logger.info(
+                "Computing analytics since {} for {} dives.",
+                lastAnalyticsDive,
+                divesSinceLast.result().size());
         final var result =
                 divesSinceLast.result().stream()
                         .map(this::computeAnalytics)
                         .reduce(AnalyticsResult::merge)
                         .orElse(new AnalyticsResult(true, List.of()));
         if (divesSinceLast.totalPages() <= 1) {
+            logger.debug("Finished computing {} analytics.", divesSinceLast.result().size());
             return result;
         }
-        logger.debug(
+        logger.info(
                 "Got {} pages of {} dives each, only processed the first page.",
                 divesSinceLast.totalPages(),
                 divesSinceLast.pageSize());
@@ -56,16 +66,14 @@ public class AnalyticsService {
 
     private AnalyticsResult computeAnalytics(final Dive dive) {
         final var splits = createSegments(dive);
-        final var _ = splits.stream().map(this::createAnalytics).map(analyticsDataService::save);
-        return new AnalyticsResult(true, List.of());
+        final var savedAnalytics =
+                splits.stream().map(this::createAnalytics).map(analyticsDataService::save).count();
+        return new AnalyticsResult(
+                true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics)));
     }
 
     private Collection<DiveProfileSegment> createSegments(final Dive dive) {
-        return dive.profiles().stream().flatMap(this::createSegments).toList();
-    }
-
-    private Stream<DiveProfileSegment> createSegments(final DiveProfile profile) {
-        return Stream.of(new DiveProfileSegment(profile, 0, profile.measurements()));
+        return dive.profiles().stream().flatMap(analyticsSegmentService::createSegments).toList();
     }
 
     private AnalyticsDepthVariance createAnalytics(final DiveProfileSegment segment) {
@@ -77,6 +85,8 @@ public class AnalyticsService {
                         .toList();
         final var depthBySecond = getDepthByTime(depthByTime, 1000);
         final var avgMinMax = DoubleStream.of(depthBySecond).summaryStatistics();
+        final var min = avgMinMax.getMin();
+        final var max = avgMinMax.getMax();
         final var avg = avgMinMax.getAverage();
         final var sortedDeviations =
                 DoubleStream.of(depthBySecond).map(d -> Math.abs(d - avg)).sorted().toArray();
@@ -86,9 +96,10 @@ public class AnalyticsService {
                 segment.profile(),
                 segment.measurements().getFirst(),
                 segment.measurements().getLast(),
+                ANALYTICS_VERSION,
                 avg,
-                avgMinMax.getMax(),
-                avgMinMax.getMin(),
+                max,
+                min,
                 deviationStats.mean(),
                 deviationStats.populationVariance(),
                 sortedDeviations[count / 100],

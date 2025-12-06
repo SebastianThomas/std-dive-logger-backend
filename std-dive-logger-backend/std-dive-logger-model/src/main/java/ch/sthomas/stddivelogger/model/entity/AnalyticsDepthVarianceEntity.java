@@ -59,7 +59,7 @@ public class AnalyticsDepthVarianceEntity {
     public AnalyticsDepthVarianceEntity() {}
 
     public AnalyticsDepthVarianceEntity(final AnalyticsDepthVariance record) {
-        id = new AnalyticsDepthVarianceId(record);
+        this.id = new AnalyticsDepthVarianceId(record);
         this.measurementStart = new DiveMeasurementEntity(record.measurementStart());
         this.measurementEnd = new DiveMeasurementEntity(record.measurementEnd());
         this.avgDepth = record.avgDepth();
@@ -79,6 +79,7 @@ public class AnalyticsDepthVarianceEntity {
                 profile.toRecord(),
                 measurementStart.toRecordWithId(),
                 measurementEnd.toRecordWithId(),
+                id.getVersion(),
                 avgDepth,
                 maxDepth,
                 minDepth,

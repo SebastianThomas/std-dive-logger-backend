@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -94,6 +95,7 @@ public class DiveEntity {
     }
 
     public Dive toRecord(final String baseUrl, final boolean includeBuddyDives) {
+        Objects.requireNonNull(baseUrl, "baseUrl must not be null, check injected services");
         return new Dive(
                 id,
                 number,

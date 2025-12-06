@@ -19,7 +19,7 @@ spec:
             annotations:
                 prometheus.io/scrape: "true"
                 prometheus.io/path: "/actuator/prometheus"
-                prometheus.io/port: "8085"
+                prometheus.io/port: "8086"
         spec:
             nodeSelector:
                 "kubernetes.io/os": linux
@@ -65,17 +65,17 @@ spec:
                     readinessProbe:
                         httpGet:
                             path: "/actuator/health/readiness"
-                            port: 8085
+                            port: 8086
                         failureThreshold: 2
                     livenessProbe:
                         httpGet:
                             path: "/actuator/health/liveness"
-                            port: 8085
+                            port: 8086
                         failureThreshold: 2
                     startupProbe:
                         httpGet:
                             path: "/actuator/health"
-                            port: 8085
+                            port: 8086
                         failureThreshold: 10
                         initialDelaySeconds: 10
                         periodSeconds: 10

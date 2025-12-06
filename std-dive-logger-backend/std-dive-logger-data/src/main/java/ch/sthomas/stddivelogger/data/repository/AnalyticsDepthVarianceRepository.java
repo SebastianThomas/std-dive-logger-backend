@@ -14,4 +14,7 @@ public interface AnalyticsDepthVarianceRepository
         extends JpaRepository<AnalyticsDepthVarianceEntity, AnalyticsDepthVarianceId> {
     @Query("SELECT MAX(a.profile.dive.id) FROM AnalyticsDepthVarianceEntity a")
     Optional<Long> findMaxDiveId();
+
+    @Query("SELECT MAX(a.profile.dive.id) FROM AnalyticsDepthVarianceEntity a WHERE a.id.version = :version")
+    Optional<Long> findMaxDiveIdByVersion(long version);
 }

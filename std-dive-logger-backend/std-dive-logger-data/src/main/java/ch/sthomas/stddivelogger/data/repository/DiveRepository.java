@@ -55,5 +55,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             nativeQuery = true)
     Page<DiveEntity> searchDives(long userId, String query, Pageable pageable);
 
-    Page<DiveEntity> findByIdGreaterThan(Long id, Pageable pageable);
+    Page<DiveEntity> findByOrderByIdAsc(Pageable pageable);
+
+    Page<DiveEntity> findByIdGreaterThanOrderByIdAsc(Long id, Pageable pageable);
 }
