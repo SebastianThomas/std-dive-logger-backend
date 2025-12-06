@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.advice;
+package ch.sthomas.stddivelogger.analytics.advice;
 
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.zalando.problem.spring.web.advice.ProblemHandling;

@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.advice;
+package ch.sthomas.stddivelogger.analytics.advice;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
