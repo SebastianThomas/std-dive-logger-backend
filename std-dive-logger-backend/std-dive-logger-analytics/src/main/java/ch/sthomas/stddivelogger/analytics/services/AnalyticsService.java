@@ -92,6 +92,8 @@ public class AnalyticsService {
                 DoubleStream.of(depthBySecond).map(d -> Math.abs(d - avg)).sorted().toArray();
         final var count = sortedDeviations.length;
         final var deviationStats = Stats.of(sortedDeviations);
+        final var ninetyNinthPercentileIdx = Math.min(count - count / 100, count - 1);
+        final var ninetiethPercentileIdx = Math.max(count - count / 10, count - 1);
         return new AnalyticsDepthVariance(
                 segment.profile(),
                 segment.measurements().getFirst(),
@@ -105,8 +107,8 @@ public class AnalyticsService {
                 sortedDeviations[count / 100],
                 sortedDeviations[count / 10],
                 sortedDeviations[count / 2],
-                sortedDeviations[count - count / 10],
-                sortedDeviations[count - count / 100]);
+                sortedDeviations[ninetiethPercentileIdx],
+                sortedDeviations[ninetyNinthPercentileIdx]);
     }
 
     private static double[] getDepthByTime(
