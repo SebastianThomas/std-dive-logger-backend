@@ -43,6 +43,11 @@
             <artifactId>std-dive-logger-autocomplete</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ch.sthomas.stddivelogger</groupId>
+            <artifactId>std-dive-logger-analytics</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

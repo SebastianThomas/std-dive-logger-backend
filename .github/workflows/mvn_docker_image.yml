@@ -38,7 +38,7 @@ jobs:
         strategy:
             max-parallel: 2
             matrix:
-                module: [ ws, autocomplete ]
+                module: [ ws, autocomplete, analytics ]
         steps:
             -   uses: actions/checkout@v5
                 with:
@@ -47,11 +47,7 @@ jobs:
             -   name: Set module name
                 shell: bash
                 run: |
-                    if [[ "${{ matrix.module }}" == "ws" ]]; then
-                        echo "module=std-dive-logger-ws" >> $GITHUB_ENV
-                    else
-                        echo "module=std-dive-logger-autocomplete" >> $GITHUB_ENV
-                    fi
+                    echo "module=std-dive-logger-${{ matrix.module }}" >> $GITHUB_ENV
 
             -   name: Set TAG_NAME from image_tag
                 shell: bash

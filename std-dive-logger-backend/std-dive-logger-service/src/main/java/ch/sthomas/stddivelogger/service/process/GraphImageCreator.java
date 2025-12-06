@@ -174,7 +174,11 @@ public class GraphImageCreator {
         final var end = profile.end();
         final var measurements =
                 profile.measurements().stream()
-                        .map(m -> new MeasurementData(m.time(), extractor.apply(m)))
+                        .map(
+                                m ->
+                                        new MeasurementData(
+                                                m.measurement().time(),
+                                                extractor.apply(m.measurement())))
                         .toList();
         return new ProfileRow(start, end, measurements);
     }

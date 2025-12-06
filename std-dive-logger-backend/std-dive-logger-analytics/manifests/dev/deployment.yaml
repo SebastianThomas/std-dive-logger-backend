@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: std-dive-logger-ws-dev
+    name: std-dive-logger-autocomplete-dev
     namespace: std-dive-logger
 spec:
     replicas: 1
     selector:
         matchLabels:
-            app: std-dive-logger-ws-dev
+            app: std-dive-logger-autocomplete-dev
     strategy:
         rollingUpdate:
             maxSurge: 1
@@ -15,11 +15,11 @@ spec:
     template:
         metadata:
             labels:
-                app: std-dive-logger-ws-dev
+                app: std-dive-logger-autocomplete-dev
             annotations:
                 prometheus.io/scrape: "true"
                 prometheus.io/path: "/actuator/prometheus"
-                prometheus.io/port: "8086"
+                prometheus.io/port: "8087"
         spec:
             nodeSelector:
                 "kubernetes.io/os": linux
@@ -27,7 +27,6 @@ spec:
             affinity:
                 podAntiAffinity:
                     preferredDuringSchedulingIgnoredDuringExecution:
-                        # try not to schedule a pod in a HA zone if there is already a pod with label 'app' in ['std-dive-logger-ws-dev']
                         -   weight: 10
                             podAffinityTerm:
                                 labelSelector:
@@ -35,7 +34,7 @@ spec:
                                         -   key: app
                                             operator: In
                                             values:
-                                                - std-dive-logger-ws-dev
+                                                - std-dive-logger-autocomplete-dev
                                 topologyKey: topology.kubernetes.io/zone
                         -   weight: 50
                             podAffinityTerm:
@@ -44,38 +43,38 @@ spec:
                                         -   key: app
                                             operator: In
                                             values:
-                                                - std-dive-logger-ws-dev
+                                                - std-dive-logger-autocomplete-dev
                                 topologyKey: kubernetes.io/hostname
             containers:
-                -   name: std-dive-logger-ws-dev
-                    image: hub.docker.come/std-dive-logger-ws:PLACEHOLDER
+                -   name: std-dive-logger-autocomplete-dev
+                    image: hub.docker.come/std-dive-logger-autocomplete:PLACEHOLDER
                     imagePullPolicy: IfNotPresent
                     env:
                         -   name: SPRING_CONFIG_NAME
-                            value: std-dive-logger-ws-dev
+                            value: std-dive-logger-autocomplete-dev
                         -   name: SPRING_CONFIG_LOCATION
                             value: /config/
                         -   name: LOGGING_CONFIG
-                            value: /config/std-dive-logger-ws-dev-logback.xml
+                            value: /config/std-dive-logger-autocomplete-dev-logback.xml
                     envFrom:
                         -   secretRef:
                                 name: std-dive-logger-db-dev
                     ports:
-                        -   containerPort: 8080
+                        -   containerPort: 5173
                     readinessProbe:
                         httpGet:
                             path: "/actuator/health/readiness"
-                            port: 8086
+                            port: 8087
                         failureThreshold: 2
                     livenessProbe:
                         httpGet:
                             path: "/actuator/health/liveness"
-                            port: 8086
+                            port: 8087
                         failureThreshold: 2
                     startupProbe:
                         httpGet:
                             path: "/actuator/health"
-                            port: 8086
+                            port: 8087
                         failureThreshold: 10
                         initialDelaySeconds: 10
                         periodSeconds: 10
@@ -94,9 +93,9 @@ spec:
             volumes:
                 -   name: config-volume
                     configMap:
-                        name: std-dive-logger-ws-dev-config
+                        name: std-dive-logger-autocomplete-dev-config
                         items:
-                            -   key: std-dive-logger-ws-dev.properties
-                                path: std-dive-logger-ws-dev.properties
-                            -   key: std-dive-logger-ws-dev-logback.xml
-                                path: std-dive-logger-ws-dev-logback.xml
+                            -   key: std-dive-logger-autocomplete-dev.properties
+                                path: std-dive-logger-autocomplete-dev.properties
+                            -   key: std-dive-logger-autocomplete-dev-logback.xml
+                                path: std-dive-logger-autocomplete-dev-logback.xml
