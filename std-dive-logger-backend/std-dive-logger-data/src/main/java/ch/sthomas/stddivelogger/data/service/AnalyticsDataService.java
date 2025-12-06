@@ -56,6 +56,7 @@ public class AnalyticsDataService {
                 analytics.stream()
                         .map(AnalyticsDepthVariance::profile)
                         .map(DiveProfile::id)
+                        .distinct()
                         .map(p -> Pair.of(p, diveProfileRepository.findById(p).orElseThrow()))
                         .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
         return analyticsDepthVarianceEntityRepository
