@@ -93,7 +93,7 @@ public class AnalyticsService {
         final var count = sortedDeviations.length;
         final var deviationStats = Stats.of(sortedDeviations);
         final var ninetyNinthPercentileIdx = Math.min(count - count / 100, count - 1);
-        final var ninetiethPercentileIdx = Math.max(count - count / 10, count - 1);
+        final var ninetiethPercentileIdx = Math.min(count - count / 10, count - 1);
         return new AnalyticsDepthVariance(
                 segment.profile(),
                 segment.measurements().getFirst(),
