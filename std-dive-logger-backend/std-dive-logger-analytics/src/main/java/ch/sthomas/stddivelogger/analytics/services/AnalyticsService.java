@@ -32,7 +32,7 @@ public class AnalyticsService {
 
     public AnalyticsService(
             final AnalyticsDataService analyticsDataService,
-            AnalyticsSegmentService analyticsSegmentService) {
+            final AnalyticsSegmentService analyticsSegmentService) {
         this.analyticsDataService = analyticsDataService;
         this.analyticsSegmentService = analyticsSegmentService;
     }

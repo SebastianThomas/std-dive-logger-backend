@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 @Service
 public class AnalyticsSegmentService {
 
-    private static final int WINDOW_SIZE = 5;
+    private static final int WINDOW_SIZE = 20;
 
     public Stream<DiveProfileSegment> createSegmentForProfile(final DiveProfile profile) {
         return Stream.of(new DiveProfileSegment(profile, 0, profile.measurements()));
