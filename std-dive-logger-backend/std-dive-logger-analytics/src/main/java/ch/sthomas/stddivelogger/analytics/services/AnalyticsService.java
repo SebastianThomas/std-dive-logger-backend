@@ -77,6 +77,12 @@ public class AnalyticsService {
     }
 
     private AnalyticsDepthVariance createAnalytics(final DiveProfileSegment segment) {
+        if (segment == null || segment.measurements().size() <= 1) {
+            throw new IllegalArgumentException(
+                    MessageFormat.format(
+                            "Invalid Dive Profile Segment (not enough measurements?): {0}",
+                            segment));
+        }
         final var depthByTime =
                 segment.measurements().stream()
                         .map(DiveMeasurementWithId::measurement)
@@ -84,6 +90,9 @@ public class AnalyticsService {
                         .sorted(Comparator.comparing(Pair::getLeft))
                         .toList();
         final var depthBySecond = getDepthByTime(depthByTime, 1000);
+        if (depthBySecond.length < 2) {
+            logger.info("Depth by second should have at least two entries, got {}.", depthBySecond);
+        }
         final var avgMinMax = DoubleStream.of(depthBySecond).summaryStatistics();
         final var min = avgMinMax.getMin();
         final var max = avgMinMax.getMax();
