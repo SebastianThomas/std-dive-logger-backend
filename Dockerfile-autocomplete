@@ -11,6 +11,7 @@ COPY std-dive-logger-backend/std-dive-logger-service/pom.xml ./std-dive-logger-s
 COPY std-dive-logger-backend/std-dive-logger-import-service/pom.xml ./std-dive-logger-import-service/pom.xml
 COPY std-dive-logger-backend/std-dive-logger-ws/pom.xml ./std-dive-logger-ws/pom.xml
 COPY std-dive-logger-backend/std-dive-logger-autocomplete/pom.xml ./std-dive-logger-autocomplete/pom.xml
+COPY std-dive-logger-backend/std-dive-logger-analytics/pom.xml ./std-dive-logger-analytics/pom.xml
 COPY std-dive-logger-backend/std-dive-logger-coverage/pom.xml ./std-dive-logger-coverage/pom.xml
 
 # Pre-download all dependencies for caching
