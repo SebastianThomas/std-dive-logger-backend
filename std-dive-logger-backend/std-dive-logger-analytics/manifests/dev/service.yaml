@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-    name: std-dive-logger-autocomplete-dev
+    name: std-dive-logger-analytics-dev
     namespace: std-dive-logger
 spec:
     type: ClusterIP
     ports:
         -   port: 5173
     selector:
-        app: std-dive-logger-autocomplete-dev
+        app: std-dive-logger-analytics-dev

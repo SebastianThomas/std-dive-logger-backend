@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-    name: std-dive-logger-autocomplete-dev-ingress-rule
+    name: std-dive-logger-analytics-dev-ingress-rule
     namespace: ingress-basic
     annotations:
         cert-manager.io/cluster-issuer: letsencrypt-staging
@@ -10,15 +10,15 @@ spec:
     ingressClassName: nginx
     tls:
         -   hosts:
-                - std-dive-logger-autocomplete-dev.sthomas.ch
-            secretName: tls-secret-std-dive-logger-autocomplete-dev
+                - std-dive-logger-analytics-dev.sthomas.ch
+            secretName: tls-secret-std-dive-logger-analytics-dev
     rules:
-        -   host: std-dive-logger-autocomplete-dev.sthomas.ch
+        -   host: std-dive-logger-analytics-dev.sthomas.ch
             http:
                 paths:
                     -   backend:
                             service:
-                                name: std-dive-logger-autocomplete-dev
+                                name: std-dive-logger-analytics-dev
                                 port:
                                     number: 5173
                         path: /
@@ -29,11 +29,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-    name: std-dive-logger-autocomplete-dev
+    name: std-dive-logger-analytics-dev
     namespace: ingress-basic
 spec:
     type: ExternalName
-    externalName: std-dive-logger-autocomplete-dev.std-dive-logger.svc.cluster.local
+    externalName: std-dive-logger-analytics-dev.std-dive-logger.svc.cluster.local
     ports:
         -   port: 5173
             targetPort: 5173

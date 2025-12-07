@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: std-dive-logger-autocomplete-dev
+    name: std-dive-logger-analytics-dev
     namespace: std-dive-logger
 spec:
     replicas: 1
     selector:
         matchLabels:
-            app: std-dive-logger-autocomplete-dev
+            app: std-dive-logger-analytics-dev
     strategy:
         rollingUpdate:
             maxSurge: 1
@@ -15,7 +15,7 @@ spec:
     template:
         metadata:
             labels:
-                app: std-dive-logger-autocomplete-dev
+                app: std-dive-logger-analytics-dev
             annotations:
                 prometheus.io/scrape: "true"
                 prometheus.io/path: "/actuator/prometheus"
@@ -34,7 +34,7 @@ spec:
                                         -   key: app
                                             operator: In
                                             values:
-                                                - std-dive-logger-autocomplete-dev
+                                                - std-dive-logger-analytics-dev
                                 topologyKey: topology.kubernetes.io/zone
                         -   weight: 50
                             podAffinityTerm:
@@ -43,19 +43,19 @@ spec:
                                         -   key: app
                                             operator: In
                                             values:
-                                                - std-dive-logger-autocomplete-dev
+                                                - std-dive-logger-analytics-dev
                                 topologyKey: kubernetes.io/hostname
             containers:
-                -   name: std-dive-logger-autocomplete-dev
-                    image: hub.docker.come/std-dive-logger-autocomplete:PLACEHOLDER
+                -   name: std-dive-logger-analytics-dev
+                    image: hub.docker.come/std-dive-logger-analytics:PLACEHOLDER
                     imagePullPolicy: IfNotPresent
                     env:
                         -   name: SPRING_CONFIG_NAME
-                            value: std-dive-logger-autocomplete-dev
+                            value: std-dive-logger-analytics-dev
                         -   name: SPRING_CONFIG_LOCATION
                             value: /config/
                         -   name: LOGGING_CONFIG
-                            value: /config/std-dive-logger-autocomplete-dev-logback.xml
+                            value: /config/std-dive-logger-analytics-dev-logback.xml
                     envFrom:
                         -   secretRef:
                                 name: std-dive-logger-db-dev
@@ -93,9 +93,9 @@ spec:
             volumes:
                 -   name: config-volume
                     configMap:
-                        name: std-dive-logger-autocomplete-dev-config
+                        name: std-dive-logger-analytics-dev-config
                         items:
-                            -   key: std-dive-logger-autocomplete-dev.properties
-                                path: std-dive-logger-autocomplete-dev.properties
-                            -   key: std-dive-logger-autocomplete-dev-logback.xml
-                                path: std-dive-logger-autocomplete-dev-logback.xml
+                            -   key: std-dive-logger-analytics-dev.properties
+                                path: std-dive-logger-analytics-dev.properties
+                            -   key: std-dive-logger-analytics-dev-logback.xml
+                                path: std-dive-logger-analytics-dev-logback.xml

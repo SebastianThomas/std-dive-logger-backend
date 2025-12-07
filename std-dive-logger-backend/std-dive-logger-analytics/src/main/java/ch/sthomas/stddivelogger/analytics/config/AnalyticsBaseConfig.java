@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.analytics.config;
 
-import ch.sthomas.stddivelogger.autocomplete.config.SpringDocConfig;
+import ch.sthomas.stddivelogger.analytics.config.SpringDocConfig;
 import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

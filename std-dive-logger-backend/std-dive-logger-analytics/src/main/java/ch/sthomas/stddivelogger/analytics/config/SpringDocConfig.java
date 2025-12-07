@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.config;
+package ch.sthomas.stddivelogger.analytics.config;
 
 import io.swagger.v3.oas.models.media.NumberSchema;
 import io.swagger.v3.oas.models.media.StringSchema;

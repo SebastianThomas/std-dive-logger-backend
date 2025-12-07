@@ -46,12 +46,12 @@ public class AnalyticsSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
+    SecurityFilterChain analyticsFilterChain(final HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(
                 authorize ->
                         authorize
-                                .requestMatchers("/v1/autocomplete/**")
+                                .requestMatchers("/v1/analytics/**")
                                 .permitAll()
                                 .requestMatchers("/actuator/**")
                                 .permitAll());

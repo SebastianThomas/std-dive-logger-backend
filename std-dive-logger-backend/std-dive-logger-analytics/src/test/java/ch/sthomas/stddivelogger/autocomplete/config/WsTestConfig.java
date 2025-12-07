@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.config;
+package ch.sthomas.stddivelogger.analytics.config;
 
 import org.springframework.boot.SpringBootConfiguration;
 
