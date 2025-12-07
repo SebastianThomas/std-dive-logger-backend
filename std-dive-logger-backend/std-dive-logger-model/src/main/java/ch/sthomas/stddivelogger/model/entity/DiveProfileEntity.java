@@ -68,4 +68,12 @@ public class DiveProfileEntity {
         this.dive = diveEntity;
         return this;
     }
+
+    public long getDiveId() {
+        return dive.getId();
+    }
+
+    public long getId() {
+        return id;
+    }
 }

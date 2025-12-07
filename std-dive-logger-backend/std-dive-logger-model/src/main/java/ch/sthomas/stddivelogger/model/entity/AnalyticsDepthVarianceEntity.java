@@ -1,6 +1,8 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
+import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
+import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.entity.embedded.AnalyticsDepthVarianceId;
 
 import jakarta.persistence.*;
@@ -24,6 +26,9 @@ public class AnalyticsDepthVarianceEntity {
     @MapsId("measurementEndId")
     @JoinColumn(name = "fk_measurement_end", nullable = false)
     private DiveMeasurementEntity measurementEnd;
+
+    @Column(name = "start_idx", nullable = false)
+    private int startIdx;
 
     @Column(name = "avg_depth", nullable = false)
     private Double avgDepth;
@@ -61,19 +66,20 @@ public class AnalyticsDepthVarianceEntity {
     public AnalyticsDepthVarianceEntity(
             final AnalyticsDepthVariance record, final DiveProfileEntity profileEntity) {
         this.id = new AnalyticsDepthVarianceId(record);
+        this.profile = profileEntity;
         this.measurementStart = new DiveMeasurementEntity(record.measurementStart());
         this.measurementEnd = new DiveMeasurementEntity(record.measurementEnd());
-        this.profile = profileEntity;
-        this.avgDepth = record.avgDepth();
-        this.maxDepth = record.maxDepth();
-        this.minDepth = record.minDepth();
-        this.deviationAvg = record.deviationAvg();
-        this.deviationVariance = record.deviationVariance();
-        this.deviation01p = record.deviation01p();
-        this.deviation10p = record.deviation10p();
-        this.deviationMedian = record.deviationMedian();
-        this.deviation90p = record.deviation90p();
-        this.deviationMax = record.deviationMax();
+        this.startIdx = record.startIdx();
+        this.avgDepth = record.stats().avgDepth();
+        this.maxDepth = record.stats().maxDepth();
+        this.minDepth = record.stats().minDepth();
+        this.deviationAvg = record.stats().deviationAvg();
+        this.deviationVariance = record.stats().deviationVariance();
+        this.deviation01p = record.stats().deviation01p();
+        this.deviation10p = record.stats().deviation10p();
+        this.deviationMedian = record.stats().deviationMedian();
+        this.deviation90p = record.stats().deviation90p();
+        this.deviationMax = record.stats().deviationMax();
     }
 
     public AnalyticsDepthVariance toRecord() {
@@ -81,6 +87,17 @@ public class AnalyticsDepthVarianceEntity {
                 profile.toRecord(),
                 measurementStart.toRecordWithId(),
                 measurementEnd.toRecordWithId(),
+                startIdx,
+                toStats());
+    }
+
+    public AnalyticsDepthVarianceResponse toResponse() {
+        return new AnalyticsDepthVarianceResponse(
+                profile.getDiveId(), profile.getId(), startIdx, toStats());
+    }
+
+    public AnalyticsDepthVarianceStats toStats() {
+        return new AnalyticsDepthVarianceStats(
                 id.getVersion(),
                 avgDepth,
                 maxDepth,

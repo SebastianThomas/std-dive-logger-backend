@@ -162,4 +162,8 @@ public class DiveEntity {
     public void setPreviewImage(final String previewImage) {
         this.previewImage = previewImage;
     }
+
+    public long getId() {
+        return id;
+    }
 }

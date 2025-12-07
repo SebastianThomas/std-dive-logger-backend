@@ -28,7 +28,7 @@ public class AnalyticsDepthVarianceId implements Serializable {
         this.profileId = record.profile().id();
         this.measurementStartId = record.measurementStart().id();
         this.measurementEndId = record.measurementEnd().id();
-        this.version = record.version();
+        this.version = record.stats().version();
     }
 
     public Long getVersion() {

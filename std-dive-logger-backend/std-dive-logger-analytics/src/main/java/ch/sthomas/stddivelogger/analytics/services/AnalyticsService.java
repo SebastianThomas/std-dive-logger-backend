@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
+import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
@@ -107,17 +108,19 @@ public class AnalyticsService {
                 segment.profile(),
                 segment.measurements().getFirst(),
                 segment.measurements().getLast(),
-                ANALYTICS_VERSION,
-                avg,
-                max,
-                min,
-                deviationStats.mean(),
-                deviationStats.populationVariance(),
-                sortedDeviations[count / 100],
-                sortedDeviations[count / 10],
-                sortedDeviations[count / 2],
-                sortedDeviations[ninetiethPercentileIdx],
-                sortedDeviations[ninetyNinthPercentileIdx]);
+                segment.firstMeasurementIdx(),
+                new AnalyticsDepthVarianceStats(
+                        ANALYTICS_VERSION,
+                        avg,
+                        max,
+                        min,
+                        deviationStats.mean(),
+                        deviationStats.populationVariance(),
+                        sortedDeviations[count / 100],
+                        sortedDeviations[count / 10],
+                        sortedDeviations[count / 2],
+                        sortedDeviations[ninetiethPercentileIdx],
+                        sortedDeviations[ninetyNinthPercentileIdx]));
     }
 
     private static double[] getDepthByTime(

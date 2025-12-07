@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.data.repository.DiveProfileRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
+import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
@@ -73,10 +74,10 @@ public class AnalyticsDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<AnalyticsDepthVariance> findDepthVarianceAnalyticsByDiveId(
+    public List<AnalyticsDepthVarianceResponse> findDepthVarianceAnalyticsByDiveId(
             final long userId, final long diveId) {
         return analyticsDepthVarianceEntityRepository.findByReaderAndDiveId(userId, diveId).stream()
-                .map(AnalyticsDepthVarianceEntity::toRecord)
+                .map(AnalyticsDepthVarianceEntity::toResponse)
                 .toList();
     }
 }
