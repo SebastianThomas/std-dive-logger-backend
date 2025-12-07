@@ -20,6 +20,7 @@ import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.DoubleStream;
 
 @Service
@@ -78,11 +79,23 @@ public class AnalyticsService {
     }
 
     private AnalyticsDepthVariance createAnalytics(final DiveProfileSegment segment) {
-        if (segment == null || segment.measurements().size() <= 1) {
-            throw new IllegalArgumentException(
-                    MessageFormat.format(
-                            "Invalid Dive Profile Segment (not enough measurements?): {0}",
-                            segment));
+        Objects.requireNonNull(segment, "Segment must not be null");
+        if (segment.measurements().isEmpty()) {
+            logger.info(
+                    "Empty segment for profile: {} with start index {}",
+                    segment.profile().id(),
+                    segment.firstMeasurementIdx());
+            throw new IllegalArgumentException("Empty segment");
+        }
+        if (segment.measurements().size() == 1) {
+            return new AnalyticsDepthVariance(
+                    segment.profile(),
+                    segment.measurements().getFirst(),
+                    segment.measurements().getLast(),
+                    segment.firstMeasurementIdx(),
+                    new AnalyticsDepthVarianceStats(
+                            ANALYTICS_VERSION,
+                            segment.measurements().getFirst().measurement().depth()));
         }
         final var depthByTime =
                 segment.measurements().stream()
@@ -136,7 +149,7 @@ public class AnalyticsService {
             while (i < depthByTime.size() - 2 && depthByTime.get(i + 1).getLeft() <= millis) {
                 i++;
             }
-            depthBySecond[i] = getDepth(depthByTime, i, millis);
+            depthBySecond[s] = getDepth(depthByTime, i, millis);
         }
         return depthBySecond;
     }

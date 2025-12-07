@@ -11,4 +11,8 @@ public record AnalyticsDepthVarianceStats(
         double deviation10p,
         double deviationMedian,
         double deviation90p,
-        double deviationMax) {}
+        double deviationMax) {
+    public AnalyticsDepthVarianceStats(final long version, final double depth) {
+        this(version, depth, depth, depth, 0, 0, 0, 0, 0, 0, 0);
+    }
+}

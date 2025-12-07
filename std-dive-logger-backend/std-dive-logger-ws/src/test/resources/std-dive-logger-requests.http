@@ -23,12 +23,12 @@ Content-Type: application/json
 ### Create Dive Site
 POST {{baseurl}}/v1/dives/sites
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjQ5MjQzODcsImV4cCI6MTc2NDkyNzk4N30.HqHk7rZKDzrbgWR553ZnThGE9t7DGrVgn-6HSFGN_K22LykWr2v38ou2qH89V0T4
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjUxMDM1MTgsImV4cCI6MTc2NTEwNzExOH0.E1MN43YJSBDG7MYEuG7iyWG809TEx_QJHsecrYjJX9b7h-oWJL2IfoVs1GnY8lsH
 
 {
-  "lat": 46.123,
-  "lon": 9.123,
-  "name": "Test Site"
+  "lat": 46.143,
+  "lon": 9.143,
+  "name": "Ledi-Wracks"
 }
 
 ### Get Dives
