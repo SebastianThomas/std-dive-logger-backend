@@ -31,6 +31,9 @@ public class UserEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "emailVerified", nullable = false)
+    private boolean verified;
+
     @JoinTable(
             name = "t_group_member",
             joinColumns = {@JoinColumn(name = "fk_user_id")},
@@ -52,6 +55,14 @@ public class UserEntity {
         this.email = email;
         this.password = password;
         this.name = name;
+    }
+
+    public UserEntity(
+            final String email, final String password, final String name, final boolean verified) {
+        this.email = email;
+        this.password = password;
+        this.name = name;
+        this.verified = verified;
     }
 
     public UserEntity(final long id, final String email, final String password, final String name) {

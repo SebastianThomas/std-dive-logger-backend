@@ -26,7 +26,8 @@ public class NoSecurityUserDetailsService implements UserDetailsService {
 
         if (userRepository.findByEmailIgnoreCase(validEmail).isEmpty()) {
             userRepository.save(
-                    new UserEntity(validEmail, passwordEncoder.encode(validPassword), "Test User"));
+                    new UserEntity(
+                            validEmail, passwordEncoder.encode(validPassword), "Test User", true));
         }
     }
 
