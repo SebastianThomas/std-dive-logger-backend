@@ -65,12 +65,12 @@ public class DiveController {
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
     public ResponseEntity<Dive> getDiveById(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final Long id) {
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final var dive =
-                diveService.getDiveById(userService.getUserById(user.id()), id).orElseThrow();
+                diveService.getDiveById(userService.getUserById(user.id()), diveId).orElseThrow();
         return ResponseEntity.ok(dive);
     }
 
@@ -255,7 +255,8 @@ public class DiveController {
     @Operation(summary = "Move Profiles between dives")
     @PostMapping(path = "/profiles/separate", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> moveProfiles(
-            @AuthenticationPrincipal final User user, @RequestBody MoveProfilesRequestBody body) {
+            @AuthenticationPrincipal final User user,
+            @RequestBody final MoveProfilesRequestBody body) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

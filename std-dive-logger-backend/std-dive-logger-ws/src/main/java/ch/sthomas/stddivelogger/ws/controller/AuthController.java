@@ -43,10 +43,19 @@ public class AuthController {
     @Operation(summary = "Log in")
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody final AuthRequest request) {
-        final var login = authService.login(request);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, login.refreshToken().toString())
-                .body(login.toAuthResponse());
+        return authService.login(request);
+    }
+
+    @Operation(summary = "Create a Magic Login Token")
+    @PostMapping("/login/magic/create")
+    public void createLoginToken(@Valid @RequestBody @Email final String email) {
+        userService.createLoginToken(email);
+    }
+
+    @Operation(summary = "Log in using a magic link / token")
+    @PostMapping("/login/magic")
+    public ResponseEntity<AuthResponse> login(@RequestBody final String token) {
+        return authService.tokenLogin(token);
     }
 
     @Operation(summary = "Get a new access token")

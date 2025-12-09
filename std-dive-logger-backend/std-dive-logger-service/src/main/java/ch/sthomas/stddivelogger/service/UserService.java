@@ -10,8 +10,11 @@ import ch.sthomas.stddivelogger.model.exception.UserCreationException;
 import ch.sthomas.stddivelogger.model.notification.AccountRequest;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.user.*;
+import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 import org.passay.*;
@@ -20,8 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -73,7 +76,7 @@ public class UserService {
                             .toList());
         }
         final var user = userDataService.saveUser(email, passwordEncoder.encode(password), name);
-        if (userDataService.createVerifyEmailRequest(user)) {
+        if (userDataService.createAccountRequest(AccountRequestType.VERIFY_EMAIL, user)) {
             return user;
         }
         throw new UserCreationException("Could not create verify Email Request.");
@@ -156,7 +159,7 @@ public class UserService {
 
     public User setVerified(@NotBlank final String token) {
         final var user =
-                accountRequestRepository.findById(UUID.fromString(token)).stream()
+                accountRequestRepository.findAndDeleteById(SecurityUtils.hashToken(token)).stream()
                         .map(AccountRequestEntity::toRecord)
                         .filter(r -> r.type() == AccountRequestType.VERIFY_EMAIL)
                         .map(AccountRequest::user)
@@ -171,5 +174,13 @@ public class UserService {
 
     public List<GroupRequest> getAdminGroupRequests(final User user) {
         return userDataService.findAdminGroupRequests(user);
+    }
+
+    public void createLoginToken(@Valid @Email final String email) {
+        final var user =
+                userDataService
+                        .findUserByEmail(email)
+                        .orElseThrow(() -> new NoSuchElementException("No user with given email."));
+        userDataService.createAccountRequest(AccountRequestType.LOGIN, user);
     }
 }
