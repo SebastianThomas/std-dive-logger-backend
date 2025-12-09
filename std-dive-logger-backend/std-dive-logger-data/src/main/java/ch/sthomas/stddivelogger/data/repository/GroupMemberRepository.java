@@ -17,4 +17,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
     List<GroupMemberEntity> findRequests(long adminId, GroupRole adminRole, GroupRole searchedRole);
 
     int countByUser_IdAndRole(Long userId, GroupRole role);
+
+    boolean existsByGroup_IdAndUser_Id(Long groupId, Long userId);
 }

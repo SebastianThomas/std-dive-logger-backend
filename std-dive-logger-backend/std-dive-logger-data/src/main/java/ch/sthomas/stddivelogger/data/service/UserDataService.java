@@ -102,6 +102,10 @@ public class UserDataService {
     }
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
+        if (groupMemberRepository.existsByGroup_IdAndUser_Id(groupId, userId)) {
+            throw new IllegalArgumentException(
+                    "You already requested to be a member of this group.");
+        }
         final var role = GroupRole.REQUESTED;
         final var currentJoinRequestCount =
                 groupMemberRepository.countByUser_IdAndRole(userId, role);
