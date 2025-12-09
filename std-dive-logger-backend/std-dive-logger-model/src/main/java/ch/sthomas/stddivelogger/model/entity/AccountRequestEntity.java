@@ -8,19 +8,13 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "t_account_request")
 public class AccountRequestEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(
-            name = "modification_request_id",
-            columnDefinition = "uuid",
-            updatable = false,
-            nullable = false)
-    private UUID id;
+    @Column(name = "pk_account_request_id", updatable = false, nullable = false)
+    private String id;
 
     @OneToOne
     @JoinColumn(name = "fk_user_id", updatable = false)
@@ -41,7 +35,11 @@ public class AccountRequestEntity {
     public AccountRequestEntity() {}
 
     public AccountRequestEntity(
-            final UserEntity user, final EmailEntity email, final AccountRequestType requestType) {
+            final String id,
+            final UserEntity user,
+            final EmailEntity email,
+            final AccountRequestType requestType) {
+        this.id = id;
         this.user = user;
         this.email = email;
         this.requestType = requestType;

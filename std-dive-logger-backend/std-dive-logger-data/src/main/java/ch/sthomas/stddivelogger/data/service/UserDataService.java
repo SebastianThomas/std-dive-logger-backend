@@ -3,10 +3,13 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.model.entity.*;
+import ch.sthomas.stddivelogger.model.notification.AccountRequest;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.notification.EmailNotificationPayload;
 import ch.sthomas.stddivelogger.model.user.*;
+import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.DataException;
 import org.postgresql.util.PSQLException;
@@ -66,6 +69,10 @@ public class UserDataService {
             }
             throw e;
         }
+    }
+
+    public Optional<User> findUserByEmail(final String email) {
+        return userRepository.findByEmailIgnoreCase(email).map(UserEntity::toRecord);
     }
 
     public void deleteUserByEmail(final String email) {
@@ -144,10 +151,9 @@ public class UserDataService {
     }
 
     @Transactional
-    public boolean createVerifyEmailRequest(final User user) {
-        final var type = AccountRequestType.VERIFY_EMAIL;
-        final var requestId = UUID.randomUUID();
-        final var callback = URI.create(frontendBaseUrl + "/verify-email?token=" + requestId);
+    public boolean createAccountRequest(final AccountRequestType type, final User user) {
+        final var requestId = SecurityUtils.createToken();
+        final var callback = URI.create(getCallbackUrl(type, requestId));
         final var verifyEmailPayload =
                 EmailNotificationPayload.createEmailPayload(user, type, callback.toString());
         final var email =
@@ -158,8 +164,19 @@ public class UserDataService {
                                 verifyEmailPayload.body()));
         accountRequestRepository.save(
                 new AccountRequestEntity(
-                        userRepository.findById(user.id()).orElseThrow(), email, type));
+                        SecurityUtils.hashToken(requestId),
+                        userRepository.findById(user.id()).orElseThrow(),
+                        email,
+                        type));
         return true;
+    }
+
+    private String getCallbackUrl(final AccountRequestType type, final String token) {
+        return switch (type) {
+            case VERIFY_EMAIL -> frontendBaseUrl + "/user/email?token=" + token;
+            case LOGIN -> frontendBaseUrl + "/login?token=" + token;
+            case CHANGE_PASSWORD -> throw new NotImplementedException(); // TODO
+        };
     }
 
     public User setVerified(final User user) {
@@ -185,5 +202,12 @@ public class UserDataService {
                                         e.getUserEntity().toRecord().toFrontendModel(),
                                         e.getRole()))
                 .toList();
+    }
+
+    public Optional<AccountRequest> findAndDeleteLoginRequestByHashedToken(final String token) {
+        return accountRequestRepository
+                .findAndDeleteById(SecurityUtils.hashToken(token))
+                .map(AccountRequestEntity::toRecord)
+                .filter(a -> a.type() == AccountRequestType.LOGIN);
     }
 }
