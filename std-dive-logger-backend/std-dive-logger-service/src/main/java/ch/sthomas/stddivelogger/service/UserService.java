@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.exception.UserCreationException;
 import ch.sthomas.stddivelogger.model.notification.AccountRequest;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupRole;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -21,7 +22,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -133,8 +133,16 @@ public class UserService {
                 query, PageRequest.of(page, GROUPS_PAGE_SIZE));
     }
 
-    public GroupWithMembers saveGroup(final String name, final Collection<Long> initialMembers) {
-        return userDataService.saveGroup(name, initialMembers);
+    public GroupWithMembers saveGroup(final String name, final User initialAdmin) {
+        return userDataService.saveGroup(name, initialAdmin);
+    }
+
+    public GroupWithMembers changeRole(
+            final User admin, final long groupId, final long userId, final GroupRole role) {
+        if (!userDataService.isGroupAdmin(groupId, admin)) {
+            throw new UnauthorizedException("User does not have permission to update this group");
+        }
+        return userDataService.changeRole(groupId, userId, role);
     }
 
     private boolean hasMemberAccess(final GroupWithMembers group, final long id) {

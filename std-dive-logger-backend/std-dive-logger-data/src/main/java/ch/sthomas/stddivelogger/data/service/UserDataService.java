@@ -1,17 +1,12 @@
 package ch.sthomas.stddivelogger.data.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
-import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
-import ch.sthomas.stddivelogger.data.repository.EmailRepository;
-import ch.sthomas.stddivelogger.data.repository.GroupRepository;
-import ch.sthomas.stddivelogger.data.repository.UserRepository;
-import ch.sthomas.stddivelogger.model.entity.AccountRequestEntity;
-import ch.sthomas.stddivelogger.model.entity.EmailEntity;
-import ch.sthomas.stddivelogger.model.entity.GroupEntity;
-import ch.sthomas.stddivelogger.model.entity.UserEntity;
+import ch.sthomas.stddivelogger.data.repository.*;
+import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.notification.EmailNotificationPayload;
 import ch.sthomas.stddivelogger.model.user.Group;
+import ch.sthomas.stddivelogger.model.user.GroupRole;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -29,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class UserDataService {
@@ -41,20 +35,23 @@ public class UserDataService {
     private final URI frontendBaseUrl;
     private final EmailRepository emailRepository;
     private final AccountRequestRepository accountRequestRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     public UserDataService(
             final UserRepository userRepository,
             final GroupRepository groupRepository,
             final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
             @Value("${ch.sthomas.stddivelogger.frontend.base-url}") final String frontendBaseUrl,
-            EmailRepository emailRepository,
-            AccountRequestRepository accountRequestRepository) {
+            final EmailRepository emailRepository,
+            final AccountRequestRepository accountRequestRepository,
+            GroupMemberRepository groupMemberRepository) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.frontendBaseUrl = URI.create(frontendBaseUrl);
         this.emailRepository = emailRepository;
         this.accountRequestRepository = accountRequestRepository;
+        this.groupMemberRepository = groupMemberRepository;
     }
 
     public User findUserById(final long userId) {
@@ -104,18 +101,14 @@ public class UserDataService {
                 .toList();
     }
 
-    public GroupWithMembers saveGroup(final String name, final Collection<Long> initialMembers) {
-        final var members =
-                initialMembers.stream()
-                        .map(userRepository::findById)
-                        .flatMap(Optional::stream)
-                        .collect(Collectors.toSet());
-        return groupRepository.save(new GroupEntity(name, members)).toRecordWithMembers();
+    public GroupWithMembers saveGroup(final String name, final User initialAdmin) {
+        final var admin = userRepository.findById(initialAdmin.id()).orElseThrow();
+        return groupRepository.save(new GroupEntity(name, admin)).toRecordWithMembers();
     }
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
         try {
-            groupRepository.joinGroup(groupId, userId);
+            groupRepository.joinGroup(groupId, userId, GroupRole.REQUESTED);
             return groupRepository
                     .findById(groupId)
                     .map(GroupEntity::toRecordWithMembers)
@@ -124,6 +117,22 @@ public class UserDataService {
             logger.error("Error while joining group", e);
             throw new IllegalArgumentException("Group or user not found.");
         }
+    }
+
+    public GroupWithMembers changeRole(
+            final long groupId, final long userId, final GroupRole role) {
+        groupMemberRepository.save(
+                groupMemberRepository
+                        .findByGroup_IdAndUser_Id(groupId, userId)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "User was not member of this group, cannot change role."))
+                        .setRole(role));
+        return groupRepository
+                .findById(groupId)
+                .map(GroupEntity::toRecordWithMembers)
+                .orElseThrow();
     }
 
     @Transactional
@@ -148,5 +157,13 @@ public class UserDataService {
     public User setVerified(final User user) {
         userRepository.setVerified(user.id());
         return userRepository.findById(user.id()).map(UserEntity::toRecord).orElseThrow();
+    }
+
+    public boolean isGroupAdmin(final long groupId, final User admin) {
+        return groupMemberRepository
+                .findByGroup_IdAndUser_Id(groupId, admin.id())
+                .map(GroupMemberEntity::getRole)
+                .map(GroupRole.ADMIN::equals)
+                .orElse(false);
     }
 }

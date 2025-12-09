@@ -1,11 +1,10 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.user.Group;
-import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
-import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.model.user.*;
 
 import jakarta.persistence.*;
 
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -19,16 +18,17 @@ public class GroupEntity {
     @Column(name = "group_name", unique = true)
     private String groupName;
 
-    @JoinTable(
-            name = "t_group_member",
-            joinColumns = {@JoinColumn(name = "fk_group_id")},
-            inverseJoinColumns = {@JoinColumn(name = "fk_user_id")})
-    @ManyToMany
-    private Set<UserEntity> members;
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<GroupMemberEntity> members;
 
     public GroupEntity() {}
 
-    public GroupEntity(final String groupName, final Set<UserEntity> members) {
+    public GroupEntity(final String groupName, final UserEntity adminUser) {
+        this.groupName = groupName;
+        this.members = Set.of(new GroupMemberEntity(this, adminUser, GroupRole.ADMIN));
+    }
+
+    public GroupEntity(final String groupName, final Set<GroupMemberEntity> members) {
         this.groupName = groupName;
         this.members = members;
     }
@@ -39,8 +39,15 @@ public class GroupEntity {
 
     public GroupWithMembers toRecordWithMembers() {
         return new GroupWithMembers(
-                id,
-                groupName,
-                members.stream().map(UserEntity::toRecord).map(User::toFrontendModel).toList());
+                id, groupName, getMembers(GroupRole.ADMIN), getMembers(GroupRole.MEMBER));
+    }
+
+    private List<FrontendUser> getMembers(final GroupRole role) {
+        return members.stream()
+                .filter(g -> g.getRole() == role)
+                .map(GroupMemberEntity::getUserEntity)
+                .map(UserEntity::toRecord)
+                .map(User::toFrontendModel)
+                .toList();
     }
 }
