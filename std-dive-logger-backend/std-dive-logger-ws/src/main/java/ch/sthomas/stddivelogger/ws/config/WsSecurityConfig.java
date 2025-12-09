@@ -12,6 +12,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -108,8 +109,11 @@ public class WsSecurityConfig {
 
     @Bean
     public JwtAuthFilter jwtAuthFilter(
-            final JwtUtil jwtUtil, final UserDetailsService customUserDetailsService) {
-        return new JwtAuthFilter(jwtUtil, customUserDetailsService);
+            final JwtUtil jwtUtil,
+            final UserDetailsService customUserDetailsService,
+            @Value("${ch.sthomas.stddivelogger.users.check-verified:true}")
+                    final boolean checkVerified) {
+        return new JwtAuthFilter(jwtUtil, customUserDetailsService, checkVerified);
     }
 
     @Bean

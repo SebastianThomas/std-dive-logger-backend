@@ -20,10 +20,15 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final boolean checkVerified;
 
-    public JwtAuthFilter(final JwtUtil jwtUtil, final UserDetailsService userDetailsService) {
+    public JwtAuthFilter(
+            final JwtUtil jwtUtil,
+            final UserDetailsService userDetailsService,
+            final boolean checkVerified) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.checkVerified = checkVerified;
     }
 
     @Override
@@ -46,7 +51,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     final var userDetails = userDetailsService.loadUserByUsername(claimedUsername);
                     final var username = userDetails.getUsername();
 
-                    if (userDetails instanceof final User user && !user.emailVerified()) {
+                    if (checkVerified
+                            && userDetails instanceof final User user
+                            && !user.emailVerified()) {
                         response.sendError(
                                 HttpServletResponse.SC_UNAUTHORIZED, "USER_EMAIL_UNVERIFIED");
                         return;
