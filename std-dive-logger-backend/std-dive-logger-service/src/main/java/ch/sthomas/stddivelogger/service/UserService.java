@@ -159,11 +159,11 @@ public class UserService {
 
     public User setVerified(@NotBlank final String token) {
         final var user =
-                accountRequestRepository.findAndDeleteById(SecurityUtils.hashToken(token)).stream()
-                        .map(AccountRequestEntity::toRecord)
+                accountRequestRepository
+                        .findAndDeleteById(SecurityUtils.hashToken(token))
+                        .flatMap(AccountRequestEntity::toRecord)
                         .filter(r -> r.type() == AccountRequestType.VERIFY_EMAIL)
                         .map(AccountRequest::user)
-                        .findAny()
                         .orElseThrow(
                                 () ->
                                         new IllegalArgumentException(

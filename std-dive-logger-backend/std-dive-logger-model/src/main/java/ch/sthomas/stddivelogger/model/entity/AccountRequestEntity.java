@@ -7,7 +7,10 @@ import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
 
 @Entity
 @Table(name = "t_account_request")
@@ -28,6 +31,9 @@ public class AccountRequestEntity {
     @Enumerated(EnumType.STRING)
     private AccountRequestType requestType;
 
+    @Column(name = "valid_until", nullable = false, updatable = false)
+    private OffsetDateTime validUntil;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -38,14 +44,19 @@ public class AccountRequestEntity {
             final String id,
             final UserEntity user,
             final EmailEntity email,
-            final AccountRequestType requestType) {
+            final AccountRequestType requestType,
+            final Instant validUntil) {
         this.id = id;
         this.user = user;
         this.email = email;
         this.requestType = requestType;
+        this.validUntil = validUntil.atOffset(ZoneOffset.UTC);
     }
 
-    public AccountRequest toRecord() {
-        return new AccountRequest(user.toRecord(), email.toRecord(), requestType);
+    public Optional<AccountRequest> toRecord() {
+        if (validUntil.isAfter(Instant.now().atOffset(ZoneOffset.UTC))) {
+            return Optional.empty();
+        }
+        return Optional.of(new AccountRequest(user.toRecord(), email.toRecord(), requestType));
     }
 }
