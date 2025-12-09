@@ -13,4 +13,5 @@ public class ExceptionHandling
                 IllegalArgumentAdviceTrait,
                 ConstraintViolationAdviceTrait,
                 DiveConstraintAdviceTrait,
-                UnauthorizedAdviceTrait {}
+                UnauthorizedAdviceTrait,
+                UserCreationAdviceTrait {}

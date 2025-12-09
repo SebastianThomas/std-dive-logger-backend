@@ -31,6 +31,9 @@ public class UserEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "verified", nullable = false)
+    private boolean verified;
+
     @JoinTable(
             name = "t_group_member",
             joinColumns = {@JoinColumn(name = "fk_user_id")},
@@ -54,6 +57,14 @@ public class UserEntity {
         this.name = name;
     }
 
+    public UserEntity(
+            final String email, final String password, final String name, final boolean verified) {
+        this.email = email;
+        this.password = password;
+        this.name = name;
+        this.verified = verified;
+    }
+
     public UserEntity(final long id, final String email, final String password, final String name) {
         this.id = id;
         this.email = email;
@@ -62,7 +73,7 @@ public class UserEntity {
     }
 
     public User toRecord() {
-        return new User(id, email, password, name, createdAt, updatedAt);
+        return new User(id, email, password, name, verified, createdAt, updatedAt);
     }
 
     public List<Group> getGroupsWithoutMembers() {

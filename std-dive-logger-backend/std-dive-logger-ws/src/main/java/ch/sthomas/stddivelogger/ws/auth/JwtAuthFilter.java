@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
+import ch.sthomas.stddivelogger.model.user.User;
+
 import io.jsonwebtoken.JwtException;
 
 import jakarta.servlet.FilterChain;
@@ -44,6 +46,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     final var userDetails = userDetailsService.loadUserByUsername(claimedUsername);
                     final var username = userDetails.getUsername();
 
+                    if (userDetails instanceof final User user && !user.emailVerified()) {
+                        response.sendError(
+                                HttpServletResponse.SC_UNAUTHORIZED, "USER_EMAIL_UNVERIFIED");
+                        return;
+                    }
+
                     if (jwtUtil.isTokenValid(token, username, JwtUtil.TokenType.ACCESS_TOKEN)) {
                         final var authToken =
                                 new UsernamePasswordAuthenticationToken(
@@ -54,6 +62,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         } catch (final JwtException e) {
             // TODO: Can we throw here?
+            logger.info("Exception parsing JWT", e);
         }
 
         filterChain.doFilter(request, response);

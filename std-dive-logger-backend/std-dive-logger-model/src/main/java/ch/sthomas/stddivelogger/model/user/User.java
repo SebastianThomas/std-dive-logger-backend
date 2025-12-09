@@ -8,7 +8,13 @@ import java.util.Collection;
 import java.util.List;
 
 public record User(
-        long id, String email, String password, String name, Instant createdAt, Instant updatedAt)
+        long id,
+        String email,
+        String password,
+        String name,
+        boolean emailVerified,
+        Instant createdAt,
+        Instant updatedAt)
         implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
