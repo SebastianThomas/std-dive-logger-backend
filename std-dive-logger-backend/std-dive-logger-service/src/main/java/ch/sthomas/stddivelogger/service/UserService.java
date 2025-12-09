@@ -9,10 +9,7 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.exception.UserCreationException;
 import ch.sthomas.stddivelogger.model.notification.AccountRequest;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
-import ch.sthomas.stddivelogger.model.user.Group;
-import ch.sthomas.stddivelogger.model.user.GroupRole;
-import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
-import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.model.user.*;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
@@ -52,7 +49,7 @@ public class UserService {
     public UserService(
             final UserDataService userDataService,
             final PasswordEncoder passwordEncoder,
-            AccountRequestRepository accountRequestRepository) {
+            final AccountRequestRepository accountRequestRepository) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
         this.accountRequestRepository = accountRequestRepository;
@@ -170,5 +167,9 @@ public class UserService {
                                                 "There is no open account request for token "
                                                         + token));
         return userDataService.setVerified(user);
+    }
+
+    public List<GroupRequest> getAdminGroupRequests(final User user) {
+        return userDataService.findAdminGroupRequests(user);
     }
 }
