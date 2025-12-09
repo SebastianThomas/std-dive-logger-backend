@@ -85,6 +85,11 @@ public class AuthController {
                 .toFrontendModel();
     }
 
+    @PostMapping("/verify-email")
+    public FrontendUser verifyEmail(@RequestParam(name = "token") @NotBlank final String token) {
+        return userService.setVerified(token).toFrontendModel();
+    }
+
     @Operation(summary = "Invalidate the given refresh token")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(

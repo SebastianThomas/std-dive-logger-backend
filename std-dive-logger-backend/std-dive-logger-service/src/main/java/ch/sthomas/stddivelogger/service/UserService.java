@@ -1,15 +1,20 @@
 package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
+import ch.sthomas.stddivelogger.model.entity.AccountRequestEntity;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.exception.UserCreationException;
+import ch.sthomas.stddivelogger.model.notification.AccountRequest;
+import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotBlank;
 
 import org.passay.*;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -41,11 +47,15 @@ public class UserService {
                     new IllegalSequenceRule(EnglishSequenceData.Numerical, 4, false),
                     new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
                     new WhitespaceRule());
+    private final AccountRequestRepository accountRequestRepository;
 
     public UserService(
-            final UserDataService userDataService, final PasswordEncoder passwordEncoder) {
+            final UserDataService userDataService,
+            final PasswordEncoder passwordEncoder,
+            AccountRequestRepository accountRequestRepository) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
+        this.accountRequestRepository = accountRequestRepository;
     }
 
     public User getUserById(final long userId) {
@@ -137,5 +147,20 @@ public class UserService {
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
         return userDataService.joinGroup(groupId, userId);
+    }
+
+    public User setVerified(@NotBlank final String token) {
+        final var user =
+                accountRequestRepository.findById(UUID.fromString(token)).stream()
+                        .map(AccountRequestEntity::toRecord)
+                        .filter(r -> r.type() == AccountRequestType.VERIFY_EMAIL)
+                        .map(AccountRequest::user)
+                        .findAny()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "There is no open account request for token "
+                                                        + token));
+        return userDataService.setVerified(user);
     }
 }

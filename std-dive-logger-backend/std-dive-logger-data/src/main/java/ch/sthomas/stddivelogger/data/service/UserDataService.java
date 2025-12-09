@@ -144,4 +144,9 @@ public class UserDataService {
                         userRepository.findById(user.id()).orElseThrow(), email, type));
         return true;
     }
+
+    public User setVerified(final User user) {
+        userRepository.setVerified(user.id());
+        return userRepository.findById(user.id()).map(UserEntity::toRecord).orElseThrow();
+    }
 }

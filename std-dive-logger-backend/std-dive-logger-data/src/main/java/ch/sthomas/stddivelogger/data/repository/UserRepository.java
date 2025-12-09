@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -32,4 +33,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             countQuery = "SELECT * FROM t_users WHERE name % :name",
             nativeQuery = true)
     Page<UserEntity> findByClosestMatchName(String name, Pageable pageable);
+
+    @Query("UPDATE UserEntity u SET u.verified = TRUE WHERE u.id = :id")
+    @Modifying
+    void setVerified(long id);
 }
