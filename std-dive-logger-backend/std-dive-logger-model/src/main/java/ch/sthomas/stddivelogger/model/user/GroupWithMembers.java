@@ -9,4 +9,7 @@ import java.util.Collection;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GroupWithMembers(
-        long id, @NotNull String name, @Nullable Collection<FrontendUser> members) {}
+        long id,
+        @NotNull String name,
+        @Nullable Collection<FrontendUser> admins,
+        @Nullable Collection<FrontendUser> members) {}
