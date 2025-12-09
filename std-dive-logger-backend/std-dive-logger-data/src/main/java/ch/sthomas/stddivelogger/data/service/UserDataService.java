@@ -1,10 +1,16 @@
 package ch.sthomas.stddivelogger.data.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
+import ch.sthomas.stddivelogger.data.repository.EmailRepository;
 import ch.sthomas.stddivelogger.data.repository.GroupRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
+import ch.sthomas.stddivelogger.model.entity.AccountRequestEntity;
+import ch.sthomas.stddivelogger.model.entity.EmailEntity;
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
+import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
+import ch.sthomas.stddivelogger.model.notification.EmailNotificationPayload;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -14,13 +20,15 @@ import org.hibernate.exception.DataException;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.net.URI;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,10 +36,25 @@ public class UserDataService {
     private static final Logger logger = LoggerFactory.getLogger(UserDataService.class);
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public UserDataService(final UserRepository userRepository, GroupRepository groupRepository) {
+    private final URI frontendBaseUrl;
+    private final EmailRepository emailRepository;
+    private final AccountRequestRepository accountRequestRepository;
+
+    public UserDataService(
+            final UserRepository userRepository,
+            final GroupRepository groupRepository,
+            final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            @Value("${ch.sthomas.stddivelogger.frontend.base-url}") final String frontendBaseUrl,
+            EmailRepository emailRepository,
+            AccountRequestRepository accountRequestRepository) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.frontendBaseUrl = URI.create(frontendBaseUrl);
+        this.emailRepository = emailRepository;
+        this.accountRequestRepository = accountRequestRepository;
     }
 
     public User findUserById(final long userId) {
@@ -101,5 +124,24 @@ public class UserDataService {
             logger.error("Error while joining group", e);
             throw new IllegalArgumentException("Group or user not found.");
         }
+    }
+
+    @Transactional
+    public boolean createVerifyEmailRequest(final User user) {
+        final var type = AccountRequestType.VERIFY_EMAIL;
+        final var requestId = UUID.randomUUID();
+        final var callback = URI.create(frontendBaseUrl + "/verify-email?token=" + requestId);
+        final var verifyEmailPayload =
+                EmailNotificationPayload.createEmailPayload(user, type, callback.toString());
+        final var email =
+                emailRepository.save(
+                        new EmailEntity(
+                                verifyEmailPayload.receiver(),
+                                verifyEmailPayload.subject(),
+                                verifyEmailPayload.body()));
+        accountRequestRepository.save(
+                new AccountRequestEntity(
+                        userRepository.findById(user.id()).orElseThrow(), email, type));
+        return true;
     }
 }

@@ -4,9 +4,12 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.exception.UserCreationException;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
+
+import jakarta.transaction.Transactional;
 
 import org.passay.*;
 import org.springframework.data.domain.PageRequest;
@@ -38,17 +41,22 @@ public class UserService {
                     new IllegalSequenceRule(EnglishSequenceData.Numerical, 4, false),
                     new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
                     new WhitespaceRule());
+    private final EmailNotificationService emailNotificationService;
 
     public UserService(
-            final UserDataService userDataService, final PasswordEncoder passwordEncoder) {
+            final UserDataService userDataService,
+            final PasswordEncoder passwordEncoder,
+            EmailNotificationService emailNotificationService) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
+        this.emailNotificationService = emailNotificationService;
     }
 
     public User getUserById(final long userId) {
         return userDataService.findUserById(userId);
     }
 
+    @Transactional
     public User createUser(final String emailParam, final String password, final String name) {
         final var email = emailParam.trim();
         if (!isValidEmail(email)) {
@@ -61,7 +69,11 @@ public class UserService {
                             .map(RuleResultDetail::toString)
                             .toList());
         }
-        return userDataService.saveUser(email, passwordEncoder.encode(password), name);
+        final var user = userDataService.saveUser(email, passwordEncoder.encode(password), name);
+        if (userDataService.createVerifyEmailRequest(user)) {
+            return user;
+        }
+        throw new UserCreationException("Could not create verify Email Request.");
     }
 
     private boolean isValidEmail(final String email) {

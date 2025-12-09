@@ -31,7 +31,7 @@ public class UserEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "emailVerified", nullable = false)
+    @Column(name = "verified", nullable = false)
     private boolean verified;
 
     @JoinTable(
@@ -73,7 +73,7 @@ public class UserEntity {
     }
 
     public User toRecord() {
-        return new User(id, email, password, name, createdAt, updatedAt);
+        return new User(id, email, password, name, verified, createdAt, updatedAt);
     }
 
     public List<Group> getGroupsWithoutMembers() {
