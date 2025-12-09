@@ -4,7 +4,6 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.service.UserService;
 
-import org.springframework.boot.actuate.health.HealthEndpointGroupsPostProcessor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,13 +14,9 @@ import java.util.List;
 @RequestMapping("/v1/groups")
 public class GroupController {
     private final UserService userService;
-    private final HealthEndpointGroupsPostProcessor healthEndpointGroupsPostProcessor;
 
-    public GroupController(
-            final UserService userService,
-            HealthEndpointGroupsPostProcessor healthEndpointGroupsPostProcessor) {
+    public GroupController(final UserService userService) {
         this.userService = userService;
-        this.healthEndpointGroupsPostProcessor = healthEndpointGroupsPostProcessor;
     }
 
     @GetMapping("/{id}")
