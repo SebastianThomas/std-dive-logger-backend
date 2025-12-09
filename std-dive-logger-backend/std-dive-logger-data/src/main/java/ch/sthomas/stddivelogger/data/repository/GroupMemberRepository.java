@@ -15,4 +15,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
     @Query(
             "SELECT g FROM UserEntity u JOIN GroupMemberEntity admin ON admin.role = :adminRole AND u.id = admin.user.id JOIN GroupMemberEntity g WHERE g.group.id = admin.group.id AND g.role = :searchedRole")
     List<GroupMemberEntity> findRequests(long adminId, GroupRole adminRole, GroupRole searchedRole);
+
+    int countByUser_IdAndRole(Long userId, GroupRole role);
 }
