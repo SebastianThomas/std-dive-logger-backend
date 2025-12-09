@@ -1,10 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
-import ch.sthomas.stddivelogger.model.user.Group;
-import ch.sthomas.stddivelogger.model.user.GroupRole;
-import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
-import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.service.UserService;
 
 import org.springframework.boot.actuate.health.HealthEndpointGroupsPostProcessor;
@@ -50,14 +47,20 @@ public class GroupController {
 
     @PostMapping("/{id}/join")
     public GroupWithMembers groupJoin(
-            @AuthenticationPrincipal final User user, @RequestBody final long groupId) {
+            @AuthenticationPrincipal final User user,
+            @PathVariable(name = "id") final long groupId) {
         return userService.joinGroup(groupId, user.id());
     }
 
-    @PutMapping("/{id}/role")
+    @GetMapping("/requests")
+    public List<GroupRequest> getRequests(@AuthenticationPrincipal final User user) {
+        return userService.getAdminGroupRequests(user);
+    }
+
+    @PutMapping("/role")
     public GroupWithMembers changeRole(
             @AuthenticationPrincipal final User user,
-            @RequestParam(name = "groupId") final int groupId,
+            @RequestParam(name = "id") final int groupId,
             @RequestParam(name = "userId") final int userId,
             @RequestParam(name = "role") final String roleString) {
         final var role = GroupRole.find(roleString);

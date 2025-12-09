@@ -5,10 +5,7 @@ import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.notification.EmailNotificationPayload;
-import ch.sthomas.stddivelogger.model.user.Group;
-import ch.sthomas.stddivelogger.model.user.GroupRole;
-import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
-import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.model.user.*;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.DataException;
@@ -165,5 +162,17 @@ public class UserDataService {
                 .map(GroupMemberEntity::getRole)
                 .map(GroupRole.ADMIN::equals)
                 .orElse(false);
+    }
+
+    public List<GroupRequest> findAdminGroupRequests(final User user) {
+        return groupMemberRepository
+                .findRequests(user.id(), GroupRole.ADMIN, GroupRole.REQUESTED)
+                .stream()
+                .map(
+                        e ->
+                                new GroupRequest(
+                                        e.getUserEntity().toRecord().toFrontendModel(),
+                                        e.getRole()))
+                .toList();
     }
 }
