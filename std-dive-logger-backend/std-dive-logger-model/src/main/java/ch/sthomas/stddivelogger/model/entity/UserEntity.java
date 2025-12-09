@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.user.User;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -39,7 +40,16 @@ public class UserEntity {
             joinColumns = {@JoinColumn(name = "fk_user_id")},
             inverseJoinColumns = {@JoinColumn(name = "fk_group_id")})
     @ManyToMany
-    private Set<GroupEntity> groups;
+    @SQLJoinTableRestriction("role = 'MEMBER'")
+    private Set<GroupEntity> groupsMember;
+
+    @JoinTable(
+            name = "t_group_member",
+            joinColumns = {@JoinColumn(name = "fk_user_id")},
+            inverseJoinColumns = {@JoinColumn(name = "fk_group_id")})
+    @ManyToMany
+    @SQLJoinTableRestriction("role = 'ADMIN'")
+    private Set<GroupEntity> groupsAdmin;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
@@ -76,11 +86,19 @@ public class UserEntity {
         return new User(id, email, password, name, verified, createdAt, updatedAt);
     }
 
-    public List<Group> getGroupsWithoutMembers() {
-        return groups.stream().map(GroupEntity::toRecord).toList();
+    public List<Group> getMemberGroupsWithoutMembers() {
+        return groupsMember.stream().map(GroupEntity::toRecord).toList();
     }
 
-    public List<GroupWithMembers> getGroupsWithMembers() {
-        return groups.stream().map(GroupEntity::toRecordWithMembers).toList();
+    public List<GroupWithMembers> getMemberGroupsWithMembers() {
+        return groupsMember.stream().map(GroupEntity::toRecordWithMembers).toList();
+    }
+
+    public List<Group> getAdminGroupsWithoutMembers() {
+        return groupsAdmin.stream().map(GroupEntity::toRecord).toList();
+    }
+
+    public List<GroupWithMembers> getAdminGroupsWithMembers() {
+        return groupsAdmin.stream().map(GroupEntity::toRecordWithMembers).toList();
     }
 }
