@@ -265,5 +265,6 @@ CREATE TABLE t_account_request
     fk_user_id            INTEGER REFERENCES t_users (pk_user_id)  NOT NULL,
     fk_email_id           INTEGER REFERENCES t_email (pk_email_id) NOT NULL,
     request_type          TEXT                                     NOT NULL,
+    valid_until           TIMESTAMPTZ                              NOT NULL,
     created_at            TIMESTAMPTZ                              NOT NULL
 );

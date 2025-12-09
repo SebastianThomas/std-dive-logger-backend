@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -167,7 +168,8 @@ public class UserDataService {
                         SecurityUtils.hashToken(requestId),
                         userRepository.findById(user.id()).orElseThrow(),
                         email,
-                        type));
+                        type,
+                        Instant.now().plus(type.getValidDuration())));
         return true;
     }
 
@@ -207,7 +209,7 @@ public class UserDataService {
     public Optional<AccountRequest> findAndDeleteLoginRequestByHashedToken(final String token) {
         return accountRequestRepository
                 .findAndDeleteById(SecurityUtils.hashToken(token))
-                .map(AccountRequestEntity::toRecord)
+                .flatMap(AccountRequestEntity::toRecord)
                 .filter(a -> a.type() == AccountRequestType.LOGIN);
     }
 }
