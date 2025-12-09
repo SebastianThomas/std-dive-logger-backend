@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,9 +24,10 @@ import java.util.*;
 @Service
 public class UserDataService {
     private static final Logger logger = LoggerFactory.getLogger(UserDataService.class);
+    private static final int MAX_CONCURRENT_JOIN_REQUESTS = 5;
+
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
-    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     private final URI frontendBaseUrl;
     private final EmailRepository emailRepository;
@@ -37,14 +37,12 @@ public class UserDataService {
     public UserDataService(
             final UserRepository userRepository,
             final GroupRepository groupRepository,
-            final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
             @Value("${ch.sthomas.stddivelogger.frontend.base-url}") final String frontendBaseUrl,
             final EmailRepository emailRepository,
             final AccountRequestRepository accountRequestRepository,
-            GroupMemberRepository groupMemberRepository) {
+            final GroupMemberRepository groupMemberRepository) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
-        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.frontendBaseUrl = URI.create(frontendBaseUrl);
         this.emailRepository = emailRepository;
         this.accountRequestRepository = accountRequestRepository;
@@ -104,8 +102,17 @@ public class UserDataService {
     }
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
+        final var role = GroupRole.REQUESTED;
+        final var currentJoinRequestCount =
+                groupMemberRepository.countByUser_IdAndRole(userId, role);
+        if (currentJoinRequestCount > MAX_CONCURRENT_JOIN_REQUESTS) {
+            throw new IllegalArgumentException(
+                    "You already have "
+                            + MAX_CONCURRENT_JOIN_REQUESTS
+                            + " group join requests pending, please check back later.");
+        }
         try {
-            groupRepository.joinGroup(groupId, userId, GroupRole.REQUESTED);
+            groupRepository.joinGroup(groupId, userId, role);
             return groupRepository
                     .findById(groupId)
                     .map(GroupEntity::toRecordWithMembers)
