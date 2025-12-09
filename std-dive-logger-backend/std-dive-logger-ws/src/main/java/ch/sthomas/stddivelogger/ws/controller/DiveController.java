@@ -130,12 +130,12 @@ public class DiveController {
     @GetMapping(path = "/{id}/readers")
     public PagedResponse<FrontendUser> getReadersOfDive(
             @AuthenticationPrincipal final User user,
-            @PathVariable("id") final long id,
+            @PathVariable("id") final long diveId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view readers");
         }
-        return diveService.getReaders(user, id, page).map(User::toFrontendModel);
+        return diveService.getReaders(user, diveId, page).map(User::toFrontendModel);
     }
 
     @Operation(
