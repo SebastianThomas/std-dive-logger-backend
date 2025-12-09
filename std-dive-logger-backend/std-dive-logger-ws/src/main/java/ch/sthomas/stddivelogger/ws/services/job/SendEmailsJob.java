@@ -20,6 +20,10 @@ public class SendEmailsJob {
     @Scheduled(cron = "*/2 * * * * *")
     public void sendMails() {
         final var sent = emailNotificationService.sendOutstandingEmails();
+        if (sent.getLeft() == 0) {
+            logger.trace("No new emails to send");
+            return;
+        }
         logger.info("Sent {}/{} emails", sent.getRight(), sent.getLeft());
     }
 }

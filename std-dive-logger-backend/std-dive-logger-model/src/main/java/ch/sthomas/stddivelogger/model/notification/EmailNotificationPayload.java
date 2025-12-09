@@ -24,14 +24,16 @@ public record EmailNotificationPayload(String receiver, String subject, String b
                 MessageFormat.format("Verify Email for {0}", APP_NAME),
                 MessageFormat.format(
                         """
-                        Dear {0},
+                        Hello {0},
 
                         please click the following link to verify your email:
                         {1}
 
+                        If the link does not work, please copy it and open it in your browser.
+
                         In case you did not request this email, you may ignore it.
                         """,
-                        user.getUsername(), urlWithToken));
+                        user.name(), urlWithToken));
     }
 
     private static EmailNotificationPayload createLoginPayload(
@@ -41,14 +43,16 @@ public record EmailNotificationPayload(String receiver, String subject, String b
                 MessageFormat.format("Login request for {0}", APP_NAME),
                 MessageFormat.format(
                         """
-                        Dear {0},
+                        Hello {0},
 
                         please click the following link to login:
                         {1}
 
+                        If the link does not work, please copy it and open it in your browser.
+
                         In case you did not request this email, you may ignore it.
                         """,
-                        user.getUsername(), urlWithToken));
+                        user.name(), urlWithToken));
     }
 
     private static EmailNotificationPayload createChangePasswordPayload(
@@ -58,13 +62,15 @@ public record EmailNotificationPayload(String receiver, String subject, String b
                 MessageFormat.format("Login request for {0}", APP_NAME),
                 MessageFormat.format(
                         """
-                        Dear {0},
+                        Hello {0},
 
                         please click the following link to reset your password:
                         {1}
 
+                        If the link does not work, please copy it and open it in your browser.
+
                         In case you did not request this email, you may ignore it.
                         """,
-                        user.getUsername(), urlWithToken));
+                        user.name(), urlWithToken));
     }
 }

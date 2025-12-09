@@ -6,9 +6,9 @@ POST {{baseurl}}/api/auth/signup
 Content-Type: application/json
 
 {
-  "email": "test3@test.ch",
+  "email": "test@sthomas.ch",
   "password": "AcBd321#",
-  "name": "Test1User"
+  "name": "Sebastian"
 }
 
 ### Login user

@@ -52,14 +52,11 @@ public class EmailNotificationService implements NotificationService {
         final var sent =
                 emails.stream()
                         .parallel()
+                        .map(Email::toPayload)
                         .map(this::sendEmail)
                         .filter(r -> r instanceof SuccessfulNotificationResult)
                         .count();
         return Pair.of((long) emails.size(), sent);
-    }
-
-    public NotificationResult sendEmail(final Email email) {
-        return sendEmail(email.toPayload());
     }
 
     public NotificationResult sendEmail(final EmailNotificationPayload p) {
