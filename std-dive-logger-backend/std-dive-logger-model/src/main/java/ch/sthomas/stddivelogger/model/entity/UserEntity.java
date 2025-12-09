@@ -1,18 +1,14 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.user.Group;
-import ch.sthomas.stddivelogger.model.user.GroupWithMembers;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "t_users")
@@ -35,21 +31,8 @@ public class UserEntity {
     @Column(name = "verified", nullable = false)
     private boolean verified;
 
-    @JoinTable(
-            name = "t_group_member",
-            joinColumns = {@JoinColumn(name = "fk_user_id")},
-            inverseJoinColumns = {@JoinColumn(name = "fk_group_id")})
-    @ManyToMany
-    @SQLJoinTableRestriction("role = 'MEMBER'")
-    private Set<GroupEntity> groupsMember;
-
-    @JoinTable(
-            name = "t_group_member",
-            joinColumns = {@JoinColumn(name = "fk_user_id")},
-            inverseJoinColumns = {@JoinColumn(name = "fk_group_id")})
-    @ManyToMany
-    @SQLJoinTableRestriction("role = 'ADMIN'")
-    private Set<GroupEntity> groupsAdmin;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<GroupMemberEntity> groups;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
@@ -84,21 +67,5 @@ public class UserEntity {
 
     public User toRecord() {
         return new User(id, email, password, name, verified, createdAt, updatedAt);
-    }
-
-    public List<Group> getMemberGroupsWithoutMembers() {
-        return groupsMember.stream().map(GroupEntity::toRecord).toList();
-    }
-
-    public List<GroupWithMembers> getMemberGroupsWithMembers() {
-        return groupsMember.stream().map(GroupEntity::toRecordWithMembers).toList();
-    }
-
-    public List<Group> getAdminGroupsWithoutMembers() {
-        return groupsAdmin.stream().map(GroupEntity::toRecord).toList();
-    }
-
-    public List<GroupWithMembers> getAdminGroupsWithMembers() {
-        return groupsAdmin.stream().map(GroupEntity::toRecordWithMembers).toList();
     }
 }

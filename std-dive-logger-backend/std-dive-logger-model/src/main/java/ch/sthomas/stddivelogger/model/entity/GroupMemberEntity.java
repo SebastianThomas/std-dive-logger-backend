@@ -13,12 +13,10 @@ public class GroupMemberEntity {
     private Long id;
 
     @ManyToOne
-    @MapsId("groupId")
     @JoinColumn(name = "fk_group_id")
     private GroupEntity group;
 
     @ManyToOne
-    @MapsId("userId")
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
 
@@ -45,5 +43,6 @@ public class GroupMemberEntity {
 
     public GroupMemberEntity setRole(final GroupRole role) {
         this.role = role;
+        return this;
     }
 }
