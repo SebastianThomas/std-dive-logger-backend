@@ -41,15 +41,11 @@ public class UserService {
                     new IllegalSequenceRule(EnglishSequenceData.Numerical, 4, false),
                     new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
                     new WhitespaceRule());
-    private final EmailNotificationService emailNotificationService;
 
     public UserService(
-            final UserDataService userDataService,
-            final PasswordEncoder passwordEncoder,
-            EmailNotificationService emailNotificationService) {
+            final UserDataService userDataService, final PasswordEncoder passwordEncoder) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
-        this.emailNotificationService = emailNotificationService;
     }
 
     public User getUserById(final long userId) {

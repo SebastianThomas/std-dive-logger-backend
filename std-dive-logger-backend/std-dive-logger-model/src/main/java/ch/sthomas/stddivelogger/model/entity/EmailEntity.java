@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 @Entity
 @Table(name = "t_email")
@@ -49,6 +50,11 @@ public class EmailEntity {
     }
 
     public Email toRecord() {
-        return new Email(receiver, subject, content, sentAt.toInstant(), sending);
+        return new Email(
+                receiver,
+                subject,
+                content,
+                Optional.ofNullable(sentAt).map(OffsetDateTime::toInstant),
+                sending);
     }
 }
