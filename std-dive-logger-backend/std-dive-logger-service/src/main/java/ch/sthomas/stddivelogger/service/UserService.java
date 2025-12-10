@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
-import ch.sthomas.stddivelogger.model.entity.AccountRequestEntity;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.exception.UserCreationException;
@@ -157,11 +156,11 @@ public class UserService {
         return userDataService.joinGroup(groupId, userId);
     }
 
+    @Transactional
     public User setVerified(@NotBlank final String token) {
         final var user =
-                accountRequestRepository
-                        .findAndDeleteById(SecurityUtils.hashToken(token))
-                        .flatMap(AccountRequestEntity::toRecord)
+                userDataService
+                        .findAndDeleteAccountRequestEntityById(SecurityUtils.hashToken(token))
                         .filter(r -> r.type() == AccountRequestType.VERIFY_EMAIL)
                         .map(AccountRequest::user)
                         .orElseThrow(

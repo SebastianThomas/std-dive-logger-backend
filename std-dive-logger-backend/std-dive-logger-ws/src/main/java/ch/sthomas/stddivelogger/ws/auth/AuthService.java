@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthRequest;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthResponse;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import jakarta.annotation.Nullable;
@@ -62,7 +63,8 @@ public class AuthService {
     public ResponseEntity<AuthResponse> tokenLogin(final String token) {
         final var authRequest =
                 userDataService
-                        .findAndDeleteLoginRequestByHashedToken(SecurityUtils.hashToken(token))
+                        .findAndDeleteAccountRequestEntityById(SecurityUtils.hashToken(token))
+                        .filter(a -> a.type() == AccountRequestType.LOGIN)
                         .orElseThrow(() -> new NoSuchElementException("No request for this ID."));
         return createLoginResponse(authRequest.user().getUsername());
     }

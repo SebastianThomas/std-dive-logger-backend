@@ -9,6 +9,8 @@ import ch.sthomas.stddivelogger.model.notification.EmailNotificationPayload;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
+import com.google.common.collect.MoreCollectors;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.DataException;
@@ -18,6 +20,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +42,7 @@ public class UserDataService {
     private final EmailRepository emailRepository;
     private final AccountRequestRepository accountRequestRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     public UserDataService(
             final UserRepository userRepository,
@@ -44,13 +50,15 @@ public class UserDataService {
             @Value("${ch.sthomas.stddivelogger.frontend.base-url}") final String frontendBaseUrl,
             final EmailRepository emailRepository,
             final AccountRequestRepository accountRequestRepository,
-            final GroupMemberRepository groupMemberRepository) {
+            final GroupMemberRepository groupMemberRepository,
+            NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.frontendBaseUrl = URI.create(frontendBaseUrl);
         this.emailRepository = emailRepository;
         this.accountRequestRepository = accountRequestRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
     public User findUserById(final long userId) {
@@ -206,10 +214,19 @@ public class UserDataService {
                 .toList();
     }
 
-    public Optional<AccountRequest> findAndDeleteLoginRequestByHashedToken(final String token) {
-        return accountRequestRepository
-                .findAndDeleteById(SecurityUtils.hashToken(token))
-                .flatMap(AccountRequestEntity::toRecord)
-                .filter(a -> a.type() == AccountRequestType.LOGIN);
+    @Transactional
+    public Optional<AccountRequest> findAndDeleteAccountRequestEntityById(final String id) {
+        return namedParameterJdbcTemplate
+                .query(
+                        """
+                        DELETE FROM t_account_request
+                        WHERE pk_account_request_id = :id
+                        RETURNING t_account_request.*
+                        """,
+                        new MapSqlParameterSource(Map.of("id", id)),
+                        new BeanPropertyRowMapper<AccountRequestEntity>())
+                .stream()
+                .collect(MoreCollectors.toOptional())
+                .flatMap(AccountRequestEntity::toRecord);
     }
 }
