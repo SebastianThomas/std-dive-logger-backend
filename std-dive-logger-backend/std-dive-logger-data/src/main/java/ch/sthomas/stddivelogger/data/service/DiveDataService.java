@@ -38,6 +38,8 @@ public class DiveDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(DiveDataService.class);
 
+    public static final double MIN_DIVE_SITE_DIST = 0.005;
+
     private final EntityManager entityManager;
     private final DiveRepository diveRepository;
     private final UserRepository userRepository;
@@ -318,7 +320,7 @@ public class DiveDataService {
 
     @Transactional(readOnly = true)
     public List<DiveSite> findDiveSitesByLocation(final Location coordinate) {
-        return findDiveSiteByLocationDistanceWithin(coordinate, 0.005);
+        return findDiveSiteByLocationDistanceWithin(coordinate, MIN_DIVE_SITE_DIST);
     }
 
     @Transactional(readOnly = true)

@@ -29,13 +29,13 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
     Page<DiveSiteEntity> findByClosestMatchName(String name, Pageable pageable);
 
     @Query(
-            value = "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist)",
+            value = "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) ORDER BY ST_Distance(location, :location)",
             nativeQuery = true)
     List<DiveSiteEntity> findByLocationNear(Point location, double dist);
 
     @Query(
             value =
-                    "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) AND name % :name ORDER BY similarity(name, :name) LIMIT 1",
+                    "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) AND name % :name ORDER BY similarity(name, :name), ST_Distance(location, :location) LIMIT 1",
             nativeQuery = true)
     Optional<DiveSiteEntity> findByLocationNearAndName(Point location, double dist, String name);
 

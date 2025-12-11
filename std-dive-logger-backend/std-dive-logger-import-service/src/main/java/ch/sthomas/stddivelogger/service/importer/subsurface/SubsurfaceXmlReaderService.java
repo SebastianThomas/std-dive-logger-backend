@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service.importer.subsurface;
 
+import static ch.sthomas.stddivelogger.data.service.DiveDataService.MIN_DIVE_SITE_DIST;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.getUntilSeparator;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.parseUntilSpace;
 
@@ -188,7 +189,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
 
     private DiveSite findOrCreateDiveSite(final SubsurfaceXmlFile.SubsurfaceDiveSite site) {
         return diveSiteRepository
-                .findByLocationNearAndName(site.location().toPoint(), 0.005, site.name())
+                .findByLocationNearAndName(site.location().toPoint(), MIN_DIVE_SITE_DIST, site.name())
                 .orElseGet(
                         () ->
                                 diveSiteRepository.save(
