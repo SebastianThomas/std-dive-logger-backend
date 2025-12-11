@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.Dive;
@@ -19,6 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class DiveDataService {
@@ -48,6 +52,7 @@ public class DiveDataService {
     private final DiveComputerManufacturerRepository diveComputerManufacturerRepository;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final StorageService storageService;
+    private final DiveBuddyNameRepository diveBuddyNameRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -57,7 +62,8 @@ public class DiveDataService {
             final DiveComputerRepository diveComputerRepository,
             final DiveComputerManufacturerRepository diveComputerManufacturerRepository,
             final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            final StorageService storageService) {
+            final StorageService storageService,
+            DiveBuddyNameRepository diveBuddyNameRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -67,6 +73,7 @@ public class DiveDataService {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 
         this.storageService = storageService;
+        this.diveBuddyNameRepository = diveBuddyNameRepository;
     }
 
     @Transactional(readOnly = true)
@@ -248,16 +255,48 @@ public class DiveDataService {
     }
 
     @Transactional
-    public Dive updateDive(@NotNull @Valid final Dive dive) {
+    public Dive updateDive(final @NotNull @Valid UpdateDiveBody dive) {
         final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
         final var diveSiteEntity =
-                Optional.ofNullable(dive.site())
-                        .map(DiveSite::id)
+                Optional.ofNullable(dive.siteId())
                         .flatMap(diveSiteRepository::findById)
                         .orElse(null);
+        final var namedBuddies =
+                existingDive.getNamedBuddies().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        DiveBuddyNameEntity::getName, Function.identity()));
+        final var newBuddies = getNewNamedBuddies(dive, namedBuddies, existingDive);
         return diveRepository
-                .save(existingDive.update(dive.number(), dive.customIdentifier(), diveSiteEntity))
+                .save(
+                        existingDive.update(
+                                dive.number(), dive.customIdentifier(), diveSiteEntity, newBuddies))
                 .toRecord(storageService.baseUrl(), true);
+    }
+
+    private List<DiveBuddyNameEntity> getNewNamedBuddies(
+            final UpdateDiveBody dive,
+            final Map<String, DiveBuddyNameEntity> namedBuddies,
+            final DiveEntity existingDive) {
+        if (dive.namedBuddies() == null) {
+            return null;
+        }
+        return dive.namedBuddies().stream()
+                .map(n -> getOldOrNewBuddy(dive, namedBuddies, existingDive, n))
+                .toList();
+    }
+
+    private @NonNull DiveBuddyNameEntity getOldOrNewBuddy(
+            final UpdateDiveBody dive,
+            final Map<String, DiveBuddyNameEntity> namedBuddies,
+            final DiveEntity existingDive,
+            final String n) {
+        return Optional.ofNullable(namedBuddies.get(n))
+                .or(() -> diveBuddyNameRepository.findByDive_IdAndName(dive.id(), n))
+                .orElseGet(
+                        () ->
+                                diveBuddyNameRepository.save(
+                                        new DiveBuddyNameEntity(existingDive, n)));
     }
 
     @Transactional

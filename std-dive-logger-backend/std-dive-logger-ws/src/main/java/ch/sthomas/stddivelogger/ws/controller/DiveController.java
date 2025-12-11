@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
@@ -230,7 +231,7 @@ public class DiveController {
     @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> updateDive(
             @AuthenticationPrincipal final User user,
-            @NotNull @Valid @RequestBody final Dive dive) {
+            @NotNull @Valid @RequestBody final UpdateDiveBody dive) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

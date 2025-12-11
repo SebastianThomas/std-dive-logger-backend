@@ -141,11 +141,15 @@ public class DiveEntity {
     public DiveEntity update(
             final int number,
             final String diveIdentifier,
-            @Nullable final DiveSiteEntity diveSiteEntity) {
+            @Nullable final DiveSiteEntity diveSiteEntity,
+            @Nullable final List<DiveBuddyNameEntity> namedBuddies) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
         if (diveSiteEntity != null) {
             this.diveSite = diveSiteEntity;
+        }
+        if (namedBuddies != null) {
+            this.namedBuddies = namedBuddies;
         }
         return this;
     }
@@ -165,5 +169,9 @@ public class DiveEntity {
 
     public long getId() {
         return id;
+    }
+
+    public List<DiveBuddyNameEntity> getNamedBuddies() {
+        return namedBuddies;
     }
 }
