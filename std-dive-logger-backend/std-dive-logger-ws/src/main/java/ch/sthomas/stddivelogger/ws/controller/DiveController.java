@@ -239,11 +239,11 @@ public class DiveController {
     }
 
     @Operation(summary = "Link Buddy Dive")
-    @PostMapping(path = "/{id}/link", consumes = APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/{id}/link")
     public Dive linkBuddyDive(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long diveId,
-            @RequestBody final long buddyDiveId) {
+            @RequestParam final long buddyDiveId) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to link a dive from a buddy");
         }
@@ -255,7 +255,7 @@ public class DiveController {
     public Dive unlinkBuddyDive(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long diveId,
-            @RequestBody final long buddyDiveId) {
+            @RequestParam final long buddyDiveId) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to unlink a dive from a buddy");
         }
