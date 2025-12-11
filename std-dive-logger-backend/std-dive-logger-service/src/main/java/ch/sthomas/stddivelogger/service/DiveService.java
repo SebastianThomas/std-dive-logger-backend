@@ -188,6 +188,13 @@ public class DiveService {
         return diveDataService.linkDive(userDive, buddyDive);
     }
 
+    public Dive unlinkBuddyDive(final User user, final long userDive, final long buddyDive) {
+        if (!hasWriteAccess(user, userDive)) {
+            throw ForbiddenException.forDiveId(user, userDive);
+        }
+        return diveDataService.unlinkDive(userDive, buddyDive);
+    }
+
     public Dive mergeProfiles(
             final User user,
             final long baseDiveId,

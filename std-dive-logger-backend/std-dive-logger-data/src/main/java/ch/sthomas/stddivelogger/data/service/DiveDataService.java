@@ -526,6 +526,29 @@ public class DiveDataService {
         return toRecord(userDive);
     }
 
+    public Dive unlinkDive(final long userDiveId, final long buddyDiveId) {
+        final var userDive =
+                diveRepository
+                        .findById(userDiveId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive by id " + userDiveId));
+        final var buddyDive =
+                diveRepository
+                        .findById(buddyDiveId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive by id " + buddyDiveId));
+        if (!userDive.hasBuddyDive(buddyDiveId)) {
+            return toRecord(userDive);
+        }
+        userDive.removeBuddyDive(buddyDive);
+        diveRepository.saveAll(List.of(userDive, buddyDive));
+        return toRecord(userDive);
+    }
+
     private Dive toRecord(final DiveEntity e) {
         return e.toRecord(storageService.baseUrl(), true);
     }

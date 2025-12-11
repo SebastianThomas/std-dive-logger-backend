@@ -189,4 +189,15 @@ public class DiveEntity {
         buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
         buddyDive.buddyDivesTo.add(this);
     }
+
+    public void removeBuddyDive(final DiveEntity buddyDive) {
+        if (buddyDivesTo.contains(buddyDive)) {
+            buddyDive.removeBuddyDive(this);
+            return;
+        }
+        buddyDivesFrom = new ArrayList<>(buddyDivesFrom);
+        buddyDivesFrom.remove(buddyDive);
+        buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
+        buddyDive.buddyDivesTo.remove(this);
+    }
 }
