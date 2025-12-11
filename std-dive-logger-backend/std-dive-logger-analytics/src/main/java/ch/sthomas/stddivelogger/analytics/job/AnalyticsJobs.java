@@ -21,7 +21,6 @@ public class AnalyticsJobs {
 
     @Scheduled(cron = "0 * * * * *")
     public void computeAnalytics() {
-        logger.info("Computing analytics at {}", Instant.now());
         final var result = analyticsService.computeAnalytics();
         if (!result.successful()) {
             throw new AnalyticsException(result);

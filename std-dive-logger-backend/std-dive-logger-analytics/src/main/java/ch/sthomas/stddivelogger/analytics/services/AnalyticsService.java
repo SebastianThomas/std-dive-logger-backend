@@ -44,17 +44,15 @@ public class AnalyticsService {
                 analyticsDataService.findLatestAnalyticsDepthVarianceDiveId(ANALYTICS_VERSION);
         final var divesSinceLast =
                 analyticsDataService.findAllDivesSince(lastAnalyticsDive, PageRequest.of(0, 100));
-        logger.info(
-                "Computing analytics since {} for {} dives.",
-                lastAnalyticsDive,
-                divesSinceLast.result().size());
         final var result =
                 divesSinceLast.result().stream()
                         .map(this::computeAnalytics)
                         .reduce(AnalyticsResult::merge)
                         .orElse(new AnalyticsResult(true, List.of()));
         if (divesSinceLast.totalPages() <= 1) {
-            logger.debug("Finished computing {} analytics.", divesSinceLast.result().size());
+            if (divesSinceLast.totalPages() == 1) {
+                logger.debug("Finished computing {} analytics.", divesSinceLast.result().size());
+            }
             return result;
         }
         logger.info(
