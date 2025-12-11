@@ -229,7 +229,8 @@ public class DiveController {
     @Operation(summary = "Update a Dive, interface subject to change!!")
     @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> updateDive(
-            @AuthenticationPrincipal final User user, @NotNull @Valid final Dive dive) {
+            @AuthenticationPrincipal final User user,
+            @NotNull @Valid @RequestBody final Dive dive) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
