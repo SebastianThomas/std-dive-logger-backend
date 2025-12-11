@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.data.repository.RefreshTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -25,13 +26,13 @@ public class RefreshTokenCleanupJob {
         this.accountRequestRepository = accountRequestRepository;
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
+    @Schedules({@Scheduled(cron = "0 0 3 * * *"), @Scheduled(initialDelay = 0)})
     public void cleanupExpiredRefreshTokens() {
         logger.info("Scheduled Job: Cleaning expired refresh tokens");
         refreshTokenRepository.deleteAllByExpiresAtBefore(OffsetDateTime.now());
     }
 
-    @Scheduled(cron = "0 */10 * * * *")
+    @Schedules({@Scheduled(cron = "0 */10 * * * *"), @Scheduled(initialDelay = 0)})
     public void cleanupExpiredAccountTokens() {
         logger.info("Scheduled Job: Cleaning expired account change tokens");
         accountRequestRepository.deleteAllByValidUntilBefore(
