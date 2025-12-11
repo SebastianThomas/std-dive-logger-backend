@@ -8,10 +8,13 @@ import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import org.apache.commons.collections4.CollectionUtils;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -157,7 +160,8 @@ public class DiveEntity {
             this.diveSite = diveSiteEntity;
         }
         if (namedBuddies != null) {
-            this.namedBuddies = namedBuddies;
+            this.namedBuddies.removeIf(Predicate.not(namedBuddies::contains));
+            this.namedBuddies.addAll(CollectionUtils.subtract(namedBuddies, this.namedBuddies));
         }
         return this;
     }
