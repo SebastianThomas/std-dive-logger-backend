@@ -227,24 +227,36 @@ public class DiveController {
         return ResponseEntity.ok(importService.uploadDive(user, file, body));
     }
 
-    @Operation(summary = "Update a Dive, interface subject to change!!")
+    @Operation(summary = "Update a Dive")
     @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
-    public ResponseEntity<Dive> updateDive(
+    public Dive updateDive(
             @AuthenticationPrincipal final User user,
             @NotNull @Valid @RequestBody final UpdateDiveBody dive) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Please log in to update this dive.");
         }
-        return ResponseEntity.ok(diveService.updateDive(user, dive));
+        return diveService.updateDive(user, dive);
+    }
+
+    @Operation(summary = "Link Buddy Dive")
+    @PostMapping(path = "{id}/link", consumes = APPLICATION_JSON_VALUE)
+    public Dive linkBuddyDive(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @RequestBody final long buddyDiveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to link a dive from a buddy");
+        }
+        return diveService.linkBuddyDive(user, diveId, buddyDiveId);
     }
 
     @Operation(summary = "Merge Dive Profiles")
-    @PostMapping(path = "/profiles/merge", consumes = APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> mergeDiveProfiles(
             @AuthenticationPrincipal final User user,
-            final long baseDiveId,
-            final long toAddDiveId,
-            final boolean keepToAddDive) {
+            @PathVariable("id") final long baseDiveId,
+            @RequestParam final long toAddDiveId,
+            @RequestParam final boolean keepToAddDive) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }

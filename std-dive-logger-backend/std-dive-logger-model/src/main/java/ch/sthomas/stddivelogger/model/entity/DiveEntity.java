@@ -123,7 +123,15 @@ public class DiveEntity {
         if (!includeBuddyDives) {
             return Stream.empty();
         }
+        return getBuddyDives();
+    }
+
+    private Stream<DiveEntity> getBuddyDives() {
         return Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream());
+    }
+
+    public boolean hasBuddyDive(final long otherId) {
+        return getBuddyDives(true).anyMatch(d -> d.id == otherId);
     }
 
     private BuddyDive toBuddyDive() {
@@ -142,7 +150,7 @@ public class DiveEntity {
             final int number,
             final String diveIdentifier,
             @Nullable final DiveSiteEntity diveSiteEntity,
-            @Nullable final List<DiveBuddyNameEntity> namedBuddies) {
+            @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
         if (diveSiteEntity != null) {
@@ -173,5 +181,12 @@ public class DiveEntity {
 
     public List<DiveBuddyNameEntity> getNamedBuddies() {
         return namedBuddies;
+    }
+
+    public void addBuddyDive(final DiveEntity buddyDive) {
+        buddyDivesFrom = new ArrayList<>(buddyDivesFrom);
+        buddyDivesFrom.add(buddyDive);
+        buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
+        buddyDive.buddyDivesTo.add(this);
     }
 }

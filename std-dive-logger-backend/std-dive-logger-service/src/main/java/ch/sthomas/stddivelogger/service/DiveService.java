@@ -19,7 +19,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -174,13 +173,19 @@ public class DiveService {
         return diveDataService.findDiveSiteByNameContains(locationStart, page, DIVE_SITE_PAGE_SIZE);
     }
 
-    public Dive updateDive(
-            final @NotNull User user, final @NotNull @Valid UpdateDiveBody dive)
+    public Dive updateDive(final @NotNull User user, final @NotNull @Valid UpdateDiveBody dive)
             throws ForbiddenException {
         if (!hasWriteAccess(user, dive.id())) {
             throw ForbiddenException.forDiveId(user, dive.id());
         }
         return diveDataService.updateDive(dive);
+    }
+
+    public Dive linkBuddyDive(final User user, final long userDive, final long buddyDive) {
+        if (!hasWriteAccess(user, userDive) || !hasReadAccess(user, buddyDive)) {
+            throw ForbiddenException.forDiveIds(user, List.of(userDive, buddyDive));
+        }
+        return diveDataService.linkDive(userDive, buddyDive);
     }
 
     public Dive mergeProfiles(
