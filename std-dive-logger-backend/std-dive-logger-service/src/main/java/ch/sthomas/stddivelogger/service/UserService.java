@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Service
 public class UserService {
@@ -154,11 +155,12 @@ public class UserService {
     }
 
     private boolean hasMemberAccess(final GroupWithMembers group, final long id) {
-        if (group.members() == null) {
+        if (group.members() == null || group.admins() == null) {
             throw new IllegalArgumentException(
                     "Group with members should have non-null members to check access.");
         }
-        return group.members().stream().anyMatch(member -> member.id() == id);
+        return Stream.concat(group.members().stream(), group.admins().stream())
+                .anyMatch(member -> member.id() == id);
     }
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
