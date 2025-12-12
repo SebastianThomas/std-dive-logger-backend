@@ -111,6 +111,10 @@ public class UserService {
         return userDataService.countUsers();
     }
 
+    public PagedResponse<GroupWithRole> getGroups(final User user, final int page) {
+        return userDataService.findGroups(user, page, GROUPS_PAGE_SIZE);
+    }
+
     public Optional<Group> getGroupById(final long id) {
         return userDataService.findGroupById(id);
     }

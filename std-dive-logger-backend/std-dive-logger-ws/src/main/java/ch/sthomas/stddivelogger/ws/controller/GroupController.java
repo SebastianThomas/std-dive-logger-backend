@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -16,6 +17,13 @@ public class GroupController {
 
     public GroupController(final UserService userService) {
         this.userService = userService;
+    }
+
+    @GetMapping("")
+    public PagedResponse<GroupWithRole> getGroups(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(value = "page", defaultValue = "0") final int page) {
+        return userService.getGroups(user, page);
     }
 
     @GetMapping("/{id}")

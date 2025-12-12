@@ -3,6 +3,8 @@ package ch.sthomas.stddivelogger.data.repository;
 import ch.sthomas.stddivelogger.model.entity.GroupMemberEntity;
 import ch.sthomas.stddivelogger.model.user.GroupRole;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -19,4 +21,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
     int countByUser_IdAndRole(Long userId, GroupRole role);
 
     boolean existsByGroup_IdAndUser_Id(Long groupId, Long userId);
+
+    Page<GroupMemberEntity> findByUser_IdOrderById(Long userId, Pageable pageable);
 }

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -228,5 +229,13 @@ public class UserDataService {
                 .stream()
                 .collect(MoreCollectors.toOptional())
                 .flatMap(AccountRequestEntity::toRecord);
+    }
+
+    public PagedResponse<GroupWithRole> findGroups(
+            final User user, final int page, final int groupsPageSize) {
+        return PagedResponse.of(
+                groupMemberRepository.findByUser_IdOrderById(
+                        user.id(), PageRequest.of(page, groupsPageSize)),
+                GroupMemberEntity::toRecordWithRole);
     }
 }

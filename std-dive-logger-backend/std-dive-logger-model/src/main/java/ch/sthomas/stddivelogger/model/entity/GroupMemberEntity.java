@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.GroupRole;
+import ch.sthomas.stddivelogger.model.user.GroupWithRole;
 
 import jakarta.persistence.*;
 
@@ -44,5 +45,9 @@ public class GroupMemberEntity {
     public GroupMemberEntity setRole(final GroupRole role) {
         this.role = role;
         return this;
+    }
+
+    public GroupWithRole toRecordWithRole() {
+        return new GroupWithRole(group.toRecord(), role);
     }
 }
