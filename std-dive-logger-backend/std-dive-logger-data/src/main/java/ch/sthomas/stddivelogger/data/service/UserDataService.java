@@ -103,25 +103,30 @@ public class UserDataService {
         return userRepository.count();
     }
 
+    @Transactional(readOnly = true)
     public Optional<Group> findGroupById(final long id) {
         return groupRepository.findById(id).map(GroupEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public Optional<GroupWithMembers> findGroupWithMembersById(final long id) {
         return groupRepository.findById(id).map(GroupEntity::toRecordWithMembers);
     }
 
+    @Transactional(readOnly = true)
     public List<Group> findGroupsByClosestMatchName(final String query, final Pageable pageable) {
         return groupRepository.findByClosestMatchName(query, pageable).stream()
                 .map(GroupEntity::toRecord)
                 .toList();
     }
 
+    @Transactional
     public GroupWithMembers saveGroup(final String name, final User initialAdmin) {
         final var admin = userRepository.findById(initialAdmin.id()).orElseThrow();
         return groupRepository.save(new GroupEntity(name, admin)).toRecordWithMembers();
     }
 
+    @Transactional
     public GroupWithMembers joinGroup(final long groupId, final long userId) {
         if (groupMemberRepository.existsByGroup_IdAndUser_Id(groupId, userId)) {
             throw new IllegalArgumentException(
@@ -148,6 +153,7 @@ public class UserDataService {
         }
     }
 
+    @Transactional
     public GroupWithMembers changeRole(
             final long groupId, final long userId, final GroupRole role) {
         groupMemberRepository.save(
@@ -194,11 +200,13 @@ public class UserDataService {
         };
     }
 
+    @Transactional
     public User setVerified(final User user) {
         userRepository.setVerified(user.id());
         return userRepository.findById(user.id()).map(UserEntity::toRecord).orElseThrow();
     }
 
+    @Transactional(readOnly = true)
     public boolean isGroupAdmin(final long groupId, final User admin) {
         return groupMemberRepository
                 .findByGroup_IdAndUser_Id(groupId, admin.id())
@@ -207,6 +215,7 @@ public class UserDataService {
                 .orElse(false);
     }
 
+    @Transactional(readOnly = true)
     public List<GroupRequest> findAdminGroupRequests(final User user) {
         return groupMemberRepository
                 .findRequests(user.id(), GroupRole.ADMIN, GroupRole.REQUESTED)
@@ -235,6 +244,7 @@ public class UserDataService {
                 .flatMap(AccountRequestEntity::toRecord);
     }
 
+    @Transactional
     public PagedResponse<GroupWithRole> findGroups(
             final User user,
             @Nullable final GroupRole role,
