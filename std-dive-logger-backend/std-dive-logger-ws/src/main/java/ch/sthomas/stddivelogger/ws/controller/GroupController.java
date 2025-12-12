@@ -7,7 +7,6 @@ import ch.sthomas.stddivelogger.service.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -57,12 +56,7 @@ public class GroupController {
             @AuthenticationPrincipal final User user,
             @RequestParam(name = "id") final int groupId,
             @RequestParam(name = "userId") final int userId,
-            @RequestParam(name = "role") final String roleString) {
-        final var role = GroupRole.find(roleString);
-        if (role.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Group Role is invalid, valid: " + Arrays.toString(GroupRole.values()));
-        }
-        return userService.changeRole(user, groupId, userId, role.get());
+            @RequestParam(name = "role") final GroupRole role) {
+        return userService.changeRole(user, groupId, userId, role);
     }
 }
