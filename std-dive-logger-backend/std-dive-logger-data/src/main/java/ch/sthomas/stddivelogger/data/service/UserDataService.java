@@ -123,7 +123,14 @@ public class UserDataService {
     @Transactional
     public GroupWithMembers saveGroup(final String name, final User initialAdmin) {
         final var admin = userRepository.findById(initialAdmin.id()).orElseThrow();
-        return groupRepository.save(new GroupEntity(name, admin)).toRecordWithMembers();
+        try {
+            return groupRepository.save(new GroupEntity(name, admin)).toRecordWithMembers();
+        } catch (final DataIntegrityViolationException e) {
+            if (e.getMessage().contains("t_groups_group_name_key")) {
+                throw new IllegalArgumentException("A group with this name already exists.");
+            }
+            throw new IllegalArgumentException("Exception while saving the group.", e);
+        }
     }
 
     @Transactional
