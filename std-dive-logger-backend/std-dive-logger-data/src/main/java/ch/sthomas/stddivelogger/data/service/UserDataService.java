@@ -245,7 +245,7 @@ public class UserDataService {
                         RETURNING t_account_request.*
                         """,
                         new MapSqlParameterSource(Map.of("id", id)),
-                        new BeanPropertyRowMapper<AccountRequestEntity>())
+                        new BeanPropertyRowMapper<>(AccountRequestEntity.class))
                 .stream()
                 .collect(MoreCollectors.toOptional())
                 .flatMap(AccountRequestEntity::toRecord);
