@@ -22,5 +22,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
 
     boolean existsByGroup_IdAndUser_Id(Long groupId, Long userId);
 
-    Page<GroupMemberEntity> findByUser_IdOrderById(Long userId, Pageable pageable);
+    Page<GroupMemberEntity> findByUser_IdOrderById(long userId, Pageable pageable);
+
+    Page<GroupMemberEntity> findByUser_IdAndRoleOrderById(
+            long userId, GroupRole role, Pageable pageable);
 }

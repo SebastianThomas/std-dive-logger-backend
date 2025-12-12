@@ -11,6 +11,8 @@ import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import com.google.common.collect.MoreCollectors;
 
+import jakarta.annotation.Nullable;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.DataException;
@@ -232,10 +234,21 @@ public class UserDataService {
     }
 
     public PagedResponse<GroupWithRole> findGroups(
-            final User user, final int page, final int groupsPageSize) {
-        return PagedResponse.of(
-                groupMemberRepository.findByUser_IdOrderById(
-                        user.id(), PageRequest.of(page, groupsPageSize)),
-                GroupMemberEntity::toRecordWithRole);
+            final User user,
+            @Nullable final GroupRole role,
+            final int page,
+            final int groupsPageSize) {
+        final var pageRequest = PageRequest.of(page, groupsPageSize);
+        final var result =
+                Optional.ofNullable(role)
+                        .map(
+                                r ->
+                                        groupMemberRepository.findByUser_IdAndRoleOrderById(
+                                                user.id(), r, pageRequest))
+                        .orElseGet(
+                                () ->
+                                        groupMemberRepository.findByUser_IdOrderById(
+                                                user.id(), pageRequest));
+        return PagedResponse.of(result, GroupMemberEntity::toRecordWithRole);
     }
 }

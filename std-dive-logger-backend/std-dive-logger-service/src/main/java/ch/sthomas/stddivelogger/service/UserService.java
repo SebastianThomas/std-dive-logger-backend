@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
+import jakarta.annotation.Nullable;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -111,8 +112,9 @@ public class UserService {
         return userDataService.countUsers();
     }
 
-    public PagedResponse<GroupWithRole> getGroups(final User user, final int page) {
-        return userDataService.findGroups(user, page, GROUPS_PAGE_SIZE);
+    public PagedResponse<GroupWithRole> getGroups(
+            final User user, @Nullable final GroupRole role, final int page) {
+        return userDataService.findGroups(user, role, page, GROUPS_PAGE_SIZE);
     }
 
     public Optional<Group> getGroupById(final long id) {
