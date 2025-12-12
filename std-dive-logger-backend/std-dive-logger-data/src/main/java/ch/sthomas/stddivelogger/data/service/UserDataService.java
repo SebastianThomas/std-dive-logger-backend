@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
 
 @Service
 public class UserDataService {
@@ -54,7 +56,7 @@ public class UserDataService {
             final EmailRepository emailRepository,
             final AccountRequestRepository accountRequestRepository,
             final GroupMemberRepository groupMemberRepository,
-            NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+            final NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.frontendBaseUrl = URI.create(frontendBaseUrl);
@@ -236,19 +238,34 @@ public class UserDataService {
     public PagedResponse<GroupWithRole> findGroups(
             final User user,
             @Nullable final GroupRole role,
+            @Nullable final GroupRole exclRole,
             final int page,
             final int groupsPageSize) {
+        if (role != null && exclRole != null) {
+            throw new IllegalArgumentException("Only one of role, exclRole can be set.");
+        }
         final var pageRequest = PageRequest.of(page, groupsPageSize);
         final var result =
                 Optional.ofNullable(role)
-                        .map(
-                                r ->
-                                        groupMemberRepository.findByUser_IdAndRoleOrderById(
-                                                user.id(), r, pageRequest))
+                        .map(findGroupsWithRole(user, pageRequest))
+                        .or(
+                                () ->
+                                        Optional.ofNullable(exclRole)
+                                                .map(findGroupsWithoutRole(user, pageRequest)))
                         .orElseGet(
                                 () ->
                                         groupMemberRepository.findByUser_IdOrderById(
                                                 user.id(), pageRequest));
         return PagedResponse.of(result, GroupMemberEntity::toRecordWithRole);
+    }
+
+    private Function<GroupRole, Page<GroupMemberEntity>> findGroupsWithRole(
+            final User user, final Pageable pageable) {
+        return r -> groupMemberRepository.findByUser_IdAndRoleOrderById(user.id(), r, pageable);
+    }
+
+    private Function<GroupRole, Page<GroupMemberEntity>> findGroupsWithoutRole(
+            final User user, final Pageable pageable) {
+        return r -> groupMemberRepository.findByUser_IdAndRoleNotOrderById(user.id(), r, pageable);
     }
 }

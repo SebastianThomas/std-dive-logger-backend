@@ -23,8 +23,9 @@ public class GroupController {
     public PagedResponse<GroupWithRole> getGroups(
             @AuthenticationPrincipal final User user,
             @RequestParam(value = "role", required = false) final GroupRole role,
+            @RequestParam(value = "exclRole", required = false) final GroupRole exclRole,
             @RequestParam(value = "page", defaultValue = "0") final int page) {
-        return userService.getGroups(user, role, page);
+        return userService.getGroups(user, role, exclRole, page);
     }
 
     @GetMapping("/{id}")

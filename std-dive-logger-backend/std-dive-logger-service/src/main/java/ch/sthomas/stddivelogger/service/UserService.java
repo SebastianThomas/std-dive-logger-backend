@@ -113,8 +113,11 @@ public class UserService {
     }
 
     public PagedResponse<GroupWithRole> getGroups(
-            final User user, @Nullable final GroupRole role, final int page) {
-        return userDataService.findGroups(user, role, page, GROUPS_PAGE_SIZE);
+            final User user,
+            @Nullable final GroupRole role,
+            @Nullable final GroupRole exclRole,
+            final int page) {
+        return userDataService.findGroups(user, role, exclRole, page, GROUPS_PAGE_SIZE);
     }
 
     public Optional<Group> getGroupById(final long id) {
