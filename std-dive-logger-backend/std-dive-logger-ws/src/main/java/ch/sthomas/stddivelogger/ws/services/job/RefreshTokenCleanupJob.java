@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -27,12 +28,14 @@ public class RefreshTokenCleanupJob {
     }
 
     @Schedules({@Scheduled(cron = "0 0 3 * * *"), @Scheduled(initialDelay = 0)})
+    @Transactional
     public void cleanupExpiredRefreshTokens() {
         logger.info("Scheduled Job: Cleaning expired refresh tokens");
         refreshTokenRepository.deleteAllByExpiresAtBefore(OffsetDateTime.now());
     }
 
     @Schedules({@Scheduled(cron = "0 */10 * * * *"), @Scheduled(initialDelay = 0)})
+    @Transactional
     public void cleanupExpiredAccountTokens() {
         logger.info("Scheduled Job: Cleaning expired account change tokens");
         accountRequestRepository.deleteAllByValidUntilBefore(
