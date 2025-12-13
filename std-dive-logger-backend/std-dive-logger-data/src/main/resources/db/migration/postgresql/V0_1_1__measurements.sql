@@ -1,5 +1,5 @@
 ALTER TABLE t_dive_measurements
-    ADD COLUMN rmv_liters DOUBLE PRECISION;
+    ADD COLUMN IF NOT EXISTS rmv_liters DOUBLE PRECISION;
 
 CREATE TABLE t_cylinder_size
 (
@@ -22,8 +22,8 @@ CREATE TABLE t_gas
 (
     pk_gas_id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fk_gas_mix_id       INTEGER NOT NULL REFERENCES t_gas_mix (pk_gas_mix_id),
-    fk_cylinder_size_id INTEGER NOT NULL REFERENCES t_cylinder_size (pk_cylinder_size_id),
-    description         TEXT    NOT NULL,
+    fk_cylinder_size_id INTEGER REFERENCES t_cylinder_size (pk_cylinder_size_id),
+    description         TEXT,
     content_value       DOUBLE PRECISION,
     content_unit        TEXT
 );

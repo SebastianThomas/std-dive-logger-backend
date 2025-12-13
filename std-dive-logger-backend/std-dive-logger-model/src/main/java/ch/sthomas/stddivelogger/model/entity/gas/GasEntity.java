@@ -24,10 +24,10 @@ public class GasEntity {
     public GasMixEntity gasMix;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "fk_cylinder_size_id", nullable = false)
+    @JoinColumn(name = "fk_cylinder_size_id")
     public CylinderSizeEntity cylinderSize;
 
-    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     public String description;
 
     @Column(name = "content_value")
