@@ -18,6 +18,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Entity
 @Table(name = "t_dive_measurements")
@@ -80,7 +81,7 @@ public class DiveMeasurementEntity {
                 depth,
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
-                gas.toRecord(),
+                Optional.ofNullable(gas).map(GasEntity::toRecord).orElse(null),
                 rmv);
     }
 
