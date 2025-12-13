@@ -48,7 +48,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             value =
                     """
                             SELECT dive.*
-                                    FROM fuzzy_search_dives_for_user(:searchTerm, :userId) AS f(dive, relevance_score)
+                                    FROM fuzzy_search_dives_for_user(:query, :userId) AS f(dive, relevance_score)
                                     ORDER BY relevance_score DESC
                                     LIMIT :limit OFFSET :offset
                             """,
