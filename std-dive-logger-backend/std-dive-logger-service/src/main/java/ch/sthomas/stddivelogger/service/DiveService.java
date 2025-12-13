@@ -61,6 +61,10 @@ public class DiveService {
         return diveDataService.findDiveById(id);
     }
 
+    public List<SimplifiedDive> getDivesByIds(final User user, final List<Long> ids) {
+        return diveDataService.findDivesByIds(user, ids);
+    }
+
     @Transactional
     public SimplifiedDive saveDive(
             final User user,

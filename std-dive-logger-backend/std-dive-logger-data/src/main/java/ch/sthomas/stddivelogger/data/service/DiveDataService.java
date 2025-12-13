@@ -100,6 +100,13 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public List<SimplifiedDive> findDivesByIds(final User user, final List<Long> ids) {
+        return diveRepository.findAllByIdAndIsReader(user.id(), ids).stream()
+                .map(this::toSimplifiedRecord)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public Optional<SimplifiedDive> findSimplifiedDiveById(final long id) {
         return diveRepository.findById(id).map(this::toSimplifiedRecord);
     }

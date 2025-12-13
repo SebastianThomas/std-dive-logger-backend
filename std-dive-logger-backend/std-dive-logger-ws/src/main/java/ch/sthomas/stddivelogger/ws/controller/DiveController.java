@@ -75,6 +75,17 @@ public class DiveController {
         return ResponseEntity.ok(dive);
     }
 
+    @Operation(summary = "Find dives by ID")
+    @GetMapping("/ids")
+    public List<SimplifiedDive> findDivesById(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "ids") final List<Long> ids) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to find your dives.");
+        }
+        return diveService.getDivesByIds(user, ids);
+    }
+
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/custom-name")
     public PagedResponse<SimplifiedDive> searchDivesByIdentifier(

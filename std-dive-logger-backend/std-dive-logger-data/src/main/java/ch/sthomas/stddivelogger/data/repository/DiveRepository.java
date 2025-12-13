@@ -65,4 +65,16 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     Page<DiveEntity> findByOrderByIdAsc(Pageable pageable);
 
     Page<DiveEntity> findByIdGreaterThanOrderByIdAsc(Long id, Pageable pageable);
+
+    @Query(
+            value =
+                    """
+                            SELECT d.*
+                            FROM t_readers r
+                            INNER JOIN t_dives d ON r.pk_user_id = :userId
+                            WHERE d.pk_dive_id = r.dive_id 
+                                AND d.pk_dive_id IN (:ids)
+                            """,
+            nativeQuery = true)
+    List<DiveEntity> findAllByIdAndIsReader(long userId, List<Long> ids);
 }
