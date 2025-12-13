@@ -37,7 +37,7 @@ public class FitReaderServiceTest {
                     service.readFitAndSaveDive(
                             new User(0, "", "", "", true, Instant.now(), Instant.now()),
                             filename,
-                            new UploadDiveBody(1, "TestID", null),
+                            new UploadDiveBody(1, "TestID", null, null, null),
                             inputStream);
             assertNotNull(result);
         }
