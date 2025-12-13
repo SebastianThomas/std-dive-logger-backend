@@ -47,7 +47,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT dive.*
+                            SELECT f.dive.*
                             FROM fuzzy_search_dives_for_user(CAST(:query AS TEXT), CAST(:userId AS INTEGER)) AS f(dive, relevance_score)
                             ORDER BY relevance_score DESC
                             """,
