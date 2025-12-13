@@ -13,7 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
-    @Query(value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
+    @Query(
+            value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId",
+            countQuery = "SELECT COUNT(*) FROM t_readers WHERE dive_id = :diveId",
+            nativeQuery = true)
     Page<UserEntity> findReaders(long diveId, Pageable pageable);
 
     @Query(
