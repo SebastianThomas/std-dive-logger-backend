@@ -68,7 +68,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         } catch (final JwtException e) {
-            // TODO: Can we throw here?
             logger.info("Exception parsing JWT", e);
         }
 

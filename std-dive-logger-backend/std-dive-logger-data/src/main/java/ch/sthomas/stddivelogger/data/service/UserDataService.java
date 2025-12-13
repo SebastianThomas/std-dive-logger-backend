@@ -203,7 +203,7 @@ public class UserDataService {
         return switch (type) {
             case VERIFY_EMAIL -> frontendBaseUrl + "/user/email?token=" + token;
             case LOGIN -> frontendBaseUrl + "/login?token=" + token;
-            case CHANGE_PASSWORD -> throw new NotImplementedException(); // TODO
+            case CHANGE_PASSWORD -> throw new NotImplementedException();
         };
     }
 

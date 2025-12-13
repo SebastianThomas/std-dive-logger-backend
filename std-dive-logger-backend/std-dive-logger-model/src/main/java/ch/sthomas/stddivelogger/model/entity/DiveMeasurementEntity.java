@@ -7,7 +7,9 @@ import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
+import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -35,6 +37,9 @@ public class DiveMeasurementEntity {
     @Column(name = "temperature_celsius", nullable = false)
     private Double temperatureCelsius;
 
+    @Column(name = "rmv_liters", nullable = true)
+    private Double rmv;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Convert(converter = DecoStopsToStringConverter.class)
     @Column(name = "deco_stops")
@@ -43,21 +48,28 @@ public class DiveMeasurementEntity {
     @Column(name = "ndl_minutes", nullable = false)
     private Integer ndlMinutes;
 
+    @ManyToOne(cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "fk_gas_id")
+    private GasEntity gas;
+
     @JoinColumn(name = "fk_dive_profile_id")
     @ManyToOne(cascade = CascadeType.PERSIST)
     private DiveProfileEntity profile;
 
     public DiveMeasurementEntity() {}
 
-    public DiveMeasurementEntity(final DiveMeasurement diveMeasurement) {
+    public DiveMeasurementEntity(
+            final DiveMeasurement diveMeasurement, @Nullable final GasEntity gas) {
         this.time = diveMeasurement.time().atOffset(UTC);
         this.depth = diveMeasurement.depth();
         this.temperatureCelsius = diveMeasurement.temperature().celsius();
         this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();
+        this.gas = gas;
     }
 
-    public DiveMeasurementEntity(final DiveMeasurementWithId diveMeasurementWithId) {
-        this(diveMeasurementWithId.measurement());
+    public DiveMeasurementEntity(
+            final DiveMeasurementWithId diveMeasurementWithId, @Nullable final GasEntity gas) {
+        this(diveMeasurementWithId.measurement(), gas);
         this.id = diveMeasurementWithId.id();
     }
 
@@ -68,7 +80,8 @@ public class DiveMeasurementEntity {
                 depth,
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
-                null);
+                gas.toRecord(),
+                rmv);
     }
 
     public DiveMeasurementWithId toRecordWithId() {

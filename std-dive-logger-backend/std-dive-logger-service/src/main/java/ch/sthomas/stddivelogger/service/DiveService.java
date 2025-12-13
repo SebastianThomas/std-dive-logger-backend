@@ -359,7 +359,7 @@ public class DiveService {
                 user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
-    // TODO: Implement pagination later?
+    // TODO: Pagination
     public List<DiveSiteWithDives<DiveSite, List<Long>>> getSitesByUser(
             final User user, final boolean onlyOwn) {
         return diveDataService.findDiveSitesByUser(user.id(), onlyOwn);

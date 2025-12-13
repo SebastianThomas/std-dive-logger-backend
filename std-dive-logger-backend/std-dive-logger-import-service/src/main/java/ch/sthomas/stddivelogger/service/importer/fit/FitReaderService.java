@@ -5,6 +5,7 @@ import static java.time.Duration.*;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -14,6 +15,8 @@ import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 
 import com.garmin.fit.*;
 import com.google.common.base.CaseFormat;
+
+import jakarta.annotation.Nullable;
 
 import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
@@ -127,6 +130,7 @@ public class FitReaderService extends BaseReaderService {
                 nextEvent = events.size() > eventIndex + 1 ? events.get(eventIndex + 1) : null;
             }
             final var deco = getDeco(record);
+            final var gas = gases.get(currentGasIndex);
             measurements.add(
                     new DiveMeasurement(
                             time,
@@ -135,7 +139,8 @@ public class FitReaderService extends BaseReaderService {
                             record.getDepth() / 1000.0,
                             ofSeconds(record.getNdlTime()),
                             deco,
-                            gases.get(currentGasIndex)));
+                            gas,
+                            getRMV(record, gas)));
         }
         return new DiveProfileUpload(
                 computer.id(),
@@ -144,11 +149,27 @@ public class FitReaderService extends BaseReaderService {
                 measurements);
     }
 
+    @Nullable
+    private static Double getRMV(final RecordMesg record, final Gas gas) {
+        return Optional.ofNullable(record.getVolumeSac())
+                .or(() -> Optional.ofNullable(record.getRmv()))
+                .map(Float::doubleValue)
+                .or(
+                        () ->
+                                Optional.ofNullable(gas.size())
+                                        .map(CylinderSize::liters)
+                                        .flatMap(
+                                                l ->
+                                                        // Assertion: Pressure = Bar
+                                                        Optional.ofNullable(record.getPressureSac())
+                                                                .map(p -> p * l)))
+                .orElse(null);
+    }
+
     private Optional<DiveProfileSummary> getSummary(final List<DiveSummaryMesg> summaryMessages) {
         if (summaryMessages.size() <= 1) {
             return Optional.empty();
         }
-        // TODO: RMV/SAC
         // TODO: Use field scale instead of magic constants
         final var first = summaryMessages.getFirst();
         final var last = summaryMessages.getLast();

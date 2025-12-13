@@ -10,10 +10,17 @@ import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.entity.*;
+import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
+import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
+import ch.sthomas.stddivelogger.model.entity.gas.GasMixEntity;
 import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
+
+import com.google.common.collect.MoreCollectors;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
@@ -24,6 +31,7 @@ import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Example;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -53,6 +61,9 @@ public class DiveDataService {
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final StorageService storageService;
     private final DiveBuddyNameRepository diveBuddyNameRepository;
+    private final CylinderSizeRepository cylinderSizeRepository;
+    private final GasMixRepository gasMixRepository;
+    private final GasRepository gasRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -63,7 +74,10 @@ public class DiveDataService {
             final DiveComputerManufacturerRepository diveComputerManufacturerRepository,
             final NamedParameterJdbcTemplate namedParameterJdbcTemplate,
             final StorageService storageService,
-            DiveBuddyNameRepository diveBuddyNameRepository) {
+            final DiveBuddyNameRepository diveBuddyNameRepository,
+            final CylinderSizeRepository cylinderSizeRepository,
+            GasMixRepository gasMixRepository,
+            GasRepository gasRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -74,6 +88,9 @@ public class DiveDataService {
 
         this.storageService = storageService;
         this.diveBuddyNameRepository = diveBuddyNameRepository;
+        this.cylinderSizeRepository = cylinderSizeRepository;
+        this.gasMixRepository = gasMixRepository;
+        this.gasRepository = gasRepository;
     }
 
     @Transactional(readOnly = true)
@@ -167,7 +184,9 @@ public class DiveDataService {
                 computer,
                 diveProfileUpload.start(),
                 diveProfileUpload.end(),
-                diveProfileUpload.measurements().stream().map(DiveMeasurementEntity::new).toList());
+                diveProfileUpload.measurements().stream()
+                        .map(m -> new DiveMeasurementEntity(m, toEntity(m.gas())))
+                        .toList());
     }
 
     @Transactional(readOnly = true)
@@ -458,6 +477,30 @@ public class DiveDataService {
         return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()
                 .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveIds()))
                 .toList();
+    }
+
+    @Transactional
+    public GasEntity toEntity(final Gas gas) {
+        final var size = Optional.ofNullable(gas.size()).map(this::toEntity);
+        final var mix = toEntity(gas.o2(), gas.n2(), gas.he());
+        final var entity = new GasEntity(gas, mix, size.orElse(null));
+        return gasRepository.findAll(Example.of(entity)).stream()
+                .collect(MoreCollectors.toOptional())
+                .orElseGet(() -> gasRepository.save(entity));
+    }
+
+    @Transactional
+    public CylinderSizeEntity toEntity(final CylinderSize cylinderSize) {
+        return cylinderSizeRepository
+                .findByUnitAndValue(cylinderSize.unit(), cylinderSize.value())
+                .orElseGet(() -> cylinderSizeRepository.save(new CylinderSizeEntity(cylinderSize)));
+    }
+
+    @Transactional
+    public GasMixEntity toEntity(final double o2, final double n2, final double he) {
+        return gasMixRepository
+                .findByO2AndN2AndHe(o2, n2, he)
+                .orElseGet(() -> gasMixRepository.save(new GasMixEntity(o2, n2, he)));
     }
 
     private List<DiveSiteWithDives<DiveSiteEntity, List<Long>>> findDiveSiteEntitiesByUser(

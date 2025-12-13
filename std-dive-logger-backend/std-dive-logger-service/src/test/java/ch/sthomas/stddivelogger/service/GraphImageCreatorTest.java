@@ -48,53 +48,121 @@ public class GraphImageCreatorTest {
         final var measurements =
                 List.of(
                         new DiveMeasurementWithId(
-                                new DiveMeasurement(start, fifteenC, 1, ndl, null, Gas.AIR), 0),
+                                new DiveMeasurement(start, fifteenC, 1, ndl, null, Gas.AIR, null),
+                                0),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(5), fifteenC, 1.3, ndl, null, Gas.AIR),
+                                        start.plusSeconds(5),
+                                        fifteenC,
+                                        1.3,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 1),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(10), fifteenC, 1.5, ndl, null, Gas.AIR),
+                                        start.plusSeconds(10),
+                                        fifteenC,
+                                        1.5,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 2),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(15), fifteenC, 1.8, ndl, null, Gas.AIR),
+                                        start.plusSeconds(15),
+                                        fifteenC,
+                                        1.8,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 3),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(20), fifteenC, 2.1, ndl, null, Gas.AIR),
+                                        start.plusSeconds(20),
+                                        fifteenC,
+                                        2.1,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 4),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(25), fifteenC, 2.5, ndl, null, Gas.AIR),
+                                        start.plusSeconds(25),
+                                        fifteenC,
+                                        2.5,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 5),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(30), fifteenC, 3.0, ndl, null, Gas.AIR),
+                                        start.plusSeconds(30),
+                                        fifteenC,
+                                        3.0,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 6),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(35), fifteenC, 2.2, ndl, null, Gas.AIR),
+                                        start.plusSeconds(35),
+                                        fifteenC,
+                                        2.2,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 7),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(40), fifteenC, 1.5, ndl, null, Gas.AIR),
+                                        start.plusSeconds(40),
+                                        fifteenC,
+                                        1.5,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 8),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(45), fifteenC, 1.0, ndl, null, Gas.AIR),
+                                        start.plusSeconds(45),
+                                        fifteenC,
+                                        1.0,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 9),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(50), fifteenC, 0.5, ndl, null, Gas.AIR),
+                                        start.plusSeconds(50),
+                                        fifteenC,
+                                        0.5,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 10),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(55), fifteenC, 0.2, ndl, null, Gas.AIR),
+                                        start.plusSeconds(55),
+                                        fifteenC,
+                                        0.2,
+                                        ndl,
+                                        null,
+                                        Gas.AIR,
+                                        null),
                                 11),
                         new DiveMeasurementWithId(
-                                new DiveMeasurement(end, fifteenC, 0, ndl, null, Gas.AIR), 12));
+                                new DiveMeasurement(end, fifteenC, 0, ndl, null, Gas.AIR, null),
+                                12));
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
                 new Dive(0, 1, "Some Dive", null, null, profiles, List.of(), List.of("Buddy1"));

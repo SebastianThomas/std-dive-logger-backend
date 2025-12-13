@@ -184,12 +184,15 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 parseUntilSpace(sample.depth()),
                 sample.ndlToDuration(),
                 sample.toDeco(),
-                switchTimeGas.map(Pair::getValue).orElse(null));
+                switchTimeGas.map(Pair::getValue).orElse(null),
+                // TODO: RMV
+                null);
     }
 
     private DiveSite findOrCreateDiveSite(final SubsurfaceXmlFile.SubsurfaceDiveSite site) {
         return diveSiteRepository
-                .findByLocationNearAndName(site.location().toPoint(), MIN_DIVE_SITE_DIST, site.name())
+                .findByLocationNearAndName(
+                        site.location().toPoint(), MIN_DIVE_SITE_DIST, site.name())
                 .orElseGet(
                         () ->
                                 diveSiteRepository.save(

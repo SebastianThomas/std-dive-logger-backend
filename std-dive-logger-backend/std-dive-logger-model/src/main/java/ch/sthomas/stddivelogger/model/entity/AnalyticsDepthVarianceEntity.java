@@ -7,6 +7,8 @@ import ch.sthomas.stddivelogger.model.entity.embedded.AnalyticsDepthVarianceId;
 
 import jakarta.persistence.*;
 
+import java.util.function.Function;
+
 @Entity
 @Table(name = "t_analytics_depth_variance")
 public class AnalyticsDepthVarianceEntity {
@@ -64,11 +66,13 @@ public class AnalyticsDepthVarianceEntity {
     public AnalyticsDepthVarianceEntity() {}
 
     public AnalyticsDepthVarianceEntity(
-            final AnalyticsDepthVariance record, final DiveProfileEntity profileEntity) {
+            final AnalyticsDepthVariance record,
+            final DiveProfileEntity profileEntity,
+            final Function<Long, DiveMeasurementEntity> findMeasurementById) {
         this.id = new AnalyticsDepthVarianceId(record);
         this.profile = profileEntity;
-        this.measurementStart = new DiveMeasurementEntity(record.measurementStart());
-        this.measurementEnd = new DiveMeasurementEntity(record.measurementEnd());
+        this.measurementStart = findMeasurementById.apply(record.measurementStart().id());
+        this.measurementEnd = findMeasurementById.apply(record.measurementEnd().id());
         this.startIdx = record.startIdx();
         this.avgDepth = record.stats().avgDepth();
         this.maxDepth = record.stats().maxDepth();

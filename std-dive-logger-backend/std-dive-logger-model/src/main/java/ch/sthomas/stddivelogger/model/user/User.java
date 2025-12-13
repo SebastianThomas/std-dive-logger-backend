@@ -18,7 +18,7 @@ public record User(
         implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(); // TODO
+        return List.of();
     }
 
     @Override

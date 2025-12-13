@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.data.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AnalyticsDepthVarianceRepository;
+import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveProfileRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
@@ -10,6 +11,7 @@ import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.domain.Pageable;
@@ -26,16 +28,22 @@ public class AnalyticsDataService {
     private final DiveRepository diveRepository;
     private final StorageService storageService;
     private final DiveProfileRepository diveProfileRepository;
+    private final DiveDataService diveDataService;
+    private final DiveMeasurementRepository diveMeasurementRepository;
 
     public AnalyticsDataService(
             final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository,
             final DiveRepository diveRepository,
             final StorageService storageService,
-            DiveProfileRepository diveProfileRepository) {
+            DiveProfileRepository diveProfileRepository,
+            DiveDataService diveDataService,
+            DiveMeasurementRepository diveMeasurementRepository) {
         this.analyticsDepthVarianceEntityRepository = analyticsDepthVarianceEntityRepository;
         this.diveRepository = diveRepository;
         this.storageService = storageService;
         this.diveProfileRepository = diveProfileRepository;
+        this.diveDataService = diveDataService;
+        this.diveMeasurementRepository = diveMeasurementRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,11 +74,17 @@ public class AnalyticsDataService {
                                 .map(
                                         a ->
                                                 new AnalyticsDepthVarianceEntity(
-                                                        a, requiredProfiles.get(a.profile().id())))
+                                                        a,
+                                                        requiredProfiles.get(a.profile().id()),
+                                                        this::findMeasurementById))
                                 .toList())
                 .stream()
                 .map(AnalyticsDepthVarianceEntity::toRecord)
                 .toList();
+    }
+
+    private DiveMeasurementEntity findMeasurementById(final Long id) {
+        return diveMeasurementRepository.findById(id).orElseThrow();
     }
 
     @Transactional(readOnly = true)
