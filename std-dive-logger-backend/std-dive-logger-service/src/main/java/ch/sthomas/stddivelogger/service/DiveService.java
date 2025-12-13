@@ -76,7 +76,7 @@ public class DiveService {
         final var diveNumber = diveNumberOptional.orElseGet(() -> getNextDiveNumber(user));
         final var dive =
                 diveDataService.saveDive(
-                        user, diveNumber, diveIdentifier, null, diveSiteId, profiles, namedBuddies);
+                        user, diveNumber, diveIdentifier, diveSiteId, profiles, namedBuddies);
         createSaveDivePreview(dive);
         return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
     }
@@ -241,15 +241,29 @@ public class DiveService {
     }
 
     public Dive createEmptyDive(final User user, @Valid @NotNull final UploadDiveBody body) {
-        final var diveSiteId = body.diveSiteId();
-        if (diveSiteId == null) {
-            throw new IllegalArgumentException("Dive Site is required to save dive manually.");
-        }
+        final var diveSiteId =
+                Optional.ofNullable(body.diveSiteId())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Dive Site is required to save dive manually."));
+        final var maxDepth =
+                Optional.ofNullable(body.maxDepth())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Maximum depth is required to save dive manually."));
+        final var duration =
+                Optional.ofNullable(body.duration())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Duration is required to save dive manually."));
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
-                user, diveNumber, body.diveIdentifier(), null, diveSiteId, List.of(), List.of());
+                user, diveNumber, body.diveIdentifier(), diveSiteId, List.of(), List.of());
     }
 
     public Optional<DiveSite> getSiteById(final long id) {

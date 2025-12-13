@@ -115,7 +115,6 @@ public class DiveDataService {
     public Dive saveDive(
             final User user,
             final int number,
-            final String diveIdentifier,
             final String previewImage,
             final long diveSiteId,
             final List<DiveProfileUpload> profiles,
@@ -128,7 +127,7 @@ public class DiveDataService {
         final var entity =
                 new DiveEntity(
                         number,
-                        diveIdentifier,
+                        null,
                         userEntity,
                         previewImage,
                         diveSite,

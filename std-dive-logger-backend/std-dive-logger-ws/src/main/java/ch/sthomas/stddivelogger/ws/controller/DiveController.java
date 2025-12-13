@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
+import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -229,7 +230,7 @@ public class DiveController {
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<SimplifiedDive>> uploadDive(
             @AuthenticationPrincipal final User user,
-            @RequestPart("uploadBody") final UploadDiveBody body,
+            @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
             @RequestParam("file") final MultipartFile file)
             throws IOException {
         if (user == null) {
