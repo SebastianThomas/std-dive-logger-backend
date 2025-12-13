@@ -6,10 +6,7 @@ import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.DiveSite;
-import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.entity.*;
@@ -34,6 +31,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -95,19 +93,23 @@ public class DiveDataService {
 
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByUser(
-            final User user, final int page, final int pageSize) {
+            final User user, @NotNull final DiveSort diveSort, final int page, final int pageSize) {
         final var result =
-                diveRepository.findByUser_IdOrderByNumberDesc(
-                        user.id(), Pageable.ofSize(pageSize).withPage(page));
+                diveRepository.findByUser_Id(
+                        user.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByUserAndComputer(
-            final User user, final DiveComputer computer, final int page, final int pageSize) {
+            final User user,
+            final DiveComputer computer,
+            final DiveSort diveSort,
+            final int page,
+            final int pageSize) {
         final var result =
                 diveRepository.findByUser_IdAndComputer(
-                        user.id(), computer.id(), Pageable.ofSize(pageSize).withPage(page));
+                        user.id(), computer.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -604,5 +606,13 @@ public class DiveDataService {
 
     private SimplifiedDive toSimplifiedRecord(final DiveEntity e) {
         return e.toSimplifiedRecord(storageService.baseUrl(), true);
+    }
+
+    private Sort toSort(final DiveSort sort) {
+        final var s = Sort.by(sort.column().jpaName());
+        return switch (sort.direction()) {
+            case ASCENDING -> s.ascending();
+            case DESCENDING -> s.descending();
+        };
     }
 }

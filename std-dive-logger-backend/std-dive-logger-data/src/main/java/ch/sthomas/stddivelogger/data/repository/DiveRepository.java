@@ -19,6 +19,8 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "SELECT d FROM DiveEntity d JOIN DiveProfileEntity dp ON dp.dive = d AND dp.computer.id = :computerId")
     Page<DiveEntity> findByUser_IdAndComputer(Long userId, Long computerId, Pageable pageable);
 
+    Page<DiveEntity> findByUser_Id(long id, Pageable pageable);
+
     Page<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
 
     @Query(
@@ -72,7 +74,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
                             SELECT d.*
                             FROM t_readers r
                             INNER JOIN t_dives d ON r.pk_user_id = :userId
-                            WHERE d.pk_dive_id = r.dive_id 
+                            WHERE d.pk_dive_id = r.dive_id
                                 AND d.pk_dive_id IN (:ids)
                             """,
             nativeQuery = true)

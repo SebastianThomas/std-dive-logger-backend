@@ -50,8 +50,9 @@ public class DiveService {
         this.storageService = storageService;
     }
 
-    public PagedResponse<SimplifiedDive> getDivesForUser(final User user, final int page) {
-        return diveDataService.findDivesByUser(user, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    public PagedResponse<SimplifiedDive> getDivesForUser(
+            final User user, @NotNull final DiveSort sort, final int page) {
+        return diveDataService.findDivesByUser(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {
@@ -342,7 +343,7 @@ public class DiveService {
     }
 
     public PagedResponse<SimplifiedDive> getDivesByComputer(
-            final User user, final long computerId, final int page) {
+            final User user, final long computerId, final DiveSort diveSort, final int page) {
         final var computer =
                 getDiveComputerById(user, computerId)
                         .orElseThrow(
@@ -350,7 +351,7 @@ public class DiveService {
                                         new NoSuchElementException(
                                                 "Cannot find computer with id " + computerId));
         return diveDataService.findDivesByUserAndComputer(
-                user, computer, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+                user, computer, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
     public PagedResponse<SimplifiedDive> searchDives(

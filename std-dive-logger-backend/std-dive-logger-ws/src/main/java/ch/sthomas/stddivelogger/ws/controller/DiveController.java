@@ -6,6 +6,8 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.DiveSort;
+import ch.sthomas.stddivelogger.model.dive.DiveSortColumn;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
@@ -22,6 +24,7 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.hibernate.query.SortDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -56,12 +59,19 @@ public class DiveController {
     @GetMapping(path = "")
     public ResponseEntity<PagedResponse<SimplifiedDive>> getDivesForUser(
             @AuthenticationPrincipal final User user,
-            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(
-                diveService.getDivesForUser(userService.getUserById(user.id()), page));
+                diveService.getDivesForUser(
+                        userService.getUserById(user.id()),
+                        DiveSort.ofNullable(sortColumn, sortDirection),
+                        page));
     }
 
     @Operation(summary = "Get Dive by ID")
@@ -104,11 +114,16 @@ public class DiveController {
     public PagedResponse<SimplifiedDive> getDivesByComputer(
             @AuthenticationPrincipal final User user,
             @RequestParam("computerId") final int computerId,
-            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dives.");
         }
-        return diveService.getDivesByComputer(user, computerId, page);
+        return diveService.getDivesByComputer(
+                user, computerId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
     @Operation(summary = "Get dives by custom identifier")
@@ -276,16 +291,15 @@ public class DiveController {
 
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
-    public ResponseEntity<Dive> mergeDiveProfiles(
+    public Dive mergeDiveProfiles(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long baseDiveId,
             @RequestParam final long toAddDiveId,
             @RequestParam final boolean keepToAddDive) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to merge dives.");
         }
-        return ResponseEntity.ok(
-                diveService.mergeProfiles(user, baseDiveId, toAddDiveId, keepToAddDive));
+        return diveService.mergeProfiles(user, baseDiveId, toAddDiveId, keepToAddDive);
     }
 
     public record MoveProfilesRequestBody(List<Long> profileIds, long diveId) {}
