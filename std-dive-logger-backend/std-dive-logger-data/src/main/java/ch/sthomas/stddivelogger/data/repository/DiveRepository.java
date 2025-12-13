@@ -48,13 +48,13 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             value =
                     """
                             SELECT dive.*
-                            FROM fuzzy_search_dives_for_user(:query, :userId) AS f(dive, relevance_score)
+                            FROM fuzzy_search_dives_for_user(:query::TEXT, :userId::INTEGER) AS f(dive, relevance_score)
                             ORDER BY relevance_score DESC
                             """,
             countQuery =
                     """
                             SELECT COUNT(*)
-                            FROM fuzzy_search_dives_for_user(:query, :userId) AS f(dive, relevance_score)
+                            FROM fuzzy_search_dives_for_user(:query::TEXT, :userId::INTEGER) AS f(dive, relevance_score)
                             """,
             nativeQuery = true)
     Page<DiveEntity> searchDives(long userId, String query, Pageable pageable);
