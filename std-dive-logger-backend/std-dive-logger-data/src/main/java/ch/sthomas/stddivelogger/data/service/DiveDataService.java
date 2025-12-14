@@ -187,7 +187,13 @@ public class DiveDataService {
                 diveProfileUpload.start(),
                 diveProfileUpload.end(),
                 diveProfileUpload.measurements().stream()
-                        .map(m -> new DiveMeasurementEntity(m, toEntity(m.gas())))
+                        .map(
+                                m ->
+                                        new DiveMeasurementEntity(
+                                                m,
+                                                Optional.ofNullable(m.gas())
+                                                        .map(this::toEntity)
+                                                        .orElse(null)))
                         .toList());
     }
 

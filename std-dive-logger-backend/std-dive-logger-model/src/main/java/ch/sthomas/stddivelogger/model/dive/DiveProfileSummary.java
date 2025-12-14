@@ -1,20 +1,25 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import jakarta.annotation.Nullable;
+
 import java.time.Duration;
 import java.time.Instant;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record DiveProfileSummary(
         Instant start,
         Instant end,
         double averageDepth,
         double maxDepth,
-        Duration surfaceInterval,
+        @Nullable Duration surfaceInterval,
         Duration bottomTime,
-        Duration descentTime,
-        Duration ascentTime,
-        double avgAscentRate,
-        double startN2,
-        double endN2,
-        double o2Toxicity,
-        double startCNS,
-        double endCNS) {}
+        @Nullable Duration descentTime,
+        @Nullable Duration ascentTime,
+        @Nullable Double avgAscentRate,
+        @Nullable Double startN2,
+        @Nullable Double endN2,
+        @Nullable Double o2Toxicity,
+        @Nullable Double startCNS,
+        @Nullable Double endCNS) {}

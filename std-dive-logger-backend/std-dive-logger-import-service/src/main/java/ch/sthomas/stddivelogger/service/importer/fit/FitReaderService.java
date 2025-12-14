@@ -110,6 +110,7 @@ public class FitReaderService extends BaseReaderService {
         var eventIndex = 0;
         var currentGasIndex = 0;
         final var measurements = new ArrayList<DiveMeasurement>(records.size());
+        int i = 0;
         for (final var record : records) {
             final var time = toInstant(record.getTimestamp());
             var nextEvent = events.size() > eventIndex + 1 ? events.get(eventIndex + 1) : null;
@@ -140,7 +141,17 @@ public class FitReaderService extends BaseReaderService {
                             ofSeconds(record.getNdlTime()),
                             deco,
                             gas,
-                            getRMV(record, gas)));
+                            getRMV(record, gas),
+                            Optional.ofNullable(record.getN2Load())
+                                    .map(Integer::doubleValue)
+                                    .orElse(null),
+                            i == records.size() - 1
+                                    ? summary.map(DiveProfileSummary::o2Toxicity).orElse(null)
+                                    : null,
+                            Optional.ofNullable(record.getCnsLoad())
+                                    .map(Short::doubleValue)
+                                    .orElse(null)));
+            i++;
         }
         return new DiveProfileUpload(
                 computer.id(),
@@ -180,15 +191,19 @@ public class FitReaderService extends BaseReaderService {
                         last.getAvgDepth() / 1000,
                         last.getMaxDepth() / 1000,
                         ofSeconds(last.getSurfaceInterval()),
-                        ofMillis((long) (float) last.getBottomTime()),
-                        ofMillis((long) (float) last.getDescentTime()),
-                        ofMillis((long) (float) last.getAscentTime()),
-                        last.getAvgAscentRate() / 1000,
-                        last.getStartN2(),
-                        last.getEndN2(),
-                        last.getO2Toxicity() / 100.0,
-                        last.getStartCns() / 100.0,
-                        last.getEndCns() / 100.0));
+                        ofMillis(last.getBottomTime().longValue()),
+                        ofMillis(last.getDescentTime().longValue()),
+                        ofMillis(last.getAscentTime().longValue()),
+                        Optional.ofNullable(last.getAvgAscentRate())
+                                .map(f -> f / 1000.0)
+                                .orElse(null),
+                        Optional.ofNullable(last.getStartN2())
+                                .map(Integer::doubleValue)
+                                .orElse(null),
+                        Optional.ofNullable(last.getEndN2()).map(Integer::doubleValue).orElse(null),
+                        Optional.ofNullable(last.getO2Toxicity()).map(f -> f / 100.0).orElse(null),
+                        Optional.ofNullable(last.getStartCns()).map(f -> f / 100.0).orElse(null),
+                        Optional.ofNullable(last.getEndCns()).map(f -> f / 100.0).orElse(null)));
     }
 
     private List<DiveComputer> saveComputers(final User user, final FitMessages messages) {

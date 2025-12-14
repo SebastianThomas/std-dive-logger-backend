@@ -41,6 +41,15 @@ public class DiveMeasurementEntity {
     @Column(name = "rmv_liters", nullable = true)
     private Double rmv;
 
+    @Column(name = "n2", nullable = true)
+    private Double n2;
+
+    @Column(name = "o2_tox", nullable = true)
+    private Double o2Tox;
+
+    @Column(name = "cns", nullable = true)
+    private Double cns;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Convert(converter = DecoStopsToStringConverter.class)
     @Column(name = "deco_stops")
@@ -66,6 +75,10 @@ public class DiveMeasurementEntity {
         this.temperatureCelsius = diveMeasurement.temperature().celsius();
         this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();
         this.gas = gas;
+        this.rmv = diveMeasurement.rmvLiters();
+        this.n2 = diveMeasurement.n2();
+        this.o2Tox = diveMeasurement.o2Tox();
+        this.cns = diveMeasurement.cns();
     }
 
     public DiveMeasurementEntity(
@@ -82,7 +95,10 @@ public class DiveMeasurementEntity {
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
                 Optional.ofNullable(gas).map(GasEntity::toRecord).orElse(null),
-                rmv);
+                rmv,
+                n2,
+                o2Tox,
+                cns);
     }
 
     public DiveMeasurementWithId toRecordWithId() {

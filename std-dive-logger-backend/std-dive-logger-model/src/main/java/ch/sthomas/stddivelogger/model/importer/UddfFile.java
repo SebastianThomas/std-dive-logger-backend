@@ -191,6 +191,7 @@ public record UddfFile(
                     List<UddfDecoStop> decoStop,
             @JacksonXmlProperty(localName = "gradientfactor") int gf) {
         public DiveMeasurement toRecord(final Instant start, final List<UddfGasMix> mixes) {
+            // TODO: RMV
             return new DiveMeasurement(
                     start.plusSeconds(seconds),
                     new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
@@ -210,8 +211,10 @@ public record UddfFile(
                                                     .collect(MoreCollectors.toOptional()))
                             .map(mix -> new Gas(mix.o2, mix.he))
                             .orElse(null),
-                    // TODO: RMV
-                    null);
+                    null,
+                    (double) gf,
+                    null,
+                    (double) cns);
         }
     }
 

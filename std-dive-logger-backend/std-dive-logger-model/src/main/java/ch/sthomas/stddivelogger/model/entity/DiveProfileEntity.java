@@ -60,8 +60,7 @@ public class DiveProfileEntity {
                 computer.toRecord(),
                 profileStart.toInstant(),
                 profileEnd.toInstant(),
-                measurements.stream().map(DiveMeasurementEntity::toRecordWithId).toList(),
-                null);
+                measurements.stream().map(DiveMeasurementEntity::toRecordWithId).toList());
     }
 
     public DiveProfileEntity setDive(final DiveEntity diveEntity) {
