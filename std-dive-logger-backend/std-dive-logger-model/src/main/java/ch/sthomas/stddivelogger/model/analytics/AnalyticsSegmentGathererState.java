@@ -91,6 +91,7 @@ public class AnalyticsSegmentGathererState {
                 toSegmentInfo(
                                 measurements,
                                 (a, b) -> a <= 1 && b <= 1,
+                                (a, b) -> a <= 1 && b <= 1,
                                 DiveProfileSegmentType.SURFACE)
                         .or(() -> toSegmentInfoHoldingLevel(measurements))
                         .or(
@@ -98,12 +99,14 @@ public class AnalyticsSegmentGathererState {
                                         toSegmentInfo(
                                                 measurements,
                                                 (a, b) -> a <= b,
+                                                (a, b) -> a - 1 <= b,
                                                 DiveProfileSegmentType.DESCENT))
                         .or(
                                 () ->
                                         toSegmentInfo(
                                                 measurements,
                                                 (a, b) -> a >= b,
+                                                (a, b) -> a + 1 <= b,
                                                 DiveProfileSegmentType.ASCENT));
         if (trivial.isPresent()) {
             logger.trace(
@@ -121,8 +124,8 @@ public class AnalyticsSegmentGathererState {
                         .map(DiveMeasurementWithId::measurement)
                         .mapToDouble(DiveMeasurement::depth)
                         .toArray());
-        throw new IllegalArgumentException("Cannot get segment type for measurements.");
-        // return DiveProfileSegmentInfo.ofType(DiveProfileSegmentType.UNKNOWN, measurements);
+        // throw new IllegalArgumentException("Cannot get segment type for measurements.");
+        return DiveProfileSegmentInfo.ofType(DiveProfileSegmentType.UNKNOWN, measurements);
     }
 
     private static Optional<DiveProfileSegmentInfo> toSegmentInfoHoldingLevel(
@@ -145,8 +148,9 @@ public class AnalyticsSegmentGathererState {
     private static Optional<DiveProfileSegmentInfo> toSegmentInfo(
             final List<DiveMeasurementWithId> measurements,
             final BiPredicate<Double, Double> comparator,
+            final BiPredicate<Double, Double> globalComparator,
             final DiveProfileSegmentType type) {
-        if (isMonotone(measurements, comparator)) {
+        if (isMonotone(measurements, comparator, globalComparator)) {
             return Optional.of(DiveProfileSegmentInfo.ofType(type, measurements));
         }
         return Optional.empty();
@@ -154,12 +158,21 @@ public class AnalyticsSegmentGathererState {
 
     private static boolean isMonotone(
             final List<DiveMeasurementWithId> measurements,
-            final BiPredicate<Double, Double> comparator) {
+            final BiPredicate<Double, Double> comparator,
+            final BiPredicate<Double, Double> globalComparator) {
         final var cutoff = measurements.getFirst().measurement().time().plus(CUTOFF_DELAY);
-        final var categorized =
+        final var windows =
                 measurements.stream()
                         .gather(Gatherers.windowSliding(2))
                         .filter(m -> cutoff.isAfter(m.getFirst().measurement().time()))
+                        .toList();
+        if (!globalComparator.test(
+                windows.getFirst().getFirst().measurement().depth(),
+                windows.getLast().getLast().measurement().depth())) {
+            return false;
+        }
+        final var categorized =
+                windows.stream()
                         .collect(
                                 Collectors.groupingBy(
                                         pair ->
@@ -168,6 +181,6 @@ public class AnalyticsSegmentGathererState {
                                                         pair.getLast().measurement().depth())));
         final var matching = (double) categorized.getOrDefault(true, List.of()).size();
         final var nonMatching = (double) categorized.getOrDefault(false, List.of()).size();
-        return matching / (matching + nonMatching) >= 0.7;
+        return matching / (matching + nonMatching) >= 0.6;
     }
 }
