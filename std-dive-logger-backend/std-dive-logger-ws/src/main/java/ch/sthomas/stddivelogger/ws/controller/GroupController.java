@@ -28,6 +28,17 @@ public class GroupController {
         return userService.getGroups(user, role, exclRole, page);
     }
 
+    public record GroupBody(String name) {}
+
+    @PostMapping("")
+    public GroupWithMembers group(
+            @AuthenticationPrincipal final User user, @RequestBody final GroupBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Not logged in");
+        }
+        return userService.saveGroup(body.name(), user);
+    }
+
     @GetMapping("/{id}")
     public Group group(@AuthenticationPrincipal final User user, @PathVariable final long id) {
         return userService.getGroupById(id).orElseThrow();
@@ -37,17 +48,6 @@ public class GroupController {
     public GroupWithMembers groupMembers(
             @AuthenticationPrincipal final User user, @PathVariable final long id) {
         return userService.getGroupWithMembersById(user, id).orElseThrow();
-    }
-
-    public record GroupBody(String name, List<Long> members) {}
-
-    @PostMapping("")
-    public GroupWithMembers group(
-            @AuthenticationPrincipal final User user, @RequestBody final GroupBody body) {
-        if (user == null) {
-            throw new UnauthorizedException("Not logged in");
-        }
-        return userService.saveGroup(body.name(), user);
     }
 
     @PostMapping("/{id}/join")
