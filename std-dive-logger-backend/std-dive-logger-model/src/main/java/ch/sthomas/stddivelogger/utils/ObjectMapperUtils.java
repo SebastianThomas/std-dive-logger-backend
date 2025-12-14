@@ -25,6 +25,7 @@ public class ObjectMapperUtils {
                         .addModule(new Jdk8Module())
                         .disable(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS)
                         .disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+                        .disable(SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
                         .enable(
                                 DeserializationFeature
                                         .READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
