@@ -10,14 +10,8 @@ import java.io.Serializable;
 @Embeddable
 public class AnalyticsDepthVarianceId implements Serializable {
 
-    @Column(name = "fk_profile_id")
-    private Long profileId;
-
-    @Column(name = "fk_measurement_start")
-    private Long measurementStartId;
-
-    @Column(name = "fk_measurement_end")
-    private Long measurementEndId;
+    @Column(name = "fk_profile_segment_id")
+    private Long profileSegmentId;
 
     @Column(name = "version", nullable = false)
     private Long version;
@@ -25,9 +19,7 @@ public class AnalyticsDepthVarianceId implements Serializable {
     public AnalyticsDepthVarianceId() {}
 
     public AnalyticsDepthVarianceId(final AnalyticsDepthVariance record) {
-        this.profileId = record.profile().id();
-        this.measurementStartId = record.measurementStart().id();
-        this.measurementEndId = record.measurementEnd().id();
+        this.profileSegmentId = record.segmentWithId().id();
         this.version = record.stats().version();
     }
 

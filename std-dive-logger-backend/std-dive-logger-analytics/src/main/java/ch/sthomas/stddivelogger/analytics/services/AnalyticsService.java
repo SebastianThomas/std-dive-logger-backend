@@ -6,7 +6,7 @@ import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
-import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
+import ch.sthomas.stddivelogger.model.dive.DiveProfileSegmentWithId;
 
 import com.google.common.math.Stats;
 
@@ -17,7 +17,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -72,11 +71,15 @@ public class AnalyticsService {
                 true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics.size())));
     }
 
-    private Collection<DiveProfileSegment> createSegments(final Dive dive) {
-        return dive.profiles().stream().flatMap(analyticsSegmentService::createSegments).toList();
+    private List<DiveProfileSegmentWithId> createSegments(final Dive dive) {
+        return dive.profiles().stream()
+                .flatMap(analyticsSegmentService::createSegments)
+                .map(analyticsDataService::saveSegment)
+                .toList();
     }
 
-    private AnalyticsDepthVariance createAnalytics(final DiveProfileSegment segment) {
+    private AnalyticsDepthVariance createAnalytics(final DiveProfileSegmentWithId segmentWithId) {
+        final var segment = segmentWithId.segment();
         Objects.requireNonNull(segment, "Segment must not be null");
         if (segment.measurements().isEmpty()) {
             logger.info(
@@ -87,10 +90,7 @@ public class AnalyticsService {
         }
         if (segment.measurements().size() == 1) {
             return new AnalyticsDepthVariance(
-                    segment.profile(),
-                    segment.measurements().getFirst(),
-                    segment.measurements().getLast(),
-                    segment.firstMeasurementIdx(),
+                    segmentWithId,
                     new AnalyticsDepthVarianceStats(
                             ANALYTICS_VERSION,
                             segment.measurements().getFirst().measurement().depth()));
@@ -116,10 +116,7 @@ public class AnalyticsService {
         final var ninetyNinthPercentileIdx = Math.min(count - count / 100, count - 1);
         final var ninetiethPercentileIdx = Math.min(count - count / 10, count - 1);
         return new AnalyticsDepthVariance(
-                segment.profile(),
-                segment.measurements().getFirst(),
-                segment.measurements().getLast(),
-                segment.firstMeasurementIdx(),
+                segmentWithId,
                 new AnalyticsDepthVarianceStats(
                         ANALYTICS_VERSION,
                         avg,

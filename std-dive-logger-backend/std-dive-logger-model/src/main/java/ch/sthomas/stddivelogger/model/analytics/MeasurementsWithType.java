@@ -9,6 +9,6 @@ import java.util.ArrayList;
 public record MeasurementsWithType(
         int startIdx, ArrayList<DiveMeasurementWithId> measurements, DiveProfileSegmentType type) {
     public DiveProfileSegment toSegment(final DiveProfile profile) {
-        return new DiveProfileSegment(profile, startIdx, measurements());
+        return new DiveProfileSegment(profile, startIdx, type, measurements());
     }
 }

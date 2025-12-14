@@ -1,26 +1,26 @@
 package ch.sthomas.stddivelogger.data.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
-import ch.sthomas.stddivelogger.data.repository.AnalyticsDepthVarianceRepository;
-import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
-import ch.sthomas.stddivelogger.data.repository.DiveProfileRepository;
-import ch.sthomas.stddivelogger.data.repository.DiveRepository;
+import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
 import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
+import ch.sthomas.stddivelogger.model.dive.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 public class AnalyticsDataService {
@@ -28,22 +28,51 @@ public class AnalyticsDataService {
     private final DiveRepository diveRepository;
     private final StorageService storageService;
     private final DiveProfileRepository diveProfileRepository;
-    private final DiveDataService diveDataService;
     private final DiveMeasurementRepository diveMeasurementRepository;
+    private final DiveProfileSegmentEntityRepository diveProfileSegmentEntityRepository;
 
     public AnalyticsDataService(
             final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository,
             final DiveRepository diveRepository,
             final StorageService storageService,
-            DiveProfileRepository diveProfileRepository,
-            DiveDataService diveDataService,
-            DiveMeasurementRepository diveMeasurementRepository) {
+            final DiveProfileRepository diveProfileRepository,
+            final DiveMeasurementRepository diveMeasurementRepository,
+            final DiveProfileSegmentEntityRepository diveProfileSegmentEntityRepository) {
         this.analyticsDepthVarianceEntityRepository = analyticsDepthVarianceEntityRepository;
         this.diveRepository = diveRepository;
         this.storageService = storageService;
         this.diveProfileRepository = diveProfileRepository;
-        this.diveDataService = diveDataService;
         this.diveMeasurementRepository = diveMeasurementRepository;
+        this.diveProfileSegmentEntityRepository = diveProfileSegmentEntityRepository;
+    }
+
+    @Transactional
+    public DiveProfileSegmentWithId saveSegment(final DiveProfileSegment segment) {
+        final var entity =
+                diveProfileSegmentEntityRepository.save(
+                        new DiveProfileSegmentEntity(
+                                segment,
+                                diveProfileRepository
+                                        .findById(segment.profile().id())
+                                        .orElseThrow()));
+        return toSegmentWithId(entity);
+    }
+
+    private DiveProfileSegmentWithId toSegmentWithId(final DiveProfileSegmentEntity entity) {
+        final var profile = entity.getProfile();
+        final var firstIdx = entity.getFirstMeasurementIdx();
+        final var lastIdx = entity.getLastMeasurementIdx();
+        final var allMeasurements =
+                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profile.getId());
+        final var measurements =
+                IntStream.rangeClosed(firstIdx, lastIdx)
+                        .mapToObj(allMeasurements::get)
+                        .map(DiveMeasurementEntity::toRecordWithId)
+                        .toList();
+        return new DiveProfileSegmentWithId(
+                new DiveProfileSegment(
+                        profile.toRecord(), firstIdx, entity.getType(), measurements),
+                entity.getId());
     }
 
     @Transactional(readOnly = true)
@@ -61,13 +90,19 @@ public class AnalyticsDataService {
 
     @Transactional
     public List<AnalyticsDepthVariance> saveAll(final List<AnalyticsDepthVariance> analytics) {
-        final var requiredProfiles =
+        final var segmentsById =
                 analytics.stream()
-                        .map(AnalyticsDepthVariance::profile)
-                        .map(DiveProfile::id)
-                        .distinct()
-                        .map(p -> Pair.of(p, diveProfileRepository.findById(p).orElseThrow()))
-                        .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+                        .map(AnalyticsDepthVariance::segmentWithId)
+                        .collect(
+                                Collectors.toMap(
+                                        DiveProfileSegmentWithId::id, Function.identity()));
+        final var segmentEntitiesById =
+                segmentsById.keySet().stream()
+                        .map(diveProfileSegmentEntityRepository::findById)
+                        .map(Optional::orElseThrow)
+                        .collect(
+                                Collectors.toMap(
+                                        DiveProfileSegmentEntity::getId, Function.identity()));
         return analyticsDepthVarianceEntityRepository
                 .saveAll(
                         analytics.stream()
@@ -75,16 +110,15 @@ public class AnalyticsDataService {
                                         a ->
                                                 new AnalyticsDepthVarianceEntity(
                                                         a,
-                                                        requiredProfiles.get(a.profile().id()),
-                                                        this::findMeasurementById))
+                                                        segmentEntitiesById.get(
+                                                                a.segmentWithId().id())))
                                 .toList())
                 .stream()
-                .map(AnalyticsDepthVarianceEntity::toRecord)
+                .map(
+                        e ->
+                                new AnalyticsDepthVariance(
+                                        segmentsById.get(e.getSegmentId()), e.toStats()))
                 .toList();
-    }
-
-    private DiveMeasurementEntity findMeasurementById(final Long id) {
-        return diveMeasurementRepository.findById(id).orElseThrow();
     }
 
     @Transactional(readOnly = true)

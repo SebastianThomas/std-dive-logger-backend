@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsSegmentGathererState;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmentType;
 import ch.sthomas.stddivelogger.model.dive.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
 
@@ -15,7 +16,9 @@ public class AnalyticsSegmentService {
     private static final int WINDOW_SIZE = 10;
 
     public Stream<DiveProfileSegment> createSegmentForProfile(final DiveProfile profile) {
-        return Stream.of(new DiveProfileSegment(profile, 0, profile.measurements()));
+        return Stream.of(
+                new DiveProfileSegment(
+                        profile, 0, DiveProfileSegmentType.UNKNOWN, profile.measurements()));
     }
 
     public Stream<DiveProfileSegment> createSegments(final DiveProfile profile) {

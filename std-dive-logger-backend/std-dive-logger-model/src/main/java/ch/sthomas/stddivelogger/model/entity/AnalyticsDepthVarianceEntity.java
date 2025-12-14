@@ -7,30 +7,15 @@ import ch.sthomas.stddivelogger.model.entity.embedded.AnalyticsDepthVarianceId;
 
 import jakarta.persistence.*;
 
-import java.util.function.Function;
-
 @Entity
 @Table(name = "t_analytics_depth_variance")
 public class AnalyticsDepthVarianceEntity {
     @EmbeddedId private AnalyticsDepthVarianceId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("profileId")
-    @JoinColumn(name = "fk_profile_id", nullable = false)
-    private DiveProfileEntity profile;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("measurementStartId")
-    @JoinColumn(name = "fk_measurement_start", nullable = false)
-    private DiveMeasurementEntity measurementStart;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("measurementEndId")
-    @JoinColumn(name = "fk_measurement_end", nullable = false)
-    private DiveMeasurementEntity measurementEnd;
-
-    @Column(name = "start_idx", nullable = false)
-    private int startIdx;
+    @MapsId("profileSegmentId")
+    @JoinColumn(name = "fk_profile_segment_id", nullable = false)
+    private DiveProfileSegmentEntity profileSegment;
 
     @Column(name = "avg_depth", nullable = false)
     private Double avgDepth;
@@ -67,13 +52,9 @@ public class AnalyticsDepthVarianceEntity {
 
     public AnalyticsDepthVarianceEntity(
             final AnalyticsDepthVariance record,
-            final DiveProfileEntity profileEntity,
-            final Function<Long, DiveMeasurementEntity> findMeasurementById) {
+            final DiveProfileSegmentEntity profileSegmentEntity) {
         this.id = new AnalyticsDepthVarianceId(record);
-        this.profile = profileEntity;
-        this.measurementStart = findMeasurementById.apply(record.measurementStart().id());
-        this.measurementEnd = findMeasurementById.apply(record.measurementEnd().id());
-        this.startIdx = record.startIdx();
+        this.profileSegment = profileSegmentEntity;
         this.avgDepth = record.stats().avgDepth();
         this.maxDepth = record.stats().maxDepth();
         this.minDepth = record.stats().minDepth();
@@ -86,18 +67,14 @@ public class AnalyticsDepthVarianceEntity {
         this.deviationMax = record.stats().deviationMax();
     }
 
-    public AnalyticsDepthVariance toRecord() {
-        return new AnalyticsDepthVariance(
-                profile.toRecord(),
-                measurementStart.toRecordWithId(),
-                measurementEnd.toRecordWithId(),
-                startIdx,
-                toStats());
-    }
-
     public AnalyticsDepthVarianceResponse toResponse() {
         return new AnalyticsDepthVarianceResponse(
-                profile.getDiveId(), profile.getId(), startIdx, toStats());
+                profileSegment.getProfile().getDiveId(),
+                profileSegment.getProfile().getId(),
+                profileSegment.getId(),
+                profileSegment.getFirstMeasurementIdx(),
+                profileSegment.getLastMeasurementIdx(),
+                toStats());
     }
 
     public AnalyticsDepthVarianceStats toStats() {
@@ -113,5 +90,9 @@ public class AnalyticsDepthVarianceEntity {
                 deviationMedian,
                 deviation90p,
                 deviationMax);
+    }
+
+    public long getSegmentId() {
+        return profileSegment.getId();
     }
 }
