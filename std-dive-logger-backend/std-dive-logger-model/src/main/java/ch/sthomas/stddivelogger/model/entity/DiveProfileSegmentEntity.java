@@ -5,6 +5,8 @@ import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
 
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "t_dive_profile_segments")
 public class DiveProfileSegmentEntity {
@@ -31,7 +33,8 @@ public class DiveProfileSegmentEntity {
 
     public DiveProfileSegmentEntity(
             final DiveProfileSegment segment, final DiveProfileEntity profile) {
-        if (segment.measurements().isEmpty()) {
+        if (Objects.requireNonNull(segment.measurements(), "Segment Measurements must not be null")
+                .isEmpty()) {
             throw new IllegalArgumentException("Cannot save empty profiles");
         }
         this.profile = profile;

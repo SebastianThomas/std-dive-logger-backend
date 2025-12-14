@@ -55,12 +55,17 @@ public class DiveProfileEntity {
     }
 
     public DiveProfile toRecord() {
+        return toRecord(true);
+    }
+
+    public DiveProfile toRecord(final boolean includeMeasurements) {
         return new DiveProfile(
                 id,
                 computer.toRecord(),
                 profileStart.toInstant(),
                 profileEnd.toInstant(),
-                measurements.stream().map(DiveMeasurementEntity::toRecordWithId).toList());
+                measurements.stream().map(DiveMeasurementEntity::toRecordWithId).toList(),
+                includeMeasurements);
     }
 
     public DiveProfileEntity setDive(final DiveEntity diveEntity) {

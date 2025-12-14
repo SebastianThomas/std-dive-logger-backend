@@ -30,7 +30,7 @@ public class AnalyticsController {
         if (user == null) {
             throw new UnauthorizedException("Login to find analytics for dive " + diveId);
         }
-        return analyticsDataService.findSegmentsByDiveId(user, diveId);
+        return analyticsDataService.findSegmentsByDiveId(user, diveId, false);
     }
 
     @GetMapping("/depth-variance")

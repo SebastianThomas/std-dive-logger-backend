@@ -56,10 +56,11 @@ public class AnalyticsDataService {
                                 diveProfileRepository
                                         .findById(segment.profile().id())
                                         .orElseThrow()));
-        return toSegmentWithId(entity);
+        return toSegmentWithId(entity, true);
     }
 
-    private DiveProfileSegmentWithId toSegmentWithId(final DiveProfileSegmentEntity entity) {
+    private DiveProfileSegmentWithId toSegmentWithId(
+            final DiveProfileSegmentEntity entity, final boolean includeMeasurements) {
         final var profile = entity.getProfile();
         final var firstIdx = entity.getFirstMeasurementIdx();
         final var lastIdx = entity.getLastMeasurementIdx();
@@ -72,7 +73,10 @@ public class AnalyticsDataService {
                         .toList();
         return new DiveProfileSegmentWithId(
                 new DiveProfileSegment(
-                        profile.toRecord(), firstIdx, entity.getType(), measurements),
+                        profile.toRecord(false),
+                        firstIdx,
+                        entity.getType(),
+                        includeMeasurements ? measurements : null),
                 entity.getId());
     }
 
@@ -123,9 +127,10 @@ public class AnalyticsDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<DiveProfileSegmentWithId> findSegmentsByDiveId(final User user, final long id) {
+    public List<DiveProfileSegmentWithId> findSegmentsByDiveId(
+            final User user, final long id, final boolean includeMeasurements) {
         return diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), id).stream()
-                .map(this::toSegmentWithId)
+                .map(s -> toSegmentWithId(s, includeMeasurements))
                 .toList();
     }
 

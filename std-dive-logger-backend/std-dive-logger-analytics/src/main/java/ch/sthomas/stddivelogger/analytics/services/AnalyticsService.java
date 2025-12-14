@@ -81,6 +81,7 @@ public class AnalyticsService {
     private AnalyticsDepthVariance createAnalytics(final DiveProfileSegmentWithId segmentWithId) {
         final var segment = segmentWithId.segment();
         Objects.requireNonNull(segment, "Segment must not be null");
+        Objects.requireNonNull(segment.measurements(), "Segment Measurements must not be null");
         if (segment.measurements().isEmpty()) {
             logger.info(
                     "Empty segment for profile: {} with start index {}",

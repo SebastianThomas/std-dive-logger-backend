@@ -11,14 +11,15 @@ public record DiveProfile(
         DiveComputer diveComputer,
         Instant start,
         Instant end,
-        List<DiveMeasurementWithId> measurements,
+        @Nullable List<DiveMeasurementWithId> measurements,
         @Nullable DiveProfileSummary summary) {
     public DiveProfile(
             final long id,
             final DiveComputer diveComputer,
             final Instant start,
             final Instant end,
-            final List<DiveMeasurementWithId> measurements) {
+            final List<DiveMeasurementWithId> measurements,
+            final boolean includeMeasurements) {
         final var depths =
                 measurements.stream()
                         .map(DiveMeasurementWithId::measurement)
@@ -44,6 +45,6 @@ public record DiveProfile(
                         measurements.getLast().measurement().o2Tox(),
                         measurements.getFirst().measurement().cns(),
                         measurements.getLast().measurement().cns());
-        this(id, diveComputer, start, end, measurements, summary);
+        this(id, diveComputer, start, end, includeMeasurements ? measurements : null, summary);
     }
 }
