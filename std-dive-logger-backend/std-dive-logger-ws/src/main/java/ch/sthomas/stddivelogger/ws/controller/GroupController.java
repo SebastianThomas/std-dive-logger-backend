@@ -29,13 +29,14 @@ public class GroupController {
     }
 
     @GetMapping("/{id}")
-    public Group group(@PathVariable final long id) {
+    public Group group(@AuthenticationPrincipal final User user, @PathVariable final long id) {
         return userService.getGroupById(id).orElseThrow();
     }
 
     @GetMapping("/{id}/members")
-    public GroupWithMembers groupMembers(@PathVariable final long id) {
-        return userService.getGroupWithMembersById(id).orElseThrow();
+    public GroupWithMembers groupMembers(
+            @AuthenticationPrincipal final User user, @PathVariable final long id) {
+        return userService.getGroupWithMembersById(user, id).orElseThrow();
     }
 
     public record GroupBody(String name, List<Long> members) {}

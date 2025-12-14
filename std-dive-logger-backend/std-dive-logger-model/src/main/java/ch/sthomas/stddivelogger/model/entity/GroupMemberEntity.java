@@ -21,8 +21,8 @@ public class GroupMemberEntity {
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "role")
+    @Enumerated(EnumType.STRING)
     private GroupRole role;
 
     // Constructors

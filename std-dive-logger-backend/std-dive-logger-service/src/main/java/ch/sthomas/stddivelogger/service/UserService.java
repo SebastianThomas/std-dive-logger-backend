@@ -125,12 +125,12 @@ public class UserService {
         return userDataService.findGroupById(id);
     }
 
-    public Optional<GroupWithMembers> getGroupWithMembersById(final long id) {
+    public Optional<GroupWithMembers> getGroupWithMembersById(final User user, final long id) {
         final var groupWithMembers = userDataService.findGroupWithMembersById(id);
         if (groupWithMembers.isEmpty()) {
             return Optional.empty();
         }
-        if (!hasMemberAccess(groupWithMembers.get(), id)) {
+        if (!hasMemberAccess(groupWithMembers.get(), user)) {
             throw new UnauthorizedException(
                     "You can only get group members for groups you are a member of.");
         }
@@ -154,13 +154,14 @@ public class UserService {
         return userDataService.changeRole(groupId, userId, role);
     }
 
-    private boolean hasMemberAccess(final GroupWithMembers group, final long id) {
+    private boolean hasMemberAccess(final GroupWithMembers group, final User user) {
+        final var userId = user.id();
         if (group.members() == null || group.admins() == null) {
             throw new IllegalArgumentException(
                     "Group with members should have non-null members to check access.");
         }
         return Stream.concat(group.members().stream(), group.admins().stream())
-                .anyMatch(member -> member.id() == id);
+                .anyMatch(member -> member.id() == userId);
     }
 
     public GroupWithMembers joinGroup(final long groupId, final long userId) {

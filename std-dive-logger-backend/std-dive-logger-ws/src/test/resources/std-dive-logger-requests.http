@@ -51,3 +51,25 @@ Content-Type: application/json
   "email": "test@test.ch",
   "password": "abc123"
 }
+
+### Refresh
+POST {{baseurl}}/api/auth/refresh
+
+### Create Group
+POST {{baseurl}}/v1/groups
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjU3MTQ1ODgsImV4cCI6MTc2NTcxODE4OH0.MbMQBpnfZPSUYGhTk1rLg8IaEBgX2KNPtdT--hq7cfVBuy-1OUe2dujM0opQuzoW
+Content-Type: application/json
+
+{
+  "name": "TestGroup",
+  "members": [
+  ]
+}
+
+### Get Group Members
+GET {{baseurl}}/v1/groups/1/members
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjU3MTQ5MDQsImV4cCI6MTc2NTcxODUwNH0.nYIw3QnQVZJgwXHLDrCKmf520nQInijwEQ90NFHyrqlZEj8gg1Y321HD16gfbMGy
+
+### Get Group
+GET {{baseurl}}/v1/groups/1
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjU3MTQ5MDQsImV4cCI6MTc2NTcxODUwNH0.nYIw3QnQVZJgwXHLDrCKmf520nQInijwEQ90NFHyrqlZEj8gg1Y321HD16gfbMGy
