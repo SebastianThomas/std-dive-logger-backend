@@ -208,7 +208,7 @@ public record UddfFile(
                             start.plusSeconds(seconds),
                             new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
                             depth,
-                            Duration.ofMinutes(ndl),
+                            Duration.ofSeconds(ndl),
                             Optional.ofNullable(decoStop).stream()
                                     .flatMap(List::stream)
                                     .map(UddfDecoStop::toRecord)
