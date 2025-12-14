@@ -134,7 +134,7 @@ public class AnalyticsSegmentGathererState {
                         .takeWhile(m -> cutoff.isAfter(m.time()))
                         .map(DiveMeasurement::depth)
                         .collect(Stats.toStats());
-        if (summaryStats.populationStandardDeviation() < 0.7
+        if (summaryStats.populationStandardDeviation() < 0.4
                 || summaryStats.max() - 1 <= summaryStats.min()) {
             return Optional.of(
                     DiveProfileSegmentInfo.ofType(DiveProfileSegmentType.HOLD_LEVEL, measurements));
