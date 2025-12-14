@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
+import ch.sthomas.stddivelogger.model.user.User;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class AnalyticsDataService {
     private final StorageService storageService;
     private final DiveProfileRepository diveProfileRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
-    private final DiveProfileSegmentEntityRepository diveProfileSegmentEntityRepository;
+    private final DiveProfileSegmentRepository diveProfileSegmentRepository;
 
     public AnalyticsDataService(
             final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository,
@@ -37,19 +38,19 @@ public class AnalyticsDataService {
             final StorageService storageService,
             final DiveProfileRepository diveProfileRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
-            final DiveProfileSegmentEntityRepository diveProfileSegmentEntityRepository) {
+            final DiveProfileSegmentRepository diveProfileSegmentRepository) {
         this.analyticsDepthVarianceEntityRepository = analyticsDepthVarianceEntityRepository;
         this.diveRepository = diveRepository;
         this.storageService = storageService;
         this.diveProfileRepository = diveProfileRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
-        this.diveProfileSegmentEntityRepository = diveProfileSegmentEntityRepository;
+        this.diveProfileSegmentRepository = diveProfileSegmentRepository;
     }
 
     @Transactional
     public DiveProfileSegmentWithId saveSegment(final DiveProfileSegment segment) {
         final var entity =
-                diveProfileSegmentEntityRepository.save(
+                diveProfileSegmentRepository.save(
                         new DiveProfileSegmentEntity(
                                 segment,
                                 diveProfileRepository
@@ -98,7 +99,7 @@ public class AnalyticsDataService {
                                         DiveProfileSegmentWithId::id, Function.identity()));
         final var segmentEntitiesById =
                 segmentsById.keySet().stream()
-                        .map(diveProfileSegmentEntityRepository::findById)
+                        .map(diveProfileSegmentRepository::findById)
                         .map(Optional::orElseThrow)
                         .collect(
                                 Collectors.toMap(
@@ -118,6 +119,13 @@ public class AnalyticsDataService {
                         e ->
                                 new AnalyticsDepthVariance(
                                         segmentsById.get(e.getSegmentId()), e.toStats()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DiveProfileSegmentWithId> findSegmentsByDiveId(final User user, final long id) {
+        return diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), id).stream()
+                .map(this::toSegmentWithId)
                 .toList();
     }
 
