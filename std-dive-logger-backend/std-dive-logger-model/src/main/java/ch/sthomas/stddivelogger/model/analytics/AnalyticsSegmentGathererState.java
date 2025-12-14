@@ -106,7 +106,7 @@ public class AnalyticsSegmentGathererState {
                                         toSegmentInfo(
                                                 measurements,
                                                 (a, b) -> a >= b,
-                                                (a, b) -> a + 0.5 <= b,
+                                                (a, b) -> a + 0.5 >= b,
                                                 DiveProfileSegmentType.ASCENT));
         if (trivial.isPresent()) {
             logger.trace(
