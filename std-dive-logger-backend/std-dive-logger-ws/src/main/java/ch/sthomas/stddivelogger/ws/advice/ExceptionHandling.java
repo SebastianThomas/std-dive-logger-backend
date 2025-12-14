@@ -14,4 +14,5 @@ public class ExceptionHandling
                 ConstraintViolationAdviceTrait,
                 DiveConstraintAdviceTrait,
                 UnauthorizedAdviceTrait,
-                UserCreationAdviceTrait {}
+                UserCreationAdviceTrait,
+                ForbiddenAdviceTrait {}
