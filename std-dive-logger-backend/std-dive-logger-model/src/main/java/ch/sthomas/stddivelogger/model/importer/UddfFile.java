@@ -13,12 +13,11 @@ import com.google.common.collect.MoreCollectors;
 
 import jakarta.annotation.Nullable;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JacksonXmlRootElement(localName = "uddf")
@@ -190,17 +189,9 @@ public record UddfFile(
                     @Nullable
                     List<UddfDecoStop> decoStop,
             @JacksonXmlProperty(localName = "gradientfactor") int gf) {
-        public DiveMeasurement toRecord(final Instant start, final List<UddfGasMix> mixes) {
-            // TODO: RMV
-            return new DiveMeasurement(
-                    start.plusSeconds(seconds),
-                    new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
-                    depth,
-                    Duration.ofMinutes(ndl),
-                    Optional.ofNullable(decoStop).stream()
-                            .flatMap(List::stream)
-                            .map(UddfDecoStop::toRecord)
-                            .toList(),
+        public Pair<DiveMeasurement, Gas> toRecord(
+                final Instant start, final List<UddfGasMix> mixes, final Gas previousGas) {
+            final var gas =
                     Optional.ofNullable(switchmix)
                             .flatMap(
                                     mix ->
@@ -210,11 +201,24 @@ public record UddfFile(
                                                                     candidate.id().equals(mix.ref))
                                                     .collect(MoreCollectors.toOptional()))
                             .map(mix -> new Gas(mix.o2, mix.he))
-                            .orElse(null),
-                    null,
-                    (double) gf,
-                    null,
-                    (double) cns);
+                            .orElse(previousGas);
+            // TODO: RMV
+            return Pair.of(
+                    new DiveMeasurement(
+                            start.plusSeconds(seconds),
+                            new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
+                            depth,
+                            Duration.ofMinutes(ndl),
+                            Optional.ofNullable(decoStop).stream()
+                                    .flatMap(List::stream)
+                                    .map(UddfDecoStop::toRecord)
+                                    .toList(),
+                            gas,
+                            null,
+                            (double) gf,
+                            null,
+                            (double) cns),
+                    previousGas);
         }
     }
 
@@ -275,9 +279,15 @@ public record UddfFile(
     }
 
     public List<DiveMeasurement> exportMeasurements() {
-        return profileData.repetitionGroup.dive.samples.waypoint.stream()
-                .map(sample -> sample.toRecord(exportStart(), gasDefinitions))
-                .toList();
+        final var measurements = profileData.repetitionGroup.dive.samples.waypoint;
+        final var list = new ArrayList<DiveMeasurement>(measurements.size());
+        Gas previousGas = null;
+        for (final var m : measurements) {
+            final var res = m.toRecord(exportStart(), gasDefinitions, previousGas);
+            list.add(res.getLeft());
+            previousGas = res.getRight();
+        }
+        return list;
     }
 
     public List<String> getBuddies() {
