@@ -106,7 +106,9 @@ public class DiveEntity {
                 getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
-                getBuddyDives(includeBuddyDives).map(d -> d.toRecord(baseUrl, false)).toList(),
+                getBuddyDives(includeBuddyDives)
+                        .map(d -> new BuddyDive(d.user.toRecord().toFrontendModel(), d.id))
+                        .toList(),
                 getNamedBuddiesModels());
     }
 

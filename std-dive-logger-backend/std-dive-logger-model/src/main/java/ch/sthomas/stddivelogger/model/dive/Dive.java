@@ -14,7 +14,7 @@ public record Dive(
         @Nullable String previewImage,
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,
-        @NotNull List<Dive> buddiesDives,
+        @NotNull List<BuddyDive> buddiesDives,
         @NotNull List<String> namedBuddies) {
     @Override
     @NotNull
