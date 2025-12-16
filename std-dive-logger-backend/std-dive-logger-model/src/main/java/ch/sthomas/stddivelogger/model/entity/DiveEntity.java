@@ -69,14 +69,13 @@ public class DiveEntity {
             final int number,
             final String diveIdentifier,
             final UserEntity userEntity,
-            final String previewImage,
             final DiveSiteEntity diveSiteEntity,
             final List<DiveProfileEntity> profiles,
             final List<String> namedBuddies) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
         this.user = userEntity;
-        this.previewImage = previewImage;
+        this.previewImage = null;
         this.diveSite = diveSiteEntity;
         this.profiles =
                 profiles.stream()
