@@ -1,5 +1,32 @@
 -- Fuzzy string matching
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- GAS
+CREATE TABLE t_cylinder_size
+(
+    pk_cylinder_size_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    unit                VARCHAR(10)      NOT NULL,
+    value               DOUBLE PRECISION NOT NULL,
+    UNIQUE (unit, value)
+);
+
+CREATE TABLE t_gas_mix
+(
+    pk_gas_mix_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    o2            DOUBLE PRECISION NOT NULL,
+    n2            DOUBLE PRECISION NOT NULL,
+    he            DOUBLE PRECISION NOT NULL DEFAULT 0,
+    UNIQUE (o2, n2, he)
+);
+
+CREATE TABLE t_gas
+(
+    pk_gas_id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fk_gas_mix_id       INTEGER NOT NULL REFERENCES t_gas_mix (pk_gas_mix_id),
+    fk_cylinder_size_id INTEGER REFERENCES t_cylinder_size (pk_cylinder_size_id),
+    description         TEXT,
+    content_value       DOUBLE PRECISION,
+    content_unit        TEXT
+);
 -- USERS
 CREATE TABLE t_users
 (
@@ -33,7 +60,7 @@ CREATE INDEX idx_computer_manufacturer_name_trgm
 CREATE TABLE t_dive_computer
 (
     pk_dive_computer_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_user_id          INTEGER REFERENCES t_users (pk_user_id),
+    fk_user_id          INTEGER REFERENCES t_users (pk_user_id) ON DELETE CASCADE,
     fk_manufacturer_id  INTEGER REFERENCES t_computer_manufacturer (pk_manufacturer_id),
     serial_number       TEXT,
     custom_identifier   TEXT NOT NULL,
@@ -70,7 +97,7 @@ CREATE TABLE t_dives
     dive_identifier TEXT,
     preview_image   TEXT,
     dive_site       INTEGER NOT NULL REFERENCES t_dive_site (pk_dive_site_id),
-    fk_diver_id     INTEGER REFERENCES t_users (pk_user_id),
+    fk_diver_id     INTEGER REFERENCES t_users (pk_user_id) ON DELETE CASCADE,
     UNIQUE (dive_number, fk_diver_id)
 );
 CREATE INDEX idx_dive_identifier_trgm ON t_dives USING GIN (dive_identifier gin_trgm_ops);
@@ -78,11 +105,20 @@ CREATE INDEX idx_dive_identifier_trgm ON t_dives USING GIN (dive_identifier gin_
 CREATE TABLE t_dive_profiles
 (
     pk_dive_profile_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_id         INTEGER     NOT NULL REFERENCES t_dives (pk_dive_id),
-    fk_dive_computer   INTEGER     NOT NULL REFERENCES t_dive_computer (pk_dive_computer_id),
+    fk_dive_id         INTEGER     NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
+    fk_dive_computer   INTEGER     NOT NULL REFERENCES t_dive_computer (pk_dive_computer_id) ON DELETE CASCADE,
     dive_profile_start TIMESTAMPTZ NOT NULL,
     dive_profile_end   TIMESTAMPTZ NOT NULL,
     UNIQUE (fk_dive_computer, dive_profile_start)
+);
+-- Profile Segments
+CREATE TABLE t_dive_profile_segments
+(
+    pk_dive_profile_segment_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fk_dive_profile_id         INTEGER     NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id),
+    first_measurement_idx      INTEGER     NOT NULL,
+    last_measurement_idx       INTEGER     NOT NULL,
+    type                       VARCHAR(10) NOT NULL
 );
 -- DIVE LENGTH
 CREATE VIEW t_dive_length
@@ -95,18 +131,23 @@ GROUP BY pk_dive_id;
 CREATE TABLE t_dive_measurements
 (
     pk_dive_measurement_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_profile_id     INTEGER REFERENCES t_dive_profiles (pk_dive_profile_id),
+    fk_dive_profile_id     INTEGER REFERENCES t_dive_profiles (pk_dive_profile_id) ON DELETE CASCADE,
     time                   TIMESTAMPTZ      NOT NULL,
     depth                  DOUBLE PRECISION NOT NULL,
     temperature_celsius    DOUBLE PRECISION NOT NULL,
     deco_stops             JSONB,
-    ndl_minutes            INTEGER          NOT NULL
+    ndl_minutes            INTEGER          NOT NULL,
+    rmv_liters             DOUBLE PRECISION,
+    fk_gas_id              INTEGER REFERENCES t_gas (pk_gas_id),
+    n2                     DOUBLE PRECISION,
+    o2_tox                 DOUBLE PRECISION,
+    cns                    DOUBLE PRECISION
 );
 -- NAMED BUDDIES
 CREATE TABLE t_dive_buddy_name
 (
     pk_dive_buddy_name_id INTEGER GENERATED ALWAYS AS IDENTITY,
-    fk_dive_id            INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
+    fk_dive_id            INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
     name                  TEXT    NOT NULL,
     UNIQUE (fk_dive_id, name)
 );
@@ -114,30 +155,30 @@ CREATE TABLE t_dive_buddy_name
 CREATE TABLE t_dive_buddy
 (
     pk_dive_buddy_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_id       INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
-    fk_buddy_dive_id INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
+    fk_dive_id       INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
+    fk_buddy_dive_id INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
     CHECK (fk_dive_id < fk_buddy_dive_id)
 );
 -- GROUP MEMBERS
 CREATE TABLE t_group_member
 (
     pk_group_member INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_group_id     INTEGER REFERENCES t_groups (pk_group_id),
-    fk_user_id      INTEGER REFERENCES t_users (pk_user_id),
+    fk_group_id     INTEGER REFERENCES t_groups (pk_group_id) ON DELETE CASCADE,
+    fk_user_id      INTEGER REFERENCES t_users (pk_user_id) ON DELETE CASCADE,
     role            VARCHAR(10) NOT NULL
 );
 -- PRIVILEGES
 CREATE TABLE t_dive_privileges
 (
     pk_dive_privilege_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_id           INTEGER NOT NULL REFERENCES t_dives (pk_dive_id),
-    fk_user_id           INTEGER NOT NULL REFERENCES t_users (pk_user_id)
+    fk_dive_id           INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
+    fk_user_id           INTEGER NOT NULL REFERENCES t_users (pk_user_id) ON DELETE CASCADE
 );
 CREATE TABLE t_dive_privileges_groups
 (
     pk_dive_privilege_group_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_id                 INTEGER REFERENCES t_dives (pk_dive_id),
-    fk_group_id                INTEGER REFERENCES t_groups (pk_group_id),
+    fk_dive_id                 INTEGER REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE,
+    fk_group_id                INTEGER REFERENCES t_groups (pk_group_id) ON DELETE CASCADE,
     UNIQUE (fk_dive_id, fk_group_id)
 );
 
@@ -145,7 +186,7 @@ CREATE TABLE t_dive_privileges_groups
 CREATE TABLE t_dive_analytics
 (
     pk_dive_analytics_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_id           INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) UNIQUE
+    fk_dive_id           INTEGER NOT NULL REFERENCES t_dives (pk_dive_id) ON DELETE CASCADE UNIQUE
 );
 
 -- READERS
@@ -175,22 +216,19 @@ FROM t_users u
 
 CREATE TABLE t_analytics_depth_variance
 (
-    fk_profile_id        INTEGER          NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id),
-    fk_measurement_start INTEGER          NOT NULL REFERENCES t_dive_measurements (pk_dive_measurement_id),
-    fk_measurement_end   INTEGER          NOT NULL REFERENCES t_dive_measurements (pk_dive_measurement_id),
-    start_idx            INTEGER          NOT NULL,
-    version              INTEGER          NOT NULL,
-    avg_depth            DOUBLE PRECISION NOT NULL,
-    max_depth            DOUBLE PRECISION NOT NULL,
-    min_depth            DOUBLE PRECISION NOT NULL,
-    deviation_avg        DOUBLE PRECISION NOT NULL,
-    deviation_variance   DOUBLE PRECISION NOT NULL,
-    deviation_01p        DOUBLE PRECISION NOT NULL,
-    deviation_10p        DOUBLE PRECISION NOT NULL,
-    deviation_median     DOUBLE PRECISION NOT NULL,
-    deviation_90p        DOUBLE PRECISION NOT NULL,
-    deviation_max        DOUBLE PRECISION GENERATED ALWAYS AS (GREATEST(ABS(max_depth - avg_depth), ABS(min_depth - avg_depth))) STORED,
-    PRIMARY KEY (fk_profile_id, version, start_idx, fk_measurement_end)
+    fk_profile_segment_id INTEGER          NOT NULL REFERENCES t_dive_profile_segments (pk_dive_profile_segment_id) ON DELETE CASCADE,
+    version               INTEGER          NOT NULL,
+    avg_depth             DOUBLE PRECISION NOT NULL,
+    max_depth             DOUBLE PRECISION NOT NULL,
+    min_depth             DOUBLE PRECISION NOT NULL,
+    deviation_avg         DOUBLE PRECISION NOT NULL,
+    deviation_variance    DOUBLE PRECISION NOT NULL,
+    deviation_01p         DOUBLE PRECISION NOT NULL,
+    deviation_10p         DOUBLE PRECISION NOT NULL,
+    deviation_median      DOUBLE PRECISION NOT NULL,
+    deviation_90p         DOUBLE PRECISION NOT NULL,
+    deviation_max         DOUBLE PRECISION GENERATED ALWAYS AS (GREATEST(ABS(max_depth - avg_depth), ABS(min_depth - avg_depth))) STORED,
+    PRIMARY KEY (fk_profile_segment_id, version)
 );
 
 CREATE OR REPLACE FUNCTION fuzzy_search_dives_for_user(
@@ -249,22 +287,23 @@ $$ LANGUAGE plpgsql;
 
 CREATE TABLE t_email
 (
-    pk_email_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    receiver    TEXT        NOT NULL REFERENCES t_users (email) ON DELETE CASCADE ON UPDATE CASCADE,
-    subject     TEXT        NOT NULL,
-    content     TEXT        NOT NULL,
-    sending     BOOLEAN     NOT NULL DEFAULT FALSE,
-    sent_at     TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL
+    pk_email_id       INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    receiver          TEXT        NOT NULL REFERENCES t_users (email) ON DELETE CASCADE ON UPDATE CASCADE,
+    original_receiver TEXT        NOT NULL,
+    subject           TEXT        NOT NULL,
+    content           TEXT        NOT NULL,
+    sending           BOOLEAN     NOT NULL DEFAULT FALSE,
+    sent_at           TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL,
+    updated_at        TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE t_account_request
 (
-    pk_account_request_id TEXT                                     NOT NULL PRIMARY KEY,
-    fk_user_id            INTEGER REFERENCES t_users (pk_user_id)  NOT NULL,
-    fk_email_id           INTEGER REFERENCES t_email (pk_email_id) NOT NULL,
-    request_type          TEXT                                     NOT NULL,
-    valid_until           TIMESTAMPTZ                              NOT NULL,
-    created_at            TIMESTAMPTZ                              NOT NULL
+    pk_account_request_id TEXT        NOT NULL PRIMARY KEY,
+    fk_user_id            INTEGER     NOT NULL REFERENCES t_users (pk_user_id) ON DELETE CASCADE,
+    fk_email_id           INTEGER     NOT NULL REFERENCES t_email (pk_email_id) ON DELETE CASCADE,
+    request_type          TEXT        NOT NULL,
+    valid_until           TIMESTAMPTZ NOT NULL,
+    created_at            TIMESTAMPTZ NOT NULL
 );

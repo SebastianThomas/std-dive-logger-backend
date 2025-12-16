@@ -183,10 +183,18 @@ public class UserDataService {
         final var callback = URI.create(getCallbackUrl(type, requestId));
         final var verifyEmailPayload =
                 EmailNotificationPayload.createEmailPayload(user, type, callback.toString());
+        final var userEntity =
+                userRepository
+                        .findById(user.id())
+                        .orElseThrow(() -> new NoSuchElementException("Could not find User"));
+        if (!userEntity.getEmail().equals(verifyEmailPayload.receiver())) {
+            throw new IllegalStateException(
+                    "The email seems to have been updated while creating the request, please try again.");
+        }
         final var email =
                 emailRepository.save(
                         new EmailEntity(
-                                verifyEmailPayload.receiver(),
+                                userEntity,
                                 verifyEmailPayload.subject(),
                                 verifyEmailPayload.body()));
         accountRequestRepository.save(

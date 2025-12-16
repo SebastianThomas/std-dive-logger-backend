@@ -68,4 +68,8 @@ public class UserEntity {
     public User toRecord() {
         return new User(id, email, password, name, verified, createdAt, updatedAt);
     }
+
+    public String getEmail() {
+        return email;
+    }
 }

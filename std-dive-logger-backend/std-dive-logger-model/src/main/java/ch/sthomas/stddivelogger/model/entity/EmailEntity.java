@@ -18,8 +18,12 @@ public class EmailEntity {
     @Column(name = "pk_email_id", nullable = false)
     private Long id;
 
-    @Column(name = "receiver", nullable = false)
-    private String receiver;
+    @ManyToOne
+    @JoinColumn(name = "receiver", referencedColumnName = "email")
+    private UserEntity receiver;
+
+    @Column(name = "original_receiver", nullable = false, updatable = false)
+    private String originalReceiver;
 
     @Column(name = "subject", nullable = false)
     private String subject;
@@ -43,15 +47,16 @@ public class EmailEntity {
 
     public EmailEntity() {}
 
-    public EmailEntity(final String receiver, final String subject, final String content) {
+    public EmailEntity(final UserEntity receiver, final String subject, final String content) {
         this.receiver = receiver;
+        this.originalReceiver = receiver.getEmail();
         this.subject = subject;
         this.content = content;
     }
 
     public Email toRecord() {
         return new Email(
-                receiver,
+                receiver.getEmail(),
                 subject,
                 content,
                 Optional.ofNullable(sentAt).map(OffsetDateTime::toInstant),
