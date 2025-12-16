@@ -1,7 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
-import ch.sthomas.stddivelogger.model.user.GroupRole;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,7 +22,7 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
     @Modifying
     @Query(
             value =
-                    "INSERT INTO t_group_member (fk_group_id, fk_user_id, role) VALUES (:groupId, :userId)",
+                    "INSERT INTO t_group_member (fk_group_id, fk_user_id, role) VALUES (:groupId, :userId, :role)",
             nativeQuery = true)
-    void joinGroup(long groupId, long userId, GroupRole role);
+    void joinGroup(long groupId, long userId, String role);
 }

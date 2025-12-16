@@ -149,7 +149,7 @@ public class UserDataService {
                             + " group join requests pending, please check back later.");
         }
         try {
-            groupRepository.joinGroup(groupId, userId, role);
+            groupRepository.joinGroup(groupId, userId, role.name());
             return groupRepository
                     .findById(groupId)
                     .map(GroupEntity::toRecordWithMembers)
