@@ -349,8 +349,8 @@ public class DiveDataService {
     }
 
     @Transactional
-    public void deleteDiveById(final long toAddDiveId) {
-        diveRepository.deleteById(toAddDiveId);
+    public void deleteDiveById(final long diveId) {
+        diveRepository.deleteById(diveId);
     }
 
     @Transactional

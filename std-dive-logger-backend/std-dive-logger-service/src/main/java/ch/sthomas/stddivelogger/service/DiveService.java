@@ -279,6 +279,13 @@ public class DiveService {
         return diveDataService.saveDiveSite(name, location);
     }
 
+    public void deleteDiveById(final User user, final long diveId) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        diveDataService.deleteDiveById(diveId);
+    }
+
     public PagedResponse<User> getReaders(
             final @NotNull User authenticated, final long diveId, final int page) {
         if (!hasWriteAccess(authenticated, diveId)) {

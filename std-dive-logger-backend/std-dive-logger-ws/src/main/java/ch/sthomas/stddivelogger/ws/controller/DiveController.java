@@ -76,14 +76,24 @@ public class DiveController {
 
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
-    public ResponseEntity<Dive> getDiveById(
+    public Dive getDiveById(
             @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to access dives.");
         }
-        final var dive =
-                diveService.getDiveById(userService.getUserById(user.id()), diveId).orElseThrow();
-        return ResponseEntity.ok(dive);
+        return diveService.getDiveById(userService.getUserById(user.id()), diveId).orElseThrow();
+    }
+
+    @Operation(
+            summary =
+                    "Delete a dive, including all associated processed items (e.g., analytics, images)")
+    @DeleteMapping(path = "/{id}")
+    public void deleteDive(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to delete dives.");
+        }
+        diveService.deleteDiveById(user, diveId);
     }
 
     @Operation(summary = "Find dives by ID")
