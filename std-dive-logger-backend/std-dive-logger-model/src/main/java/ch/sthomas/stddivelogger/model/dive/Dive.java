@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
+
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 
@@ -9,6 +11,7 @@ import java.util.List;
 
 public record Dive(
         long id,
+        FrontendUser user,
         int number,
         @Nullable String customIdentifier,
         @Nullable String previewImage,

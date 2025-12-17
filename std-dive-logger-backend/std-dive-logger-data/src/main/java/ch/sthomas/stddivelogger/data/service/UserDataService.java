@@ -66,10 +66,22 @@ public class UserDataService {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
+    @Transactional
+    public long countUsers() {
+        return userRepository.count();
+    }
+
+    @Transactional(readOnly = true)
     public User findUserById(final long userId) {
         return userRepository.findById(userId).map(UserEntity::toRecord).orElseThrow();
     }
 
+    @Transactional(readOnly = true)
+    public Optional<User> findUserByEmail(final String email) {
+        return userRepository.findByEmailIgnoreCase(email).map(UserEntity::toRecord);
+    }
+
+    @Transactional
     public User saveUser(final String email, final String password, final String name) {
         try {
             return userRepository.save(new UserEntity(email, password, name)).toRecord();
@@ -85,22 +97,16 @@ public class UserDataService {
         }
     }
 
-    public Optional<User> findUserByEmail(final String email) {
-        return userRepository.findByEmailIgnoreCase(email).map(UserEntity::toRecord);
-    }
-
+    @Transactional
     public void deleteUserByEmail(final String email) {
         userRepository.deleteByEmailEqualsIgnoreCase(email);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<User> findUsersByClosestMatchName(
             final String query, final Pageable pageable) {
         return PagedResponse.of(
                 userRepository.findByClosestMatchName(query, pageable), UserEntity::toRecord);
-    }
-
-    public long countUsers() {
-        return userRepository.count();
     }
 
     @Transactional(readOnly = true)

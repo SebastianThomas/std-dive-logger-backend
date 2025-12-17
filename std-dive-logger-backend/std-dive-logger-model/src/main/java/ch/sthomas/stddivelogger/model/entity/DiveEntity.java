@@ -100,6 +100,7 @@ public class DiveEntity {
         Objects.requireNonNull(baseUrl, "baseUrl must not be null, check injected services");
         return new Dive(
                 id,
+                user.toRecord().toFrontendModel(),
                 number,
                 diveIdentifier,
                 getPreviewImage(baseUrl),

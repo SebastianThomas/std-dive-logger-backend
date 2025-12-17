@@ -559,6 +559,7 @@ public class DiveDataService {
         }
     }
 
+    @Transactional
     public Dive linkDive(final long userDiveId, final long buddyDiveId) {
         final var userDive =
                 diveRepository
@@ -582,6 +583,7 @@ public class DiveDataService {
         return toRecord(userDive);
     }
 
+    @Transactional
     public Dive unlinkDive(final long userDiveId, final long buddyDiveId) {
         final var userDive =
                 diveRepository

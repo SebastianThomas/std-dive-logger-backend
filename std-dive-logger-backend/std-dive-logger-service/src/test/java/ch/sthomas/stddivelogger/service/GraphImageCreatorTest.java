@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -202,7 +203,16 @@ public class GraphImageCreatorTest {
                                 12));
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
-                new Dive(0, 1, "Some Dive", null, null, profiles, List.of(), List.of("Buddy1"));
+                new Dive(
+                        0,
+                        new FrontendUser(1, "TestName"),
+                        1,
+                        "Some Dive",
+                        null,
+                        null,
+                        profiles,
+                        List.of(),
+                        List.of("Buddy1"));
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();
         try (final var outWriter = new FileWriter(tempFile)) {
             GraphImageCreator.fromDive(
