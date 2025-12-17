@@ -115,7 +115,7 @@ CREATE TABLE t_dive_profiles
 CREATE TABLE t_dive_profile_segments
 (
     pk_dive_profile_segment_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fk_dive_profile_id         INTEGER     NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id),
+    fk_dive_profile_id         INTEGER     NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id) ON DELETE CASCADE,
     first_measurement_idx      INTEGER     NOT NULL,
     last_measurement_idx       INTEGER     NOT NULL,
     type                       VARCHAR(10) NOT NULL
