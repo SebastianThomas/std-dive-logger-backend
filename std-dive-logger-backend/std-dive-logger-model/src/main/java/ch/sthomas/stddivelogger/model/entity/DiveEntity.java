@@ -116,6 +116,7 @@ public class DiveEntity {
             final String baseUrl, final boolean includeBuddyDives) {
         return new SimplifiedDive(
                 id,
+                user.toRecord().toFrontendModel(),
                 number,
                 diveIdentifier,
                 getPreviewImage(baseUrl),
