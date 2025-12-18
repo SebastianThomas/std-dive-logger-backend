@@ -299,9 +299,9 @@ public class DiveService {
         if (!hasWriteAccess(authenticated, diveId)) {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
-        final var currentReaders = diveDataService.findReaders(diveId, Pageable.unpaged());
+        final var currentReaders = diveDataService.findReadersInternal(diveId);
         final var userIdsSet = new HashSet<>(userIds);
-        currentReaders.result().stream().map(User::id).forEach(userIdsSet::remove);
+        currentReaders.map(User::id).forEach(userIdsSet::remove);
         diveDataService.saveReaders(diveId, userIdsSet);
         return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
     }
