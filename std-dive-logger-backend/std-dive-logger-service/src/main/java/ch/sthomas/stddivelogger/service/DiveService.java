@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
 
@@ -326,6 +327,13 @@ public class DiveService {
         }
         diveDataService.saveGroupReader(diveId, groupId);
         return diveDataService.findReaders(diveId, Pageable.ofSize(USER_PAGE_SIZE));
+    }
+
+    public List<Group> getGroupReaders(final @NotNull User authenticated, final long diveId) {
+        if (!hasWriteAccess(authenticated, diveId)) {
+            throw ForbiddenException.forDiveId(authenticated, diveId);
+        }
+        return diveDataService.getGroupReaders(diveId);
     }
 
     public PagedResponse<User> removeGroupReader(

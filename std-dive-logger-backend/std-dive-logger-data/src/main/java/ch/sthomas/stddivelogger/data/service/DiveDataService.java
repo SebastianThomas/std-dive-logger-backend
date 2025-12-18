@@ -15,6 +15,7 @@ import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasMixEntity;
 import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import com.google.common.collect.MoreCollectors;
@@ -63,6 +64,7 @@ public class DiveDataService {
     private final CylinderSizeRepository cylinderSizeRepository;
     private final GasMixRepository gasMixRepository;
     private final GasRepository gasRepository;
+    private final GroupRepository groupRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -76,7 +78,8 @@ public class DiveDataService {
             final DiveBuddyNameRepository diveBuddyNameRepository,
             final CylinderSizeRepository cylinderSizeRepository,
             GasMixRepository gasMixRepository,
-            GasRepository gasRepository) {
+            GasRepository gasRepository,
+            GroupRepository groupRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -90,6 +93,7 @@ public class DiveDataService {
         this.cylinderSizeRepository = cylinderSizeRepository;
         this.gasMixRepository = gasMixRepository;
         this.gasRepository = gasRepository;
+        this.groupRepository = groupRepository;
     }
 
     @Transactional(readOnly = true)
@@ -447,6 +451,20 @@ public class DiveDataService {
                 new MapSqlParameterSource()
                         .addValue("diveId", diveId)
                         .addValue("userIds", userIdsSet));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> getGroupReaders(final long diveId) {
+        return namedParameterJdbcTemplate
+                .query(
+                        "SELECT fk_group_id FROM t_dive_privileges_groups WHERE fk_dive_id = :diveId",
+                        new MapSqlParameterSource().addValue("diveId", diveId),
+                        (r, _) -> r.getLong(0))
+                .stream()
+                .map(groupRepository::findById)
+                .flatMap(Optional::stream)
+                .map(GroupEntity::toRecord)
+                .toList();
     }
 
     @Transactional

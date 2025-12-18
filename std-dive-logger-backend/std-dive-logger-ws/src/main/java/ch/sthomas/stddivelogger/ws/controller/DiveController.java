@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveSortColumn;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
+import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -227,6 +228,15 @@ public class DiveController {
             throw new UnauthorizedException("Log in to add group readers");
         }
         return diveService.addGroupReader(user, diveId, groupId).map(User::toFrontendModel);
+    }
+
+    @GetMapping(path = "/{id}/group-readers")
+    public List<Group> getGroupReadersOfDive(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view group readers");
+        }
+        return diveService.getGroupReaders(user, diveId);
     }
 
     @DeleteMapping("/{id}/group-readers")
