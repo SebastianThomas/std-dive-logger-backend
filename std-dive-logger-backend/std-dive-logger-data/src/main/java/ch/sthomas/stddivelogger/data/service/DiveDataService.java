@@ -459,7 +459,7 @@ public class DiveDataService {
                 .query(
                         "SELECT fk_group_id FROM t_dive_privileges_groups WHERE fk_dive_id = :diveId",
                         new MapSqlParameterSource().addValue("diveId", diveId),
-                        (r, _) -> r.getLong(0))
+                        (r, _) -> r.getLong(1))
                 .stream()
                 .map(groupRepository::findById)
                 .flatMap(Optional::stream)
