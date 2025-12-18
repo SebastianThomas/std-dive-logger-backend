@@ -46,10 +46,12 @@ public class AuthController {
         return authService.login(request);
     }
 
+    public record EmailBody(@Email String email) {}
+
     @Operation(summary = "Create a Magic Login Token")
     @PostMapping("/login/magic/create")
-    public void createLoginToken(@Valid @RequestBody @Email final String email) {
-        userService.createLoginToken(email);
+    public void createLoginToken(@Valid @RequestBody final EmailBody email) {
+        userService.createLoginToken(email.email());
     }
 
     @Operation(summary = "Log in using a magic link / token")
