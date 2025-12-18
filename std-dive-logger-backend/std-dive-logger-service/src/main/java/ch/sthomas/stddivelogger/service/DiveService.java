@@ -312,9 +312,7 @@ public class DiveService {
             throw ForbiddenException.forDiveId(authenticated, diveId);
         }
         final var currentReaders =
-                diveDataService.findReaders(diveId, Pageable.unpaged()).result().stream()
-                        .map(User::id)
-                        .toList();
+                diveDataService.findReadersInternal(diveId).map(User::id).toList();
         final var userIdsSet = new HashSet<>(userIds);
         userIdsSet.removeIf(userId -> !currentReaders.contains(userId));
         diveDataService.removeReaders(diveId, userIdsSet);

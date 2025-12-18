@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,6 +19,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             countQuery = "SELECT COUNT(*) FROM t_readers WHERE dive_id = :diveId",
             nativeQuery = true)
     Page<UserEntity> findReaders(long diveId, Pageable pageable);
+
+    @Query(value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
+    List<UserEntity> findReaders(long diveId);
 
     @Query(
             value =

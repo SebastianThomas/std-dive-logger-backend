@@ -42,6 +42,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class DiveDataService {
@@ -409,6 +410,11 @@ public class DiveDataService {
     @Transactional(readOnly = true)
     public PagedResponse<User> findReaders(final long diveId, final Pageable pageable) {
         return PagedResponse.of(userRepository.findReaders(diveId, pageable), UserEntity::toRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public Stream<User> findReadersInternal(final long diveId) {
+        return userRepository.findReaders(diveId).stream().map(UserEntity::toRecord);
     }
 
     @Transactional
