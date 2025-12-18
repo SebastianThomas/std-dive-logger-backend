@@ -73,3 +73,15 @@ Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiO
 ### Get Group
 GET {{baseurl}}/v1/groups/1
 Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjU3MTQ5MDQsImV4cCI6MTc2NTcxODUwNH0.nYIw3QnQVZJgwXHLDrCKmf520nQInijwEQ90NFHyrqlZEj8gg1Y321HD16gfbMGy
+
+### Create magic link login
+POST {{baseurl}}/api/auth/login/magic/create
+Content-Type: application/octet-stream
+
+test@test.ch
+
+### Login using magic link
+POST {{baseurl}}/api/auth/login/magic
+Content-Type: application/octet-stream
+
+074ea1fa-490b-466f-b192-376681b045f3

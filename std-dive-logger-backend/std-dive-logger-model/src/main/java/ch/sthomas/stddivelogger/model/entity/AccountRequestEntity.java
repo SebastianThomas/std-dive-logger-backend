@@ -56,7 +56,7 @@ public class AccountRequestEntity {
     public Optional<AccountRequest> toRecord() {
         if (id == null
                 || validUntil == null
-                || validUntil.isAfter(Instant.now().atOffset(ZoneOffset.UTC))) {
+                || validUntil.isBefore(Instant.now().atOffset(ZoneOffset.UTC))) {
             return Optional.empty();
         }
         return Optional.of(new AccountRequest(user.toRecord(), email.toRecord(), requestType));

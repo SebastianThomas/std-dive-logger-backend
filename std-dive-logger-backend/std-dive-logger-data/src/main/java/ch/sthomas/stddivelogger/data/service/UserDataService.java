@@ -24,7 +24,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -251,16 +250,26 @@ public class UserDataService {
 
     @Transactional
     public Optional<AccountRequest> findAndDeleteAccountRequestEntityById(final String id) {
-        return namedParameterJdbcTemplate
-                .query(
+        final var result =
+                namedParameterJdbcTemplate.query(
                         """
-                        DELETE FROM t_account_request
-                        WHERE pk_account_request_id = :id
-                        RETURNING t_account_request.*
-                        """,
+                                DELETE FROM t_account_request
+                                WHERE pk_account_request_id = :id
+                                RETURNING t_account_request.*
+                                """,
                         new MapSqlParameterSource(Map.of("id", id)),
-                        new BeanPropertyRowMapper<>(AccountRequestEntity.class))
-                .stream()
+                        (r, _) ->
+                                new AccountRequestEntity(
+                                        r.getString("pk_account_request_id"),
+                                        userRepository
+                                                .findById(r.getLong("fk_user_id"))
+                                                .orElseThrow(),
+                                        emailRepository
+                                                .findById(r.getLong("fk_email_id"))
+                                                .orElseThrow(),
+                                        AccountRequestType.valueOf(r.getString("request_type")),
+                                        r.getTimestamp("valid_until").toInstant()));
+        return result.stream()
                 .collect(MoreCollectors.toOptional())
                 .flatMap(AccountRequestEntity::toRecord);
     }
