@@ -243,7 +243,7 @@ public class DiveController {
     public PagedResponse<FrontendUser> deleteGroupReadersOfDive(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long diveId,
-            @RequestBody final long groupId) {
+            @RequestParam("groupId") final long groupId) {
         if (user == null) {
             throw new UnauthorizedException("Log in to delete group readers");
         }
