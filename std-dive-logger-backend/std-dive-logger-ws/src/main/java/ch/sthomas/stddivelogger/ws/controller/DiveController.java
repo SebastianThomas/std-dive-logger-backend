@@ -5,10 +5,7 @@ import static org.springframework.http.MediaType.*;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveSort;
-import ch.sthomas.stddivelogger.model.dive.DiveSortColumn;
-import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.Group;
@@ -58,7 +55,7 @@ public class DiveController {
 
     @Operation(summary = "Get Dives for User")
     @GetMapping(path = "")
-    public ResponseEntity<PagedResponse<SimplifiedDive>> getDivesForUser(
+    public PagedResponse<SimplifiedDive> getDivesForUser(
             @AuthenticationPrincipal final User user,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -68,14 +65,21 @@ public class DiveController {
             @RequestParam(name = "includeReader", defaultValue = "false")
                     final boolean includeReader) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to view your dives");
         }
-        return ResponseEntity.ok(
-                diveService.getDivesForUser(
-                        userService.getUserById(user.id()),
-                        DiveSort.ofNullable(sortColumn, sortDirection),
-                        page,
-                        includeReader));
+        return diveService.getDivesForUser(
+                userService.getUserById(user.id()),
+                DiveSort.ofNullable(sortColumn, sortDirection),
+                page,
+                includeReader);
+    }
+
+    @GetMapping(path = "/stats")
+    public UserDiveStats getStatsForUser(@AuthenticationPrincipal final User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dive stats");
+        }
+        return diveService.getStatsForUser(user);
     }
 
     @Operation(summary = "Get Dive by ID")

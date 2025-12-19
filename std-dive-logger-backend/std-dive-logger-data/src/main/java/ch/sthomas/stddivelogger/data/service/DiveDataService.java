@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
@@ -40,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,6 +69,7 @@ public class DiveDataService {
     private final GroupRepository groupRepository;
     private final ReaderViewRepository readerViewRepository;
     private final DiveProfileRepository diveProfileRepository;
+    private final DiveMeasurementRepository diveMeasurementRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -83,7 +86,8 @@ public class DiveDataService {
             GasRepository gasRepository,
             GroupRepository groupRepository,
             ReaderViewRepository readerViewRepository,
-            DiveProfileRepository diveProfileRepository) {
+            DiveProfileRepository diveProfileRepository,
+            DiveMeasurementRepository diveMeasurementRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -100,6 +104,7 @@ public class DiveDataService {
         this.groupRepository = groupRepository;
         this.readerViewRepository = readerViewRepository;
         this.diveProfileRepository = diveProfileRepository;
+        this.diveMeasurementRepository = diveMeasurementRepository;
     }
 
     @Transactional(readOnly = true)
@@ -118,6 +123,32 @@ public class DiveDataService {
                 readerViewRepository.findByUser_Id(
                         user.id(), PageRequest.of(page, pageSize, toReaderSort(diveSort))),
                 r -> toSimplifiedRecord(r.getDive()));
+    }
+
+    @Transactional(readOnly = true)
+    public UserDiveStats computeStatsForUser(final User user) {
+        return new UserDiveStats(
+                diveRepository.countByUser_Id(user.id()),
+                diveRepository.findMaxDiveNumberByUserId(user.id()).orElse(-1),
+                diveRepository
+                        .findMaxDurationByUserId(user.id())
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO),
+                diveMeasurementRepository.findMaxDepthByUserId(user.id()).orElse(0.0),
+                diveRepository
+                        .findTotalDurationByUserId(user.id())
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO),
+                diveRepository.countUniqueBuddiesByUserId(user.id()),
+                diveSiteRepository.countUniqueForUserId(user.id()),
+                diveMeasurementRepository
+                        .findMaxTemperatureCelsiusByUserId(user.id())
+                        .map(d -> new Temperature(d, Temperature.TemperatureUnit.CELSIUS))
+                        .orElse(null),
+                diveMeasurementRepository
+                        .findMinTemperatureCelsiusByUserId(user.id())
+                        .map(d -> new Temperature(d, Temperature.TemperatureUnit.CELSIUS))
+                        .orElse(null));
     }
 
     @Transactional(readOnly = true)

@@ -49,6 +49,33 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
+                            SELECT MAX(t.dive_duration)
+                            FROM (
+                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                                FROM t_dives d
+                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
+                                WHERE d.fk_diver_id = :userId
+                                GROUP BY d.pk_dive_id
+                            ) t
+                            """,
+            nativeQuery = true)
+    Optional<Long> findMaxDurationByUserId(long userId);
+
+    @Query(
+            value =
+                    """
+                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                            FROM t_dives d
+                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
+                            WHERE d.fk_diver_id = :userId
+                            GROUP BY d.fk_diver_id
+                            """,
+            nativeQuery = true)
+    Optional<Long> findTotalDurationByUserId(long userId);
+
+    @Query(
+            value =
+                    """
                             SELECT (f.dive).*
                             FROM fuzzy_search_dives_for_user(
                                     CAST(:query AS TEXT),
@@ -79,4 +106,30 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
                             """,
             nativeQuery = true)
     List<DiveEntity> findAllByIdAndIsReader(long userId, List<Long> ids);
+
+    long countByUser_Id(Long userId);
+
+    @Query(
+            value =
+                    """
+        SELECT COUNT(DISTINCT ns.n) FROM (
+            SELECT b.name AS n
+            FROM t_dives d
+                     INNER JOIN t_dive_buddy_name b ON d.pk_dive_id = b.fk_dive_id
+            UNION
+            SELECT u.name AS n
+            FROM t_users u
+                     INNER JOIN t_dives d_other ON d_other.fk_diver_id = u.pk_user_id
+                     INNER JOIN t_dive_buddy b ON b.fk_buddy_dive_id = d_other.pk_dive_id
+                     INNER JOIN t_dives d_this ON b.fk_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
+            UNION
+            SELECT u.name AS n
+            FROM t_dives d_this
+                     INNER JOIN t_dive_buddy b ON b.fk_buddy_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
+                     INNER JOIN t_dives d_other ON d_other.fk_diver_id = b.fk_dive_id
+                     INNER JOIN t_users u ON d_other.fk_diver_id = u.pk_user_id
+        ) ns
+        """,
+            nativeQuery = true)
+    long countUniqueBuddiesByUserId(long userId);
 }

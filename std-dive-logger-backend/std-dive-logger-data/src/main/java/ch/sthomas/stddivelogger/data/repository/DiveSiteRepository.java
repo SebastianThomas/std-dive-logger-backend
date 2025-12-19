@@ -29,7 +29,8 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
     Page<DiveSiteEntity> findByClosestMatchName(String name, Pageable pageable);
 
     @Query(
-            value = "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) ORDER BY ST_Distance(location, :location)",
+            value =
+                    "SELECT * FROM t_dive_site WHERE ST_DWithin(location, :location, :dist) ORDER BY ST_Distance(location, :location)",
             nativeQuery = true)
     List<DiveSiteEntity> findByLocationNear(Point location, double dist);
 
@@ -63,4 +64,10 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                     """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
     List<Object[]> findSitesByDiveWithReaderUserId(long userId);
+
+    @Query(
+            """
+                    SELECT COUNT(DISTINCT s.id) FROM DiveSiteEntity s JOIN DiveEntity d ON s.id = d.diveSite.id AND d.user.id = :userId
+                    """)
+    long countUniqueForUserId(long userId);
 }

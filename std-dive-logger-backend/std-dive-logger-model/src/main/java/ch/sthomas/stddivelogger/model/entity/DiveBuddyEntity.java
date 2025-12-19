@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.List;
-
 @Entity
 @Table(name = "t_dive_buddy")
 public class DiveBuddyEntity {
@@ -23,8 +21,6 @@ public class DiveBuddyEntity {
     private DiveEntity buddyDive;
 
     public DiveBuddyEntity() {}
-
-    public DiveBuddyEntity(final DiveEntity dive, final List<DiveEntity> buddyDive) {}
 
     public Pair<DiveEntity, DiveEntity> getPair() {
         return Pair.of(dive, buddyDive);
