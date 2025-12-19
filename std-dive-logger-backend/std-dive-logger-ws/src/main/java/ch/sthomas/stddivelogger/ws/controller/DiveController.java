@@ -65,7 +65,8 @@ public class DiveController {
                     final DiveSortColumn sortColumn,
             @RequestParam(name = "sortDirection", required = false) @Nullable
                     final SortDirection sortDirection,
-            @RequestParam(name = "includeReader", defaultValue = "false") final boolean includeReader) {
+            @RequestParam(name = "includeReader", defaultValue = "false")
+                    final boolean includeReader) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -144,11 +145,13 @@ public class DiveController {
     public PagedResponse<SimplifiedDive> searchDives(
             @AuthenticationPrincipal final User user,
             @RequestParam("query") final String query,
-            @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "includeReader", defaultValue = "false")
+                    final boolean includeReader) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dives.");
         }
-        return diveService.searchDives(user, query, page);
+        return diveService.searchDives(user, query, includeReader, page);
     }
 
     @Operation(summary = "Get next dive number")

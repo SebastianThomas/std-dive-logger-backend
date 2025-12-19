@@ -19,6 +19,7 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,11 +53,23 @@ public class DiveService {
     }
 
     public PagedResponse<SimplifiedDive> getDivesForUser(
-            final User user, @NotNull final DiveSort sort, final int page, final boolean includeReader) {
+            final User user,
+            @NotNull final DiveSort sort,
+            final int page,
+            final boolean includeReader) {
         if (!includeReader) {
             return diveDataService.findDivesByUser(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
         }
         return diveDataService.findDivesByUserIsReader(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    }
+
+    public PagedResponse<SimplifiedDive> searchDives(
+            final User user, final String query, final boolean includeReader, final int page) {
+        if (!includeReader) {
+            return diveDataService.searchDives(
+                    user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+        }
+        throw new NotImplementedException();
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {
@@ -368,12 +381,6 @@ public class DiveService {
                                                 "Cannot find computer with id " + computerId));
         return diveDataService.findDivesByUserAndComputer(
                 user, computer, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
-    }
-
-    public PagedResponse<SimplifiedDive> searchDives(
-            final User user, final String query, final int page) {
-        return diveDataService.searchDives(
-                user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
     // TODO: Pagination
