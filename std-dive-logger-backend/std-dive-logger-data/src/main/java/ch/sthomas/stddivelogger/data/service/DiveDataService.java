@@ -66,6 +66,7 @@ public class DiveDataService {
     private final GasRepository gasRepository;
     private final GroupRepository groupRepository;
     private final ReaderViewRepository readerViewRepository;
+    private final DiveProfileRepository diveProfileRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -81,7 +82,8 @@ public class DiveDataService {
             GasMixRepository gasMixRepository,
             GasRepository gasRepository,
             GroupRepository groupRepository,
-            ReaderViewRepository readerViewRepository) {
+            ReaderViewRepository readerViewRepository,
+            DiveProfileRepository diveProfileRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -97,6 +99,7 @@ public class DiveDataService {
         this.gasRepository = gasRepository;
         this.groupRepository = groupRepository;
         this.readerViewRepository = readerViewRepository;
+        this.diveProfileRepository = diveProfileRepository;
     }
 
     @Transactional(readOnly = true)
@@ -358,16 +361,8 @@ public class DiveDataService {
 
     @Transactional
     public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
-        final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
-        final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
-        logger.debug(
-                "Before, base has {} profiles, to add has {} profiles",
-                baseDiveEntity.getProfiles().size(),
-                toAddDiveEntity.getProfiles().size());
-        baseDiveEntity.addProfiles(toAddDiveEntity.getProfiles());
-        logger.debug("After, base has {} profiles", baseDiveEntity.getProfiles().size());
-        diveRepository.save(toAddDiveEntity.resetProfiles());
-        return toRecord(diveRepository.save(baseDiveEntity));
+        diveProfileRepository.setDiveWhereDiveIs(baseDiveId, toAddDiveId);
+        return toRecord(diveRepository.findById(baseDiveId).orElseThrow());
     }
 
     @Transactional
