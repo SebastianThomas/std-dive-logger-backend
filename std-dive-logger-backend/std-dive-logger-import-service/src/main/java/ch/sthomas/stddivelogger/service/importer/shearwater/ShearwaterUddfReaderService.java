@@ -58,7 +58,7 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
         final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
                 user,
-                Optional.ofNullable(body.diveNumber()),
+                Optional.ofNullable(body.diveNumber()).or(uddfFile::diveNumber),
                 diveName,
                 site,
                 List.of(profile),

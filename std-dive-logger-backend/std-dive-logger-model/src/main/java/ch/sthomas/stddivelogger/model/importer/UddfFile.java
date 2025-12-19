@@ -30,6 +30,18 @@ public record UddfFile(
         @JacksonXmlProperty(localName = "decomodel") Map<String, UddfDecoModel> decoModel,
         @JacksonXmlProperty(localName = "profiledata") UddfProfileData profileData,
         @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
+    public Optional<Integer> diveNumber() {
+        final var number = profileData.repetitionGroup.dive.infoBeforeDive.divenumber;
+        try {
+            return Optional.of(Integer.parseInt(number));
+        } catch (final NumberFormatException e) {
+            if (number.contains(".")) {
+                return Optional.of(-1 * Integer.parseInt(number.substring(0, number.indexOf('.'))));
+            }
+            return Optional.empty();
+        }
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfGenerator(
             String name,
@@ -136,7 +148,7 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfInfoBeforeDive(
             @JacksonXmlElementWrapper(useWrapping = false) List<Link> link,
-            int divenumber,
+            String divenumber,
             Instant datetime,
             double airtemperature,
             SurfaceIntervalBeforeDive surfaceintervalbeforedive,
