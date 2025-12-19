@@ -64,7 +64,8 @@ public class DiveController {
             @RequestParam(name = "sortCol", required = false) @Nullable
                     final DiveSortColumn sortColumn,
             @RequestParam(name = "sortDirection", required = false) @Nullable
-                    final SortDirection sortDirection) {
+                    final SortDirection sortDirection,
+            @RequestParam(name = "includeReader", defaultValue = "false") final boolean includeReader) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -72,7 +73,8 @@ public class DiveController {
                 diveService.getDivesForUser(
                         userService.getUserById(user.id()),
                         DiveSort.ofNullable(sortColumn, sortDirection),
-                        page));
+                        page,
+                        includeReader));
     }
 
     @Operation(summary = "Get Dive by ID")

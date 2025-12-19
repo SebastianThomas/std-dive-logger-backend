@@ -65,6 +65,7 @@ public class DiveDataService {
     private final GasMixRepository gasMixRepository;
     private final GasRepository gasRepository;
     private final GroupRepository groupRepository;
+    private final ReaderViewRepository readerViewRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -79,7 +80,8 @@ public class DiveDataService {
             final CylinderSizeRepository cylinderSizeRepository,
             GasMixRepository gasMixRepository,
             GasRepository gasRepository,
-            GroupRepository groupRepository) {
+            GroupRepository groupRepository,
+            ReaderViewRepository readerViewRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -94,6 +96,7 @@ public class DiveDataService {
         this.gasMixRepository = gasMixRepository;
         this.gasRepository = gasRepository;
         this.groupRepository = groupRepository;
+        this.readerViewRepository = readerViewRepository;
     }
 
     @Transactional(readOnly = true)
@@ -103,6 +106,15 @@ public class DiveDataService {
                 diveRepository.findByUser_Id(
                         user.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByUserIsReader(
+            final User user, @NotNull final DiveSort diveSort, final int page, final int pageSize) {
+        return PagedResponse.of(
+                readerViewRepository.findByUser_IdOrderBy(
+                        user.id(), PageRequest.of(page, pageSize, toSort(diveSort))),
+                r -> toSimplifiedRecord(r.getDive()));
     }
 
     @Transactional(readOnly = true)

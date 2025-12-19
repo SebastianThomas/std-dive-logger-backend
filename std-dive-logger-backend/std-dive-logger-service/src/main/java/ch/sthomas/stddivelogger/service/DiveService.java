@@ -52,8 +52,11 @@ public class DiveService {
     }
 
     public PagedResponse<SimplifiedDive> getDivesForUser(
-            final User user, @NotNull final DiveSort sort, final int page) {
-        return diveDataService.findDivesByUser(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+            final User user, @NotNull final DiveSort sort, final int page, final boolean includeReader) {
+        if (!includeReader) {
+            return diveDataService.findDivesByUser(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+        }
+        return diveDataService.findDivesByUserIsReader(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {
