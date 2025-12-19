@@ -175,7 +175,7 @@ public class DiveEntity {
 
     public void addProfiles(final List<DiveProfileEntity> profiles) {
         this.profiles = new ArrayList<>(this.profiles);
-        this.profiles.addAll(profiles);
+        this.profiles.addAll(profiles.stream().map(d -> d.setDive(this)).toList());
     }
 
     public void setPreviewImage(final String previewImage) {
@@ -206,5 +206,10 @@ public class DiveEntity {
         buddyDivesFrom.remove(buddyDive);
         buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
         buddyDive.buddyDivesTo.remove(this);
+    }
+
+    public DiveEntity resetProfiles() {
+        profiles = new ArrayList<>();
+        return this;
     }
 }

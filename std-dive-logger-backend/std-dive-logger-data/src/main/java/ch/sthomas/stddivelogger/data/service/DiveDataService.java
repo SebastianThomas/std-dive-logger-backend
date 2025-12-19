@@ -360,9 +360,13 @@ public class DiveDataService {
     public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
         final var baseDiveEntity = diveRepository.findById(baseDiveId).orElseThrow();
         final var toAddDiveEntity = diveRepository.findById(toAddDiveId).orElseThrow();
-        logger.debug("Before, base has {} profiles, to add has {} profiles", baseDiveEntity.getProfiles().size(), toAddDiveEntity.getProfiles().size());
+        logger.debug(
+                "Before, base has {} profiles, to add has {} profiles",
+                baseDiveEntity.getProfiles().size(),
+                toAddDiveEntity.getProfiles().size());
         baseDiveEntity.addProfiles(toAddDiveEntity.getProfiles());
         logger.debug("After, base has {} profiles", baseDiveEntity.getProfiles().size());
+        diveRepository.save(toAddDiveEntity.resetProfiles());
         return toRecord(diveRepository.save(baseDiveEntity));
     }
 
