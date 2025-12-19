@@ -8,5 +8,5 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ReaderViewRepository extends JpaRepository<ReaderViewEntity, ReaderId> {
-    Page<ReaderViewEntity> findByUser_IdOrderBy(Long userId, Pageable pageable);
+    Page<ReaderViewEntity> findByUser_Id(Long userId, Pageable pageable);
 }

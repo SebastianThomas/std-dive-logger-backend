@@ -112,7 +112,7 @@ public class DiveDataService {
     public PagedResponse<SimplifiedDive> findDivesByUserIsReader(
             final User user, @NotNull final DiveSort diveSort, final int page, final int pageSize) {
         return PagedResponse.of(
-                readerViewRepository.findByUser_IdOrderBy(
+                readerViewRepository.findByUser_Id(
                         user.id(), PageRequest.of(page, pageSize, toSort(diveSort))),
                 r -> toSimplifiedRecord(r.getDive()));
     }
