@@ -113,7 +113,7 @@ public class DiveDataService {
             final User user, @NotNull final DiveSort diveSort, final int page, final int pageSize) {
         return PagedResponse.of(
                 readerViewRepository.findByUser_Id(
-                        user.id(), PageRequest.of(page, pageSize, toSort(diveSort))),
+                        user.id(), PageRequest.of(page, pageSize, toReaderSort(diveSort))),
                 r -> toSimplifiedRecord(r.getDive()));
     }
 
@@ -655,6 +655,14 @@ public class DiveDataService {
 
     private SimplifiedDive toSimplifiedRecord(final DiveEntity e) {
         return e.toSimplifiedRecord(storageService.baseUrl(), true);
+    }
+
+    private Sort toReaderSort(final DiveSort sort) {
+        final var s = Sort.by("dive." + sort.column().jpaName());
+        return switch (sort.direction()) {
+            case ASCENDING -> s.ascending();
+            case DESCENDING -> s.descending();
+        };
     }
 
     private Sort toSort(final DiveSort sort) {
