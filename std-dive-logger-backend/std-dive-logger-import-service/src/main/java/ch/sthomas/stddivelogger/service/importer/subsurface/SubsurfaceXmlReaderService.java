@@ -114,6 +114,10 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 user,
                 Optional.ofNullable(body.diveNumber()),
                 diveName,
+                "",
+                null,
+                null,
+                null,
                 site.id(),
                 profile,
                 buddies);

@@ -60,6 +60,10 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
                 user,
                 Optional.ofNullable(body.diveNumber()).or(uddfFile::diveNumber),
                 diveName,
+                uddfFile.getNotes(),
+                uddfFile.getVisibility().orElse(null),
+                uddfFile.getGasConsumption(),
+                uddfFile.getConfiguration(),
                 site,
                 List.of(profile),
                 uddfFile.getBuddies());

@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.model.entity.gas;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.GasContent;
 import ch.sthomas.stddivelogger.model.dive.measurement.GasContentUnit;
@@ -56,9 +55,7 @@ public class GasEntity {
                 gasMix.n2,
                 gasMix.he,
                 0.0,
-                cylinderSize != null
-                        ? new CylinderSize(cylinderSize.unit, cylinderSize.value)
-                        : null,
+                cylinderSize != null ? cylinderSize.toRecord() : null,
                 contentUnit != null && contentValue != null
                         ? new GasContent(contentUnit, contentValue)
                         : null,

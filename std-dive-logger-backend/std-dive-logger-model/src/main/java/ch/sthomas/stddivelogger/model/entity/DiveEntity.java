@@ -1,8 +1,8 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.BuddyDive;
-import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -14,6 +14,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,6 +35,21 @@ public class DiveEntity {
 
     @Column(name = "preview_image", nullable = false)
     private String previewImage;
+
+    @Column(name = "notes", nullable = false)
+    private String notes;
+
+    @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private VisibilityEntity visibility;
+
+    @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private DiveGasConsumptionEntity gasConsumption;
+
+    @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private DiveConfigurationEntity configuration;
 
     @JoinColumn(name = "fk_diver_id")
     @ManyToOne(cascade = CascadeType.PERSIST)
@@ -68,14 +84,24 @@ public class DiveEntity {
     public DiveEntity(
             final int number,
             final String diveIdentifier,
+            final String notes,
+            final Visibility visibility,
+            final DiveGasConsumption gasConsumption,
+            final DiveConfiguration configuration,
             final UserEntity userEntity,
             final DiveSiteEntity diveSiteEntity,
             final List<DiveProfileEntity> profiles,
-            final List<String> namedBuddies) {
+            final List<String> namedBuddies,
+            final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
+        this.visibility = new VisibilityEntity(this, visibility);
+        this.gasConsumption = new DiveGasConsumptionEntity(this, gasConsumption);
+        this.configuration =
+                new DiveConfigurationEntity(this, configuration, getCylinderSizeEntity);
         this.user = userEntity;
         this.previewImage = null;
+        this.notes = notes;
         this.diveSite = diveSiteEntity;
         this.profiles =
                 profiles.stream()
@@ -102,7 +128,11 @@ public class DiveEntity {
                 id,
                 user.toRecord().toFrontendModel(),
                 number,
+                notes,
                 diveIdentifier,
+                visibility.toRecord(),
+                gasConsumption.toRecord(),
+                configuration.toRecord(),
                 getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
@@ -120,6 +150,7 @@ public class DiveEntity {
                 number,
                 diveIdentifier,
                 getPreviewImage(baseUrl),
+                visibility.toRecord(),
                 diveSite.toRecord(),
                 getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels());
@@ -182,7 +213,7 @@ public class DiveEntity {
         this.previewImage = previewImage;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 

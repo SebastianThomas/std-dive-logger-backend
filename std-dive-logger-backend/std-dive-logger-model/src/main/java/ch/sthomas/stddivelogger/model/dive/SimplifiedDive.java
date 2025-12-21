@@ -13,6 +13,7 @@ public record SimplifiedDive(
         int number,
         @Nullable String customIdentifier,
         @Nullable String previewImage,
+        @Nullable Visibility visibility,
         @Nullable DiveSite site,
         @NotNull List<BuddyDive> buddiesDives,
         @NotNull List<String> namedBuddies) {}

@@ -186,6 +186,10 @@ public class DiveDataService {
             final User user,
             final int number,
             @NotNull final String diveIdentifier,
+            final String notes,
+            @Nullable final Visibility visibility,
+            final DiveGasConsumption gasConsumption,
+            final DiveConfiguration configuration,
             final long diveSiteId,
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies)
@@ -198,10 +202,15 @@ public class DiveDataService {
                 new DiveEntity(
                         number,
                         diveIdentifier,
+                        notes,
+                        Optional.ofNullable(visibility).orElse(Visibility.EMPTY),
+                        gasConsumption,
+                        configuration,
                         userEntity,
                         diveSite,
                         profileEntities,
-                        namedBuddies);
+                        namedBuddies,
+                        this::toEntity);
         try {
             return toRecord(diveRepository.save(entity));
         } catch (final DataIntegrityViolationException e) {

@@ -17,14 +17,14 @@ public class CylinderSizeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "pk_cylinder_size_id")
-    public Integer id;
+    private Integer id;
 
     @Column(name = "unit", nullable = false)
     @Enumerated(EnumType.STRING)
-    public CylinderSizeUnit unit;
+    private CylinderSizeUnit unit;
 
     @Column(name = "value", nullable = false)
-    public Double value;
+    private Double value;
 
     @OneToMany(mappedBy = "cylinderSize")
     public Set<GasEntity> gases;
@@ -34,5 +34,9 @@ public class CylinderSizeEntity {
     public CylinderSizeEntity(final @NotNull CylinderSize size) {
         this.unit = size.unit();
         this.value = size.value();
+    }
+
+    public CylinderSize toRecord() {
+        return new CylinderSize(unit, value);
     }
 }

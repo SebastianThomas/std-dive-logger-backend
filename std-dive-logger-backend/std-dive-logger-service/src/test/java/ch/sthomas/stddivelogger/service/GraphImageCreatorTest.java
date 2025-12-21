@@ -210,6 +210,10 @@ public class GraphImageCreatorTest {
                         "Some Dive",
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
                         profiles,
                         List.of(),
                         List.of("Buddy1"));

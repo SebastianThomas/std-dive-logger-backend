@@ -51,7 +51,7 @@ public class AuthController {
     @Operation(summary = "Create a Magic Login Token")
     @PostMapping("/login/magic/create")
     public void createLoginToken(@Valid @RequestBody final EmailBody email) {
-        userService.createLoginToken(email.email());
+        userService.createLoginToken(email.email().trim());
     }
 
     public record TokenBody(String token) {}

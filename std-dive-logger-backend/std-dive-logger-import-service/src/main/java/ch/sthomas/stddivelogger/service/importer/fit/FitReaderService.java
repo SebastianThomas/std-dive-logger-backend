@@ -98,7 +98,16 @@ public class FitReaderService extends BaseReaderService {
         final var buddies = List.<String>of();
         final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
-                user, diveNumber, diveName, diveSite.id(), List.of(profile), buddies);
+                user,
+                diveNumber,
+                diveName,
+                "",
+                null,
+                null,
+                null,
+                diveSite.id(),
+                List.of(profile),
+                buddies);
     }
 
     private DiveProfileUpload getDiveProfile(

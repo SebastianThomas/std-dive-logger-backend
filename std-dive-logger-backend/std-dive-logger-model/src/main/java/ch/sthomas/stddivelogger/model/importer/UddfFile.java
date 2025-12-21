@@ -1,7 +1,6 @@
 package ch.sthomas.stddivelogger.model.importer;
 
-import ch.sthomas.stddivelogger.model.dive.DecoStop;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
 
@@ -14,6 +13,8 @@ import com.google.common.collect.MoreCollectors;
 import jakarta.annotation.Nullable;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,6 +31,8 @@ public record UddfFile(
         @JacksonXmlProperty(localName = "decomodel") Map<String, UddfDecoModel> decoModel,
         @JacksonXmlProperty(localName = "profiledata") UddfProfileData profileData,
         @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
+    private static final Logger logger = LoggerFactory.getLogger(UddfFile.class);
+
     public Optional<Integer> diveNumber() {
         final var number = profileData.repetitionGroup.dive.infoBeforeDive.divenumber;
         try {
@@ -40,6 +43,17 @@ public record UddfFile(
             }
             return Optional.empty();
         }
+    }
+
+    public DiveGasConsumption getGasConsumption() {
+        final var tankData = profileData.repetitionGroup.dive.tankdata;
+        final var usedPerTank =
+                tankData.stream().map(t -> t.pressureStart - t.pressureEnd).toList();
+        return DiveGasConsumption.EMPTY;
+    }
+
+    public DiveConfiguration getConfiguration() {
+        return new DiveConfiguration(null, BaseConfiguration.OTHER, 0, null, List.of());
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -316,6 +330,37 @@ public record UddfFile(
                                         .filter(String::isBlank)
                                         .toList())
                 .orElseGet(() -> List.of(buddies));
+    }
+
+    public String getNotes() {
+        return String.join(
+                "\n", profileData.repetitionGroup.dive.infoAfterDive.notes().parameters());
+    }
+
+    public Optional<Visibility> getVisibility() {
+        final var s = profileData.repetitionGroup.dive.infoAfterDive.visibility;
+        if (s == null) {
+            return Optional.empty();
+        }
+        final var string = s.trim();
+        if (string.endsWith("m")) {
+            try {
+                return Optional.of(
+                        new Visibility(
+                                Double.parseDouble(string.substring(0, string.indexOf('m'))),
+                                string,
+                                null));
+            } catch (final NumberFormatException e) {
+                logger.info(
+                        "String {} looks like a visibility in meters, but could not parse",
+                        string,
+                        e);
+            } catch (final IllegalArgumentException e) {
+                logger.info("String {} is an invalid visibility in meters", string, e);
+            }
+        }
+        final var feeling = VisibilityFeeling.from(string);
+        return Optional.of(new Visibility(null, string, feeling));
     }
 
     private Optional<String> getSeparator(final String s) {

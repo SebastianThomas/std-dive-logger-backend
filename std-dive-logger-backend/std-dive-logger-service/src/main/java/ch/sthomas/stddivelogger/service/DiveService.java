@@ -92,13 +92,26 @@ public class DiveService {
             final User user,
             final Optional<Integer> diveNumberOptional,
             final String diveIdentifier,
+            final String notes,
+            @Nullable final Visibility visibility,
+            @Nullable final DiveGasConsumption gasConsumption,
+            @Nullable final DiveConfiguration configuration,
             final Long diveSiteId,
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies) {
         final var diveNumber = diveNumberOptional.orElseGet(() -> getNextDiveNumber(user));
         final var dive =
                 diveDataService.saveDive(
-                        user, diveNumber, diveIdentifier, diveSiteId, profiles, namedBuddies);
+                        user,
+                        diveNumber,
+                        diveIdentifier,
+                        notes,
+                        visibility,
+                        gasConsumption,
+                        configuration,
+                        diveSiteId,
+                        profiles,
+                        namedBuddies);
         createSaveDivePreview(dive);
         return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
     }
@@ -285,7 +298,16 @@ public class DiveService {
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService.saveDive(
-                user, diveNumber, body.diveIdentifier(), diveSiteId, List.of(), List.of());
+                user,
+                diveNumber,
+                body.diveIdentifier(),
+                "",
+                null,
+                DiveGasConsumption.EMPTY,
+                DiveConfiguration.EMPTY,
+                diveSiteId,
+                List.of(),
+                List.of());
     }
 
     public Optional<DiveSite> getSiteById(final long id) {

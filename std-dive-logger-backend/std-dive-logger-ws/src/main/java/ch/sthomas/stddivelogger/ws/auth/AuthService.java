@@ -56,7 +56,7 @@ public class AuthService {
         final var auth =
                 applicationAuthenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(
-                                request.email(), request.password()));
+                                request.email().trim().toLowerCase(), request.password()));
         return createLoginResponse(auth.getName());
     }
 
