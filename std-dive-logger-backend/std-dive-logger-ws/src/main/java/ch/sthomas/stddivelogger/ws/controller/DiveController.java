@@ -74,14 +74,6 @@ public class DiveController {
                 includeReader);
     }
 
-    @GetMapping(path = "/stats")
-    public UserDiveStats getStatsForUser(@AuthenticationPrincipal final User user) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to view your dive stats");
-        }
-        return diveService.getStatsForUser(user);
-    }
-
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
     public Dive getDiveById(

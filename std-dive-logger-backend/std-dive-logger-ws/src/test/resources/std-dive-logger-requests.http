@@ -87,9 +87,21 @@ POST {{baseurl}}/api/auth/login/magic
 Content-Type: application/json
 
 {
-  "token": "8c71e8f8-e46c-464c-b456-93c59fe035c5"
+  "token": "93a03b7d-2fbf-4d76-a8e0-d06f01898e75"
 }
 
 ### Get Stats
-GET {{baseurl}}/v1/dives/stats
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjYxNTc3MDcsImV4cCI6MTc2NjE2MTMwN30.JJHCrPGCTASkasDMtcULvfV-TbsDOFkxJixVK2T-WYZ6UxsWl1yMfEslVIcesjCf
+GET {{baseurl}}/v1/stats
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjYzMjU3MjMsImV4cCI6MTc2NjMyOTMyM30.ZBYd0uCscAZBGyMuuoITIxr-XuueaIMIABGIHB4ypYqMncFqDEByLB37JlbxjUBH
+
+### Get Stats
+GET {{baseurl}}/v1/stats/dive-site
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjYzMjU3MjMsImV4cCI6MTc2NjMyOTMyM30.ZBYd0uCscAZBGyMuuoITIxr-XuueaIMIABGIHB4ypYqMncFqDEByLB37JlbxjUBH
+
+### Get Stats
+GET {{baseurl}}/v1/stats/buddy
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjYzMjU3MjMsImV4cCI6MTc2NjMyOTMyM30.ZBYd0uCscAZBGyMuuoITIxr-XuueaIMIABGIHB4ypYqMncFqDEByLB37JlbxjUBH
+
+### Get Stats
+GET {{baseurl}}/v1/stats/year
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY2giLCJpYXQiOjE3NjYzMjU3MjMsImV4cCI6MTc2NjMyOTMyM30.ZBYd0uCscAZBGyMuuoITIxr-XuueaIMIABGIHB4ypYqMncFqDEByLB37JlbxjUBH

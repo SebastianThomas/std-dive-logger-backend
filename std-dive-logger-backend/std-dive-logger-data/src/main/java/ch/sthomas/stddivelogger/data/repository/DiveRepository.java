@@ -64,6 +64,52 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
+                            SELECT MAX(t.dive_duration)
+                            FROM (
+                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                                FROM t_dives d
+                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND EXTRACT(year FROM p.dive_profile_start) = :year
+                                WHERE d.fk_diver_id = :userId
+                                GROUP BY d.pk_dive_id
+                            ) t
+                            """,
+            nativeQuery = true)
+    Optional<Long> findMaxDurationByUserIdAndYear(long userId, Integer year);
+
+    @Query(
+            value =
+                    """
+                            SELECT MAX(t.dive_duration)
+                            FROM (
+                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                                FROM t_dives d
+                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
+                                JOIN public.t_dive_buddy_name b on d.pk_dive_id = b.fk_dive_id AND b.name = :buddy
+                                WHERE d.fk_diver_id = :userId
+                                GROUP BY d.pk_dive_id
+                            ) t
+                            """,
+            nativeQuery = true)
+    Optional<Long> findMaxDurationByUserIdAndBuddy(long userId, String buddy);
+
+    @Query(
+            value =
+                    """
+                            SELECT MAX(t.dive_duration)
+                            FROM (
+                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                                FROM t_dives d
+                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND d.dive_site = :diveSiteId
+                                WHERE d.fk_diver_id = :userId
+                                GROUP BY d.pk_dive_id
+                            ) t
+                            """,
+            nativeQuery = true)
+    Optional<Long> findMaxDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
+
+    @Query(
+            value =
+                    """
                             SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
                             FROM t_dives d
                             JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
@@ -72,6 +118,43 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
                             """,
             nativeQuery = true)
     Optional<Long> findTotalDurationByUserId(long userId);
+
+    @Query(
+            value =
+                    """
+                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                            FROM t_dives d
+                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND EXTRACT(year FROM p.dive_profile_start) = :year
+                            WHERE d.fk_diver_id = :userId
+                            GROUP BY d.fk_diver_id
+                            """,
+            nativeQuery = true)
+    Optional<Long> findTotalDurationByUserIdAndYear(long userId, int year);
+
+    @Query(
+            value =
+                    """
+                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                            FROM t_dives d
+                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
+                            JOIN public.t_dive_buddy_name b on d.pk_dive_id = b.fk_dive_id AND b.name = :buddy
+                            WHERE d.fk_diver_id = :userId
+                            GROUP BY d.fk_diver_id
+                            """,
+            nativeQuery = true)
+    Optional<Long> findTotalDurationByUserIdAndBuddy(long userId, String buddy);
+
+    @Query(
+            value =
+                    """
+                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
+                            FROM t_dives d
+                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND d.dive_site = :diveSiteId
+                            WHERE d.fk_diver_id = :userId
+                            GROUP BY d.fk_diver_id
+                            """,
+            nativeQuery = true)
+    Optional<Long> findTotalDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
 
     @Query(
             value =
