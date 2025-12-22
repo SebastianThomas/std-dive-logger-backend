@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.DiveLength;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveLength;
 
 import jakarta.persistence.*;
 

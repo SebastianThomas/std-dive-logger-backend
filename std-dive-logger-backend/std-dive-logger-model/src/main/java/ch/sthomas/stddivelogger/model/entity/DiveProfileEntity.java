@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import static java.time.ZoneOffset.UTC;
 
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 
 import jakarta.persistence.*;
 

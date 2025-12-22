@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.Visibility;
-import ch.sthomas.stddivelogger.model.dive.VisibilityFeeling;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 
 import jakarta.persistence.*;
 

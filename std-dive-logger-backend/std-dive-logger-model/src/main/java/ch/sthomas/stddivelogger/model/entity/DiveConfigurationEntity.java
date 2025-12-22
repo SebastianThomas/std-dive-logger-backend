@@ -1,7 +1,9 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.*;
-import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.WeightFeeling;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.persistence.*;

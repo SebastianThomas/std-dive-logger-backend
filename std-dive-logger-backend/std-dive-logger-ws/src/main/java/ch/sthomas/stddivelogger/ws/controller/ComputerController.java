@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;

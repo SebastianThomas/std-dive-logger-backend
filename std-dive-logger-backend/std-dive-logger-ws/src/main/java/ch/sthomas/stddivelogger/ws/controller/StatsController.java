@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
-import ch.sthomas.stddivelogger.model.dive.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;

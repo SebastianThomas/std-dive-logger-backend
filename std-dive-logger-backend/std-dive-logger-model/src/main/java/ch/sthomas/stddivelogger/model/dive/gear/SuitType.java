@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.gear;
 
 public enum SuitType {
     NONE,

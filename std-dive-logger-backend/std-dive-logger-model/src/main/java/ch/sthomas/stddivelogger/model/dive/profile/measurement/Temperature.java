@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive.measurement;
+package ch.sthomas.stddivelogger.model.dive.profile.measurement;
 
 public record Temperature(double value, TemperatureUnit unit) {
     public Temperature asCelsius() {

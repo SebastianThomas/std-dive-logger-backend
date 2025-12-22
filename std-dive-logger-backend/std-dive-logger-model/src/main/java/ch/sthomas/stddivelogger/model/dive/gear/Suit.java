@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.gear;
 
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;

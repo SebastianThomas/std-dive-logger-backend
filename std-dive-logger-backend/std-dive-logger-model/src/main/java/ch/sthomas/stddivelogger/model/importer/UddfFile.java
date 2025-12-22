@@ -1,9 +1,15 @@
 package ch.sthomas.stddivelogger.model.importer;
 
-import ch.sthomas.stddivelogger.model.dive.*;
-import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
-import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;

@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;

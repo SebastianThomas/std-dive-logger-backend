@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
-import ch.sthomas.stddivelogger.model.dive.DiveProfileSegmentWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 

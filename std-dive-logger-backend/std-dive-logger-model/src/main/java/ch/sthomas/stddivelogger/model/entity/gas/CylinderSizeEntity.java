@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity.gas;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
-import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSizeUnit;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSizeUnit;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;

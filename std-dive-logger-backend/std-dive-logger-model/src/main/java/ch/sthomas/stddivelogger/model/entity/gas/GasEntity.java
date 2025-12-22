@@ -1,8 +1,8 @@
 package ch.sthomas.stddivelogger.model.entity.gas;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
-import ch.sthomas.stddivelogger.model.dive.measurement.GasContent;
-import ch.sthomas.stddivelogger.model.dive.measurement.GasContentUnit;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContent;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContentUnit;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;

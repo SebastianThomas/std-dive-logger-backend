@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity.gas;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 
 import jakarta.persistence.*;
 

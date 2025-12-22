@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.analytics;
 
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 
 import java.util.List;
 

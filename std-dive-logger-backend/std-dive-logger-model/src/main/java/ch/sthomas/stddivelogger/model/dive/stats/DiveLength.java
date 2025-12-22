@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.stats;
 
 import java.time.Duration;
 import java.time.Instant;

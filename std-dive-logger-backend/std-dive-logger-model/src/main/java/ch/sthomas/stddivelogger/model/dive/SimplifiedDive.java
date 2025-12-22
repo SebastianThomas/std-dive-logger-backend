@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 
 import jakarta.annotation.Nullable;

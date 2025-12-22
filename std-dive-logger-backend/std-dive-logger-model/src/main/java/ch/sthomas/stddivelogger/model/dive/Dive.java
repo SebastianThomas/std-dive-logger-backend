@@ -1,5 +1,9 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 
 import jakarta.annotation.Nullable;

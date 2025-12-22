@@ -1,5 +1,8 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.profile;
 
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import jakarta.annotation.Nullable;
 
 import java.time.Duration;

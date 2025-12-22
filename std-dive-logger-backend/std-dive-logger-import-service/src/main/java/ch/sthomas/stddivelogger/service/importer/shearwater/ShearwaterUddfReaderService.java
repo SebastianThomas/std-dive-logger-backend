@@ -4,6 +4,8 @@ import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
 import ch.sthomas.stddivelogger.model.exception.MissingValueException;
 import ch.sthomas.stddivelogger.model.exception.MissingValueField;

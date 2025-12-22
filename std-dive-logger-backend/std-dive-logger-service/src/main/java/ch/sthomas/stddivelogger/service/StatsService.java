@@ -3,7 +3,7 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
-import ch.sthomas.stddivelogger.model.dive.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.apache.commons.lang3.NotImplementedException;

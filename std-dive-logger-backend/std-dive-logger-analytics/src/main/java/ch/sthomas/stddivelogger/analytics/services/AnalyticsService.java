@@ -5,8 +5,8 @@ import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
-import ch.sthomas.stddivelogger.model.dive.DiveProfileSegmentWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 
 import com.google.common.math.Stats;
 

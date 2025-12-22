@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.DiveConfigurationCylinder;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.persistence.*;

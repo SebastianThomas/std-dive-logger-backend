@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.profile;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

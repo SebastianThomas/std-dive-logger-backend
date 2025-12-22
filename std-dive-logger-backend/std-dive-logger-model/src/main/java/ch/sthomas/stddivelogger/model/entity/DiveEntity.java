@@ -1,7 +1,10 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.*;
-import ch.sthomas.stddivelogger.model.dive.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.annotation.Nullable;

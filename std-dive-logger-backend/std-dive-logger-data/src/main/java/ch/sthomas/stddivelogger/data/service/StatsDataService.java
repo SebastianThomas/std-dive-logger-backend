@@ -1,12 +1,12 @@
 package ch.sthomas.stddivelogger.data.service;
 
-import static ch.sthomas.stddivelogger.model.dive.measurement.Temperature.TemperatureUnit.CELSIUS;
+import static ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature.TemperatureUnit.CELSIUS;
 
 import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
-import ch.sthomas.stddivelogger.model.dive.UserDiveStats;
-import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
@@ -17,7 +17,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -280,10 +279,5 @@ public class StatsDataService {
                         .findMinTemperatureCelsiusByUserId(user.id())
                         .map(d -> new Temperature(d, CELSIUS))
                         .orElse(null));
-    }
-
-    @Transactional(readOnly = true)
-    public UserDiveStats computeStatsForUserByBuddy(final User user, final long buddyId) {
-        throw new NotImplementedException();
     }
 }

@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.model.dive.measurement;
+package ch.sthomas.stddivelogger.model.dive.profile.measurement;
 
 import jakarta.annotation.Nullable;
 

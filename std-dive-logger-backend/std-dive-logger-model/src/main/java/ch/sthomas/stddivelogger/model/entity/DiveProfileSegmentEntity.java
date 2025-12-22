@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmentType;
-import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
 
 import jakarta.persistence.*;
 

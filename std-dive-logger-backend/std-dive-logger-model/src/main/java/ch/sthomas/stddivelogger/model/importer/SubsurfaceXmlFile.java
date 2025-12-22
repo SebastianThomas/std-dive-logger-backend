@@ -2,8 +2,8 @@ package ch.sthomas.stddivelogger.model.importer;
 
 import static java.time.Duration.ofHours;
 
-import ch.sthomas.stddivelogger.model.dive.DecoStop;
-import ch.sthomas.stddivelogger.model.dive.measurement.*;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.*;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

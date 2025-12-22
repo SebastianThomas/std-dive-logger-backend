@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity.converter;
 
-import ch.sthomas.stddivelogger.model.dive.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 

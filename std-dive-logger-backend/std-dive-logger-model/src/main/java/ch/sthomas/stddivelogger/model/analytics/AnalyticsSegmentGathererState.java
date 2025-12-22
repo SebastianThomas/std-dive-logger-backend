@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.model.analytics;
 
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 
 import com.google.common.math.Stats;
 

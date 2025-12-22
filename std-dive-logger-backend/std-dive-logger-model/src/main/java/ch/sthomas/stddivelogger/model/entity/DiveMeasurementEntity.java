@@ -2,10 +2,10 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import static java.time.ZoneOffset.UTC;
 
-import ch.sthomas.stddivelogger.model.dive.DecoStop;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurementWithId;
-import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 

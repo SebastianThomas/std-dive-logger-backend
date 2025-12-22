@@ -1,8 +1,8 @@
 package ch.sthomas.stddivelogger.service.process;
 
 import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 
 import com.google.common.collect.Streams;

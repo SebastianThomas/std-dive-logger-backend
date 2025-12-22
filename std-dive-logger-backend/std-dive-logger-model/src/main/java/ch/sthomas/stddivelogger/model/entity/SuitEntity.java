@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import ch.sthomas.stddivelogger.model.dive.Suit;
-import ch.sthomas.stddivelogger.model.dive.SuitType;
+import ch.sthomas.stddivelogger.model.dive.gear.Suit;
+import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 
 import jakarta.persistence.*;
 

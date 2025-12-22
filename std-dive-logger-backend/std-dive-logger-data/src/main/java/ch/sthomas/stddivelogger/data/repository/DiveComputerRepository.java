@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
-import ch.sthomas.stddivelogger.model.dive.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 

@@ -1,6 +1,6 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.stats;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 
 import java.time.Duration;
 

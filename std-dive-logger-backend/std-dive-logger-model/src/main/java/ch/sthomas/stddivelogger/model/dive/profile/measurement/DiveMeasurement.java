@@ -1,7 +1,6 @@
-package ch.sthomas.stddivelogger.model.dive;
+package ch.sthomas.stddivelogger.model.dive.profile.measurement;
 
-import ch.sthomas.stddivelogger.model.dive.measurement.Gas;
-import ch.sthomas.stddivelogger.model.dive.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

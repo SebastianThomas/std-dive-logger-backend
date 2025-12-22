@@ -2,8 +2,8 @@ package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsSegmentGathererState;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmentType;
-import ch.sthomas.stddivelogger.model.dive.DiveProfile;
-import ch.sthomas.stddivelogger.model.dive.DiveProfileSegment;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
 
 import org.springframework.stereotype.Service;
 
