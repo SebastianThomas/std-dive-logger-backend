@@ -683,4 +683,15 @@ public class DiveDataService {
             case DESCENDING -> s.descending();
         };
     }
+
+    public PagedResponse<SimplifiedDive> findDivesByGroup(
+            final long groupId,
+            final int page,
+            final int simplifiedDivePageSize,
+            final DiveSort sort) {
+        return PagedResponse.of(
+                diveRepository.findByGroupPrivilege(
+                        groupId, PageRequest.of(page, simplifiedDivePageSize, toSort(sort))),
+                this::toSimplifiedRecord);
+    }
 }

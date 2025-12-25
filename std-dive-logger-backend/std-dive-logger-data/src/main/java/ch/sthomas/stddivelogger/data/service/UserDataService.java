@@ -1,5 +1,8 @@
 package ch.sthomas.stddivelogger.data.service;
 
+import static ch.sthomas.stddivelogger.model.user.GroupRole.ADMIN;
+import static ch.sthomas.stddivelogger.model.user.GroupRole.MEMBER;
+
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.model.entity.*;
@@ -231,19 +234,25 @@ public class UserDataService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isGroupMember(final long groupId, final User member) {
+        return groupMemberRepository
+                .findByGroup_IdAndUser_Id(groupId, member.id())
+                .map(r -> List.of(ADMIN, MEMBER).contains(r.getRole()))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
     public boolean isGroupAdmin(final long groupId, final User admin) {
         return groupMemberRepository
                 .findByGroup_IdAndUser_Id(groupId, admin.id())
                 .map(GroupMemberEntity::getRole)
-                .map(GroupRole.ADMIN::equals)
+                .map(ADMIN::equals)
                 .orElse(false);
     }
 
     @Transactional(readOnly = true)
     public List<GroupRequest> findAdminGroupRequests(final User user) {
-        return groupMemberRepository
-                .findRequests(user.id(), GroupRole.ADMIN, GroupRole.REQUESTED)
-                .stream()
+        return groupMemberRepository.findRequests(user.id(), ADMIN, GroupRole.REQUESTED).stream()
                 .map(
                         e ->
                                 new GroupRequest(

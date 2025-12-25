@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
@@ -26,6 +27,7 @@ import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.hibernate.query.SortDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -51,10 +53,15 @@ public class DiveService {
 
     private final DiveDataService diveDataService;
     private final StorageService storageService;
+    private final UserDataService userDataService;
 
-    public DiveService(final DiveDataService diveDataService, final StorageService storageService) {
+    public DiveService(
+            final DiveDataService diveDataService,
+            final StorageService storageService,
+            UserDataService userDataService) {
         this.diveDataService = diveDataService;
         this.storageService = storageService;
+        this.userDataService = userDataService;
     }
 
     public PagedResponse<SimplifiedDive> getDivesForUser(
@@ -86,6 +93,19 @@ public class DiveService {
 
     public List<SimplifiedDive> getDivesByIds(final User user, final List<Long> ids) {
         return diveDataService.findDivesByIds(user, ids);
+    }
+
+    public PagedResponse<SimplifiedDive> getDivesByGroup(
+            final User user, final long groupId, final int page) {
+        if (!userDataService.isGroupMember(groupId, user)) {
+            throw ForbiddenException.forGroup(user, groupId);
+        }
+        return diveDataService.findDivesByGroup(
+                groupId,
+                page,
+                SIMPLIFIED_DIVE_PAGE_SIZE,
+                // TODO: Change to Date
+                DiveSort.ofNullable(DiveSortColumn.ID, SortDirection.ASCENDING));
     }
 
     @Transactional

@@ -35,4 +35,11 @@ public class ForbiddenException extends RuntimeException {
                         "User {0} ({1}) is not user {2}", user.id(), user.email(), impersonated),
                 user);
     }
+
+    public static ForbiddenException forGroup(final User user, final long groupId) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) is not in group {2}", user.id(), user.email(), groupId),
+                user);
+    }
 }

@@ -74,6 +74,17 @@ public class DiveController {
                 includeReader);
     }
 
+    @GetMapping("/group/{groupId}")
+    public PagedResponse<SimplifiedDive> getDivesForGroup(
+            @AuthenticationPrincipal final User user,
+            @PathVariable final long groupId,
+            @RequestParam(value = "page", defaultValue = "0") final int page) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to access dives.");
+        }
+        return diveService.getDivesByGroup(user, groupId, page);
+    }
+
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
     public Dive getDiveById(
