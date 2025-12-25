@@ -17,6 +17,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -133,10 +134,10 @@ public class DiveEntity {
                 number,
                 notes,
                 diveIdentifier,
-                visibility.toRecord(),
+                getPreviewImage(baseUrl),
+                Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null),
                 gasConsumption.toRecord(),
                 configuration.toRecord(),
-                getPreviewImage(baseUrl),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
                 getBuddyDives(includeBuddyDives)
@@ -153,7 +154,7 @@ public class DiveEntity {
                 number,
                 diveIdentifier,
                 getPreviewImage(baseUrl),
-                visibility.toRecord(),
+                Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null),
                 diveSite.toRecord(),
                 getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels());
