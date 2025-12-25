@@ -80,6 +80,10 @@ public class UserDataService {
         return userRepository.findByEmailIgnoreCase(email).map(UserEntity::toRecord);
     }
 
+    public Optional<User> findUserByName(final String name) {
+        return userRepository.findByNameIgnoreCase(name).map(UserEntity::toRecord);
+    }
+
     @Transactional
     public User saveUser(final String email, final String password, final String name) {
         try {

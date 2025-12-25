@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.exception;
 
 import java.util.List;
 
-public class InvalidPasswordException extends RuntimeException {
+public class InvalidPasswordException extends IllegalArgumentException {
     private final List<String> details;
 
     public InvalidPasswordException(final List<String> details) {

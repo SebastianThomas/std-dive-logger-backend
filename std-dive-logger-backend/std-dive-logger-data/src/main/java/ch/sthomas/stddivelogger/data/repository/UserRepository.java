@@ -56,4 +56,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("UPDATE UserEntity u SET u.verified = TRUE WHERE u.id = :id")
     @Modifying
     void setVerified(long id);
+
+    Optional<UserEntity> findByNameIgnoreCase(String name);
 }

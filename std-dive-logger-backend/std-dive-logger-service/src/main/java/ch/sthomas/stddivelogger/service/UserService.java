@@ -67,7 +67,7 @@ public class UserService {
     public User createUser(final String emailParam, final String password, final String name) {
         final var email = emailParam.trim();
         if (!isValidEmail(email)) {
-            throw new IllegalArgumentException("Invalid email");
+            throw new IllegalArgumentException("This email address seems to be invalid");
         }
         final var passwordValidated = isValidPassword(password);
         if (!passwordValidated.isValid()) {
@@ -75,6 +75,10 @@ public class UserService {
                     passwordValidated.getDetails().stream()
                             .map(RuleResultDetail::toString)
                             .toList());
+        }
+        if (userDataService.findUserByName(name).isPresent()) {
+            throw new IllegalArgumentException(
+                    "This username is already in use, please choose a unique username.");
         }
         final var user = userDataService.saveUser(email, passwordEncoder.encode(password), name);
         if (userDataService.createAccountRequest(AccountRequestType.VERIFY_EMAIL, user)) {
