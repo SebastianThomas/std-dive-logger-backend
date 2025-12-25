@@ -23,8 +23,20 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
 
     @Query(
             value =
-                    "SELECT * FROM t_dive_site WHERE name % :name ORDER BY similarity(name, :name) DESC, LENGTH(name) ASC",
-            countQuery = "SELECT * FROM t_dive_site WHERE name % :name",
+                    """
+                            SELECT *
+                            FROM t_dive_site
+                            WHERE starts_with(name, :name)
+                               OR name % :name
+                            ORDER BY CASE
+                                         WHEN starts_with(name, :name)
+                                             THEN 1
+                                         ELSE 0
+                                         END DESC,
+                                     similarity(name, :name) DESC,
+                                     LENGTH(name);
+                            """,
+            countQuery = "SELECT * FROM t_dive_site WHERE starts_with(name, :name) OR name % :name",
             nativeQuery = true)
     Page<DiveSiteEntity> findByClosestMatchName(String name, Pageable pageable);
 

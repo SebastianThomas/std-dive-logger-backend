@@ -14,8 +14,20 @@ import java.util.List;
 public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
     @Query(
             value =
-                    "SELECT * FROM t_groups g WHERE g.group_name % :name ORDER BY similarity(g.group_name, :name) DESC, LENGTH(g.group_name) ASC",
-            countQuery = "SELECT COUNT(*) FROM t_groups g WHERE g.group_name % :name",
+                    """
+                            SELECT *
+                            FROM t_groups g
+                            WHERE starts_with(group_name, :name)
+                               OR g.group_name % :name
+                            ORDER BY CASE
+                                         WHEN starts_with(group_name, :name)
+                                             THEN 1
+                                         ELSE 0
+                                         END DESC,
+                                     similarity(g.group_name, :name) DESC,
+                                     LENGTH(g.group_name);
+                            """,
+            countQuery = "SELECT COUNT(*) FROM t_groups g WHERE starts_with(group_name, :name) OR g.group_name % :name",
             nativeQuery = true)
     List<GroupEntity> findByClosestMatchName(String name, Pageable pageable);
 
