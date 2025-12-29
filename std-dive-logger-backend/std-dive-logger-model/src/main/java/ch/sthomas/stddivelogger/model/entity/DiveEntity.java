@@ -136,8 +136,12 @@ public class DiveEntity {
                 diveIdentifier,
                 getPreviewImage(baseUrl),
                 Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null),
-                gasConsumption.toRecord(),
-                configuration.toRecord(),
+                Optional.ofNullable(gasConsumption)
+                        .map(DiveGasConsumptionEntity::toRecord)
+                        .orElse(null),
+                Optional.ofNullable(configuration)
+                        .map(DiveConfigurationEntity::toRecord)
+                        .orElse(null),
                 diveSite.toRecord(),
                 profiles.stream().map(DiveProfileEntity::toRecord).toList(),
                 getBuddyDives(includeBuddyDives)
