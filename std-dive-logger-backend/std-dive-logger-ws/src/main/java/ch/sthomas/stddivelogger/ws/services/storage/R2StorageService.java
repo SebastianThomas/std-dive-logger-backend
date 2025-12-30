@@ -92,7 +92,7 @@ public class R2StorageService implements StorageService {
                     PutObjectArgs.builder()
                             .bucket(bucket)
                             .object(path)
-                            // .contentType(contentType)
+                            .contentType(contentType)
                             // .headers(Map.of())
                             .stream(output, -1, fallbackPartSize) // contentLength, partSize)
                             .build();
