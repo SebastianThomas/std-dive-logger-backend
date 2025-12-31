@@ -14,6 +14,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class MoreStreamUtils {
+    private MoreStreamUtils() {}
+
     public static <
                     A extends @Nullable Object,
                     B extends @Nullable Object,

@@ -20,6 +20,7 @@ import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
+import ch.sthomas.stddivelogger.utils.LocationUtils;
 
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.hibernate.query.SortDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.*;
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
@@ -54,11 +57,12 @@ public class DiveService {
     private final DiveDataService diveDataService;
     private final StorageService storageService;
     private final UserDataService userDataService;
+    private final LevenshteinDistance levenshteinDistance = new LevenshteinDistance(100);
 
     public DiveService(
             final DiveDataService diveDataService,
             final StorageService storageService,
-            UserDataService userDataService) {
+            final UserDataService userDataService) {
         this.diveDataService = diveDataService;
         this.storageService = storageService;
         this.userDataService = userDataService;
@@ -339,6 +343,35 @@ public class DiveService {
         return diveDataService.findDiveSitesByLocation(coordinate);
     }
 
+    public DiveSite getOrCreateDiveSite(final String name, final Location location) {
+        final var df = new DecimalFormat("0.###");
+        final var existingByName = diveDataService.findDiveSiteByName(name);
+        return existingByName
+                .filter(e -> LocationUtils.isClose(e.getCoordinate(), location.toCoordinate()))
+                .or(
+                        () ->
+                                diveDataService.findDiveSitesByLocation(location).stream()
+                                        .filter(e -> isSimilarName(e.name(), name))
+                                        .min(
+                                                Comparator.comparing(
+                                                        e ->
+                                                                levenshteinDistance.apply(
+                                                                        e.name(), name))))
+                .or(
+                        () ->
+                                existingByName.map(
+                                        _ ->
+                                                diveDataService.saveDiveSite(
+                                                        name
+                                                                + " ("
+                                                                + df.format(location.lat())
+                                                                + ", "
+                                                                + df.format(location.lon())
+                                                                + ")",
+                                                        location)))
+                .orElseGet(() -> diveDataService.saveDiveSite(name, location));
+    }
+
     public DiveSite createDiveSite(final String name, final Location location) {
         return diveDataService.saveDiveSite(name, location);
     }
@@ -434,5 +467,13 @@ public class DiveService {
     public List<DiveSiteWithDives<DiveSite>> getSitesByUser(
             final User user, final boolean onlyOwn) {
         return diveDataService.findDiveSitesByUser(user.id(), onlyOwn);
+    }
+
+    private boolean isSimilarName(final CharSequence a, final CharSequence b) {
+        final var dist = levenshteinDistance.apply(a, b);
+        if (dist == null || dist < 0) {
+            return false;
+        }
+        return dist <= 1 || dist < 1.0 / 10 * a.length();
     }
 }
