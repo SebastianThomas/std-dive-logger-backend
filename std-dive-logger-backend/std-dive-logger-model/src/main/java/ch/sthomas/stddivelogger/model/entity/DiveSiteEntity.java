@@ -12,7 +12,11 @@ import org.locationtech.jts.geom.Point;
 @SqlResultSetMapping(
         name = "DiveSiteWithIdsMapping",
         entities = @EntityResult(entityClass = DiveSiteEntity.class),
-        columns = {@ColumnResult(name = "dive_ids", type = Long[].class)})
+        columns = {
+            @ColumnResult(name = "dive_ids", type = Long[].class),
+            @ColumnResult(name = "dive_numbers", type = Long[].class),
+            @ColumnResult(name = "dive_identifiers", type = String[].class)
+        })
 public class DiveSiteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

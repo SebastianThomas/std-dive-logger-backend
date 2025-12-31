@@ -7,11 +7,11 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSummary;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSummary;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -65,7 +65,7 @@ public class FitReaderService extends BaseReaderService {
         final var startCoordinateLon = semicirclesToDegrees(session.getStartPositionLong());
         final var startCoordinateLat = semicirclesToDegrees(session.getStartPositionLat());
         final var diveSite =
-                diveService.createDiveSite(
+                diveService.getOrCreateDiveSite(
                         MessageFormat.format(
                                 "unnamed-{0}-{1}", startCoordinateLat, startCoordinateLon),
                         new Location(startCoordinateLat, startCoordinateLon));
