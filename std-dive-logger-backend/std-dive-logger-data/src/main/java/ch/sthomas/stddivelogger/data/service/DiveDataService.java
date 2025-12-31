@@ -532,7 +532,7 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<DiveSiteWithDives<DiveSite, List<Long>>> findDiveSitesByUser(
+    public List<DiveSiteWithDives<DiveSite>> findDiveSitesByUser(
             final long userId, final boolean onlyOwn) {
         return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()
                 .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveIds()))
@@ -563,7 +563,7 @@ public class DiveDataService {
                 .orElseGet(() -> gasMixRepository.save(new GasMixEntity(o2, n2, he)));
     }
 
-    private List<DiveSiteWithDives<DiveSiteEntity, List<Long>>> findDiveSiteEntitiesByUser(
+    private List<DiveSiteWithDives<DiveSiteEntity>> findDiveSiteEntitiesByUser(
             final long userId, final boolean onlyOwn) {
         final var result =
                 onlyOwn
@@ -574,7 +574,10 @@ public class DiveDataService {
                         row -> {
                             final var site = (DiveSiteEntity) row[0];
                             final var diveIds = getLongListFromSqlObject(row[1]);
-                            return new DiveSiteWithDives<>(site, diveIds);
+                            final var diveNumbers = getLongListFromSqlObject(row[2]);
+                            final var diveIdentifiers = getStringListFromSqlObject(row[3]);
+                            return DiveSiteWithDives.of(
+                                    site, diveIds, diveNumbers, diveIdentifiers);
                         })
                 .toList();
     }
@@ -595,6 +598,8 @@ public class DiveDataService {
                 }
                 case final Long[] longArr -> Arrays.asList(longArr);
                 case final long[] longArr -> Arrays.stream(longArr).boxed().toList();
+                case final Integer[] intArr -> Arrays.stream(intArr).map(Long::valueOf).toList();
+                case final int[] intArr -> Arrays.stream(intArr).mapToObj(Long::valueOf).toList();
                 case final List<?> list -> (List<Long>) list;
                 case final Collection<?> collection ->
                         collection.stream().map(l -> (Long) l).toList();
@@ -608,6 +613,38 @@ public class DiveDataService {
             };
         } catch (final ClassCastException e) {
             logger.warn("Could not convert {} to List<Long>", o.getClass(), e);
+            return Collections.emptyList();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> getStringListFromSqlObject(final Object o) {
+        if (o == null) {
+            return Collections.emptyList();
+        }
+        try {
+            return switch (o) {
+                case final Array sqlArray -> {
+                    try {
+                        yield Arrays.stream((String[]) sqlArray.getArray()).toList();
+                    } catch (final SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                case final String[] stringArr -> Arrays.asList(stringArr);
+                case final List<?> list -> (List<String>) list;
+                case final Collection<?> collection ->
+                        collection.stream().map(Object::toString).toList();
+                default -> {
+                    logger.warn(
+                            "Unrecognized SQL object (tried to convert to List<String>): class {} with value {}",
+                            o.getClass(),
+                            o);
+                    yield Collections.emptyList();
+                }
+            };
+        } catch (final ClassCastException e) {
+            logger.warn("Could not convert {} to List<String>", o.getClass(), e);
             return Collections.emptyList();
         }
     }

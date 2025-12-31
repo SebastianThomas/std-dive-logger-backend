@@ -42,7 +42,7 @@ public class DiveSiteController {
                                         + "`true`, to include dives where the user only has reader privileges")
             })
     @GetMapping(path = "")
-    public List<DiveSiteWithDives<DiveSite, List<Long>>> getAllDiveSites(
+    public List<DiveSiteWithDives<DiveSite>> getAllDiveSites(
             @AuthenticationPrincipal final User user,
             @RequestParam(value = "includeReader", defaultValue = "false")
                     final boolean includeReader) {
@@ -51,7 +51,7 @@ public class DiveSiteController {
 
     @Operation(summary = "Get DiveSite by id")
     @GetMapping(path = "/{id}")
-    public DiveSite getSite(@PathVariable("id") final long id) {
+    public DiveSite getSite(@PathVariable final long id) {
         return diveService.getSiteById(id).orElseThrow();
     }
 

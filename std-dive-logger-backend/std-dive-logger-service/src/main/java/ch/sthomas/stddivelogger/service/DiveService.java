@@ -431,7 +431,7 @@ public class DiveService {
     }
 
     // TODO: Pagination
-    public List<DiveSiteWithDives<DiveSite, List<Long>>> getSitesByUser(
+    public List<DiveSiteWithDives<DiveSite>> getSitesByUser(
             final User user, final boolean onlyOwn) {
         return diveDataService.findDiveSitesByUser(user.id(), onlyOwn);
     }
