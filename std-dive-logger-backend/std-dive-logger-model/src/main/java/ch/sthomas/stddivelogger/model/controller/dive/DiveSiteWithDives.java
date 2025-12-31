@@ -6,7 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 
 import java.util.List;
 
-public record DiveSiteWithDives<T>(T site, List<BasicDiveInfo> diveIds) {
+public record DiveSiteWithDives<T>(T site, List<BasicDiveInfo> diveInfo) {
     public static <T> DiveSiteWithDives<T> of(
             final T site,
             final List<Long> ids,

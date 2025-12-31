@@ -535,7 +535,7 @@ public class DiveDataService {
     public List<DiveSiteWithDives<DiveSite>> findDiveSitesByUser(
             final long userId, final boolean onlyOwn) {
         return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()
-                .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveIds()))
+                .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveInfo()))
                 .toList();
     }
 
