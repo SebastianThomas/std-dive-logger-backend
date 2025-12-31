@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.service.importer.subsurface;
 
-import static ch.sthomas.stddivelogger.data.service.DiveDataService.MIN_DIVE_SITE_DIST;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.getUntilSeparator;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.parseUntilSpace;
 
@@ -9,10 +8,9 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -199,13 +197,6 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
     }
 
     private DiveSite findOrCreateDiveSite(final SubsurfaceXmlFile.SubsurfaceDiveSite site) {
-        return diveSiteRepository
-                .findByLocationNearAndName(
-                        site.location().toPoint(), MIN_DIVE_SITE_DIST, site.name())
-                .orElseGet(
-                        () ->
-                                diveSiteRepository.save(
-                                        new DiveSiteEntity(site.name(), site.location().toPoint())))
-                .toRecord();
+        return diveService.getOrCreateDiveSite(site.name(), site.location());
     }
 }
