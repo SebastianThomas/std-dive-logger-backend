@@ -572,6 +572,10 @@ public class DiveDataService {
         return result.stream()
                 .map(
                         row -> {
+                            if (row.length < 4) {
+                                throw new IllegalArgumentException(
+                                        "Could not read dives and dive sites");
+                            }
                             final var site = (DiveSiteEntity) row[0];
                             final var diveIds = getLongListFromSqlObject(row[1]);
                             final var diveNumbers = getLongListFromSqlObject(row[2]);
