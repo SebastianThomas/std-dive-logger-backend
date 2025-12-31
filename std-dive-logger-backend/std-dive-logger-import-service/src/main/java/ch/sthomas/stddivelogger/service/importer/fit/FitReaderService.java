@@ -92,6 +92,7 @@ public class FitReaderService extends BaseReaderService {
                         .distinct()
                         .toArray();
         if (computerIds.length > 1 || computerIds[0] != 0) {
+            logger.info("Got computer ids: {}", computerIds);
             throw new IllegalArgumentException(
                     "Fit file contains multiple computers, unsupported at the moment.");
         }
