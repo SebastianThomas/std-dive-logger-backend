@@ -6,11 +6,13 @@ import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 
 import jakarta.persistence.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 
 @Entity
 @Table(name = "t_dive_profiles")
@@ -79,5 +81,27 @@ public class DiveProfileEntity {
 
     public long getId() {
         return id;
+    }
+
+    public Instant getStart() {
+        return profileStart.toInstant();
+    }
+
+    public Instant getEnd() {
+        return profileEnd.toInstant();
+    }
+
+    public Duration getBottomTime() {
+        return Duration.between(
+                measurements.getFirst().toRecord().time(),
+                measurements.getLast().toRecord().time());
+    }
+
+    public DoubleStream getDepths() {
+        return measurements.stream().mapToDouble(DiveMeasurementEntity::getDepth);
+    }
+
+    public Duration getSurfaceInterval() {
+        return null; // TODO
     }
 }

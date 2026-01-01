@@ -109,4 +109,8 @@ public class DiveMeasurementEntity {
         this.profile = diveProfileEntity;
         return this;
     }
+
+    public double getDepth() {
+        return depth;
+    }
 }

@@ -26,7 +26,8 @@ public record Dive(
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,
         @NotNull List<BuddyDive> buddiesDives,
-        @NotNull List<String> namedBuddies) {
+        @NotNull List<String> namedBuddies,
+        @NotNull DiveSummary summary) {
     @Override
     @NotNull
     public String toString() {

@@ -220,7 +220,8 @@ public class GraphImageCreatorTest {
                         null,
                         profiles,
                         List.of(),
-                        List.of("Buddy1"));
+                        List.of("Buddy1"),
+                        null);
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();
         try (final var outWriter = new FileWriter(tempFile)) {
             GraphImageCreator.fromDive(
