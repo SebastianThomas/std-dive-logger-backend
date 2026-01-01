@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -147,7 +148,8 @@ public class DiveEntity {
                 getBuddyDives(includeBuddyDives)
                         .map(d -> new BuddyDive(d.user.toRecord().toFrontendModel(), d.id))
                         .toList(),
-                getNamedBuddiesModels());
+                getNamedBuddiesModels(),
+                getSummary());
     }
 
     public SimplifiedDive toSimplifiedRecord(
@@ -161,7 +163,26 @@ public class DiveEntity {
                 Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null),
                 diveSite.toRecord(),
                 getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
-                getNamedBuddiesModels());
+                getNamedBuddiesModels(),
+                getSummary());
+    }
+
+    private DiveSummary getSummary() {
+        final var depths = profiles.stream().flatMapToDouble(DiveProfileEntity::getDepths);
+        final var depthSummary = depths.summaryStatistics();
+        final var start = profiles.getFirst().getStart();
+        final var end = profiles.getLast().getEnd();
+        final var bottomTime =
+                profiles.stream()
+                        .map(DiveProfileEntity::getBottomTime)
+                        .reduce(Duration.ZERO, Duration::plus);
+        return new DiveSummary(
+                start,
+                end,
+                depthSummary.getAverage(),
+                depthSummary.getMax(),
+                profiles.getFirst().getSurfaceInterval(),
+                bottomTime);
     }
 
     private Stream<DiveEntity> getBuddyDives(final boolean includeBuddyDives) {

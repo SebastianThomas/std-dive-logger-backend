@@ -17,4 +17,5 @@ public record SimplifiedDive(
         @Nullable Visibility visibility,
         @Nullable DiveSite site,
         @NotNull List<BuddyDive> buddiesDives,
-        @NotNull List<String> namedBuddies) {}
+        @NotNull List<String> namedBuddies,
+        @NotNull DiveSummary summary) {}
