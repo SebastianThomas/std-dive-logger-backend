@@ -29,4 +29,9 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
 
     Page<GroupMemberEntity> findByUser_IdAndRoleNotOrderById(
             long userId, GroupRole role, Pageable pageable);
+
+    @Query("SELECT COUNT(*) > 1 FROM GroupMemberEntity m WHERE m.group.id = :groupId AND m.user.id != :userId AND m.role = :groupRole")
+    boolean hasOtherMemberWithRole(long groupId, long userId, GroupRole groupRole);
+
+    void removeByGroup_IdAndUser_Id(Long groupId, Long userId);
 }

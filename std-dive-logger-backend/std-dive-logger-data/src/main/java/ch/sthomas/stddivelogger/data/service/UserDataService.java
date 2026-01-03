@@ -116,6 +116,11 @@ public class UserDataService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Group> findGroupByName(final String id) {
+        return groupRepository.findByGroupNameIgnoreCase(id).map(GroupEntity::toRecord);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Group> findGroupById(final long id) {
         return groupRepository.findById(id).map(GroupEntity::toRecord);
     }
@@ -146,7 +151,7 @@ public class UserDataService {
     }
 
     @Transactional
-    public GroupWithMembers joinGroup(final long groupId, final long userId) {
+    public void joinGroup(final long groupId, final long userId) {
         if (groupMemberRepository.existsByGroup_IdAndUser_Id(groupId, userId)) {
             throw new IllegalArgumentException(
                     "You already requested to be a member of this group.");
@@ -162,10 +167,6 @@ public class UserDataService {
         }
         try {
             groupRepository.joinGroup(groupId, userId, role.name());
-            return groupRepository
-                    .findById(groupId)
-                    .map(GroupEntity::toRecordWithMembers)
-                    .orElseThrow();
         } catch (final DataException e) {
             logger.error("Error while joining group", e);
             throw new IllegalArgumentException("Group or user not found.");
@@ -320,5 +321,13 @@ public class UserDataService {
     private Function<GroupRole, Page<GroupMemberEntity>> findGroupsWithoutRole(
             final User user, final Pageable pageable) {
         return r -> groupMemberRepository.findByUser_IdAndRoleNotOrderById(user.id(), r, pageable);
+    }
+
+    public boolean hasOtherAdmin(final long groupId, final long userId) {
+        return groupMemberRepository.hasOtherMemberWithRole(groupId, userId, ADMIN);
+    }
+
+    public void deleteGroupById(final long groupId) {
+        groupRepository.deleteById(groupId);
     }
 }

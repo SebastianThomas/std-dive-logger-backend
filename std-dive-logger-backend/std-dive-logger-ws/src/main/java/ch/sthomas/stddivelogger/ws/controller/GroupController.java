@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 @RestController
 @RequestMapping("/v1/groups")
 public class GroupController {
@@ -44,17 +46,30 @@ public class GroupController {
         return userService.getGroupById(id).orElseThrow();
     }
 
+    @DeleteMapping("/{group}")
+    public void deleteGroup(
+            @AuthenticationPrincipal final User user, @PathVariable final String group) {
+        userService.deleteGroup(user, group);
+    }
+
     @GetMapping("/{id}/members")
     public GroupWithMembers groupMembers(
             @AuthenticationPrincipal final User user, @PathVariable final long id) {
         return userService.getGroupWithMembersById(user, id).orElseThrow();
     }
 
-    @PostMapping("/{id}/join")
-    public GroupWithMembers groupJoin(
+    @PostMapping("/{id}/members")
+    public void groupJoin(
             @AuthenticationPrincipal final User user,
-            @PathVariable(name = "id") final long groupId) {
-        return userService.joinGroup(groupId, user.id());
+            @PathVariable(name = "id") final String group) {
+        userService.joinGroup(userService.getGroupByIdOrName(group), user.id());
+    }
+
+    @DeleteMapping("/{id}/members")
+    public void groupLeave(
+            @AuthenticationPrincipal final User user,
+            @PathVariable(name = "id") final String group) {
+        userService.leaveGroup(userService.getGroupByIdOrName(group), user.id());
     }
 
     @GetMapping("/requests")

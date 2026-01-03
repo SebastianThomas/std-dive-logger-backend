@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
+import ch.sthomas.stddivelogger.data.repository.GroupMemberRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -17,6 +18,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+import jdk.jshell.Snippet;
 import org.passay.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +29,8 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 @Service
 public class UserService {
@@ -49,14 +53,17 @@ public class UserService {
                     new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
                     new WhitespaceRule());
     private final AccountRequestRepository accountRequestRepository;
+    private final GroupMemberRepository groupMemberRepository;
 
     public UserService(
             final UserDataService userDataService,
             final PasswordEncoder passwordEncoder,
-            final AccountRequestRepository accountRequestRepository) {
+            final AccountRequestRepository accountRequestRepository,
+            GroupMemberRepository groupMemberRepository) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
         this.accountRequestRepository = accountRequestRepository;
+        this.groupMemberRepository = groupMemberRepository;
     }
 
     public User getUserById(final long userId) {
@@ -155,7 +162,21 @@ public class UserService {
         if (!userDataService.isGroupAdmin(groupId, admin)) {
             throw new UnauthorizedException("User does not have permission to update this group");
         }
+        checkNotOnlyAdmin(admin, groupId, userId, role);
         return userDataService.changeRole(groupId, userId, role);
+    }
+
+    private void checkNotOnlyAdmin(
+            @Nullable final User admin,
+            final long groupId,
+            final long userId,
+            final GroupRole newRole) {
+        if ((admin == null || admin.id() == userId)
+                && newRole != GroupRole.ADMIN
+                && !userDataService.hasOtherAdmin(groupId, userId)) {
+            throw new IllegalArgumentException(
+                    "Every Group needs at least one admin, user " + userId + " is the only admin.");
+        }
     }
 
     private boolean hasMemberAccess(final GroupWithMembers group, final User user) {
@@ -168,8 +189,13 @@ public class UserService {
                 .anyMatch(member -> member.id() == userId);
     }
 
-    public GroupWithMembers joinGroup(final long groupId, final long userId) {
-        return userDataService.joinGroup(groupId, userId);
+    public void joinGroup(final long groupId, final long userId) {
+        userDataService.joinGroup(groupId, userId);
+    }
+
+    public void leaveGroup(final long groupId, final long userId) {
+        checkNotOnlyAdmin(null, groupId, userId, GroupRole.DENIED);
+        groupMemberRepository.removeByGroup_IdAndUser_Id(groupId, userId);
     }
 
     @Transactional
@@ -197,5 +223,29 @@ public class UserService {
                         .findUserByEmail(email)
                         .orElseThrow(() -> new NoSuchElementException("No user with given email."));
         userDataService.createAccountRequest(AccountRequestType.LOGIN, user);
+    }
+
+    public long getGroupByIdOrName(final String group) {
+        if (isNumeric(group)) {
+            return Long.parseLong(group);
+        }
+        return userDataService
+                .findGroupByName(group)
+                .orElseThrow(() -> new NoSuchElementException("No group found with name " + group))
+                .id();
+    }
+
+    public void deleteGroup(final User user, final String groupId) {
+        final var group =
+                userDataService
+                        .findGroupById(getGroupByIdOrName(groupId))
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "No group found with name " + groupId));
+        if (!userDataService.isGroupAdmin(group.id(), user)) {
+            throw new UnauthorizedException("User does not have permission to delete this group.");
+        }
+        userDataService.deleteGroupById(group.id());
     }
 }
