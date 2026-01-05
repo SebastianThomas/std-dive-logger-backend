@@ -17,13 +17,13 @@ public class DiveGasConsumptionEntity {
     private DiveEntity dive;
 
     @Column(name = "sac_bar")
-    private Double sacBar;
+    private double sacBar;
 
     @Column(name = "rmv_liters")
-    private Double rmvLiters;
+    private double rmvLiters;
 
     @Column(name = "total_liters")
-    private Double totalLiters;
+    private double totalLiters;
 
     public DiveGasConsumptionEntity() {}
 

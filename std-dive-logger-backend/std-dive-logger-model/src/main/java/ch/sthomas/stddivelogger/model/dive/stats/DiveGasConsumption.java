@@ -2,7 +2,6 @@ package ch.sthomas.stddivelogger.model.dive.stats;
 
 import jakarta.annotation.Nullable;
 
-public record DiveGasConsumption(
-        @Nullable Double sacBar, @Nullable Double rmvLiters, @Nullable Double totalLiters) {
-    public static DiveGasConsumption EMPTY = new DiveGasConsumption(null, null, null);
+public record DiveGasConsumption(double sacBar, double rmvLiters, double totalLiters) {
+    public static DiveGasConsumption EMPTY = new DiveGasConsumption(0, 0, 0);
 }
