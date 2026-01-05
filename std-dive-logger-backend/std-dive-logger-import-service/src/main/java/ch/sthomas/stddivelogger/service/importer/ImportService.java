@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.service.importer;
 
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Service
 public class ImportService {
@@ -31,10 +33,38 @@ public class ImportService {
         this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;
     }
 
-    public List<SimplifiedDive> uploadDive(
-            final User user, final MultipartFile file, final UploadDiveBody body)
-            throws IOException {
-        return importFile(user, file.getOriginalFilename(), body, file.getInputStream());
+    public UploadDiveResult uploadDive(
+            final User user, final List<MultipartFile> files, final UploadDiveBody body) {
+        record UploadDiveResultStreaming(Stream<SimplifiedDive> dives, Stream<String> errors) {
+            UploadDiveResult toResult() {
+                return new UploadDiveResult(dives.toList(), errors.toList());
+            }
+
+            public UploadDiveResultStreaming concat(final UploadDiveResultStreaming b) {
+                return new UploadDiveResultStreaming(
+                        Stream.concat(dives, b.dives), Stream.concat(errors, b.errors));
+            }
+        }
+        return files.stream()
+                .map(
+                        file -> {
+                            try {
+                                return new UploadDiveResultStreaming(
+                                        importFile(
+                                                user,
+                                                file.getOriginalFilename(),
+                                                body,
+                                                file.getInputStream())
+                                                .stream(),
+                                        Stream.of());
+                            } catch (final IOException e) {
+                                return new UploadDiveResultStreaming(
+                                        Stream.of(), Stream.of(e.getMessage()));
+                            }
+                        })
+                .reduce(UploadDiveResultStreaming::concat)
+                .map(UploadDiveResultStreaming::toResult)
+                .orElse(new UploadDiveResult(List.of(), List.of("No dive uploaded")));
     }
 
     List<SimplifiedDive> importFile(

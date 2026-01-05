@@ -5,6 +5,7 @@ import static org.springframework.http.MediaType.*;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
@@ -275,15 +276,14 @@ public class DiveController {
 
     @Operation(summary = "Add a dive")
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<List<SimplifiedDive>> uploadDive(
+    public UploadDiveResult uploadDive(
             @AuthenticationPrincipal final User user,
             @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
-            @RequestParam("file") final MultipartFile file)
-            throws IOException {
+            @RequestParam("file") final List<MultipartFile> files) {
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Log in to upload dive");
         }
-        return ResponseEntity.ok(importService.uploadDive(user, file, body));
+        return importService.uploadDive(user, files, body);
     }
 
     @Operation(summary = "Update a Dive")
