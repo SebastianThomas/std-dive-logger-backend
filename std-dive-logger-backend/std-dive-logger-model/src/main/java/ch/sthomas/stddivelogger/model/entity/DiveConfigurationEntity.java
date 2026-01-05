@@ -23,7 +23,7 @@ public class DiveConfigurationEntity {
     @JoinColumn(name = "fk_dive_id")
     private DiveEntity dive;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinColumn(name = "fk_suit_id")
     private SuitEntity suit;
 
@@ -37,7 +37,7 @@ public class DiveConfigurationEntity {
     @Column(name = "weight_feeling")
     private WeightFeeling weightFeeling;
 
-    @OneToMany(mappedBy = "configuration")
+    @OneToMany(mappedBy = "configuration", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<DiveConfigurationCylinderEntity> cylinders;
 
     public DiveConfigurationEntity() {}
