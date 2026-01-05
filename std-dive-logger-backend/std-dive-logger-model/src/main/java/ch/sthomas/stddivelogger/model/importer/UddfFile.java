@@ -192,7 +192,7 @@ public record UddfFile(
     record Link(@JacksonXmlProperty(isAttribute = true) String ref) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record SurfaceIntervalBeforeDive(int passedtime) {}
+    record SurfaceIntervalBeforeDive(Integer passedtime) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record EquipmentUsed(@JacksonXmlElementWrapper(useWrapping = false) List<Link> link) {}
