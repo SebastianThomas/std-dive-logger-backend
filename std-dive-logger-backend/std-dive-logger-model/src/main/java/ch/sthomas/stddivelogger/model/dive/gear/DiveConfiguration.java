@@ -11,5 +11,5 @@ public record DiveConfiguration(
         @Nullable WeightFeeling weightFeeling,
         List<DiveConfigurationCylinder> cylinders) {
     public static final DiveConfiguration EMPTY =
-            new DiveConfiguration(null, BaseConfiguration.OTHER, 0, null, List.of());
+            new DiveConfiguration(Suit.UNKNOWN, BaseConfiguration.OTHER, 0, null, List.of());
 }
