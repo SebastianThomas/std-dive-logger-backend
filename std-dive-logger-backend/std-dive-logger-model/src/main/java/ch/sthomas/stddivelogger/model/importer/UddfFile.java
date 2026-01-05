@@ -59,7 +59,7 @@ public record UddfFile(
     }
 
     public DiveConfiguration getConfiguration() {
-        return new DiveConfiguration(null, BaseConfiguration.OTHER, 0, null, List.of());
+        return DiveConfiguration.EMPTY;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

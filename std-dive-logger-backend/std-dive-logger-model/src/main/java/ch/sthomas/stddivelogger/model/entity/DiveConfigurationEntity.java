@@ -48,7 +48,7 @@ public class DiveConfigurationEntity {
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.diveId = dive.getId();
         this.dive = dive;
-        this.suit = new SuitEntity(configuration.suit());
+        this.suit = configuration.suit() == null ? null : new SuitEntity(configuration.suit());
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
