@@ -70,7 +70,6 @@ public class DiveDataService {
     private final GroupRepository groupRepository;
     private final ReaderViewRepository readerViewRepository;
     private final DiveProfileRepository diveProfileRepository;
-    private final DiveMeasurementRepository diveMeasurementRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -87,8 +86,7 @@ public class DiveDataService {
             final GasRepository gasRepository,
             final GroupRepository groupRepository,
             final ReaderViewRepository readerViewRepository,
-            final DiveProfileRepository diveProfileRepository,
-            final DiveMeasurementRepository diveMeasurementRepository) {
+            final DiveProfileRepository diveProfileRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -105,7 +103,6 @@ public class DiveDataService {
         this.groupRepository = groupRepository;
         this.readerViewRepository = readerViewRepository;
         this.diveProfileRepository = diveProfileRepository;
-        this.diveMeasurementRepository = diveMeasurementRepository;
     }
 
     @Transactional(readOnly = true)
@@ -391,7 +388,9 @@ public class DiveDataService {
                             + ", try adding the first / base dive first.");
         }
         final var diveEntity = diveEntityOpt.get();
-        diveEntity.addProfiles(List.of(createDiveProfileEntity(profile)));
+        final var profileEntity = createDiveProfileEntity(profile);
+        diveEntity.addProfiles(List.of(profileEntity));
+        diveProfileRepository.save(profileEntity);
         if (newNotes != null && !newNotes.isBlank()) {
             diveEntity.appendNotes(diveNumber.toString() + "\n" + newNotes);
         }

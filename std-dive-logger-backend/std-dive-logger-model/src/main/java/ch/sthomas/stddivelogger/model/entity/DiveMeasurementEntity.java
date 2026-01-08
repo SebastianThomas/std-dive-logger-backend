@@ -87,7 +87,10 @@ public class DiveMeasurementEntity {
         this.n2 = diveMeasurement.n2();
         this.o2Tox = diveMeasurement.o2Tox();
         this.cns = diveMeasurement.cns();
-        this.po2 = Optional.ofNullable(diveMeasurement.po2()).map(PO2Entity::new).orElse(null);
+        this.po2 =
+                Optional.ofNullable(diveMeasurement.po2())
+                        .map(p -> new PO2Entity(p, this))
+                        .orElse(null);
     }
 
     public DiveMeasurementEntity(
@@ -122,5 +125,9 @@ public class DiveMeasurementEntity {
 
     public double getDepth() {
         return depth;
+    }
+
+    public OffsetDateTime getTime() {
+        return time;
     }
 }

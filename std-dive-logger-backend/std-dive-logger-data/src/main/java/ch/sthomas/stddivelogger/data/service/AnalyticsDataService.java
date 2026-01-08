@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -129,9 +130,14 @@ public class AnalyticsDataService {
     @Transactional(readOnly = true)
     public List<DiveProfileSegmentWithId> findSegmentsByDiveId(
             final User user, final long id, final boolean includeMeasurements) {
-        return diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), id).stream()
-                .map(s -> toSegmentWithId(s, includeMeasurements))
-                .toList();
+        final var segments = diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), id);
+        if (segments.isEmpty()) {
+            throw new NoSuchElementException(
+                    "There are no segments computed for dive "
+                            + id
+                            + ", maybe check again later if this dive is new.");
+        }
+        return segments.stream().map(s -> toSegmentWithId(s, includeMeasurements)).toList();
     }
 
     @Transactional(readOnly = true)

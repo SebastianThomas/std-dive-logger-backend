@@ -32,10 +32,11 @@ public class PO2Entity {
 
     public PO2Entity() {}
 
-    public PO2Entity(final PO2 record) {
+    public PO2Entity(final PO2 record, final DiveMeasurementEntity diveMeasurementEntity) {
         maxSetPoint = record.maxSetPoint();
         measured = record.measured();
         calculated = record.calculated();
+        this.measurement = diveMeasurementEntity;
     }
 
     public PO2 toRecord() {

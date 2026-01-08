@@ -221,7 +221,7 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSample(
             @JacksonXmlProperty(localName = "batterychargecondition") double battery,
-            @JacksonXmlProperty(localName = "calculatedpo2") double calcPO2,
+            @JacksonXmlProperty(localName = "calculatedpo2") Double calcPO2,
             int cns,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "decostop")
@@ -231,11 +231,11 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "divetime") int seconds,
             @JacksonXmlProperty(localName = "gradientfactor") int gf,
             @JacksonXmlProperty(localName = "heading") double compassHeading,
-            @JacksonXmlProperty(localName = "measuredpo2") double measuredPO2,
+            @JacksonXmlProperty(localName = "measuredpo2") Double measuredPO2,
             @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlProperty(localName = "otu") double otu,
-            @JacksonXmlProperty(localName = "setpo2") double setPO2,
+            @JacksonXmlProperty(localName = "setpo2") Double setPO2,
             @JacksonXmlProperty(localName = "remainingo2time") double remainingO2Seconds,
             @Nullable UddfSwitchMix switchmix,
             @JacksonXmlProperty(localName = "tankpressure") double tankPressure,
@@ -254,7 +254,7 @@ public record UddfFile(
                             .map(mix -> new Gas(mix.o2, mix.he))
                             .orElse(previousGas);
             // TODO: RMV
-            final var po2 = new PO2(setPO2, measuredPO2, calcPO2);
+            final var po2 = PO2.fromOrNull(setPO2, measuredPO2, calcPO2);
             return Pair.of(
                     new DiveMeasurement(
                             start.plusSeconds(seconds),

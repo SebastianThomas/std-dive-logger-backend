@@ -10,9 +10,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 @Entity
 @Table(name = "t_dive_profiles")
@@ -66,7 +68,7 @@ public class DiveProfileEntity {
                 computer.toRecord(),
                 profileStart.toInstant(),
                 profileEnd.toInstant(),
-                measurements.stream().map(DiveMeasurementEntity::toRecordWithId).toList(),
+                getMeasurementsStream().map(DiveMeasurementEntity::toRecordWithId).toList(),
                 includeMeasurements);
     }
 
@@ -92,13 +94,22 @@ public class DiveProfileEntity {
     }
 
     public Duration getBottomTime() {
+        final var measurements = getMeasurements();
         return Duration.between(
                 measurements.getFirst().toRecord().time(),
                 measurements.getLast().toRecord().time());
     }
 
     public DoubleStream getDepths() {
-        return measurements.stream().mapToDouble(DiveMeasurementEntity::getDepth);
+        return getMeasurementsStream().mapToDouble(DiveMeasurementEntity::getDepth);
+    }
+
+    private Stream<DiveMeasurementEntity> getMeasurementsStream() {
+        return measurements.stream().sorted(Comparator.comparing(DiveMeasurementEntity::getTime));
+    }
+
+    private List<DiveMeasurementEntity> getMeasurements() {
+        return getMeasurementsStream().collect(Collectors.toList());
     }
 
     public Duration getSurfaceInterval() {
