@@ -272,4 +272,8 @@ public class DiveEntity {
         profiles = new ArrayList<>();
         return this;
     }
+
+    public void appendNotes(final String newNotes) {
+        this.notes += "\n\n" + newNotes;
+    }
 }

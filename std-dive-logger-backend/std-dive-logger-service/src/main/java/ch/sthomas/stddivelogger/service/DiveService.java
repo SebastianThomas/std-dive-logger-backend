@@ -141,6 +141,14 @@ public class DiveService {
         return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
     }
 
+    public SimplifiedDive addProfile(
+            final User user,
+            final DiveNumber diveNumber,
+            final String newNotes,
+            final DiveProfileUpload profile) {
+        return diveDataService.addProfileToDiveWithDiveId(user, diveNumber, newNotes, profile);
+    }
+
     private static final Map<
                     DiveMeasurement.DiveMeasurementProperty,
                     Pair<Function<DiveMeasurement, Double>, LegendType>>
@@ -271,6 +279,7 @@ public class DiveService {
             throw ForbiddenException.forDiveId(user, toAddDiveId);
         }
         final var result = diveDataService.addProfilesToDive(baseDiveId, toAddDiveId);
+        createSaveDivePreview(result);
         if (!keepToAddDive) {
             diveDataService.deleteDiveById(toAddDiveId);
         }

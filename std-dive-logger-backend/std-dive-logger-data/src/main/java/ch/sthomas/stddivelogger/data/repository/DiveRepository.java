@@ -229,4 +229,6 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
         """,
             nativeQuery = true)
     long countUniqueBuddiesByUserId(long userId);
+
+    Optional<DiveEntity> findByUser_IdAndNumber(Long userId, int number);
 }

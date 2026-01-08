@@ -55,15 +55,25 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
             final String filename,
             final UploadDiveBody body,
             final UddfFile uddfFile) {
-        final var site = getDiveSiteIdForImport(body.diveSiteId(), uddfFile.exportSite());
+        final var diveNumber =
+                Optional.ofNullable(body.diveNumber())
+                        .map(DiveNumber::new)
+                        .or(uddfFile::diveNumber);
+        final var notes = uddfFile.getNotes();
         final var profile = getProfile(user, uddfFile);
+        if (diveNumber.isPresent() && diveNumber.map(DiveNumber::isFractional).orElse(false)) {
+            return diveService.addProfile(user, diveNumber.get(), notes, profile);
+        }
+
+        final var site = getDiveSiteIdForImport(body.diveSiteId(), uddfFile.exportSite());
+        final var visibility = uddfFile.getVisibility().orElse(null);
         final var diveName = getDiveName(body, filename);
         return diveService.saveDive(
                 user,
-                Optional.ofNullable(body.diveNumber()).or(uddfFile::diveNumber),
+                diveNumber.map(DiveNumber::number),
                 diveName,
-                uddfFile.getNotes(),
-                uddfFile.getVisibility().orElse(null),
+                notes,
+                visibility,
                 uddfFile.getGasConsumption(),
                 uddfFile.getConfiguration(),
                 site,

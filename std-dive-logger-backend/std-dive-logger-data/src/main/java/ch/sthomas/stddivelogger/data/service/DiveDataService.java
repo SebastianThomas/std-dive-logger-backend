@@ -83,12 +83,12 @@ public class DiveDataService {
             final StorageService storageService,
             final DiveBuddyNameRepository diveBuddyNameRepository,
             final CylinderSizeRepository cylinderSizeRepository,
-            GasMixRepository gasMixRepository,
-            GasRepository gasRepository,
-            GroupRepository groupRepository,
-            ReaderViewRepository readerViewRepository,
-            DiveProfileRepository diveProfileRepository,
-            DiveMeasurementRepository diveMeasurementRepository) {
+            final GasMixRepository gasMixRepository,
+            final GasRepository gasRepository,
+            final GroupRepository groupRepository,
+            final ReaderViewRepository readerViewRepository,
+            final DiveProfileRepository diveProfileRepository,
+            final DiveMeasurementRepository diveMeasurementRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -372,6 +372,30 @@ public class DiveDataService {
         final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
         existingDive.setPreviewImage(previewImage);
         return toRecord(diveRepository.save(existingDive));
+    }
+
+    @Transactional
+    public SimplifiedDive addProfileToDiveWithDiveId(
+            final User user,
+            final DiveNumber diveNumber,
+            final String newNotes,
+            final DiveProfileUpload profile) {
+        final var diveEntityOpt =
+                diveRepository.findByUser_IdAndNumber(user.id(), diveNumber.number());
+        if (diveEntityOpt.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Could not find dive by user id "
+                            + user.id()
+                            + " and number "
+                            + diveNumber.number()
+                            + ", try adding the first / base dive first.");
+        }
+        final var diveEntity = diveEntityOpt.get();
+        diveEntity.addProfiles(List.of(createDiveProfileEntity(profile)));
+        if (newNotes != null && !newNotes.isBlank()) {
+            diveEntity.appendNotes(diveNumber.toString() + "\n" + newNotes);
+        }
+        return toSimplifiedRecord(diveRepository.save(diveEntity));
     }
 
     @Transactional

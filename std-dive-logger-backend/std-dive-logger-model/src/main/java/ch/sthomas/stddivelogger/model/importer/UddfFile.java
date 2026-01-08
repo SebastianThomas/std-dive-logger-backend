@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.importer;
 
+import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -39,13 +40,16 @@ public record UddfFile(
         @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
     private static final Logger logger = LoggerFactory.getLogger(UddfFile.class);
 
-    public Optional<Integer> diveNumber() {
+    public Optional<DiveNumber> diveNumber() {
         final var number = profileData.repetitionGroup.dive.infoBeforeDive.divenumber;
         try {
-            return Optional.of(Integer.parseInt(number));
+            return Optional.of(new DiveNumber(Integer.parseInt(number)));
         } catch (final NumberFormatException e) {
             if (number.contains(".")) {
-                return Optional.of(-1 * Integer.parseInt(number.substring(0, number.indexOf('.'))));
+                return Optional.of(
+                        new DiveNumber(
+                                Integer.parseInt(number.substring(0, number.indexOf('.'))),
+                                Integer.parseInt(number.substring(number.indexOf('.') + 2))));
             }
             return Optional.empty();
         }
