@@ -42,6 +42,14 @@ public record UddfFile(
 
     public Optional<DiveNumber> diveNumber() {
         final var number = profileData.repetitionGroup.dive.infoBeforeDive.divenumber;
+        if (number == null || number.isBlank()) {
+            return Optional.empty();
+        }
+        if (number.startsWith("+")) {
+            final var anyNonZeroFraction = 1;
+            return Optional.of(
+                    new DiveNumber(Integer.parseInt(number.substring(1)), anyNonZeroFraction));
+        }
         try {
             return Optional.of(new DiveNumber(Integer.parseInt(number)));
         } catch (final NumberFormatException e) {
