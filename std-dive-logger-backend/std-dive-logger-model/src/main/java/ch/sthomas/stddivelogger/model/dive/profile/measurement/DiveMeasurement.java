@@ -18,6 +18,7 @@ public record DiveMeasurement(
         Duration ndl,
         List<DecoStop> deco,
         @Nullable Gas gas,
+        @Nullable PO2 po2,
         @Nullable Double rmvLiters,
         @Nullable Double n2,
         @Nullable Double o2Tox,

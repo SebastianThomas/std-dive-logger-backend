@@ -155,6 +155,7 @@ public class FitReaderService extends BaseReaderService {
                             ofSeconds(record.getNdlTime()),
                             deco,
                             gas,
+                            null, // Garmin does not yet support rebreathers AFAIK, check regularly
                             getRMV(record, gas),
                             Optional.ofNullable(record.getN2Load())
                                     .map(Integer::doubleValue)

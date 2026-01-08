@@ -2,14 +2,14 @@ package ch.sthomas.stddivelogger.model.importer;
 
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
-import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
@@ -205,22 +205,29 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {}
 
+    /** <a href="https://www.streit.cc/extern/uddf_v321/en/waypoint.html">Waypoint Standard<a> */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSample(
             @JacksonXmlProperty(localName = "batterychargecondition") double battery,
+            @JacksonXmlProperty(localName = "calculatedpo2") double calcPO2,
             int cns,
-            @JacksonXmlProperty(localName = "calculatedpo2") double po2,
-            double depth,
-            @JacksonXmlProperty(localName = "divetime") int seconds,
-            @Nullable UddfSwitchMix switchmix,
-            @JacksonXmlProperty(localName = "temperature") double kelvin,
-            @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
-            @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "decostop")
                     @Nullable
                     List<UddfDecoStop> decoStop,
-            @JacksonXmlProperty(localName = "gradientfactor") int gf) {
+            double depth,
+            @JacksonXmlProperty(localName = "divetime") int seconds,
+            @JacksonXmlProperty(localName = "gradientfactor") int gf,
+            @JacksonXmlProperty(localName = "heading") double compassHeading,
+            @JacksonXmlProperty(localName = "measuredpo2") double measuredPO2,
+            @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
+            @JacksonXmlProperty(localName = "nodecotime") int ndl,
+            @JacksonXmlProperty(localName = "otu") double otu,
+            @JacksonXmlProperty(localName = "setpo2") double setPO2,
+            @JacksonXmlProperty(localName = "remainingo2time") double remainingO2Seconds,
+            @Nullable UddfSwitchMix switchmix,
+            @JacksonXmlProperty(localName = "tankpressure") double tankPressure,
+            @JacksonXmlProperty(localName = "temperature") double kelvin) {
         public Pair<DiveMeasurement, Gas> toRecord(
                 final Instant start, final List<UddfGasMix> mixes, final Gas previousGas) {
             final var gas =
@@ -235,6 +242,7 @@ public record UddfFile(
                             .map(mix -> new Gas(mix.o2, mix.he))
                             .orElse(previousGas);
             // TODO: RMV
+            final var po2 = new PO2(setPO2, measuredPO2, calcPO2);
             return Pair.of(
                     new DiveMeasurement(
                             start.plusSeconds(seconds),
@@ -246,11 +254,12 @@ public record UddfFile(
                                     .map(UddfDecoStop::toRecord)
                                     .toList(),
                             gas,
+                            po2,
                             null,
                             (double) gf,
                             null,
                             (double) cns),
-                    previousGas);
+                    gas);
         }
     }
 
@@ -271,7 +280,10 @@ public record UddfFile(
     record UddfDiveMode(@JacksonXmlProperty(isAttribute = true) String type) {}
 
     public String exportSite() {
-        return diveSite.site().geography().location();
+        return Optional.ofNullable(diveSite.site())
+                .map(UddfSite::geography)
+                .map(UddfGeography::location)
+                .orElse(null);
     }
 
     public String exportBuddyString() {

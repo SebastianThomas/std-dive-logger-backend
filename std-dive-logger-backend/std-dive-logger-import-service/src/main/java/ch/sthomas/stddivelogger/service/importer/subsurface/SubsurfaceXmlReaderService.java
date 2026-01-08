@@ -182,7 +182,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                                 parseUntilSpace(t),
                                                 Temperature.TemperatureUnit.CELSIUS))
                         .orElse(null);
-        // TODO: Add other properties (RMV, N2, O2Tox, CNS)
+        // TODO: Add other properties (PO2 (Measured?), RMV, N2, O2Tox, CNS)
         return new DiveMeasurement(
                 start.plus(sample.timeToDuration()),
                 temperature,
@@ -190,6 +190,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 sample.ndlToDuration(),
                 sample.toDeco(),
                 switchTimeGas.map(Pair::getValue).orElse(null),
+                null,
                 null,
                 null,
                 null,

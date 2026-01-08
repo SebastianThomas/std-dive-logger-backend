@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWi
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
+import ch.sthomas.stddivelogger.model.entity.gas.PO2Entity;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -37,6 +38,13 @@ public class DiveMeasurementEntity {
 
     @Column(name = "temperature_celsius", nullable = false)
     private Double temperatureCelsius;
+
+    @OneToOne(
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            optional = true,
+            mappedBy = "measurement")
+    private PO2Entity po2;
 
     @Column(name = "rmv_liters", nullable = true)
     private Double rmv;
@@ -79,6 +87,7 @@ public class DiveMeasurementEntity {
         this.n2 = diveMeasurement.n2();
         this.o2Tox = diveMeasurement.o2Tox();
         this.cns = diveMeasurement.cns();
+        this.po2 = Optional.ofNullable(diveMeasurement.po2()).map(PO2Entity::new).orElse(null);
     }
 
     public DiveMeasurementEntity(
@@ -95,6 +104,7 @@ public class DiveMeasurementEntity {
                 Duration.ofMinutes(ndlMinutes),
                 decoStops,
                 Optional.ofNullable(gas).map(GasEntity::toRecord).orElse(null),
+                Optional.ofNullable(po2).map(PO2Entity::toRecord).orElse(null),
                 rmv,
                 n2,
                 o2Tox,
