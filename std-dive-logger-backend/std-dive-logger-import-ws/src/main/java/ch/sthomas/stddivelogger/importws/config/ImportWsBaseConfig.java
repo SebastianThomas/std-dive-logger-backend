@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.zalando.problem.jackson.ProblemModule;
 import org.zalando.problem.violations.ConstraintViolationProblemModule;
@@ -22,6 +23,7 @@ import org.zalando.problem.violations.ConstraintViolationProblemModule;
 @EntityScan("ch.sthomas.stddivelogger.model.entity")
 @EnableJpaRepositories("ch.sthomas.stddivelogger.data.repository")
 @EnableTransactionManagement
+@EnableRetry
 public class ImportWsBaseConfig {
 
     static {
