@@ -43,19 +43,19 @@ spec:
                                         -   key: app
                                             operator: In
                                             values:
-                                                - std-dive-logger-analytics-dev
+                                                - std-dive-logger-import-ws-dev
                                 topologyKey: kubernetes.io/hostname
             containers:
-                -   name: std-dive-logger-analytics-dev
-                    image: hub.docker.come/std-dive-logger-analytics:PLACEHOLDER
+                -   name: std-dive-logger-import-ws-dev
+                    image: hub.docker.come/std-dive-logger-import-ws:PLACEHOLDER
                     imagePullPolicy: IfNotPresent
                     env:
                         -   name: SPRING_CONFIG_NAME
-                            value: std-dive-logger-analytics-dev
+                            value: std-dive-logger-import-ws-dev
                         -   name: SPRING_CONFIG_LOCATION
                             value: /config/
                         -   name: LOGGING_CONFIG
-                            value: /config/std-dive-logger-analytics-dev-logback.xml
+                            value: /config/std-dive-logger-import-ws-dev-logback.xml
                     envFrom:
                         -   secretRef:
                                 name: std-dive-logger-db-dev
@@ -93,9 +93,9 @@ spec:
             volumes:
                 -   name: config-volume
                     configMap:
-                        name: std-dive-logger-analytics-dev-config
+                        name: std-dive-logger-import-ws-dev-config
                         items:
-                            -   key: std-dive-logger-analytics-dev.properties
-                                path: std-dive-logger-analytics-dev.properties
-                            -   key: std-dive-logger-analytics-dev-logback.xml
-                                path: std-dive-logger-analytics-dev-logback.xml
+                            -   key: std-dive-logger-import-ws-dev.properties
+                                path: std-dive-logger-import-ws-dev.properties
+                            -   key: std-dive-logger-import-ws-dev-logback.xml
+                                path: std-dive-logger-import-ws-dev-logback.xml

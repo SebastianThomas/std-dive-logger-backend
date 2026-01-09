@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.errors.*;
 
 import jakarta.validation.constraints.NotNull;
 
