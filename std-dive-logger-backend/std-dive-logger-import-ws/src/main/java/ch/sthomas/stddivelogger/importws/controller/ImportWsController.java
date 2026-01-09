@@ -4,13 +4,13 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
-import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.importer.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotEmpty;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -33,10 +33,7 @@ public class ImportWsController {
     public UploadDiveResult uploadDive(
             @AuthenticationPrincipal final User user,
             @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
-            @RequestParam("file") final List<MultipartFile> files) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to upload dive");
-        }
+            @RequestParam("file") @NotEmpty final List<MultipartFile> files) {
         return importService.uploadDive(user, files, body);
     }
 }
