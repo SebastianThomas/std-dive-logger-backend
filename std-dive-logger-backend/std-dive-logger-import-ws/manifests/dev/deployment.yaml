@@ -47,7 +47,7 @@ spec:
                                 topologyKey: kubernetes.io/hostname
             containers:
                 -   name: std-dive-logger-import-ws-dev
-                    image: hub.docker.come/std-dive-logger-import-ws:PLACEHOLDER
+                    image: hub.docker.com/std-dive-logger-import-ws:PLACEHOLDER
                     imagePullPolicy: IfNotPresent
                     env:
                         -   name: SPRING_CONFIG_NAME
@@ -60,7 +60,7 @@ spec:
                         -   secretRef:
                                 name: std-dive-logger-db-dev
                     ports:
-                        -   containerPort: 5173
+                        -   containerPort: 8080
                     readinessProbe:
                         httpGet:
                             path: "/actuator/health/readiness"

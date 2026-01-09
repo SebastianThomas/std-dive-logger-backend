@@ -20,7 +20,7 @@ spec:
                             service:
                                 name: std-dive-logger-analytics-dev
                                 port:
-                                    number: 5173
+                                    number: 8080
                         path: /
                         pathType: Prefix
 
@@ -35,7 +35,7 @@ spec:
     type: ExternalName
     externalName: std-dive-logger-analytics-dev.std-dive-logger.svc.cluster.local
     ports:
-        -   port: 5173
-            targetPort: 5173
+        -   port: 8080
+            targetPort: 8080
             protocol: TCP
-            name: http5173
+            name: http8080

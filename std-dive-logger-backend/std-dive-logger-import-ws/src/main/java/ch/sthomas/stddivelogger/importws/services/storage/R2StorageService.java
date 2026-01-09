@@ -95,7 +95,6 @@ public class R2StorageService implements StorageService {
                             .bucket(bucket)
                             .object(path)
                             .contentType(contentType)
-                            // .headers(Map.of())
                             .stream(output, -1, fallbackPartSize) // contentLength, partSize)
                             .build();
             client.putObject(putObjectArgs);

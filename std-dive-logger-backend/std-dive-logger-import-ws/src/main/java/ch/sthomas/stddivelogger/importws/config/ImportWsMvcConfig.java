@@ -8,8 +8,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class ImportWsMvcConfig implements WebMvcConfigurer {
 
-    public ImportWsMvcConfig() {}
-
     @Override
     public void configureContentNegotiation(final ContentNegotiationConfigurer configurer) {
         configurer

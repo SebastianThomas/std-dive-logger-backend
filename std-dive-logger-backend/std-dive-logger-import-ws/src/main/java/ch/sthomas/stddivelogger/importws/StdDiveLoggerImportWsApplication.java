@@ -16,7 +16,7 @@ import org.zalando.problem.spring.web.autoconfigure.security.ProblemSecurityAuto
         exclude = {ErrorMvcAutoConfiguration.class, ProblemSecurityAutoConfiguration.class})
 public class StdDiveLoggerImportWsApplication {
 
-    static void main(final String[] args) {
+    public static void main(final String[] args) {
         SpringApplication.run(StdDiveLoggerImportWsApplication.class, args);
     }
 }

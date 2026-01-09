@@ -48,7 +48,7 @@ spec:
                                 topologyKey: kubernetes.io/hostname
             containers:
                 -   name: std-dive-logger-ws-dev
-                    image: hub.docker.come/std-dive-logger-ws:PLACEHOLDER
+                    image: hub.docker.com/std-dive-logger-ws:PLACEHOLDER
                     imagePullPolicy: IfNotPresent
                     env:
                         -   name: SPRING_CONFIG_NAME

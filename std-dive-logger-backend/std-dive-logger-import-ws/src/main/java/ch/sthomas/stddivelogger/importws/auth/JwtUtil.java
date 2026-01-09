@@ -106,7 +106,7 @@ public class JwtUtil {
                         refreshTokenRepository.existsByJtiAndExpiresAtAfter(
                                 jti, OffsetDateTime.now());
                 if (!exists) {
-                    logger.info("Invalid refresh token. Refresh token expired or does not exist..");
+                    logger.info("Invalid refresh token. Refresh token expired or does not exist.");
                 }
                 yield exists;
             }
