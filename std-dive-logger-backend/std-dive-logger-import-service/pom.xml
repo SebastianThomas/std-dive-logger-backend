@@ -25,6 +25,12 @@
             <artifactId>fit</artifactId>
         </dependency>
 
+        <!-- Storage -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+        </dependency>
+
         <!-- shared test -->
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>

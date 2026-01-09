@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.ws.advice;
+package ch.sthomas.stddivelogger.utils.advice;
 
 import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
 
