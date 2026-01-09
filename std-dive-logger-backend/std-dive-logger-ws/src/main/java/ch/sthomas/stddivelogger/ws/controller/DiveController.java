@@ -278,6 +278,7 @@ public class DiveController {
         return ResponseEntity.ok(diveService.createEmptyDive(user, body));
     }
 
+    @Deprecated(forRemoval = true)
     @Operation(summary = "Add a dive")
     @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
     public UploadDiveResult uploadDive(
