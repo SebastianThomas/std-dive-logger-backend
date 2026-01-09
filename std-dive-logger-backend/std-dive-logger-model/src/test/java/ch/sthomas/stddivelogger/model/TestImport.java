@@ -51,7 +51,7 @@ public class TestImport {
 
     @ParameterizedTest
     @ValueSource(strings = "felice_2025_10_18.xml")
-    @Disabled
+    @Disabled("Requires huge local file")
     void testImportSubsurfaceXml(final String filename) throws IOException {
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             final var content = xmlMapper.readValue(inputStream, SubsurfaceXmlFile.class);

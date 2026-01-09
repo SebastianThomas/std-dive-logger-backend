@@ -45,6 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
 import java.sql.SQLException;
+import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -756,5 +758,32 @@ public class DiveDataService {
                 diveRepository.findByGroupPrivilege(
                         groupId, PageRequest.of(page, simplifiedDivePageSize, toSort(sort))),
                 this::toSimplifiedRecord);
+    }
+
+    public Dive alignProfilesManual(
+            final Set<Long> profileIds, final long diveId, final Instant alignToManual) {
+        final var dive =
+                diveRepository
+                        .findById(diveId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive by id " + diveId));
+        final var profiles =
+                dive.getProfiles().stream()
+                        .filter(profile -> profileIds.contains(profile.getId()))
+                        .toList();
+        if (profiles.size() != profileIds.size()) {
+            throw new IllegalArgumentException(
+                    MessageFormat.format(
+                            "Expected to find {0} profiles in dive {1} matching the ids {2}, but found {3} only ({4}).",
+                            profileIds.size(),
+                            diveId,
+                            profileIds,
+                            profiles.size(),
+                            profiles.stream().map(DiveProfileEntity::getId).toList()));
+        }
+        profiles.forEach(p -> p.alignProfileManual(alignToManual));
+        return toRecord(diveRepository.save(dive));
     }
 }

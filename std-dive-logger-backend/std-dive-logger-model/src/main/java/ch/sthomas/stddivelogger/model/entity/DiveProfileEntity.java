@@ -104,15 +104,26 @@ public class DiveProfileEntity {
         return getMeasurementsStream().mapToDouble(DiveMeasurementEntity::getDepth);
     }
 
-    private Stream<DiveMeasurementEntity> getMeasurementsStream() {
+     Stream<DiveMeasurementEntity> getMeasurementsStream() {
         return measurements.stream().sorted(Comparator.comparing(DiveMeasurementEntity::getTime));
     }
 
-    private List<DiveMeasurementEntity> getMeasurements() {
+    List<DiveMeasurementEntity> getMeasurements() {
         return getMeasurementsStream().collect(Collectors.toList());
     }
 
     public Duration getSurfaceInterval() {
         return null; // TODO
+    }
+
+    public void alignProfileManual(final Instant alignToManual) {
+        final var prevStart = profileStart;
+        final var prevEnd = profileEnd;
+
+        final var diff = Duration.between(prevStart, alignToManual);
+
+        this.profileStart = alignToManual.atOffset(UTC);
+        this.profileEnd = prevEnd.plus(diff);
+        measurements.forEach(measurement -> measurement.timePlus(diff));
     }
 }

@@ -1,11 +1,15 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import static org.apache.commons.lang3.compare.ComparableUtils.min;
+
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
+
+import com.nimbusds.jose.util.Pair;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -22,6 +26,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Gatherers;
 import java.util.stream.Stream;
 
 @Entity
@@ -176,13 +181,34 @@ public class DiveEntity {
                 profiles.stream()
                         .map(DiveProfileEntity::getBottomTime)
                         .reduce(Duration.ZERO, Duration::plus);
+        final var overlapToSubtract =
+                profiles.stream()
+                        .gather(Gatherers.windowSliding(2))
+                        .map(l -> Pair.of(l.getFirst(), l.getLast()))
+                        .filter(
+                                p -> {
+                                    final var overlap =
+                                            Duration.between(
+                                                    p.getLeft().getStart(),
+                                                    p.getRight().getStart());
+                                    final var lengthL =
+                                            Duration.between(
+                                                    p.getLeft().getStart(), p.getLeft().getEnd());
+                                    final var lengthR =
+                                            Duration.between(
+                                                    p.getRight().getStart(), p.getRight().getEnd());
+                                    // Overlap > min length
+                                    return overlap.minus(min(lengthL, lengthR)).isPositive();
+                                })
+                        .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
+                        .reduce(Duration.ZERO, Duration::plus);
         return new DiveSummary(
                 start,
                 end,
                 depthSummary.getAverage(),
                 depthSummary.getMax(),
                 profiles.getFirst().getSurfaceInterval(),
-                bottomTime);
+                bottomTime.minus(overlapToSubtract));
     }
 
     private Stream<DiveEntity> getBuddyDives(final boolean includeBuddyDives) {

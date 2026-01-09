@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
@@ -20,6 +21,7 @@ import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
+import ch.sthomas.stddivelogger.service.processing.ProfileAlignService;
 import ch.sthomas.stddivelogger.utils.LocationUtils;
 
 import jakarta.annotation.Nullable;
@@ -40,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.awt.*;
 import java.io.*;
 import java.text.DecimalFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
@@ -484,5 +487,39 @@ public class DiveService {
             return false;
         }
         return dist <= 1 || dist < 1.0 / 10 * a.length();
+    }
+
+    public Dive alignProfilesManualToTime(
+            final Set<Long> profileIds, final long diveId, final Instant alignToManual) {
+        return diveDataService.alignProfilesManual(profileIds, diveId, alignToManual);
+    }
+
+    public Dive alignProfilesAuto(
+            final long referenceProfileId,
+            final long targetProfileId,
+            final int diveId,
+            final AlignType type) {
+        final var dive =
+                diveDataService
+                        .findDiveById(diveId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive by id " + diveId));
+        final var profiles = dive.profiles();
+        final var referenceProfile =
+                profiles.stream()
+                        .filter(profile -> profile.id() == referenceProfileId)
+                        .findFirst()
+                        .orElseThrow();
+        final var targetProfile =
+                profiles.stream()
+                        .filter(profile -> profile.id() == targetProfileId)
+                        .findFirst()
+                        .orElseThrow();
+        return alignProfilesManualToTime(
+                Set.of(targetProfileId),
+                diveId,
+                ProfileAlignService.alignProfilesAuto(referenceProfile, targetProfile, type));
     }
 }

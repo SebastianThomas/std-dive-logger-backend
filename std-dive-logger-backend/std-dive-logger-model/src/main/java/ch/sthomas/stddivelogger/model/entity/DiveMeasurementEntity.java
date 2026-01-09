@@ -130,4 +130,8 @@ public class DiveMeasurementEntity {
     public OffsetDateTime getTime() {
         return time;
     }
+
+    public void timePlus(final Duration diff) {
+        this.time = time.plus(diff);
+    }
 }

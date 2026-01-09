@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.Group;
@@ -14,6 +15,8 @@ import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.service.importer.ImportService;
+
+import com.google.common.primitives.Longs;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,7 +35,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 
 @RestController
@@ -345,6 +349,37 @@ public class DiveController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(diveService.moveProfiles(user, body.diveId, body.profileIds()));
+    }
+
+    public record AlignProfilesBody(
+            long[] profileIds, AlignType type, @Nullable Instant alignToManual) {}
+
+    @Operation(summary = "Align two profiles")
+    @PostMapping(path = "/{id}/profiles/align", consumes = APPLICATION_JSON_VALUE)
+    public Dive alignProfiles(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final int diveId,
+            @RequestBody final AlignProfilesBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to align profiles.");
+        }
+        if (body == null || body.profileIds.length == 0) {
+            throw new IllegalArgumentException();
+        }
+        final var profileIds = new HashSet<>(Longs.asList(body.profileIds));
+        if (profileIds.size() == 1 && body.type == AlignType.MANUAL && body.alignToManual != null) {
+            // Align Manual
+            return diveService.alignProfilesManualToTime(profileIds, diveId, body.alignToManual);
+        }
+        if (body.profileIds.length != 2) {
+            throw new IllegalArgumentException(
+                    "For an auto-align, exactly two profiles are required.");
+        }
+        return diveService.alignProfilesAuto(
+                body.profileIds[0],
+                profileIds.stream().filter(p -> p != body.profileIds[0]).findFirst().orElseThrow(),
+                diveId,
+                body.type);
     }
 
     @Operation(summary = "Generate or regenerate Preview image")
