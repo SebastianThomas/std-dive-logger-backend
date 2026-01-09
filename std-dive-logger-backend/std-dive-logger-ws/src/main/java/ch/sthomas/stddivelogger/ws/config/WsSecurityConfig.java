@@ -81,7 +81,6 @@ public class WsSecurityConfig {
         http.securityMatcher("/v1/**", "/api/**")
                 .authenticationManager(applicationAuthenticationManager)
                 .csrf(AbstractHttpConfigurer::disable)
-                // .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

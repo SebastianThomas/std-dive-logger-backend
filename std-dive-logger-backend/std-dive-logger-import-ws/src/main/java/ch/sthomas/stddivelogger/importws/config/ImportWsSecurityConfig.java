@@ -2,14 +2,20 @@ package ch.sthomas.stddivelogger.importws.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import ch.sthomas.stddivelogger.importws.auth.JwtAuthFilter;
+import ch.sthomas.stddivelogger.importws.auth.JwtUtil;
+
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -17,12 +23,14 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Profile("!no-security")
 @Configuration
@@ -46,18 +54,54 @@ public class ImportWsSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain importWsFilterChain(final HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.authorizeHttpRequests(
-                authorize ->
-                        authorize
-                                .requestMatchers("/v1/**")
-                                .authenticated()
-                                .requestMatchers("/actuator/**")
-                                .permitAll()
-                                .anyRequest()
-                                .denyAll());
+    SecurityFilterChain importWsFilterChain(
+            final HttpSecurity http,
+            final AuthenticationManager applicationAuthenticationManager,
+            final JwtAuthFilter jwtAuthFilter)
+            throws Exception {
+        http.securityMatcher("/v1/**", "/api/**")
+                .authenticationManager(applicationAuthenticationManager)
+                .csrf(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(
+                        ex ->
+                                ex.authenticationEntryPoint(
+                                        (request, response, ex1) -> response.sendError(401)))
+                .authorizeHttpRequests(
+                        (auth) -> {
+                            auth.requestMatchers(HttpMethod.OPTIONS)
+                                    .permitAll()
+                                    .requestMatchers(HttpMethod.GET, "/v1/explore/**")
+                                    .permitAll()
+                                    .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
+                                    .authenticated()
+                                    .requestMatchers(HttpMethod.POST, "/api/auth/**")
+                                    .permitAll()
+                                    .anyRequest()
+                                    .authenticated();
+                        })
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public JwtAuthFilter jwtAuthFilter(
+            final JwtUtil jwtUtil,
+            final UserDetailsService customUserDetailsService,
+            @Value("${ch.sthomas.stddivelogger.users.check-verified:true}")
+                    final boolean checkVerified) {
+        return new JwtAuthFilter(jwtUtil, customUserDetailsService, checkVerified);
+    }
+
+    @Bean
+    @Primary
+    public AuthenticationManager applicationAuthenticationManager(
+            final UserDetailsService userDetailsService, final PasswordEncoder passwordEncoder) {
+        final var authenticationProvider = new DaoAuthenticationProvider(userDetailsService);
+        authenticationProvider.setPasswordEncoder(passwordEncoder);
+        return new ProviderManager(authenticationProvider);
     }
 
     @Bean
