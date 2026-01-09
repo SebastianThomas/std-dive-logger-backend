@@ -1,14 +1,42 @@
 package ch.sthomas.stddivelogger.importws.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
+
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
+import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.service.importer.ImportService;
+
+import io.swagger.v3.oas.annotations.Operation;
+
+import jakarta.annotation.Nullable;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/v1/import")
 public class ImportWsController {
 
-    private static final Logger logger = LoggerFactory.getLogger(ImportWsController.class);
+    private final ImportService importService;
 
-    public ImportWsController() {}
+    public ImportWsController(final ImportService importService) {
+        this.importService = importService;
+    }
+
+    @Operation(summary = "Add a dive")
+    @PostMapping(path = "", consumes = MULTIPART_FORM_DATA_VALUE)
+    public UploadDiveResult uploadDive(
+            @AuthenticationPrincipal final User user,
+            @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
+            @RequestParam("file") final List<MultipartFile> files) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to upload dive");
+        }
+        return importService.uploadDive(user, files, body);
+    }
 }

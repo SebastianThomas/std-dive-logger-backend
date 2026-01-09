@@ -1,2 +1,2 @@
 ### Hello
-GET {{baseurl}}/v1/dives?userId=1
+POST {{baseurl}}/v1/upload

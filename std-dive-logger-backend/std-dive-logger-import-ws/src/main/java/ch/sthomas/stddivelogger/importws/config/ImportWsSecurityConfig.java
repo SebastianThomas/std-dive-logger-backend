@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.analytics.config;
+package ch.sthomas.stddivelogger.importws.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -46,15 +46,17 @@ public class ImportWsSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain analyticsFilterChain(final HttpSecurity http) throws Exception {
+    SecurityFilterChain importWsFilterChain(final HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(
                 authorize ->
                         authorize
-                                .requestMatchers("/v1/analytics/**")
-                                .permitAll()
+                                .requestMatchers("/v1/**")
+                                .authenticated()
                                 .requestMatchers("/actuator/**")
-                                .permitAll());
+                                .permitAll()
+                                .anyRequest()
+                                .denyAll());
         return http.build();
     }
 
