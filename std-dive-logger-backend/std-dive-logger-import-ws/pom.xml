@@ -11,18 +11,13 @@
     </parent>
 
     <properties>
-        <start-class>ch.sthomas.stddivelogger.ws.StdDiveLoggerWsApplication</start-class>
+        <start-class>ch.sthomas.stddivelogger.import.StdDiveLoggerImportWsApplication</start-class>
     </properties>
 
-    <artifactId>std-dive-logger-ws</artifactId>
-    <name>Std Dive Logger WS</name>
+    <artifactId>std-dive-logger-import-ws</artifactId>
+    <name>Std Dive Logger Import WS</name>
 
     <dependencies>
-        <dependency>
-            <groupId>ch.sthomas.stddivelogger</groupId>
-            <artifactId>std-dive-logger-service</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>
             <artifactId>std-dive-logger-import-service</artifactId>
@@ -34,45 +29,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-        </dependency>
-        <!-- Retry -->
-        <dependency>
-            <groupId>org.springframework.retry</groupId>
-            <artifactId>spring-retry</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-aspects</artifactId>
-        </dependency>
 
-        <!-- JWT -->
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
         </dependency>
 
         <!-- shared test -->
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>
             <artifactId>std-dive-logger-data</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>ch.sthomas.stddivelogger</groupId>
-            <artifactId>std-dive-logger-import-service</artifactId>
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>

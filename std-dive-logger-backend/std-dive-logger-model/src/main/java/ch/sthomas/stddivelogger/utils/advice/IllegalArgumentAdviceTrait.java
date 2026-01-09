@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.ws.advice;
+package ch.sthomas.stddivelogger.utils.advice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

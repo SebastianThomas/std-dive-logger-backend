@@ -1,4 +1,6 @@
-package ch.sthomas.stddivelogger.ws.advice;
+package ch.sthomas.stddivelogger.utils.advice;
+
+import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -7,13 +9,10 @@ import org.zalando.problem.Problem;
 import org.zalando.problem.Status;
 import org.zalando.problem.spring.web.advice.AdviceTrait;
 
-import java.util.NoSuchElementException;
-
-public interface NoSuchElementAdviceTrait extends AdviceTrait {
-
+public interface ForbiddenAdviceTrait extends AdviceTrait {
     @ExceptionHandler
     default ResponseEntity<Problem> handleUnsupportedOperation(
-            final NoSuchElementException exception, final NativeWebRequest request) {
-        return create(Status.NOT_FOUND, exception, request);
+            final ForbiddenException exception, final NativeWebRequest request) {
+        return create(Status.FORBIDDEN, exception, request);
     }
 }

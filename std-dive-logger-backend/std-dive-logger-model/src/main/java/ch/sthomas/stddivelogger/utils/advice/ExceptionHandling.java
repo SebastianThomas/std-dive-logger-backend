@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.ws.advice;
+package ch.sthomas.stddivelogger.utils.advice;
 
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.zalando.problem.spring.web.advice.ProblemHandling;

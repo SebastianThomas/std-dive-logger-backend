@@ -1,0 +1,2 @@
+### Hello
+GET {{baseurl}}/v1/dives?userId=1
