@@ -27,13 +27,13 @@ public class AuthService {
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    private final JwtUtil jwtUtil;
+    private final ch.sthomas.stddivelogger.service.auth.JwtUtil jwtUtil;
     private final AuthenticationManager applicationAuthenticationManager;
     public final boolean sameSiteCookie;
     private final UserDataService userDataService;
 
     public AuthService(
-            final JwtUtil jwtUtil,
+            final ch.sthomas.stddivelogger.service.auth.JwtUtil jwtUtil,
             final AuthenticationManager applicationAuthenticationManager,
             @Value("${ch.sthomas.stddivelogger.ws.security.same_site_cookie:true}")
                     final boolean sameSiteCookie,
@@ -45,11 +45,11 @@ public class AuthService {
     }
 
     public String refresh(@Nullable final String refreshToken) {
-        final var username = assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
-        if (!jwtUtil.isTokenValid(refreshToken, username, JwtUtil.TokenType.REFRESH_TOKEN)) {
+        final var username = assertValidForUser(refreshToken, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.REFRESH_TOKEN);
+        if (!jwtUtil.isTokenValid(refreshToken, username, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.REFRESH_TOKEN)) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
-        return jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);
+        return jwtUtil.generateToken(username, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.ACCESS_TOKEN);
     }
 
     public ResponseEntity<AuthResponse> login(final AuthRequest request) {
@@ -70,8 +70,8 @@ public class AuthService {
     }
 
     private ResponseEntity<AuthResponse> createLoginResponse(final String username) {
-        final var token = jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);
-        final var refreshToken = jwtUtil.generateToken(username, JwtUtil.TokenType.REFRESH_TOKEN);
+        final var token = jwtUtil.generateToken(username, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.ACCESS_TOKEN);
+        final var refreshToken = jwtUtil.generateToken(username, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.REFRESH_TOKEN);
 
         final var responseCookie = createRefreshTokenCookie(refreshToken, Duration.ofDays(30));
         final var login = new AuthResponse.AuthResponseWithRefreshToken(token, responseCookie);
@@ -81,12 +81,12 @@ public class AuthService {
     }
 
     public void logout(final String refreshToken) {
-        assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
+        assertValidForUser(refreshToken, ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType.REFRESH_TOKEN);
         jwtUtil.deleteRefreshToken(refreshToken);
     }
 
     private String assertValidForUser(
-            @Nullable final String refreshToken, final JwtUtil.TokenType tokenType) {
+            @Nullable final String refreshToken, final ch.sthomas.stddivelogger.service.auth.JwtUtil.TokenType tokenType) {
         if (refreshToken == null) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
