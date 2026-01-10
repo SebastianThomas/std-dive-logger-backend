@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.config;
+package ch.sthomas.stddivelogger.importws.config;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 

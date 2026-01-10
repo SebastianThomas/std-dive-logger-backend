@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.autocomplete.config;
+package ch.sthomas.stddivelogger.importws.config;
 
 import org.springframework.boot.SpringBootConfiguration;
 
