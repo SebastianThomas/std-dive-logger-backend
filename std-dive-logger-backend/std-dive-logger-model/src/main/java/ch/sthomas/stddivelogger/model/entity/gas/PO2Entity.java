@@ -7,7 +7,7 @@ import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "t_measurement_po2")
+@Table(name = "t_dive_measurement_po2")
 public class PO2Entity {
     @Id
     @Column(name = "fk_measurement_id")

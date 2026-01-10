@@ -9,7 +9,7 @@ ALTER TABLE t_dive_profiles
 
 CREATE TABLE t_dive_profile_history
 (
-    fk_dive_profile_id INTEGER     NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id) PRIMARY KEY,
+    fk_dive_profile_id INTEGER     NOT NULL REFERENCES t_dive_profiles (pk_dive_profile_id) ON DELETE CASCADE ON UPDATE CASCADE PRIMARY KEY,
     original_start     TIMESTAMPTZ NOT NULL,
     original_end       TIMESTAMPTZ NOT NULL,
     original_dive_id   INTEGER     NOT NULL,

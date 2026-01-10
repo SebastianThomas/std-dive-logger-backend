@@ -33,7 +33,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import javax.crypto.SecretKey;
 
-@Profile("!no-security")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -42,6 +41,7 @@ public class ImportWsSecurityConfig {
     private static final String SWAGGER = "SWAGGER";
 
     @Bean
+    @Profile("!no-security")
     SecurityFilterChain swaggerFilterChain(final HttpSecurity http) throws Exception {
         // swagger-ui
         http.securityMatcher("/docs/**", "/docs.yaml")
@@ -60,7 +60,7 @@ public class ImportWsSecurityConfig {
             final AuthenticationManager applicationAuthenticationManager,
             final JwtAuthFilter jwtAuthFilter)
             throws Exception {
-        http.securityMatcher("/v1/**", "/api/**")
+        http.securityMatcher("/v1/import")
                 .authenticationManager(applicationAuthenticationManager)
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
@@ -106,6 +106,7 @@ public class ImportWsSecurityConfig {
     }
 
     @Bean
+    @Profile("!no-security")
     public AuthenticationManager swaggerAuthenticationManager(
             @Qualifier("swaggerUserDetailService")
                     final UserDetailsService swaggerUserDetailsService,
@@ -117,6 +118,7 @@ public class ImportWsSecurityConfig {
 
     @Bean
     @Qualifier("swaggerUserDetailService")
+    @Profile("!no-security")
     InMemoryUserDetailsManager userDetailsService() {
         final var user =
                 User.builder()
@@ -133,6 +135,7 @@ public class ImportWsSecurityConfig {
     }
 
     @Bean
+    @Profile("!no-security")
     OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .components(
