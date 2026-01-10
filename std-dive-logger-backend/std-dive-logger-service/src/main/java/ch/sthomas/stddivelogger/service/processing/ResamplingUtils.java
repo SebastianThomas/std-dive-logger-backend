@@ -31,18 +31,19 @@ public class ResamplingUtils {
 
     public static List<ResampledDiveMeasurement> resampleMeasurements(
             final List<DiveMeasurementWithId> measurements, final ResamplingInfo info) {
-        final var start = info.baseTime();
+        var start = info.baseTime();
         final var firstOriginalMeasurementTime = measurements.getFirst().measurement().time();
         final var lastOriginalMeasurementTime = measurements.getLast().measurement().time();
         while (start.isAfter(firstOriginalMeasurementTime)) {
-            start.minus(info.sampleRate());
+            start = start.minus(info.sampleRate());
         }
         while (start.isBefore(firstOriginalMeasurementTime)) {
-            start.plus(info.sampleRate());
+            start = start.plus(info.sampleRate());
         }
         final var measurementIdx = new AtomicInteger(0);
         return Stream.iterate(
                         start,
+                        // Duration.ofMillis(startMs),
                         d -> !d.isAfter(lastOriginalMeasurementTime),
                         d -> d.plus(info.sampleRate()))
                 .map(d -> getResampledMeasurement(measurements, measurementIdx, d))

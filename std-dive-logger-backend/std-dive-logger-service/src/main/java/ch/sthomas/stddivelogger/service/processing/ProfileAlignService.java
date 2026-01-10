@@ -3,8 +3,6 @@ package ch.sthomas.stddivelogger.service.processing;
 import static ch.sthomas.stddivelogger.service.processing.ResamplingUtils.getResamplingInfo;
 import static ch.sthomas.stddivelogger.service.processing.ResamplingUtils.resampleMeasurements;
 
-import static org.apache.commons.lang3.compare.ComparableUtils.min;
-
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.align.ResampledDiveMeasurement;
@@ -39,16 +37,16 @@ public class ProfileAlignService {
         final var baseOffset =
                 Duration.between(
                         resampledReference.getFirst().time(), resampledTarget.getFirst().time());
-        final var maxOffsetCount =
-                Math.toIntExact(min(baseOffset, MAX_ALIGN_CHECK).dividedBy(sampleRate));
+        final var maxOffsetCount = Math.toIntExact(MAX_ALIGN_CHECK.dividedBy(sampleRate));
         final var minK =
                 findMinimumAlignOffsetIdx(
                         type, maxOffsetCount, resampledReference, resampledTarget);
-        final var offset = sampleRate.multipliedBy(minK);
+        final var offset = sampleRate.multipliedBy(minK).minus(baseOffset);
         return resampledTarget.getFirst().time().plus(offset);
     }
 
-    private static Integer findMinimumAlignOffsetIdx(
+    /** Find the k for {@code min_i (ref(i).d - ref(i + k).d)} */
+    private static int findMinimumAlignOffsetIdx(
             final AlignType type,
             final int maxOffsetCount,
             final List<ResampledDiveMeasurement> resampledReference,
@@ -82,7 +80,9 @@ public class ProfileAlignService {
         var acc = 0.0;
 
         for (var i = refStart; i < refEnd; i++) {
-            final var d = resampledReference.get(i).depth() - resampledTarget.get(i - k).depth();
+            final var dRef = resampledReference.get(i).depth();
+            final var dTarget = resampledTarget.get(i - k).depth();
+            final var d = dRef - dTarget;
 
             switch (type) {
                 case AUTO_MIN_AVG_DISTANCE -> acc += Math.abs(d);

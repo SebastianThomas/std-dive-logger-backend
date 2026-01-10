@@ -202,7 +202,7 @@ public class DiveEntity {
                         .map(l -> Pair.of(l.getFirst(), l.getLast()))
                         .filter(
                                 p -> {
-                                    final var overlap =
+                                    final var distance =
                                             Duration.between(
                                                     p.getLeft().getStart(),
                                                     p.getRight().getStart());
@@ -212,17 +212,11 @@ public class DiveEntity {
                                     final var lengthR =
                                             Duration.between(
                                                     p.getRight().getStart(), p.getRight().getEnd());
-                                    return overlap.minus(min(lengthL, lengthR).dividedBy(2))
-                                            .isPositive();
+                                    return distance.minus(min(lengthL, lengthR).dividedBy(2))
+                                            .isNegative();
                                 })
                         .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
                         .reduce(Duration.ZERO, Duration::plus);
-        logger.info(
-                "Computing Dive length for summary of dive {} with custom number {}: {} minus {}",
-                id,
-                number,
-                bottomTime,
-                overlapToSubtract);
         return new DiveSummary(
                 start,
                 end,

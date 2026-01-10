@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -15,8 +16,9 @@ public class DiveProfileHistoryEntity {
     @Column(name = "fk_dive_profile_id")
     private long diveProfileId;
 
-    @ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @MapsId
+    @JoinColumn(name = "fk_dive_profile_id")
     private DiveProfileEntity diveProfile;
 
     @Column(name = "original_start")
@@ -40,7 +42,6 @@ public class DiveProfileHistoryEntity {
 
     public DiveProfileHistoryEntity(final DiveProfileEntity diveProfileEntity) {
         this(
-                diveProfileEntity.getId(),
                 diveProfileEntity,
                 diveProfileEntity.getDiveId(),
                 diveProfileEntity.getStart().atOffset(ZoneOffset.UTC),
@@ -48,15 +49,17 @@ public class DiveProfileHistoryEntity {
     }
 
     public DiveProfileHistoryEntity(
-            final long diveProfileId,
             final DiveProfileEntity diveProfile,
             final long diveId,
             final OffsetDateTime originalStart,
             final OffsetDateTime originalEnd) {
-        this.diveProfileId = diveProfileId;
         this.diveProfile = diveProfile;
         this.originalDiveId = diveId;
         this.originalStart = originalStart;
         this.originalEnd = originalEnd;
+    }
+
+    public Instant getOriginalStart() {
+        return originalStart.toInstant();
     }
 }

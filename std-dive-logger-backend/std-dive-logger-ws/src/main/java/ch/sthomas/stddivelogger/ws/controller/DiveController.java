@@ -41,6 +41,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/dives")
+@Valid
 public class DiveController {
 
     private static final Logger logger = LoggerFactory.getLogger(DiveController.class);
@@ -361,26 +362,38 @@ public class DiveController {
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final int diveId,
             @RequestBody final AlignProfilesBody body) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to align profiles.");
-        }
         if (body == null || body.profileIds.length == 0) {
             throw new IllegalArgumentException();
         }
         final var profileIds = new HashSet<>(Longs.asList(body.profileIds));
         if (profileIds.size() == 1 && body.type == AlignType.MANUAL && body.alignToManual != null) {
             // Align Manual
-            return diveService.alignProfilesManualToTime(profileIds, diveId, body.alignToManual);
+            return diveService.alignProfilesManualToTime(
+                    user, profileIds, diveId, body.alignToManual);
         }
         if (body.profileIds.length != 2) {
             throw new IllegalArgumentException(
                     "For an auto-align, exactly two profiles are required.");
         }
         return diveService.alignProfilesAuto(
+                user,
                 body.profileIds[0],
                 profileIds.stream().filter(p -> p != body.profileIds[0]).findFirst().orElseThrow(),
                 diveId,
                 body.type);
+    }
+
+    @Operation(summary = "Reset Custom Alignment")
+    @PostMapping("/{id}/profiles/reset")
+    public Dive resetAlignedProfiles(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final int diveId,
+            @RequestBody @NotNull final List<Long> profileIds) {
+        if (profileIds == null || profileIds.isEmpty()) {
+            throw new IllegalArgumentException();
+        }
+        final var profileIdsSet = new HashSet<>(profileIds);
+        return diveService.resetAlignedProfiles(user, diveId, profileIdsSet);
     }
 
     @Operation(summary = "Generate or regenerate Preview image")

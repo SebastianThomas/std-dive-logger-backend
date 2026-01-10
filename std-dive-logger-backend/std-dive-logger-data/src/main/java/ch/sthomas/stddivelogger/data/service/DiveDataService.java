@@ -147,6 +147,14 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public DiveEntity findDiveEntityById(final long diveId) {
+        return diveRepository
+                .findById(diveId)
+                .orElseThrow(
+                        () -> new NoSuchElementException("Could not find dive by id " + diveId));
+    }
+
+    @Transactional(readOnly = true)
     public List<SimplifiedDive> findDivesByIds(final User user, final List<Long> ids) {
         return diveRepository.findAllByIdAndIsReader(user.id(), ids).stream()
                 .map(this::toSimplifiedRecord)
@@ -402,12 +410,18 @@ public class DiveDataService {
         final var diveEntity = diveEntityOpt.get();
         final var profileEntity = createDiveProfileEntity(profile);
         diveEntity.addProfiles(List.of(profileEntity));
-        diveProfileRepository.save(profileEntity);
-        diveProfileHistoryRepository.save(new DiveProfileHistoryEntity(profileEntity));
+        final var savedProfile = diveProfileRepository.save(profileEntity);
         if (newNotes != null && !newNotes.isBlank()) {
             diveEntity.appendNotes(diveNumber.toString() + "\n" + newNotes);
         }
-        return toSimplifiedRecord(diveRepository.save(diveEntity));
+        final var savedDive = diveRepository.save(diveEntity);
+        final var savedDiveProfile =
+                savedDive.getProfiles().stream()
+                        .filter(p -> p.getId() == savedProfile.getId())
+                        .collect(MoreCollectors.onlyElement());
+        final var historyEntity = new DiveProfileHistoryEntity(savedDiveProfile);
+        diveProfileHistoryRepository.save(historyEntity);
+        return toSimplifiedRecord(savedDive);
     }
 
     @Transactional
@@ -771,15 +785,10 @@ public class DiveDataService {
                 this::toSimplifiedRecord);
     }
 
+    @Transactional
     public Dive alignProfilesManual(
             final Set<Long> profileIds, final long diveId, final Instant alignToManual) {
-        final var dive =
-                diveRepository
-                        .findById(diveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + diveId));
+        final var dive = findDiveEntityById(diveId);
         final var profiles =
                 dive.getProfiles().stream()
                         .filter(profile -> profileIds.contains(profile.getId()))
@@ -795,6 +804,17 @@ public class DiveDataService {
                             profiles.stream().map(DiveProfileEntity::getId).toList()));
         }
         profiles.forEach(p -> p.alignProfileManual(alignToManual));
+        return toRecord(diveRepository.save(dive));
+    }
+
+    @Transactional
+    public Dive resetAlignedProfiles(final long diveId, final Set<Long> profileIds) {
+        final var dive = findDiveEntityById(diveId);
+        final var profiles =
+                dive.getProfiles().stream()
+                        .filter(profile -> profileIds.contains(profile.getId()))
+                        .toList();
+        profiles.forEach(DiveProfileEntity::resetAlignProfileManual);
         return toRecord(diveRepository.save(dive));
     }
 }

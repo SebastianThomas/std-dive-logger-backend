@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
@@ -46,6 +47,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class DiveService {
@@ -490,15 +492,25 @@ public class DiveService {
     }
 
     public Dive alignProfilesManualToTime(
-            final Set<Long> profileIds, final long diveId, final Instant alignToManual) {
+            final User user,
+            final Set<Long> profileIds,
+            final long diveId,
+            final Instant alignToManual) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
         return diveDataService.alignProfilesManual(profileIds, diveId, alignToManual);
     }
 
     public Dive alignProfilesAuto(
+            final User user,
             final long referenceProfileId,
             final long targetProfileId,
             final int diveId,
             final AlignType type) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
         final var dive =
                 diveDataService
                         .findDiveById(diveId)
@@ -517,9 +529,34 @@ public class DiveService {
                         .filter(profile -> profile.id() == targetProfileId)
                         .findFirst()
                         .orElseThrow();
-        return alignProfilesManualToTime(
-                Set.of(targetProfileId),
-                diveId,
-                ProfileAlignService.alignProfilesAuto(referenceProfile, targetProfile, type));
+        final var alignAdjustment =
+                ProfileAlignService.alignProfilesAuto(referenceProfile, targetProfile, type);
+        return alignProfilesManualToTime(user, Set.of(targetProfileId), diveId, alignAdjustment);
+    }
+
+    public Dive resetAlignedProfiles(
+            final User user, final int diveId, final Set<Long> profileIds) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        final var dive =
+                diveDataService
+                        .findDiveById(diveId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive by id " + diveId));
+        final var profiles =
+                dive.profiles().stream()
+                        .filter(p -> profileIds.contains(p.id()))
+                        .collect(Collectors.toSet());
+        if (profiles.size() != profileIds.size()) {
+            throw new IllegalArgumentException(
+                    "Could not find all profiles "
+                            + profileIds
+                            + ", only found "
+                            + profiles.stream().map(DiveProfile::id).toList());
+        }
+        return diveDataService.resetAlignedProfiles(diveId, profileIds);
     }
 }

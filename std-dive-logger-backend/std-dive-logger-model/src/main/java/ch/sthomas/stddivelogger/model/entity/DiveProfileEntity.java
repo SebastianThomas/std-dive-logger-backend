@@ -45,6 +45,13 @@ public class DiveProfileEntity {
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
 
+    @OneToOne(
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true,
+            mappedBy = "diveProfile")
+    private DiveProfileHistoryEntity diveProfileHistory;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -127,13 +134,18 @@ public class DiveProfileEntity {
         return null; // TODO
     }
 
+    public void resetAlignProfileManual() {
+        final var originalStart = diveProfileHistory.getOriginalStart();
+        alignProfileManual(originalStart);
+    }
+
     public void alignProfileManual(final Instant alignToManual) {
         final var prevStart = profileStart;
         final var prevEnd = profileEnd;
 
-        final var diff = Duration.between(prevStart, alignToManual);
-
-        this.profileStart = alignToManual.atOffset(UTC);
+        final var alignToManualODT = alignToManual.atOffset(UTC);
+        final var diff = Duration.between(prevStart, alignToManualODT);
+        this.profileStart = alignToManualODT;
         this.profileEnd = prevEnd.plus(diff);
         measurements.forEach(measurement -> measurement.timePlus(diff));
     }
