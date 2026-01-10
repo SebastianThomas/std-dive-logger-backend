@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.importws.config;
+package ch.sthomas.stddivelogger.autocomplete.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Profile("no-security")
 @Configuration
 @EnableWebSecurity
-public class ImportWsNoSecurityConfig {
+public class AutocompleteNoSecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(final HttpSecurity http) throws Exception {

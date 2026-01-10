@@ -1,8 +1,8 @@
-package ch.sthomas.stddivelogger.importws.config;
+package ch.sthomas.stddivelogger.autocomplete.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-public class ImportWsSchedulingConfig {}
+public class AutocompleteSchedulingConfig { }

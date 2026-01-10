@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.importws.config;
+package ch.sthomas.stddivelogger.autocomplete.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
