@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "t_dive_profile_history")
@@ -36,6 +37,15 @@ public class DiveProfileHistoryEntity {
     private OffsetDateTime updatedAt;
 
     public DiveProfileHistoryEntity() {}
+
+    public DiveProfileHistoryEntity(final DiveProfileEntity diveProfileEntity) {
+        this(
+                diveProfileEntity.getId(),
+                diveProfileEntity,
+                diveProfileEntity.getDiveId(),
+                diveProfileEntity.getStart().atOffset(ZoneOffset.UTC),
+                diveProfileEntity.getEnd().atOffset(ZoneOffset.UTC));
+    }
 
     public DiveProfileHistoryEntity(
             final long diveProfileId,
