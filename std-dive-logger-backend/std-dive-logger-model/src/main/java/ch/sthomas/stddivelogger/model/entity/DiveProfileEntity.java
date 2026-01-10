@@ -6,6 +6,9 @@ import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -41,6 +44,14 @@ public class DiveProfileEntity {
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 
     public DiveProfileEntity() {}
 
@@ -104,7 +115,7 @@ public class DiveProfileEntity {
         return getMeasurementsStream().mapToDouble(DiveMeasurementEntity::getDepth);
     }
 
-     Stream<DiveMeasurementEntity> getMeasurementsStream() {
+    Stream<DiveMeasurementEntity> getMeasurementsStream() {
         return measurements.stream().sorted(Comparator.comparing(DiveMeasurementEntity::getTime));
     }
 

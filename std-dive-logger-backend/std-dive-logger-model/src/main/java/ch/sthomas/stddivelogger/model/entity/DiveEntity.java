@@ -16,9 +16,14 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +37,8 @@ import java.util.stream.Stream;
 @Entity
 @Table(name = "t_dives")
 public class DiveEntity {
+    private static final Logger logger = LoggerFactory.getLogger(DiveEntity.class);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "pk_dive_id", nullable = false)
@@ -88,6 +95,14 @@ public class DiveEntity {
             fetch = FetchType.EAGER,
             orphanRemoval = true)
     private List<DiveBuddyNameEntity> namedBuddies;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 
     public DiveEntity() {}
 
@@ -197,11 +212,17 @@ public class DiveEntity {
                                     final var lengthR =
                                             Duration.between(
                                                     p.getRight().getStart(), p.getRight().getEnd());
-                                    // Overlap > min length
-                                    return overlap.minus(min(lengthL, lengthR)).isPositive();
+                                    return overlap.minus(min(lengthL, lengthR).dividedBy(2))
+                                            .isPositive();
                                 })
                         .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
                         .reduce(Duration.ZERO, Duration::plus);
+        logger.info(
+                "Computing Dive length for summary of dive {} with custom number {}: {} minus {}",
+                id,
+                number,
+                bottomTime,
+                overlapToSubtract);
         return new DiveSummary(
                 start,
                 end,

@@ -17,18 +17,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+import javax.crypto.SecretKey;
+
 public class JwtAuthFilter extends OncePerRequestFilter {
-    private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
     private final boolean checkVerified;
+    private final SecretKey signingKey;
 
     public JwtAuthFilter(
-            final JwtUtil jwtUtil,
             final UserDetailsService userDetailsService,
-            final boolean checkVerified) {
-        this.jwtUtil = jwtUtil;
+            final boolean checkVerified,
+            final SecretKey signingKey) {
         this.userDetailsService = userDetailsService;
         this.checkVerified = checkVerified;
+        this.signingKey = signingKey;
     }
 
     @Override
@@ -43,8 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 final var token = authHeader.substring(7);
-                final var claimedUsername =
-                        jwtUtil.extractUsername(token, JwtUtil.TokenType.ACCESS_TOKEN);
+                final var claimedUsername = JwtUtil.extractUsername(token, signingKey);
 
                 if (claimedUsername != null
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -59,7 +60,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         return;
                     }
 
-                    if (jwtUtil.isTokenValid(token, username, JwtUtil.TokenType.ACCESS_TOKEN)) {
+                    if (JwtUtil.isTokenValid(token, username, signingKey)) {
                         final var authToken =
                                 new UsernamePasswordAuthenticationToken(
                                         userDetails, null, userDetails.getAuthorities());

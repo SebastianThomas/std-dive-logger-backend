@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.importws.config;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import ch.sthomas.stddivelogger.importws.auth.JwtAuthFilter;
-import ch.sthomas.stddivelogger.importws.auth.JwtUtil;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -31,6 +30,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import javax.crypto.SecretKey;
 
 @Profile("!no-security")
 @Configuration
@@ -88,11 +89,11 @@ public class ImportWsSecurityConfig {
 
     @Bean
     public JwtAuthFilter jwtAuthFilter(
-            final JwtUtil jwtUtil,
             final UserDetailsService customUserDetailsService,
             @Value("${ch.sthomas.stddivelogger.users.check-verified:true}")
-                    final boolean checkVerified) {
-        return new JwtAuthFilter(jwtUtil, customUserDetailsService, checkVerified);
+                    final boolean checkVerified,
+            final SecretKey signingKey) {
+        return new JwtAuthFilter(customUserDetailsService, checkVerified, signingKey);
     }
 
     @Bean
