@@ -72,7 +72,7 @@ public class DiveDataService {
     private final GroupRepository groupRepository;
     private final ReaderViewRepository readerViewRepository;
     private final DiveProfileRepository diveProfileRepository;
-    private final DiveProfileHistoryEntityRepository diveProfileHistoryEntityRepository;
+    private final DiveProfileHistoryRepository diveProfileHistoryRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -90,7 +90,7 @@ public class DiveDataService {
             final GroupRepository groupRepository,
             final ReaderViewRepository readerViewRepository,
             final DiveProfileRepository diveProfileRepository,
-            DiveProfileHistoryEntityRepository diveProfileHistoryEntityRepository) {
+            final DiveProfileHistoryRepository diveProfileHistoryRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -107,7 +107,7 @@ public class DiveDataService {
         this.groupRepository = groupRepository;
         this.readerViewRepository = readerViewRepository;
         this.diveProfileRepository = diveProfileRepository;
-        this.diveProfileHistoryEntityRepository = diveProfileHistoryEntityRepository;
+        this.diveProfileHistoryRepository = diveProfileHistoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -194,7 +194,7 @@ public class DiveDataService {
                     .getProfiles()
                     .forEach(
                             profileEntity ->
-                                    diveProfileHistoryEntityRepository.save(
+                                    diveProfileHistoryRepository.save(
                                             new DiveProfileHistoryEntity(profileEntity)));
             return toRecord(savedDive);
         } catch (final DataIntegrityViolationException e) {
@@ -403,7 +403,7 @@ public class DiveDataService {
         final var profileEntity = createDiveProfileEntity(profile);
         diveEntity.addProfiles(List.of(profileEntity));
         diveProfileRepository.save(profileEntity);
-        diveProfileHistoryEntityRepository.save(new DiveProfileHistoryEntity(profileEntity));
+        diveProfileHistoryRepository.save(new DiveProfileHistoryEntity(profileEntity));
         if (newNotes != null && !newNotes.isBlank()) {
             diveEntity.appendNotes(diveNumber.toString() + "\n" + newNotes);
         }
