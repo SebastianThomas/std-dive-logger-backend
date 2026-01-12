@@ -47,15 +47,15 @@ public class AutocompleteSecurityConfig {
 
     @Bean
     SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.authorizeHttpRequests(
-                authorize ->
-                        authorize
-                                .requestMatchers("/v1/autocomplete/**")
-                                .permitAll()
-                                .requestMatchers("/actuator/**")
-                                .permitAll());
-        return http.build();
+        return http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(
+                        authorize ->
+                                authorize
+                                        .requestMatchers("/v1/autocomplete/**")
+                                        .permitAll()
+                                        .requestMatchers("/actuator/**")
+                                        .permitAll())
+                .build();
     }
 
     @Bean

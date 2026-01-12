@@ -32,11 +32,12 @@ public record Dive(
     @NotNull
     public String toString() {
         return new ToStringBuilder(this)
-                .append(id)
-                .append(number)
-                .append(customIdentifier)
-                .append(previewImage)
-                .append(site)
+                .append("id", id)
+                .append("number", number)
+                .append("customIdentifier", customIdentifier)
+                .append("previewImage", previewImage)
+                .append("site", site)
+                .append("profiles", profiles)
                 .toString();
     }
 }

@@ -1,7 +1,6 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
-import static java.time.Duration.ofDays;
-import static java.time.Duration.ofHours;
+import static java.time.Duration.*;
 
 import ch.sthomas.stddivelogger.data.repository.RefreshTokenRepository;
 import ch.sthomas.stddivelogger.model.entity.RefreshTokenEntity;
@@ -57,7 +56,7 @@ public class JwtUtil {
     public String generateToken(final String username, final TokenType tokenType) {
         final var expiration =
                 switch (tokenType) {
-                    case ACCESS_TOKEN -> ofHours(1);
+                    case ACCESS_TOKEN -> ofSeconds(30);
                     case REFRESH_TOKEN -> ofDays(30);
                 };
         final var issuedAt = new Date();

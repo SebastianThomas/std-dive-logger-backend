@@ -47,15 +47,16 @@ public class AnalyticsSecurityConfig {
 
     @Bean
     SecurityFilterChain analyticsFilterChain(final HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.authorizeHttpRequests(
-                authorize ->
-                        authorize
-                                .requestMatchers("/v1/analytics/**")
-                                .permitAll()
-                                .requestMatchers("/actuator/**")
-                                .permitAll());
-        return http.build();
+        return http.cors(withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(
+                        authorize ->
+                                authorize
+                                        .requestMatchers("/v1/analytics/**")
+                                        .permitAll()
+                                        .requestMatchers("/actuator/**")
+                                        .permitAll())
+                .build();
     }
 
     @Bean

@@ -5,10 +5,14 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotNull;
+
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public record DiveProfile(
         long id,
@@ -61,5 +65,19 @@ public record DiveProfile(
                 measurements.getLast().measurement().o2Tox(),
                 measurements.getFirst().measurement().cns(),
                 measurements.getLast().measurement().cns());
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return new ToStringBuilder(this)
+                .append("id", id)
+                .append("diveComputer", diveComputer)
+                .append("start", start)
+                .append("end", end)
+                .append(
+                        "measurements.size",
+                        Optional.ofNullable(measurements).map(List::size).orElse(null))
+                .append("summary", summary)
+                .toString();
     }
 }

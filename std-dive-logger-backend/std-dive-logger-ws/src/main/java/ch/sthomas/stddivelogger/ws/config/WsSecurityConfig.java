@@ -78,7 +78,8 @@ public class WsSecurityConfig {
             final AuthenticationManager applicationAuthenticationManager,
             final JwtAuthFilter jwtAuthFilter)
             throws Exception {
-        http.securityMatcher("/v1/**", "/api/**")
+        http.cors(withDefaults())
+                .securityMatcher("/v1/**", "/api/**")
                 .authenticationManager(applicationAuthenticationManager)
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
