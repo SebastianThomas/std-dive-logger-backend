@@ -56,7 +56,7 @@ public class JwtUtil {
     public String generateToken(final String username, final TokenType tokenType) {
         final var expiration =
                 switch (tokenType) {
-                    case ACCESS_TOKEN -> ofSeconds(30);
+                    case ACCESS_TOKEN -> ofSeconds(300);
                     case REFRESH_TOKEN -> ofDays(30);
                 };
         final var issuedAt = new Date();
