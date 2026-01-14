@@ -219,11 +219,6 @@ public class DiveEntity {
                                 })
                         .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
                         .reduce(Duration.ZERO, Duration::plus);
-        logger.info(
-                "Bottom Time: {} minus overlap {} for {} profiles",
-                bottomTime,
-                overlapToSubtract,
-                profiles.size());
         return new DiveSummary(
                 start,
                 end,
