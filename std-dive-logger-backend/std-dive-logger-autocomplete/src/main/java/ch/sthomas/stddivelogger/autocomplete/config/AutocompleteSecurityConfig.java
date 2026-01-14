@@ -47,7 +47,8 @@ public class AutocompleteSecurityConfig {
 
     @Bean
     SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
+        return http.cors(withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize ->
                                 authorize
