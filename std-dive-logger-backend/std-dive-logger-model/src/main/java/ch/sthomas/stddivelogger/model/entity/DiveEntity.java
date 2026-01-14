@@ -199,6 +199,8 @@ public class DiveEntity {
         final var overlapToSubtract =
                 profiles.stream()
                         .gather(Gatherers.windowSliding(2))
+                        // Sliding Window returns all elements if size < 2
+                        .filter(l -> l.size() == 2)
                         .map(l -> Pair.of(l.getFirst(), l.getLast()))
                         .filter(
                                 p -> {
