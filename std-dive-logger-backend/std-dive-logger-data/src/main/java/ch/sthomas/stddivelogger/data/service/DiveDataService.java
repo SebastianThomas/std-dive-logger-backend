@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.data.service;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
@@ -451,8 +453,11 @@ public class DiveDataService {
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> searchDives(
             final long userId, final String query, final Pageable pageable) {
-        return PagedResponse.of(
-                diveRepository.searchDives(userId, query, pageable), this::toSimplifiedRecord);
+        final var result =
+                isNumeric(query)
+                        ? diveRepository.searchDivesNumeric(userId, query + "%", pageable)
+                        : diveRepository.searchDives(userId, query, pageable);
+        return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
     @Transactional
