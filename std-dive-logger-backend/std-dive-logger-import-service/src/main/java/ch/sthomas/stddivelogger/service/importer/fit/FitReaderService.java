@@ -55,6 +55,9 @@ public class FitReaderService extends BaseReaderService {
         final var summaryMessages = messages.getDiveSummaryMesgs();
 
         final var computers = saveComputers(user, messages);
+        if (computers.isEmpty()) {
+            throw new IllegalStateException("Expected to save computers, but this failed.");
+        }
         final var diveNumber = getDiveNumber(summaryMessages);
         final var summary = getSummary(summaryMessages);
 
@@ -266,15 +269,25 @@ public class FitReaderService extends BaseReaderService {
                                         serialNumbers.get(i),
                                         products.get(i),
                                         timesCreated.get(i)))
+                .filter(Objects::nonNull)
                 .toList();
     }
 
     private DiveComputer getComputer(
             final User user,
             final String manufacturer,
-            final long serialNumber,
+            final Long serialNumber,
             final String product,
-            final Instant timesCreated) {
+            final Instant timeCreated) {
+        if (serialNumber == null) {
+            logger.warn(
+                    "Serial number is null for {} {} (of user {}), time created: {}",
+                    manufacturer,
+                    product,
+                    user,
+                    timeCreated);
+            return null;
+        }
         final var sn = String.valueOf(serialNumber);
         final var existingComputer =
                 diveService.getDiveComputerBySerialNumber(user, manufacturer, sn);
