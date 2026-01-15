@@ -120,15 +120,17 @@ public class StatsDataService {
         final var profile = dive.join("profiles", JoinType.LEFT);
         final var measurement = profile.join("measurements", JoinType.LEFT);
 
+        final var diveIdCount = cb.countDistinct(dive.get("id"));
         query.multiselect(
                 selection,
-                cb.countDistinct(dive.get("id")),
+                diveIdCount,
                 cb.max(dive.get("number")),
                 cb.max(measurement.get("depth")),
                 cb.countDistinct(dive.get("diveSite").get("id")));
 
         query.where(cb.equal(dive.get("user").get("id"), user.id()));
         query.groupBy(selection);
+        query.orderBy(cb.desc(diveIdCount));
 
         return entityManager.createQuery(query).getResultList().stream()
                 .map(raw -> Pair.of(typeToken.cast(raw.key()), assembleFullStats(user, raw)))
