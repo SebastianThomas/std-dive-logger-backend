@@ -258,16 +258,32 @@ public class DiveEntity {
     public DiveEntity update(
             final int number,
             final String diveIdentifier,
+            final String notes,
             @Nullable final DiveSiteEntity diveSiteEntity,
-            @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies) {
+            @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies,
+            @Nullable final DiveConfigurationEntity configuration,
+            @Nullable final DiveGasConsumptionEntity gasConsumption,
+            @Nullable final VisibilityEntity visibility) {
         this.number = number;
         this.diveIdentifier = diveIdentifier;
+        if (notes != null) {
+            this.notes = notes;
+        }
         if (diveSiteEntity != null) {
             this.diveSite = diveSiteEntity;
         }
         if (namedBuddies != null) {
             this.namedBuddies.removeIf(Predicate.not(namedBuddies::contains));
             this.namedBuddies.addAll(CollectionUtils.subtract(namedBuddies, this.namedBuddies));
+        }
+        if (configuration != null) {
+            this.configuration = configuration;
+        }
+        if (gasConsumption != null) {
+            this.gasConsumption = gasConsumption;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
         }
         return this;
     }

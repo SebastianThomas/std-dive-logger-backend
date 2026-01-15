@@ -339,10 +339,10 @@ public class DiveDataService {
     }
 
     @Transactional
-    public Dive updateDive(final @NotNull @Valid UpdateDiveBody dive) {
-        final var existingDive = diveRepository.findById(dive.id()).orElseThrow();
+    public Dive updateDive(final @NotNull @Valid UpdateDiveBody updateBody) {
+        final var existingDive = diveRepository.findById(updateBody.id()).orElseThrow();
         final var diveSiteEntity =
-                Optional.ofNullable(dive.siteId())
+                Optional.ofNullable(updateBody.siteId())
                         .flatMap(diveSiteRepository::findById)
                         .orElse(null);
         final var namedBuddies =
@@ -350,14 +350,31 @@ public class DiveDataService {
                         .collect(
                                 Collectors.toMap(
                                         DiveBuddyNameEntity::getName, Function.identity()));
-        final var newBuddies = getNewNamedBuddies(dive, namedBuddies, existingDive);
+        final var newBuddies = getNewNamedBuddies(updateBody, namedBuddies, existingDive);
+        final var configuration =
+                updateBody.configuration() != null
+                        ? new DiveConfigurationEntity(
+                                existingDive, updateBody.configuration(), this::toEntity)
+                        : null;
+        final var gasConsumption =
+                updateBody.gasConsumption() != null
+                        ? new DiveGasConsumptionEntity(existingDive, updateBody.gasConsumption())
+                        : null;
+        final var visibility =
+                updateBody.visibility() != null
+                        ? new VisibilityEntity(existingDive, updateBody.visibility())
+                        : null;
         return toRecord(
                 diveRepository.save(
                         existingDive.update(
-                                dive.number(),
-                                dive.customIdentifier(),
+                                updateBody.number(),
+                                updateBody.customIdentifier(),
+                                updateBody.notes(),
                                 diveSiteEntity,
-                                newBuddies)));
+                                newBuddies,
+                                configuration,
+                                gasConsumption,
+                                visibility)));
     }
 
     private ArrayList<DiveBuddyNameEntity> getNewNamedBuddies(
