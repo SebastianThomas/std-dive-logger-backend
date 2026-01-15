@@ -4,11 +4,13 @@ import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -44,7 +46,7 @@ public class StatsService {
                                 Map.Entry::getValue));
     }
 
-    public Map<String, UserDiveStats> getStatsForUserByBuddy(final User user) {
+    public List<UserDiveStatsBy<String>> getStatsForUserByBuddy(final User user) {
         return statsDataService.getStatsByBuddy(user);
     }
 }

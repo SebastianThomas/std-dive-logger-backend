@@ -5,12 +5,10 @@ import static ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperatur
 import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
-import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-import ch.sthomas.stddivelogger.model.entity.DiveEntity;
-import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
-import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
-import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
+import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import jakarta.persistence.EntityManager;
@@ -23,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -97,7 +96,7 @@ public class StatsDataService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, UserDiveStats> getStatsByBuddy(final User user) {
+    public List<UserDiveStatsBy<String>> getStatsByBuddy(final User user) {
         final var cb = entityManager.getCriteriaBuilder();
         final var query = cb.createQuery(RawGroupCounts.class);
         final var dive = query.from(DiveEntity.class);
@@ -105,7 +104,9 @@ public class StatsDataService {
         // TODO: At the moment, only named buddies
         final var buddy = dive.join("namedBuddies", JoinType.INNER);
 
-        return fetchAndMap(user, query, dive, buddy.get("name"), String.class);
+        return fetchAndMap(user, query, dive, buddy.get("name"), String.class).entrySet().stream()
+                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
+                .toList();
     }
 
     private <T> Map<T, UserDiveStats> fetchAndMap(

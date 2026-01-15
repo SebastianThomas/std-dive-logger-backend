@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -12,8 +13,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/v1/stats")
@@ -35,7 +36,7 @@ public class StatsController {
     }
 
     @GetMapping(path = "/buddy")
-    public Map<String, UserDiveStats> getStatsForUserByBuddy(
+    public List<UserDiveStatsBy<String>> getStatsForUserByBuddy(
             @AuthenticationPrincipal final User user) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dive stats");
@@ -44,12 +45,14 @@ public class StatsController {
     }
 
     @GetMapping(path = "/dive-site")
-    public Set<Map.Entry<DiveSite, UserDiveStats>> getStatsForUserByDiveSite(
+    public List<UserDiveStatsBy<DiveSite>> getStatsForUserByDiveSite(
             @AuthenticationPrincipal final User user) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dive stats");
         }
-        return statsService.getStatsForUserByDiveSite(user).entrySet();
+        return statsService.getStatsForUserByDiveSite(user).entrySet().stream()
+                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
+                .toList();
     }
 
     @GetMapping(path = "/year")
