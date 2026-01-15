@@ -47,7 +47,7 @@ public class DiveEntity {
     @Column(name = "dive_number", nullable = false)
     private int number;
 
-    @Column(name = "dive_identifier")
+    @Column(name = "dive_identifier", nullable = false)
     private String diveIdentifier;
 
     @Column(name = "preview_image", nullable = false)

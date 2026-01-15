@@ -18,7 +18,7 @@ public record Dive(
         FrontendUser user,
         int number,
         String notes,
-        @Nullable String customIdentifier,
+        @NotNull String customIdentifier,
         @Nullable String previewImage,
         @Nullable Visibility visibility,
         @Nullable DiveGasConsumption gasConsumption,
