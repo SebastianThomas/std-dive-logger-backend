@@ -63,7 +63,7 @@ public class DiveMeasurementEntity {
     @Column(name = "deco_stops")
     private List<DecoStop> decoStops;
 
-    @Column(name = "ndl_minutes", nullable = false)
+    @Column(name = "ndl_minutes", nullable = true)
     private Integer ndlMinutes;
 
     @ManyToOne(cascade = CascadeType.PERSIST)
@@ -81,7 +81,11 @@ public class DiveMeasurementEntity {
         this.time = diveMeasurement.time().atOffset(UTC);
         this.depth = diveMeasurement.depth();
         this.temperatureCelsius = diveMeasurement.temperature().celsius();
-        this.ndlMinutes = (int) diveMeasurement.ndl().toMinutes();
+        this.ndlMinutes =
+                Optional.ofNullable(diveMeasurement.ndl())
+                        .map(Duration::toMinutes)
+                        .map(Long::intValue)
+                        .orElse(null);
         this.gas = gas;
         this.rmv = diveMeasurement.rmvLiters();
         this.n2 = diveMeasurement.n2();
@@ -104,7 +108,7 @@ public class DiveMeasurementEntity {
                 time.toInstant(),
                 new Temperature(temperatureCelsius, Temperature.TemperatureUnit.CELSIUS),
                 depth,
-                Duration.ofMinutes(ndlMinutes),
+                Optional.ofNullable(ndlMinutes).map(Duration::ofMinutes).orElse(null),
                 decoStops,
                 Optional.ofNullable(gas).map(GasEntity::toRecord).orElse(null),
                 Optional.ofNullable(po2).map(PO2Entity::toRecord).orElse(null),

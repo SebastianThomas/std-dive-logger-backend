@@ -15,7 +15,7 @@ public record DiveMeasurement(
         Instant time,
         Temperature temperature,
         double depth,
-        Duration ndl,
+        @Nullable Duration ndl,
         List<DecoStop> deco,
         @Nullable Gas gas,
         @Nullable PO2 po2,

@@ -5,13 +5,17 @@ import static java.time.Duration.*;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSummary;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -22,6 +26,7 @@ import com.google.common.base.CaseFormat;
 
 import jakarta.annotation.Nullable;
 
+import org.jspecify.annotations.NonNull;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +34,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +58,9 @@ public class FitReaderService extends BaseReaderService {
             final UploadDiveBody body,
             final InputStream inputStream) {
         final var messages = new FitDecoder().decode(inputStream);
+        if (messages.getSessionMesgs().size() != 1) {
+            throw new IllegalArgumentException("Only one-session dive logs supported.");
+        }
         final var summaryMessages = messages.getDiveSummaryMesgs();
 
         final var computers = saveComputers(user, messages);
@@ -61,27 +70,35 @@ public class FitReaderService extends BaseReaderService {
         final var diveNumber = getDiveNumber(summaryMessages);
         final var summary = getSummary(summaryMessages);
 
-        if (messages.getSessionMesgs().size() != 1) {
-            throw new IllegalArgumentException("Only one-session dive logs supported.");
-        }
         final var session = messages.getSessionMesgs().getFirst();
-        final var startCoordinateLon = semicirclesToDegrees(session.getStartPositionLong());
-        final var startCoordinateLat = semicirclesToDegrees(session.getStartPositionLat());
-        final var diveSite =
-                diveService.getOrCreateDiveSite(
-                        MessageFormat.format(
-                                "unnamed-{0}-{1}", startCoordinateLat, startCoordinateLon),
-                        new Location(startCoordinateLat, startCoordinateLon));
+        final var diveSite = getOrSaveLocation(body, session);
+        final var gases = getGases(messages);
 
-        final var gases =
-                messages.getDiveGasMesgs().stream()
-                        .map(
-                                gasMsg ->
-                                        new Gas(
-                                                gasMsg.getOxygenContent(),
-                                                gasMsg.getHeliumContent()))
-                        .toList();
+        final var computer = getComputer(messages, computers);
+        final var profile =
+                getDiveProfile(
+                        messages.getRecordMesgs(),
+                        messages.getEventMesgs(),
+                        gases,
+                        computer,
+                        summary);
+        final var buddies = List.<String>of();
+        final var diveName = getDiveName(body, filename);
+        return diveService.saveDive(
+                user,
+                diveNumber,
+                diveName,
+                "",
+                Visibility.EMPTY,
+                DiveGasConsumption.EMPTY,
+                DiveConfiguration.EMPTY,
+                diveSite.id(),
+                List.of(profile),
+                buddies);
+    }
 
+    private static DiveComputer getComputer(
+            final FitMessages messages, final List<DiveComputer> computers) {
         final var computerIds =
                 messages.getRecordMesgs().stream()
                         .map(
@@ -94,28 +111,36 @@ public class FitReaderService extends BaseReaderService {
                         .sorted()
                         .distinct()
                         .toArray();
-        if (computerIds.length > 1 || computerIds[0] != 0) {
+        if (computerIds.length > 1) {
             logger.info("Got computer ids: {}", computerIds);
             throw new IllegalArgumentException(
                     "Fit file contains multiple computers, unsupported at the moment.");
         }
-        final var computer = computers.getFirst();
-        final var events = messages.getEventMesgs();
-        final var profile =
-                getDiveProfile(messages.getRecordMesgs(), events, gases, computer, summary);
-        final var buddies = List.<String>of();
-        final var diveName = getDiveName(body, filename);
-        return diveService.saveDive(
-                user,
-                diveNumber,
-                diveName,
-                "",
-                null,
-                null,
-                null,
-                diveSite.id(),
-                List.of(profile),
-                buddies);
+        return computers.getFirst();
+    }
+
+    private static @NonNull List<Gas> getGases(final FitMessages messages) {
+        return messages.getDiveGasMesgs().stream()
+                .map(
+                        gasMsg ->
+                                new Gas(
+                                        gasMsg.getOxygenContent() / 100.0,
+                                        gasMsg.getHeliumContent() / 100.0))
+                .toList();
+    }
+
+    private DiveSite getOrSaveLocation(final UploadDiveBody body, final SessionMesg session) {
+        if (body.diveSiteId() != null) {
+            return diveService.getSiteById(body.diveSiteId()).orElseThrow();
+        }
+        if (session.getStartPositionLong() == null || session.getStartPositionLat() == null) {
+            throw new MissingDiveSiteValueException("");
+        }
+        final var startCoordinateLon = semicirclesToDegrees(session.getStartPositionLong());
+        final var startCoordinateLat = semicirclesToDegrees(session.getStartPositionLat());
+        return diveService.getOrCreateDiveSite(
+                MessageFormat.format("unnamed-{0}-{1}", startCoordinateLat, startCoordinateLon),
+                new Location(startCoordinateLat, startCoordinateLon));
     }
 
     private DiveProfileUpload getDiveProfile(
@@ -127,22 +152,21 @@ public class FitReaderService extends BaseReaderService {
         var eventIndex = 0;
         var currentGasIndex = 0;
         final var measurements = new ArrayList<DiveMeasurement>(records.size());
-        int i = 0;
+        var i = 0;
         for (final var record : records) {
             final var time = toInstant(record.getTimestamp());
             var nextEvent = events.size() > eventIndex + 1 ? events.get(eventIndex + 1) : null;
             // Process events before and at now
             while (nextEvent != null && !time.isBefore(toInstant(nextEvent.getTimestamp()))) {
                 // Process Event
-                switch (nextEvent.getEvent()) {
-                    case Event.DIVE_GAS_SWITCHED ->
-                            currentGasIndex = Math.toIntExact(nextEvent.getData());
-                    default ->
-                            logger.debug(
-                                    "Time {}: Ignoring Event {} (event: {})",
-                                    toInstant(nextEvent.getTimestamp()),
-                                    nextEvent.getEvent().name(),
-                                    nextEvent);
+                if (nextEvent.getEvent() == Event.DIVE_GAS_SWITCHED) {
+                    currentGasIndex = Math.toIntExact(nextEvent.getData());
+                } else {
+                    logger.trace(
+                            "Time {}: Ignoring Event {} (event: {})",
+                            toInstant(nextEvent.getTimestamp()),
+                            nextEvent.getEvent().name(),
+                            nextEvent);
                 }
                 eventIndex += 1;
                 nextEvent = events.size() > eventIndex + 1 ? events.get(eventIndex + 1) : null;
@@ -154,8 +178,10 @@ public class FitReaderService extends BaseReaderService {
                             time,
                             new Temperature(
                                     record.getTemperature(), Temperature.TemperatureUnit.CELSIUS),
-                            record.getDepth() / 1000.0,
-                            ofSeconds(record.getNdlTime()),
+                            record.getField(RecordMesg.DepthFieldNum).getDoubleValue(),
+                            Optional.ofNullable(record.getNdlTime())
+                                    .map(Duration::ofSeconds)
+                                    .orElse(null),
                             deco,
                             gas,
                             null, // Garmin does not yet support rebreathers AFAIK, check regularly

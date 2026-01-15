@@ -508,7 +508,13 @@ public class DiveDataService {
 
     @Transactional
     public DiveSite saveDiveSite(final String name, final Location coordinate) {
-        return diveSiteRepository.save(new DiveSiteEntity(name, coordinate.toPoint())).toRecord();
+        try {
+            return diveSiteRepository
+                    .save(new DiveSiteEntity(name, coordinate.toPoint()))
+                    .toRecord();
+        } catch (final DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("Dive site with name " + name + " already exists.");
+        }
     }
 
     @Transactional(readOnly = true)

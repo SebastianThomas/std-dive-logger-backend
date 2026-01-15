@@ -10,6 +10,7 @@ import org.zalando.problem.spring.web.autoconfigure.security.ProblemSecurityAuto
             "ch.sthomas.stddivelogger.data",
             "ch.sthomas.stddivelogger.service",
             "ch.sthomas.stddivelogger.analytics",
+            "ch.sthomas.stddivelogger.utils.advice",
         },
         // exclude ErrorMvcAutoConfiguration and ProblemSecurityAutoConfiguration when using
         // zalando/problem
