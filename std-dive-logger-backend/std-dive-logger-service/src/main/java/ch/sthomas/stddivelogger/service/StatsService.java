@@ -43,10 +43,12 @@ public class StatsService {
                 .collect(
                         Collectors.toMap(
                                 id -> diveDataService.findDiveSiteById(id.getKey()).orElseThrow(),
-                                Map.Entry::getValue));
+                                e -> e.getValue().withSites(null)));
     }
 
     public List<UserDiveStatsBy<String>> getStatsForUserByBuddy(final User user) {
-        return statsDataService.getStatsByBuddy(user);
+        return statsDataService.getStatsByBuddy(user).stream()
+                .map(u -> new UserDiveStatsBy<>(u.key(), u.stats().withBuddies(null)))
+                .toList();
     }
 }

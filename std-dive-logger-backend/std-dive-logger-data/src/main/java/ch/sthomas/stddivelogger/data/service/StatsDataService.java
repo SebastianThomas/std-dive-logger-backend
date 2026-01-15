@@ -176,7 +176,7 @@ public class StatsDataService {
                 Duration.ofSeconds(maxDur),
                 raw.maxDepth() != null ? raw.maxDepth() : 0.0,
                 Duration.ofSeconds(totalDur),
-                0, // Buddy count is complex for groups, keeping at 0 or specialized repo call
+                0L, // Buddy count is complex for groups, keeping at 0 or specialized repo call
                 raw.uniqueSites(),
                 null, // Temperature logic
                 null);
