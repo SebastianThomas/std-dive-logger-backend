@@ -159,7 +159,9 @@ public class DiveController {
             @AuthenticationPrincipal final User user,
             @RequestParam("query") final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
-            @RequestParam(name = "includeReader", defaultValue = "true")
+            @RequestParam(
+                            name = "includeReader",
+                            defaultValue = "false") // TODO: Does this even work?
                     final boolean includeReader) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dives.");
