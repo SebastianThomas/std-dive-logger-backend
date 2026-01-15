@@ -46,6 +46,16 @@ public record UserDiveStats(
 
     @Override
     public int compareTo(final UserDiveStats o) {
-        return Long.compare(diveCount, o.diveCount);
+        final var count = Long.compare(diveCount, o.diveCount);
+        if (count != 0) {
+            return count;
+        }
+        if (totalTime != null && o.totalTime != null) {
+            return totalTime.compareTo(o.totalTime);
+        }
+        if (longestDive != null && o.longestDive != null) {
+            return longestDive.compareTo(o.longestDive);
+        }
+        return Long.compare(maxDiveNr, o.maxDiveNr);
     }
 }
