@@ -16,7 +16,8 @@ public record UserDiveStats(
         Long nrOfBuddies,
         Long nrOfSites,
         Temperature maxTemp,
-        Temperature minTemp) {
+        Temperature minTemp)
+        implements Comparable<UserDiveStats> {
     public UserDiveStats withBuddies(final Long l) {
         return new UserDiveStats(
                 diveCount,
@@ -41,5 +42,10 @@ public record UserDiveStats(
                 l,
                 maxTemp,
                 maxTemp);
+    }
+
+    @Override
+    public int compareTo(final UserDiveStats o) {
+        return Long.compare(diveCount, o.diveCount);
     }
 }

@@ -50,9 +50,7 @@ public class StatsController {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dive stats");
         }
-        return statsService.getStatsForUserByDiveSite(user).entrySet().stream()
-                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
-                .toList();
+        return statsService.getStatsForUserByDiveSite(user);
     }
 
     @GetMapping(path = "/year")

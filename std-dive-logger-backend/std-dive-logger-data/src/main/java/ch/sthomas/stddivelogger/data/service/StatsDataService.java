@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -106,6 +107,7 @@ public class StatsDataService {
 
         return fetchAndMap(user, query, dive, buddy.get("name"), String.class).entrySet().stream()
                 .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
+                .sorted(Comparator.reverseOrder())
                 .toList();
     }
 
