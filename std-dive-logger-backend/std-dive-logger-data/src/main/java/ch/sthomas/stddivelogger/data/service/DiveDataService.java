@@ -351,6 +351,11 @@ public class DiveDataService {
                                 Collectors.toMap(
                                         DiveBuddyNameEntity::getName, Function.identity()));
         final var newBuddies = getNewNamedBuddies(updateBody, namedBuddies, existingDive);
+        logger.info(
+                "Suit: {}",
+                updateBody.configuration() != null
+                        ? updateBody.configuration().suit()
+                        : "No configuration in update body");
         final var configuration =
                 updateBody.configuration() != null
                         ? new DiveConfigurationEntity(
