@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.importws.auth;
 
 import ch.sthomas.stddivelogger.model.user.User;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 
 import jakarta.servlet.FilterChain;
@@ -69,7 +70,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         } catch (final JwtException e) {
-            logger.info("Exception parsing JWT", e);
+            if (!(e instanceof ExpiredJwtException)) {
+                logger.info("Exception parsing JWT", e);
+            }
         }
 
         filterChain.doFilter(request, response);
