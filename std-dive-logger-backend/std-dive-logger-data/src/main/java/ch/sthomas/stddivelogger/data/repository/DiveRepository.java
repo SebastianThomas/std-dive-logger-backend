@@ -61,113 +61,83 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     Optional<Integer> findMaxDiveNumberByUserId(long userId);
 
     @Query(
-            value =
-                    """
-                            SELECT MAX(t.dive_duration)
-                            FROM (
-                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                                FROM t_dives d
-                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
-                                WHERE d.fk_diver_id = :userId
-                                GROUP BY d.pk_dive_id
-                            ) t
-                            """,
-            nativeQuery = true)
+            """
+                    SELECT MAX(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId
+                    """)
     Optional<Long> findMaxDurationByUserId(long userId);
 
     @Query(
-            value =
-                    """
-                            SELECT MAX(t.dive_duration)
-                            FROM (
-                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                                FROM t_dives d
-                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND EXTRACT(year FROM p.dive_profile_start) = :year
-                                WHERE d.fk_diver_id = :userId
-                                GROUP BY d.pk_dive_id
-                            ) t
-                            """,
-            nativeQuery = true)
-    Optional<Long> findMaxDurationByUserIdAndYear(long userId, Integer year);
-
-    @Query(
-            value =
-                    """
-                            SELECT MAX(t.dive_duration)
-                            FROM (
-                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                                FROM t_dives d
-                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
-                                JOIN public.t_dive_buddy_name b on d.pk_dive_id = b.fk_dive_id AND b.name = :buddy
-                                WHERE d.fk_diver_id = :userId
-                                GROUP BY d.pk_dive_id
-                            ) t
-                            """,
-            nativeQuery = true)
-    Optional<Long> findMaxDurationByUserIdAndBuddy(long userId, String buddy);
-
-    @Query(
-            value =
-                    """
-                            SELECT MAX(t.dive_duration)
-                            FROM (
-                                SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                                FROM t_dives d
-                                JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND d.dive_site = :diveSiteId
-                                WHERE d.fk_diver_id = :userId
-                                GROUP BY d.pk_dive_id
-                            ) t
-                            """,
-            nativeQuery = true)
-    Optional<Long> findMaxDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
-
-    @Query(
-            value =
-                    """
-                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                            FROM t_dives d
-                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
-                            WHERE d.fk_diver_id = :userId
-                            GROUP BY d.fk_diver_id
-                            """,
-            nativeQuery = true)
+            """
+                    SELECT SUM(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId
+                    """)
     Optional<Long> findTotalDurationByUserId(long userId);
 
     @Query(
-            value =
-                    """
-                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                            FROM t_dives d
-                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND EXTRACT(year FROM p.dive_profile_start) = :year
-                            WHERE d.fk_diver_id = :userId
-                            GROUP BY d.fk_diver_id
-                            """,
-            nativeQuery = true)
-    Optional<Long> findTotalDurationByUserIdAndYear(long userId, int year);
+            """
+                    SELECT MAX(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id
+                        AND d.user.id = :userId
+                        AND YEAR(s.start) = :year
+                    """)
+    Optional<Long> findMaxDurationByUserIdAndYear(long userId, Integer year);
 
     @Query(
-            value =
-                    """
-                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                            FROM t_dives d
-                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id
-                            JOIN public.t_dive_buddy_name b on d.pk_dive_id = b.fk_dive_id AND b.name = :buddy
-                            WHERE d.fk_diver_id = :userId
-                            GROUP BY d.fk_diver_id
-                            """,
-            nativeQuery = true)
+            """
+                    SELECT SUM(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id
+                        AND d.user.id = :userId
+                        AND YEAR(s.start) = :year
+                    """)
+    Optional<Long> findTotalDurationByUserIdAndYear(long userId, Integer year);
+
+    @Query(
+            """
+                    SELECT MAX(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId
+                    JOIN DiveBuddyNameEntity b
+                    ON d.id = b.dive.id AND b.name = :buddy
+                    """)
+    Optional<Long> findMaxDurationByUserIdAndBuddy(long userId, String buddy);
+
+    @Query(
+            """
+                    SELECT SUM(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId
+                    JOIN DiveBuddyNameEntity b
+                    ON d.id = b.dive.id AND b.name = :buddy
+                    """)
     Optional<Long> findTotalDurationByUserIdAndBuddy(long userId, String buddy);
 
     @Query(
-            value =
-                    """
-                            SELECT EXTRACT(epoch FROM SUM(p.dive_profile_end - p.dive_profile_start)) AS dive_duration
-                            FROM t_dives d
-                            JOIN t_dive_profiles p ON p.fk_dive_id = d.pk_dive_id AND d.dive_site = :diveSiteId
-                            WHERE d.fk_diver_id = :userId
-                            GROUP BY d.fk_diver_id
-                            """,
-            nativeQuery = true)
+            """
+                    SELECT MAX(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId AND d.diveSite.id = :diveSiteId
+                    """)
+    Optional<Long> findMaxDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
+
+    @Query(
+            """
+                    SELECT SUM(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId AND d.diveSite.id = :diveSiteId
+                    """)
     Optional<Long> findTotalDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
 
     @Query(

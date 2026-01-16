@@ -130,10 +130,6 @@ public class DiveProfileEntity {
         return getMeasurementsStream().collect(Collectors.toList());
     }
 
-    public Duration getSurfaceInterval() {
-        return null; // TODO
-    }
-
     public void resetAlignProfileManual() {
         final var originalStart = diveProfileHistory.getOriginalStart();
         alignProfileManual(originalStart);

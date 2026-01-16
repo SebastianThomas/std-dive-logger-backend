@@ -47,14 +47,6 @@ public class StatsDataService {
     public record RawMainStats(
             long totalDives, Integer maxDiveNumber, Double maxDepth, long uniqueSites) {}
 
-    public record RawMainStats2(
-            long totalDives,
-            Integer maxDiveNumber,
-            Double maxDepth,
-            long uniqueSites,
-            long totalDuration,
-            long maxDuration) {}
-
     private record TemperatureStats(Double maxC, Double minC) {
         public Temperature maxTemp() {
             return maxC == null ? null : new Temperature(maxC, CELSIUS);
@@ -65,13 +57,40 @@ public class StatsDataService {
         }
     }
 
-    public record RawGroupCounts<T>(
-            T key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites) {}
+    public interface RawGroupCounts<T> {
+        T key();
+
+        long totalDives();
+
+        Integer maxNumber();
+
+        Double maxDepth();
+
+        long uniqueSites();
+    }
+
+    public record LongGroupCounts(
+            Long key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            implements RawGroupCounts<Long> {}
+
+    public record IntegerGroupCounts(
+            Integer key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            implements RawGroupCounts<Integer> {}
+
+    public record StringGroupCounts(
+            String key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            implements RawGroupCounts<String> {}
+
+    public enum StatsType {
+        BUDDY_NAME,
+        YEAR,
+        DIVE_SITE;
+    }
 
     @Transactional(readOnly = true)
     public Map<Integer, UserDiveStats> getStatsByYear(final User user) {
         final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(RawGroupCounts.class);
+        final var query = cb.createQuery(IntegerGroupCounts.class);
         final var dive = query.from(DiveEntity.class);
         final var profile = dive.join("profiles");
 
@@ -81,43 +100,45 @@ public class StatsDataService {
 
         final var yearIntExpr = cb.toInteger(yearExpr);
 
-        return fetchAndMap(user, query, dive, yearIntExpr, Integer.class);
+        return fetchAndMap(user, query, dive, StatsType.YEAR, yearIntExpr, Integer.class);
     }
 
     @Transactional(readOnly = true)
     public Map<Long, UserDiveStats> getStatsByDiveSite(final User user) {
         final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(RawGroupCounts.class);
+        final var query = cb.createQuery(LongGroupCounts.class);
         final var dive = query.from(DiveEntity.class);
 
         // Join to DiveSite to get the name
         final Join<DiveEntity, DiveSiteEntity> site = dive.join("diveSite", JoinType.INNER);
 
-        return fetchAndMap(user, query, dive, site.get("id"), Long.class);
+        return fetchAndMap(user, query, dive, StatsType.DIVE_SITE, site.get("id"), Long.class);
     }
 
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<String>> getStatsByBuddy(final User user) {
         final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(RawGroupCounts.class);
+        final var query = cb.createQuery(StringGroupCounts.class);
         final var dive = query.from(DiveEntity.class);
 
         // TODO: At the moment, only named buddies
         final var buddy = dive.join("namedBuddies", JoinType.INNER);
 
-        return fetchAndMap(user, query, dive, buddy.get("name"), String.class).entrySet().stream()
+        return fetchAndMap(user, query, dive, StatsType.BUDDY_NAME, buddy.get("name"), String.class)
+                .entrySet()
+                .stream()
                 .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
                 .sorted(Comparator.reverseOrder())
                 .toList();
     }
 
-    private <T> Map<T, UserDiveStats> fetchAndMap(
+    private <T, C extends RawGroupCounts<T>> Map<T, UserDiveStats> fetchAndMap(
             final User user,
-            final CriteriaQuery<RawGroupCounts> query,
+            final CriteriaQuery<C> query,
             final Root<DiveEntity> dive,
+            final StatsType statsType,
             final Expression<T> selection,
             final Class<T> typeToken) {
-
         final var cb = entityManager.getCriteriaBuilder();
         final var profile = dive.join("profiles", JoinType.LEFT);
         final var measurement = profile.join("measurements", JoinType.LEFT);
@@ -135,54 +156,77 @@ public class StatsDataService {
         query.orderBy(cb.desc(diveIdCount));
 
         return entityManager.createQuery(query).getResultList().stream()
-                .map(raw -> Pair.of(typeToken.cast(raw.key()), assembleFullStats(user, raw)))
+                .map(
+                        raw ->
+                                Pair.of(
+                                        typeToken.cast(raw.key()),
+                                        assembleFullStats(user, statsType, raw)))
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
     }
 
-    private <T> UserDiveStats assembleFullStats(final User user, final RawGroupCounts<T> raw) {
-        // Because Criteria math failed us, we fetch the durations per group
-        // Note: For high performance, you'd want to update these repository
-        // methods to fetch ALL groups in one native query.
-
-        final long maxDur;
-        final long totalDur;
-
+    private <T> UserDiveStats assembleFullStats(
+            final User user, final StatsType type, final RawGroupCounts<T> raw) {
         // TODO: Use group by instead and don't assume the key by type
-        if (raw.key() instanceof final Integer year) {
-            maxDur = diveRepository.findMaxDurationByUserIdAndYear(user.id(), year).orElse(0L);
-            totalDur = diveRepository.findTotalDurationByUserIdAndYear(user.id(), year).orElse(0L);
-        } else if (raw.key() instanceof final Long siteId) {
-            maxDur =
-                    diveRepository
-                            .findMaxDurationByUserIdAndDiveSiteId(user.id(), siteId)
-                            .orElse(0L);
-            totalDur =
-                    diveRepository
-                            .findTotalDurationByUserIdAndDiveSiteId(user.id(), siteId)
-                            .orElse(0L);
-        } else if (raw.key() instanceof final String buddyName) {
-            // TODO: Fix Named buddies only
-            maxDur =
-                    diveRepository.findMaxDurationByUserIdAndBuddy(user.id(), buddyName).orElse(0L);
-            totalDur =
-                    diveRepository
-                            .findTotalDurationByUserIdAndBuddy(user.id(), buddyName)
-                            .orElse(0L);
-        } else {
-            // Default to all-time or implement Site/Buddy specific duration repos
-            maxDur = diveRepository.findMaxDurationByUserId(user.id()).orElse(0L);
-            totalDur = diveRepository.findTotalDurationByUserId(user.id()).orElse(0L);
-        }
+        final var maxAndTotalDuration =
+                switch (type) {
+                    case YEAR -> {
+                        final var year = (Integer) raw.key();
+                        yield Pair.of(
+                                diveRepository
+                                        .findMaxDurationByUserIdAndYear(user.id(), year)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO),
+                                diveRepository
+                                        .findTotalDurationByUserIdAndYear(user.id(), year)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO));
+                    }
+                    case DIVE_SITE -> {
+                        final var siteId = (Long) raw.key();
+                        yield Pair.of(
+                                diveRepository
+                                        .findMaxDurationByUserIdAndDiveSiteId(user.id(), siteId)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO),
+                                diveRepository
+                                        .findTotalDurationByUserIdAndDiveSiteId(user.id(), siteId)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO));
+                    }
+                    case BUDDY_NAME -> {
+                        final var buddyName = (String) raw.key();
+                        // TODO: Fix Named buddies only
+                        yield Pair.of(
+                                diveRepository
+                                        .findMaxDurationByUserIdAndBuddy(user.id(), buddyName)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO),
+                                diveRepository
+                                        .findTotalDurationByUserIdAndBuddy(user.id(), buddyName)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO));
+                    }
+                    case null ->
+                            Pair.of(
+                                    diveRepository
+                                            .findMaxDurationByUserId(user.id())
+                                            .map(Duration::ofSeconds)
+                                            .orElse(Duration.ZERO),
+                                    diveRepository
+                                            .findTotalDurationByUserId(user.id())
+                                            .map(Duration::ofSeconds)
+                                            .orElse(Duration.ZERO));
+                };
 
         return new UserDiveStats(
                 raw.totalDives(),
                 raw.maxNumber() != null ? raw.maxNumber() : -1,
-                Duration.ofSeconds(maxDur),
+                maxAndTotalDuration.getLeft(),
                 raw.maxDepth() != null ? raw.maxDepth() : 0.0,
-                Duration.ofSeconds(totalDur),
-                0L, // Buddy count is complex for groups, keeping at 0 or specialized repo call
+                maxAndTotalDuration.getRight(),
+                0L, // TODO: Buddy count is complex for groups, keeping at 0 or specialized repo
                 raw.uniqueSites(),
-                null, // Temperature logic
+                null, // TODO: Temperature logic
                 null);
     }
 
@@ -193,15 +237,23 @@ public class StatsDataService {
         final var main = fetchMainStats(user, cb);
         final var temps = fetchTemperatureStats(user, cb);
         final var buddyCount = countUniqueBuddies(user.id());
-        final var maxDuration = diveRepository.findMaxDurationByUserId(user.id()).orElse(0L);
-        final var totalDuration = diveRepository.findTotalDurationByUserId(user.id()).orElse(0L);
+        final var maxDuration =
+                diveRepository
+                        .findMaxDurationByUserId(user.id())
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO);
+        final var totalDuration =
+                diveRepository
+                        .findTotalDurationByUserId(user.id())
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO);
 
         return new UserDiveStats(
                 main.totalDives(),
                 main.maxDiveNumber() != null ? main.maxDiveNumber() : -1,
-                Duration.ofSeconds(maxDuration),
+                maxDuration,
                 main.maxDepth() != null ? main.maxDepth() : 0.0,
-                Duration.ofSeconds(totalDuration),
+                totalDuration,
                 buddyCount,
                 main.uniqueSites(),
                 temps.maxTemp(),
@@ -227,7 +279,7 @@ public class StatsDataService {
         return entityManager.createQuery(query).getSingleResult();
     }
 
-    private TemperatureStats fetchTemperatureStats(final User user, CriteriaBuilder cb) {
+    private TemperatureStats fetchTemperatureStats(final User user, final CriteriaBuilder cb) {
         final var query = cb.createQuery(TemperatureStats.class);
         final var measurement = query.from(DiveMeasurementEntity.class);
 

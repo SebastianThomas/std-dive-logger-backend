@@ -1,15 +1,11 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import static org.apache.commons.lang3.compare.ComparableUtils.min;
-
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
-
-import com.nimbusds.jose.util.Pair;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
@@ -22,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +26,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Gatherers;
 import java.util.stream.Stream;
 
 @Entity
@@ -55,6 +49,10 @@ public class DiveEntity {
 
     @Column(name = "notes", nullable = false)
     private String notes;
+
+    @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private DiveSummaryEntity diveSummary;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
@@ -138,6 +136,7 @@ public class DiveEntity {
                 namedBuddies.stream()
                         .map(b -> new DiveBuddyNameEntity(this, b))
                         .collect(Collectors.toCollection(ArrayList::new));
+        this.diveSummary = new DiveSummaryEntity(this);
     }
 
     private String getPreviewImage(@NotNull final String baseUrl) {
@@ -188,44 +187,9 @@ public class DiveEntity {
     }
 
     private DiveSummary getSummary() {
-        final var depths = profiles.stream().flatMapToDouble(DiveProfileEntity::getDepths);
-        final var depthSummary = depths.summaryStatistics();
-        final var start = profiles.getFirst().getStart();
-        final var end = profiles.getLast().getEnd();
-        final var bottomTime =
-                profiles.stream()
-                        .map(DiveProfileEntity::getBottomTime)
-                        .reduce(Duration.ZERO, Duration::plus);
-        final var overlapToSubtract =
-                profiles.stream()
-                        .gather(Gatherers.windowSliding(2))
-                        // Sliding Window returns all elements if size < 2
-                        .filter(l -> l.size() == 2)
-                        .map(l -> Pair.of(l.getFirst(), l.getLast()))
-                        .filter(
-                                p -> {
-                                    final var distance =
-                                            Duration.between(
-                                                    p.getLeft().getStart(),
-                                                    p.getRight().getStart());
-                                    final var lengthL =
-                                            Duration.between(
-                                                    p.getLeft().getStart(), p.getLeft().getEnd());
-                                    final var lengthR =
-                                            Duration.between(
-                                                    p.getRight().getStart(), p.getRight().getEnd());
-                                    return distance.minus(min(lengthL, lengthR).dividedBy(2))
-                                            .isNegative();
-                                })
-                        .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
-                        .reduce(Duration.ZERO, Duration::plus);
-        return new DiveSummary(
-                start,
-                end,
-                depthSummary.getAverage(),
-                depthSummary.getMax(),
-                profiles.getFirst().getSurfaceInterval(),
-                bottomTime.minus(overlapToSubtract));
+        return Optional.ofNullable(diveSummary)
+                .orElseGet(() -> new DiveSummaryEntity(this))
+                .toRecord();
     }
 
     private Stream<DiveEntity> getBuddyDives(final boolean includeBuddyDives) {
@@ -285,6 +249,7 @@ public class DiveEntity {
         if (visibility != null) {
             this.visibility = visibility;
         }
+        this.diveSummary = new DiveSummaryEntity(this);
         return this;
     }
 
@@ -295,6 +260,7 @@ public class DiveEntity {
     public void addProfiles(final List<DiveProfileEntity> profiles) {
         this.profiles = new ArrayList<>(this.profiles);
         this.profiles.addAll(profiles.stream().map(d -> d.setDive(this)).toList());
+        this.diveSummary = new DiveSummaryEntity(this);
     }
 
     public void setPreviewImage(final String previewImage) {
@@ -325,11 +291,6 @@ public class DiveEntity {
         buddyDivesFrom.remove(buddyDive);
         buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
         buddyDive.buddyDivesTo.remove(this);
-    }
-
-    public DiveEntity resetProfiles() {
-        profiles = new ArrayList<>();
-        return this;
     }
 
     public void appendNotes(final String newNotes) {
