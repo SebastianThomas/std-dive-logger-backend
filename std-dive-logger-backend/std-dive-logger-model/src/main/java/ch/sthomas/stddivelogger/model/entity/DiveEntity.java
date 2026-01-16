@@ -253,12 +253,13 @@ public class DiveEntity {
         return this;
     }
 
-    private void updateDiveSummary() {
+    public DiveEntity updateDiveSummary() {
         if (diveSummary != null) {
             diveSummary.update(this);
         } else {
             this.diveSummary = new DiveSummaryEntity(this);
         }
+        return this;
     }
 
     public List<DiveProfileEntity> getProfiles() {

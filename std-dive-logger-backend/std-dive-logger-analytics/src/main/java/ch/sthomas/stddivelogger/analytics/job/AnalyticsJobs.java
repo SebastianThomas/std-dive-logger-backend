@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-
 @Component
 public class AnalyticsJobs {
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsJobs.class);
@@ -25,5 +23,10 @@ public class AnalyticsJobs {
         if (!result.successful()) {
             throw new AnalyticsException(result);
         }
+    }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    public void computeDiveSummaries() {
+        analyticsService.computeDiveSummaries();
     }
 }

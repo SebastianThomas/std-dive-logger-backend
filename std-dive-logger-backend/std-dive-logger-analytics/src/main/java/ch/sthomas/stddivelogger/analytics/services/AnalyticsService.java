@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
+import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
@@ -30,12 +31,14 @@ public class AnalyticsService {
 
     private final AnalyticsDataService analyticsDataService;
     private final AnalyticsSegmentService analyticsSegmentService;
+    private final DiveDataService diveDataService;
 
     public AnalyticsService(
             final AnalyticsDataService analyticsDataService,
-            final AnalyticsSegmentService analyticsSegmentService) {
+            final AnalyticsSegmentService analyticsSegmentService, DiveDataService diveDataService) {
         this.analyticsDataService = analyticsDataService;
         this.analyticsSegmentService = analyticsSegmentService;
+        this.diveDataService = diveDataService;
     }
 
     public AnalyticsResult computeAnalytics() {
@@ -165,5 +168,9 @@ public class AnalyticsService {
         final var fraction = (double) (millis - before.getLeft()) / dt;
         // (1 - fraction) * before + fraction * after
         return before.getRight() + fraction * (after.getRight() - before.getRight());
+    }
+
+    public void computeDiveSummaries() {
+        diveDataService.computeMissingDiveSummaries();
     }
 }

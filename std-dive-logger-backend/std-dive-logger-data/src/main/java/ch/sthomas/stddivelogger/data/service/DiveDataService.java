@@ -850,4 +850,16 @@ public class DiveDataService {
         profiles.forEach(DiveProfileEntity::resetAlignProfileManual);
         return toRecord(diveRepository.save(dive));
     }
+
+    public void computeMissingDiveSummaries() {
+        final var max = 500;
+        final var count =
+                diveRepository
+                        .saveAll(
+                                diveRepository
+                                        .findByNoSummary(Pageable.ofSize(max))
+                                        .map(DiveEntity::updateDiveSummary))
+                        .size();
+        logger.info("Computed Summaries for {} dives (limited at {})", count, max);
+    }
 }

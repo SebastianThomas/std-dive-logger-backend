@@ -204,4 +204,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     long countUniqueBuddiesByUserId(long userId);
 
     Optional<DiveEntity> findByUser_IdAndNumber(Long userId, int number);
+
+    @Query("SELECT d FROM DiveEntity d WHERE d.diveSummary IS NULL")
+    Page<DiveEntity> findByNoSummary(Pageable pageable);
 }
