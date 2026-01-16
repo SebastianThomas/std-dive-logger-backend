@@ -51,10 +51,16 @@ public record UserDiveStats(
             return count;
         }
         if (totalTime != null && o.totalTime != null) {
-            return totalTime.compareTo(o.totalTime);
+            final var total = totalTime.compareTo(o.totalTime);
+            if (total != 0) {
+                return total;
+            }
         }
         if (longestDive != null && o.longestDive != null) {
-            return longestDive.compareTo(o.longestDive);
+            final var longest = longestDive.compareTo(o.longestDive);
+            if (longest != 0) {
+                return longest;
+            }
         }
         return Long.compare(maxDiveNr, o.maxDiveNr);
     }
