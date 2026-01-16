@@ -45,7 +45,10 @@ public class DiveSummaryEntity {
 
     public DiveSummaryEntity(final DiveEntity dive) {
         this.dive = dive;
+        update(dive);
+    }
 
+    public void update(final DiveEntity dive) {
         final var profiles = dive.getProfiles();
         final var depths = profiles.stream().flatMapToDouble(DiveProfileEntity::getDepths);
         final var depthSummary = depths.summaryStatistics();
@@ -53,7 +56,6 @@ public class DiveSummaryEntity {
         this.avgDepth = depthSummary.getAverage();
         this.start = profiles.getFirst().getStart();
         this.end = profiles.getLast().getEnd();
-
         this.durationSeconds = getBottomTime(profiles).toSeconds();
     }
 

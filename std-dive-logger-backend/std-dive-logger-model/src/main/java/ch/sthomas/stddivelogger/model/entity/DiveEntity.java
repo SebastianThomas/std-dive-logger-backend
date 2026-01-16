@@ -249,8 +249,16 @@ public class DiveEntity {
         if (visibility != null) {
             this.visibility = visibility;
         }
-        this.diveSummary = new DiveSummaryEntity(this);
+        this.updateDiveSummary();
         return this;
+    }
+
+    private void updateDiveSummary() {
+        if (diveSummary != null) {
+            diveSummary.update(this);
+        } else {
+            this.diveSummary = new DiveSummaryEntity(this);
+        }
     }
 
     public List<DiveProfileEntity> getProfiles() {
@@ -260,7 +268,7 @@ public class DiveEntity {
     public void addProfiles(final List<DiveProfileEntity> profiles) {
         this.profiles = new ArrayList<>(this.profiles);
         this.profiles.addAll(profiles.stream().map(d -> d.setDive(this)).toList());
-        this.diveSummary = new DiveSummaryEntity(this);
+        this.updateDiveSummary();
     }
 
     public void setPreviewImage(final String previewImage) {
