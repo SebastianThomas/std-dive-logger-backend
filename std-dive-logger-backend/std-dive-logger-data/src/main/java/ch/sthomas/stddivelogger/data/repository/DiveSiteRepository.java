@@ -68,7 +68,7 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
             value =
                     """
                                 SELECT d.*, ARRAY_AGG(r.dive_id) AS dive_ids, ARRAY_AGG(de.dive_number) AS dive_numbers, ARRAY_AGG(de.dive_identifier) AS dive_identifiers
-                                FROM t_readers r
+                                FROM v_readers r
                                 INNER JOIN t_dives de
                                     ON r.pk_user_id = :userId AND r.dive_id = de.pk_dive_id
                                 INNER JOIN t_dive_site d ON de.dive_site = d.pk_dive_site_id

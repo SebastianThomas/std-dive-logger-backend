@@ -15,18 +15,18 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(
-            value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId",
-            countQuery = "SELECT COUNT(*) FROM t_readers WHERE dive_id = :diveId",
+            value = "SELECT * FROM v_readers r WHERE r.dive_id = :diveId",
+            countQuery = "SELECT COUNT(*) FROM v_readers WHERE dive_id = :diveId",
             nativeQuery = true)
     Page<UserEntity> findReaders(long diveId, Pageable pageable);
 
-    @Query(value = "SELECT * FROM t_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
+    @Query(value = "SELECT * FROM v_readers r WHERE r.dive_id = :diveId", nativeQuery = true)
     List<UserEntity> findReaders(long diveId);
 
     @Query(
             value =
                     "SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END "
-                            + "FROM t_readers r WHERE r.dive_id = :diveId AND r.pk_user_id = :userId",
+                            + "FROM v_readers r WHERE r.dive_id = :diveId AND r.pk_user_id = :userId",
             nativeQuery = true)
     boolean isReader(long diveId, long userId);
 

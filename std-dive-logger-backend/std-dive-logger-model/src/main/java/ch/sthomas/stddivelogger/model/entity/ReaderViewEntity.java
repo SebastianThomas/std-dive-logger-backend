@@ -8,7 +8,7 @@ import org.hibernate.annotations.Immutable;
 
 @Entity
 @Immutable
-@Table(name = "t_readers")
+@Table(name = "v_readers")
 public class ReaderViewEntity {
 
     @EmbeddedId private ReaderId id;

@@ -43,9 +43,9 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     @Query(
             value =
-                    "SELECT d.* FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :name ORDER BY similarity(d.dive_identifier, :identifier) DESC, LENGTH(d.dive_identifier) ASC",
+                    "SELECT d.* FROM t_dives d INNER JOIN v_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :name ORDER BY similarity(d.dive_identifier, :identifier) DESC, LENGTH(d.dive_identifier) ASC",
             countQuery =
-                    "SELECT COUNT(*) FROM t_dives d INNER JOIN t_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :identifier",
+                    "SELECT COUNT(*) FROM t_dives d INNER JOIN v_readers r ON r.pk_user_id = :userId AND r.dive_id = d.pk_dive_id AND d.dive_identifier % :identifier",
             nativeQuery = true)
     Page<DiveEntity> findByIdentifier(long userId, String identifier, Pageable pageable);
 
@@ -169,7 +169,7 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             value =
                     """
                             SELECT d.*
-                            FROM t_readers r
+                            FROM v_readers r
                             INNER JOIN t_dives d ON r.pk_user_id = :userId
                             WHERE d.pk_dive_id = r.dive_id
                                 AND d.pk_dive_id IN (:ids)
