@@ -36,4 +36,8 @@ public class SuitEntity {
     public Suit toRecord() {
         return new Suit(id, type, thicknessMM, additionalNotes);
     }
+
+    public SuitType getType() {
+        return type;
+    }
 }

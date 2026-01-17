@@ -73,4 +73,8 @@ public class DiveConfigurationEntity {
                 weightFeeling,
                 cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList());
     }
+
+    public SuitEntity getSuitEntity() {
+        return suit;
+    }
 }

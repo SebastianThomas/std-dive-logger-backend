@@ -369,7 +369,12 @@ public class DiveDataService {
                 updateBody.visibility() != null
                         ? new VisibilityEntity(existingDive, updateBody.visibility())
                         : null;
-        logger.info("Set new configuration: {}", configuration);
+        if (configuration != null) {
+            logger.info(
+                    "Set new configuration with suit: {}, {}",
+                    configuration.getSuitEntity(),
+                    configuration.getSuitEntity().getType());
+        }
         return toRecord(
                 diveRepository.save(
                         existingDive.update(
