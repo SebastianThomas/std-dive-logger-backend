@@ -807,6 +807,7 @@ public class DiveDataService {
         };
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByGroup(
             final long groupId,
             final int page,
@@ -851,6 +852,7 @@ public class DiveDataService {
         return toRecord(diveRepository.save(dive));
     }
 
+    @Transactional
     public void computeMissingDiveSummaries() {
         final var max = 500;
         final var count =
