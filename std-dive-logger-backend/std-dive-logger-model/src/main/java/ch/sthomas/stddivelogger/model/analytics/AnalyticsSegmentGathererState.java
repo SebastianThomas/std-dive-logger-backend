@@ -87,7 +87,7 @@ public class AnalyticsSegmentGathererState {
 
     public static DiveProfileSegmentInfo infoForMeasurements(
             final List<DiveMeasurementWithId> measurements) {
-        final var trivial =
+        final var result =
                 toSegmentInfo(
                                 measurements,
                                 (a, b) -> a <= 1 && b <= 1,
@@ -108,15 +108,15 @@ public class AnalyticsSegmentGathererState {
                                                 (a, b) -> a >= b,
                                                 (a, b) -> a + 0.5 >= b,
                                                 DiveProfileSegmentType.ASCENT));
-        if (trivial.isPresent()) {
+        if (result.isPresent()) {
             logger.trace(
                     "Found segments with info {} for measurements {}",
-                    trivial.get(),
+                    result.get(),
                     measurements.stream()
                             .map(DiveMeasurementWithId::measurement)
                             .mapToDouble(DiveMeasurement::depth)
                             .toArray());
-            return trivial.get();
+            return result.get();
         }
         logger.info(
                 "Cannot get segment type for measurements {}",
@@ -124,7 +124,6 @@ public class AnalyticsSegmentGathererState {
                         .map(DiveMeasurementWithId::measurement)
                         .mapToDouble(DiveMeasurement::depth)
                         .toArray());
-        // throw new IllegalArgumentException("Cannot get segment type for measurements.");
         return DiveProfileSegmentInfo.ofType(DiveProfileSegmentType.UNKNOWN, measurements);
     }
 

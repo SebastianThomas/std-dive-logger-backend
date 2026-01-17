@@ -6,8 +6,8 @@ import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.dive.Dive;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 
 import com.google.common.math.Stats;
 
@@ -25,7 +25,7 @@ import java.util.stream.DoubleStream;
 
 @Service
 public class AnalyticsService {
-    public static final long ANALYTICS_VERSION = 1;
+    public static final long ANALYTICS_VERSION = 2;
     private static final long MAX_DIVES_PER_RUN = 100;
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsService.class);
 
@@ -35,7 +35,8 @@ public class AnalyticsService {
 
     public AnalyticsService(
             final AnalyticsDataService analyticsDataService,
-            final AnalyticsSegmentService analyticsSegmentService, DiveDataService diveDataService) {
+            final AnalyticsSegmentService analyticsSegmentService,
+            final DiveDataService diveDataService) {
         this.analyticsDataService = analyticsDataService;
         this.analyticsSegmentService = analyticsSegmentService;
         this.diveDataService = diveDataService;
