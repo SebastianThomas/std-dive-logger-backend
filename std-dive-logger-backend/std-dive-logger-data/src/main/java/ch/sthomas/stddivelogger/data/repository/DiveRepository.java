@@ -205,6 +205,6 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     Optional<DiveEntity> findByUser_IdAndNumber(Long userId, int number);
 
-    @Query("SELECT d FROM DiveEntity d WHERE d.diveSummary IS NULL")
+    @Query("SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId AND s.diveId IS NULL")
     Page<DiveEntity> findByNoSummary(Pageable pageable);
 }

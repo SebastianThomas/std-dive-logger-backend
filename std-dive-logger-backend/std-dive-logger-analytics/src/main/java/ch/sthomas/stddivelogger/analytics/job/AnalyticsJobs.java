@@ -26,6 +26,7 @@ public class AnalyticsJobs {
     }
 
     @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(initialDelay = 10000)
     public void computeDiveSummaries() {
         analyticsService.computeDiveSummaries();
     }
