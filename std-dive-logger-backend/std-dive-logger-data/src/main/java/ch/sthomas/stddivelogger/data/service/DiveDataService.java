@@ -913,16 +913,19 @@ public class DiveDataService {
         logger.info("Computed Summaries for {} dives (limited at {})", count, max);
     }
 
+    @Transactional
     public Suit saveSuit(final long userId, final Suit suitWithoutId) {
         return suitRepository
                 .save(new SuitEntity(userRepository.findById(userId).orElseThrow(), suitWithoutId))
                 .toRecord();
     }
 
+    @Transactional(readOnly = true)
     public Optional<Suit> findSuitById(final long userId, final long id) {
         return suitRepository.findByIdAndUser_Id(id, userId).map(SuitEntity::toRecord);
     }
 
+    @Transactional
     public Suit updateSuitById(final long userId, final long id, final @Valid Suit suit) {
         final var existing =
                 suitRepository
@@ -937,6 +940,7 @@ public class DiveDataService {
         return suitRepository.save(existing).toRecord();
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<Suit> findSuitsByUserId(
             final long id, final int page, final int pageSize) {
         return PagedResponse.of(
@@ -949,6 +953,7 @@ public class DiveDataService {
                 SuitEntity::toRecord);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<DiveComputerManufacturer> findDiveComputerManufacturers(
             final Pageable pageable) {
         return PagedResponse.of(
@@ -956,6 +961,7 @@ public class DiveDataService {
                 DiveComputerManufacturerEntity::toRecord);
     }
 
+    @Transactional
     public DiveComputer updateDiveComputer(
             final User user, final long computerId, final @NotBlank String customIdentifier) {
         final var computer =
@@ -966,6 +972,7 @@ public class DiveDataService {
         return diveComputerRepository.save(computer).toRecord();
     }
 
+    @Transactional
     public int deleteUnusedDiveComputers(final User user) {
         return diveComputerRepository.deleteAllByUser_IdAndProfilesIsEmpty(user.id());
     }
