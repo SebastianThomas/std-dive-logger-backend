@@ -304,7 +304,9 @@ public class DiveDataService {
     @Transactional(readOnly = true)
     public Optional<DiveComputer> findDiveComputerByUserAndId(
             final long userId, final long computerId) {
-        return diveComputerRepository.findByIdAndUser_Id(computerId, userId);
+        return diveComputerRepository
+                .findByIdAndUser_Id(computerId, userId)
+                .map(DiveComputerEntity::toRecord);
     }
 
     @Transactional(readOnly = true)
