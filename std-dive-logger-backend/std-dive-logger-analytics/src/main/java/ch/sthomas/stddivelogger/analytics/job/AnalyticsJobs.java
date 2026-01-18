@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.exception.AnalyticsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,8 +26,10 @@ public class AnalyticsJobs {
         }
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
-    @Scheduled(initialDelay = 10000)
+    @Schedules({
+        @Scheduled(cron = "0 0 3 * * *"),
+        @Scheduled(initialDelay = 10000),
+    })
     public void computeDiveSummaries() {
         analyticsService.computeDiveSummaries();
     }

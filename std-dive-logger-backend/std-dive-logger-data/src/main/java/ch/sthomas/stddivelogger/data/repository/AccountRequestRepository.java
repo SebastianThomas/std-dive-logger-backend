@@ -8,5 +8,5 @@ import java.time.OffsetDateTime;
 
 public interface AccountRequestRepository extends JpaRepository<AccountRequestEntity, String> {
 
-    void deleteAllByValidUntilBefore(OffsetDateTime validUntilBefore);
+    int deleteAllByValidUntilBefore(OffsetDateTime validUntilBefore);
 }

@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.data.repository;
 
-import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.entity.GroupEntity;
+import ch.sthomas.stddivelogger.model.user.GroupRole;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,4 +42,16 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
     void joinGroup(long groupId, long userId, String role);
 
     Optional<GroupEntity> findByGroupNameIgnoreCase(String groupName);
+
+    @Modifying
+    @Query(
+            """
+                    DELETE FROM GroupEntity g
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM GroupMemberEntity m
+                        WHERE m.group.id = g.id AND m.role = :adminRole
+                    )
+                    """)
+    int deleteAllByNoAdmin(GroupRole adminRole);
 }
