@@ -91,28 +91,6 @@ public class DiveController {
         return diveService.getDivesByGroup(user, groupId, page);
     }
 
-    @Operation(summary = "Get Dive by ID")
-    @GetMapping(path = "/{id}")
-    public Dive getDiveById(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to access dives.");
-        }
-        return diveService.getDiveById(userService.getUserById(user.id()), diveId).orElseThrow();
-    }
-
-    @Operation(
-            summary =
-                    "Delete a dive, including all associated processed items (e.g., analytics, images)")
-    @DeleteMapping(path = "/{id}")
-    public void deleteDive(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to delete dives.");
-        }
-        diveService.deleteDiveById(user, diveId);
-    }
-
     @Operation(summary = "Find dives by ID")
     @GetMapping("/ids")
     public List<SimplifiedDive> findDivesById(
@@ -427,5 +405,27 @@ public class DiveController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
         return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get Dive by ID")
+    @GetMapping(path = "/{id}")
+    public Dive getDiveById(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to access dives.");
+        }
+        return diveService.getDiveById(userService.getUserById(user.id()), diveId).orElseThrow();
+    }
+
+    @Operation(
+            summary =
+                    "Delete a dive, including all associated processed items (e.g., analytics, images)")
+    @DeleteMapping(path = "/{id}")
+    public void deleteDive(
+            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to delete dives.");
+        }
+        diveService.deleteDiveById(user, diveId);
     }
 }
