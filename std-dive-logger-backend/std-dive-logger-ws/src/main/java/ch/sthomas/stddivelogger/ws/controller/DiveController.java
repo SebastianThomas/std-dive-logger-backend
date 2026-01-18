@@ -153,6 +153,23 @@ public class DiveController {
                 user, computerId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
+    @Operation(summary = "Get dives by suit id")
+    @GetMapping(path = "/suit")
+    public PagedResponse<SimplifiedDive> getDivesBySuit(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("suitId") final int suitId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        return diveService.getDivesBySuit(
+                user, suitId, DiveSort.ofNullable(sortColumn, sortDirection), page);
+    }
+
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
     public PagedResponse<SimplifiedDive> searchDives(

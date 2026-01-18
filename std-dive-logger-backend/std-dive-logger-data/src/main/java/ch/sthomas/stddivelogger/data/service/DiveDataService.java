@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
@@ -144,6 +145,19 @@ public class DiveDataService {
         final var result =
                 diveRepository.findByUser_IdAndComputer(
                         user.id(), computer.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
+        return PagedResponse.of(result, this::toSimplifiedRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByUserAndSuit(
+            final User user,
+            final Suit suit,
+            final DiveSort diveSort,
+            final int page,
+            final int pageSize) {
+        final var result =
+                diveRepository.findByUser_IdAndConfiguration_Suit_Id(
+                        user.id(), suit.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -929,5 +943,12 @@ public class DiveDataService {
                                 pageSize,
                                 Sort.by(new Sort.Order(Sort.Direction.DESC, "id")))),
                 SuitEntity::toRecord);
+    }
+
+    public PagedResponse<DiveComputerManufacturer> findDiveComputerManufacturers(
+            final Pageable pageable) {
+        return PagedResponse.of(
+                diveComputerManufacturerRepository.findAll(pageable),
+                DiveComputerManufacturerEntity::toRecord);
     }
 }

@@ -10,10 +10,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
-import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
-import ch.sthomas.stddivelogger.model.dive.gear.Suit;
-import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
+import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -59,6 +56,7 @@ public class DiveService {
     public static final int SIMPLIFIED_DIVE_PAGE_SIZE = 20;
     public static final int DIVE_SITE_PAGE_SIZE = 10;
     public static final int DIVE_COMPUTER_PAGE_SIZE = 10;
+    public static final int DIVE_COMPUTER_MANUFACTURER_PAGE_SIZE = 20;
     public static final int USER_PAGE_SIZE = 30;
     public static final int SUIT_PAGE_SIZE = 20;
 
@@ -480,6 +478,13 @@ public class DiveService {
                 user, computer, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
+    public PagedResponse<SimplifiedDive> getDivesBySuit(
+            final User user, final long suitId, final DiveSort diveSort, final int page) {
+        final var suit = getSuitById(user, suitId);
+        return diveDataService.findDivesByUserAndSuit(
+                user, suit, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    }
+
     // TODO: Pagination
     public List<DiveSiteWithDives<DiveSite>> getSitesByUser(
             final User user, final boolean onlyOwn) {
@@ -585,5 +590,10 @@ public class DiveService {
 
     public Suit updateSuit(final @NotNull User user, final long id, @Valid final Suit suit) {
         return diveDataService.updateSuitById(user.id(), id, suit);
+    }
+
+    public PagedResponse<DiveComputerManufacturer> getDiveComputerManufacturers(final int page) {
+        return diveDataService.findDiveComputerManufacturers(
+                PageRequest.of(page, DIVE_COMPUTER_MANUFACTURER_PAGE_SIZE));
     }
 }

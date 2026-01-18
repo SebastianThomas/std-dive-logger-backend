@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -29,6 +30,12 @@ public class ComputerController {
             throw new UnauthorizedException("Log in to access your dive computers");
         }
         return diveService.getDiveComputers(user, page);
+    }
+
+    @GetMapping("/manufacturers")
+    public PagedResponse<DiveComputerManufacturer> getUserDiveComputerManufacturers(
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return diveService.getDiveComputerManufacturers(page);
     }
 
     @GetMapping("/search")
