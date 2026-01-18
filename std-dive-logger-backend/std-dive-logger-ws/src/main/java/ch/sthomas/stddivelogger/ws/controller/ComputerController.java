@@ -57,4 +57,9 @@ public class ComputerController {
         }
         return diveService.getDiveComputers(user, query, page);
     }
+
+    @DeleteMapping("/unused")
+    public int deleteDiveComputers(@AuthenticationPrincipal final User user) {
+        return diveService.deleteUnusedDiveComputers(user);
+    }
 }

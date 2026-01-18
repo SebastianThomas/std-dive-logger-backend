@@ -602,4 +602,8 @@ public class DiveService {
             final User user, final long computerId, final @NotBlank String customIdentifier) {
         return diveDataService.updateDiveComputer(user, computerId, customIdentifier);
     }
+
+    public int deleteUnusedDiveComputers(final User user) {
+        return diveDataService.deleteUnusedDiveComputers(user);
+    }
 }

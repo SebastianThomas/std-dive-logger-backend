@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -32,4 +33,8 @@ public interface DiveComputerRepository extends JpaRepository<DiveComputerEntity
             long userId, String customName, Pageable pageable);
 
     Optional<DiveComputerEntity> findByIdAndUser_Id(Long id, Long userId);
+
+    @Query("DELETE FROM DiveComputerEntity c WHERE c.user.id = :userId AND c.profiles.size = 0")
+    @Modifying
+    int deleteAllByUser_IdAndProfilesIsEmpty(Long userId);
 }

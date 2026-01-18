@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 @Entity
 @Table(name = "t_dive_computer")
 public class DiveComputerEntity {
@@ -29,6 +31,9 @@ public class DiveComputerEntity {
     @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
+
+    @OneToMany(mappedBy = "computer")
+    private List<DiveProfileEntity> profiles;
 
     public DiveComputerEntity() {}
 

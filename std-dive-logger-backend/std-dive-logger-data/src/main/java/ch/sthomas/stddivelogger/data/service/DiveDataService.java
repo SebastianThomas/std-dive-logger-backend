@@ -965,4 +965,8 @@ public class DiveDataService {
         computer.setIdentifier(customIdentifier);
         return diveComputerRepository.save(computer).toRecord();
     }
+
+    public int deleteUnusedDiveComputers(final User user) {
+        return diveComputerRepository.deleteAllByUser_IdAndProfilesIsEmpty(user.id());
+    }
 }
