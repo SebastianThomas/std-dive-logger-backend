@@ -22,6 +22,7 @@ import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasMixEntity;
 import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
+import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -32,6 +33,7 @@ import com.google.common.collect.MoreCollectors;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import org.jspecify.annotations.NonNull;
@@ -950,5 +952,15 @@ public class DiveDataService {
         return PagedResponse.of(
                 diveComputerManufacturerRepository.findAll(pageable),
                 DiveComputerManufacturerEntity::toRecord);
+    }
+
+    public DiveComputer updateDiveComputer(
+            final User user, final long computerId, final @NotBlank String customIdentifier) {
+        final var computer =
+                diveComputerRepository
+                        .findById(computerId)
+                        .orElseThrow(() -> ForbiddenException.forDiveComputer(user, computerId));
+        computer.setIdentifier(customIdentifier);
+        return diveComputerRepository.save(computer).toRecord();
     }
 }

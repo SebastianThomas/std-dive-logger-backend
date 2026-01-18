@@ -42,4 +42,12 @@ public class ForbiddenException extends RuntimeException {
                         "User {0} ({1}) is not in group {2}", user.id(), user.email(), groupId),
                 user);
     }
+
+    public static ForbiddenException forDiveComputer(final User user, final long computerId) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) does not have access to dive computer {2}",
+                        user.id(), user.email(), computerId),
+                user);
+    }
 }

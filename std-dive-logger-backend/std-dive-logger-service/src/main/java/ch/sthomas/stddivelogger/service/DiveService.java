@@ -26,6 +26,7 @@ import ch.sthomas.stddivelogger.utils.LocationUtils;
 
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -595,5 +596,10 @@ public class DiveService {
     public PagedResponse<DiveComputerManufacturer> getDiveComputerManufacturers(final int page) {
         return diveDataService.findDiveComputerManufacturers(
                 PageRequest.of(page, DIVE_COMPUTER_MANUFACTURER_PAGE_SIZE));
+    }
+
+    public DiveComputer updateDiveComputer(
+            final User user, final long computerId, final @NotBlank String customIdentifier) {
+        return diveDataService.updateDiveComputer(user, computerId, customIdentifier);
     }
 }

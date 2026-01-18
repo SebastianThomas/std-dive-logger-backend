@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 @Entity
@@ -60,5 +61,9 @@ public class DiveComputerEntity {
 
     public DiveComputer toRecord() {
         return new DiveComputer(id, manufacturer.toRecord(), serialNumber, customIdentifier);
+    }
+
+    public void setIdentifier(final @NotBlank String customIdentifier) {
+        this.customIdentifier = customIdentifier;
     }
 }

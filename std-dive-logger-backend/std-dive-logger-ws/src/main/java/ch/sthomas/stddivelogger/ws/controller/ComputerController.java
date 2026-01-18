@@ -7,11 +7,12 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/v1/computers")
@@ -36,6 +37,14 @@ public class ComputerController {
     public PagedResponse<DiveComputerManufacturer> getUserDiveComputerManufacturers(
             @RequestParam(name = "page", defaultValue = "0") final int page) {
         return diveService.getDiveComputerManufacturers(page);
+    }
+
+    @PutMapping("/{id}")
+    public DiveComputer updateDiveComputer(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long computerId,
+            @Valid @NotNull @NotBlank @RequestBody final String customIdentifier) {
+        return diveService.updateDiveComputer(user, computerId, customIdentifier);
     }
 
     @GetMapping("/search")
