@@ -34,7 +34,7 @@ public interface DiveComputerRepository extends JpaRepository<DiveComputerEntity
 
     Optional<DiveComputerEntity> findByIdAndUser_Id(Long id, Long userId);
 
-    @Query("DELETE FROM DiveComputerEntity c WHERE c.user.id = :userId AND c.profiles.size = 0")
+    @Query("DELETE FROM DiveComputerEntity c WHERE c.user.id = :userId AND SIZE(c.profiles) = 0")
     @Modifying
     int deleteAllByUser_IdAndProfilesIsEmpty(Long userId);
 }
