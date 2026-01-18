@@ -15,6 +15,7 @@ public record UpdateDiveBody(
         long id,
         int number,
         @Nullable String notes,
+        long suitId,
         @Nullable DiveConfiguration configuration,
         @Nullable DiveGasConsumption gasConsumption,
         @Nullable Visibility visibility,

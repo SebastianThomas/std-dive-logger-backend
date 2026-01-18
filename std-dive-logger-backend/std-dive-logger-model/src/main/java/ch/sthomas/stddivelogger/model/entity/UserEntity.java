@@ -72,4 +72,8 @@ public class UserEntity {
     public String getEmail() {
         return email;
     }
+
+    public long getId() {
+        return id;
+    }
 }

@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -75,6 +76,7 @@ public class DiveDataService {
     private final ReaderViewRepository readerViewRepository;
     private final DiveProfileRepository diveProfileRepository;
     private final DiveProfileHistoryRepository diveProfileHistoryRepository;
+    private final SuitRepository suitRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -92,7 +94,8 @@ public class DiveDataService {
             final GroupRepository groupRepository,
             final ReaderViewRepository readerViewRepository,
             final DiveProfileRepository diveProfileRepository,
-            final DiveProfileHistoryRepository diveProfileHistoryRepository) {
+            final DiveProfileHistoryRepository diveProfileHistoryRepository,
+            final SuitRepository suitRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -110,6 +113,7 @@ public class DiveDataService {
         this.readerViewRepository = readerViewRepository;
         this.diveProfileRepository = diveProfileRepository;
         this.diveProfileHistoryRepository = diveProfileHistoryRepository;
+        this.suitRepository = suitRepository;
     }
 
     @Transactional(readOnly = true)
@@ -192,6 +196,7 @@ public class DiveDataService {
                         notes,
                         Optional.ofNullable(visibility).orElse(Visibility.EMPTY),
                         gasConsumption,
+                        findOrCreateSuit(userEntity, configuration.suit()),
                         configuration,
                         userEntity,
                         diveSite,
@@ -210,6 +215,22 @@ public class DiveDataService {
         } catch (final DataIntegrityViolationException e) {
             throw new DiveConstraintException("Could not save dive", e);
         }
+    }
+
+    @Transactional
+    public SuitEntity findOrCreateSuit(final UserEntity user, final Suit suit) {
+        if (suit.id() != null) {
+            return suitRepository
+                    .findByIdAndUser_Id(suit.id(), user.getId())
+                    .orElseThrow(
+                            () ->
+                                    new NoSuchElementException(
+                                            "Could not find suit by id " + suit.id()));
+        }
+        final var existing =
+                suitRepository.findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
+                        user.getId(), suit.type(), suit.thickness(), suit.notes());
+        return existing.orElseGet(() -> suitRepository.save(new SuitEntity(user, suit)));
     }
 
     @Transactional
@@ -339,7 +360,7 @@ public class DiveDataService {
     }
 
     @Transactional
-    public Dive updateDive(final @NotNull @Valid UpdateDiveBody updateBody) {
+    public Dive updateDive(final User user, final @NotNull @Valid UpdateDiveBody updateBody) {
         final var existingDive = diveRepository.findById(updateBody.id()).orElseThrow();
         final var diveSiteEntity =
                 Optional.ofNullable(updateBody.siteId())
@@ -351,15 +372,18 @@ public class DiveDataService {
                                 Collectors.toMap(
                                         DiveBuddyNameEntity::getName, Function.identity()));
         final var newBuddies = getNewNamedBuddies(updateBody, namedBuddies, existingDive);
-        logger.info(
-                "Suit: {}",
-                updateBody.configuration() != null
-                        ? updateBody.configuration().suit()
-                        : "No configuration in update body");
         final var configuration =
                 updateBody.configuration() != null
                         ? new DiveConfigurationEntity(
-                                existingDive, updateBody.configuration(), this::toEntity)
+                                existingDive,
+                                suitRepository
+                                        .findByIdAndUser_Id(updateBody.suitId(), user.id())
+                                        .orElseThrow(
+                                                () ->
+                                                        new NoSuchElementException(
+                                                                "Could not find Suit")),
+                                updateBody.configuration(),
+                                this::toEntity)
                         : null;
         final var gasConsumption =
                 updateBody.gasConsumption() != null
@@ -442,7 +466,7 @@ public class DiveDataService {
         diveEntity.addProfiles(List.of(profileEntity));
         final var savedProfile = diveProfileRepository.save(profileEntity);
         if (newNotes != null && !newNotes.isBlank()) {
-            diveEntity.appendNotes(diveNumber.toString() + "\n" + newNotes);
+            diveEntity.appendNotes(diveNumber + "\n" + newNotes);
         }
         final var savedDive = diveRepository.save(diveEntity);
         final var savedDiveProfile =
@@ -869,5 +893,41 @@ public class DiveDataService {
                                         .map(DiveEntity::updateDiveSummary))
                         .size();
         logger.info("Computed Summaries for {} dives (limited at {})", count, max);
+    }
+
+    public Suit saveSuit(final long userId, final Suit suitWithoutId) {
+        return suitRepository
+                .save(new SuitEntity(userRepository.findById(userId).orElseThrow(), suitWithoutId))
+                .toRecord();
+    }
+
+    public Optional<Suit> findSuitById(final long userId, final long id) {
+        return suitRepository.findByIdAndUser_Id(id, userId).map(SuitEntity::toRecord);
+    }
+
+    public Suit updateSuitById(final long userId, final long id, final @Valid Suit suit) {
+        final var existing =
+                suitRepository
+                        .findByIdAndUser_Id(id, userId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find Suit by id " + id));
+        existing.setType(suit.type());
+        existing.setThicknessMM(suit.thickness());
+        existing.setAdditionalNotes(suit.notes());
+        return suitRepository.save(existing).toRecord();
+    }
+
+    public PagedResponse<Suit> findSuitsByUserId(
+            final long id, final int page, final int pageSize) {
+        return PagedResponse.of(
+                suitRepository.findByUser_Id(
+                        id,
+                        PageRequest.of(
+                                page,
+                                pageSize,
+                                Sort.by(new Sort.Order(Sort.Direction.DESC, "id")))),
+                SuitEntity::toRecord);
     }
 }

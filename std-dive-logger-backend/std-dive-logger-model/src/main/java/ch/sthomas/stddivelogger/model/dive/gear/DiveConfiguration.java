@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive.gear;
 
+import ch.sthomas.stddivelogger.model.user.User;
+
 import jakarta.annotation.Nullable;
 
 import java.util.List;
@@ -7,9 +9,11 @@ import java.util.List;
 public record DiveConfiguration(
         Suit suit,
         BaseConfiguration base,
-        double weight,
+        Double weight,
         @Nullable WeightFeeling weightFeeling,
         List<DiveConfigurationCylinder> cylinders) {
-    public static final DiveConfiguration EMPTY =
-            new DiveConfiguration(Suit.UNKNOWN, BaseConfiguration.OTHER, 0, null, List.of());
+    public static DiveConfiguration createEmpty(final User user) {
+        return new DiveConfiguration(
+                Suit.createUnknown(user), BaseConfiguration.OTHER, null, null, List.of());
+    }
 }

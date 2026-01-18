@@ -91,7 +91,7 @@ public class FitReaderService extends BaseReaderService {
                 "",
                 Visibility.EMPTY,
                 DiveGasConsumption.EMPTY,
-                DiveConfiguration.EMPTY,
+                DiveConfiguration.createEmpty(user),
                 diveSite.id(),
                 List.of(profile),
                 buddies);

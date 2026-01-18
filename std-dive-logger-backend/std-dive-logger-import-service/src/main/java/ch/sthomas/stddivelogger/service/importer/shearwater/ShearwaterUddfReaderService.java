@@ -75,7 +75,7 @@ public class ShearwaterUddfReaderService extends BaseReaderService {
                 notes,
                 visibility,
                 uddfFile.getGasConsumption(),
-                uddfFile.getConfiguration(),
+                uddfFile.getConfiguration(user),
                 site,
                 List.of(profile),
                 uddfFile.getBuddies());

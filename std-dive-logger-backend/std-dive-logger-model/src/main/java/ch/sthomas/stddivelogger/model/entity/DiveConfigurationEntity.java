@@ -23,7 +23,7 @@ public class DiveConfigurationEntity {
     @JoinColumn(name = "fk_dive_id")
     private DiveEntity dive;
 
-    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "fk_suit_id")
     private SuitEntity suit;
 
@@ -44,11 +44,12 @@ public class DiveConfigurationEntity {
 
     public DiveConfigurationEntity(
             final DiveEntity dive,
+            final SuitEntity suit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.diveId = dive.getId();
         this.dive = dive;
-        this.suit = configuration.suit() == null ? null : new SuitEntity(configuration.suit());
+        this.suit = suit;
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();

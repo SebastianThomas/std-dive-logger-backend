@@ -110,6 +110,7 @@ public class DiveEntity {
             final String notes,
             final Visibility visibility,
             final DiveGasConsumption gasConsumption,
+            final SuitEntity suit,
             final DiveConfiguration configuration,
             final UserEntity userEntity,
             final DiveSiteEntity diveSiteEntity,
@@ -121,7 +122,7 @@ public class DiveEntity {
         this.visibility = new VisibilityEntity(this, visibility);
         this.gasConsumption = new DiveGasConsumptionEntity(this, gasConsumption);
         this.configuration =
-                new DiveConfigurationEntity(this, configuration, getCylinderSizeEntity);
+                new DiveConfigurationEntity(this, suit, configuration, getCylinderSizeEntity);
         this.user = userEntity;
         this.previewImage = null;
         this.notes = notes;
@@ -304,5 +305,9 @@ public class DiveEntity {
 
     public void appendNotes(final String newNotes) {
         this.notes += "\n\n" + newNotes;
+    }
+
+    public long getUserId() {
+        return user.getId();
     }
 }

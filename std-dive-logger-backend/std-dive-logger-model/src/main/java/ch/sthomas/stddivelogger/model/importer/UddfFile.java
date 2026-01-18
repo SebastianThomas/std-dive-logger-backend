@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.user.User;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
@@ -66,12 +67,29 @@ public record UddfFile(
     public DiveGasConsumption getGasConsumption() {
         final var tankData = profileData.repetitionGroup.dive.tankdata;
         final var usedPerTank =
-                tankData.stream().map(t -> t.pressureStart - t.pressureEnd).toList();
-        return DiveGasConsumption.EMPTY;
+                tankData.stream()
+                        .map(
+                                t -> {
+                                    final var pressure =
+                                            Optional.ofNullable(t.pressureStart)
+                                                    .flatMap(
+                                                            s ->
+                                                                    Optional.ofNullable(
+                                                                                    t.pressureEnd)
+                                                                            .map(e -> e - s));
+                                    return Pair.of(
+                                            pressure.orElse(null),
+                                            Optional.ofNullable(t.breathingVolume)
+                                                    .or(() -> pressure.map(p -> p * t.tankVolume))
+                                                    .orElse(null));
+                                })
+                        .toList();
+        final var totalLiters = usedPerTank.stream().mapToDouble(Pair::getRight).sum();
+        return new DiveGasConsumption(0, 0, totalLiters);
     }
 
-    public DiveConfiguration getConfiguration() {
-        return DiveConfiguration.EMPTY;
+    public DiveConfiguration getConfiguration(final User user) {
+        return DiveConfiguration.createEmpty(user);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -211,8 +229,11 @@ public record UddfFile(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfTankData(
-            @JacksonXmlProperty(localName = "tankpressurebegin") double pressureStart,
-            @JacksonXmlProperty(localName = "tankpressureend") double pressureEnd) {}
+            @JacksonXmlProperty(localName = "link") Link link,
+            @JacksonXmlProperty(localName = "tankvolume") Double tankVolume,
+            @JacksonXmlProperty(localName = "tankpressurebegin") Double pressureStart,
+            @JacksonXmlProperty(localName = "tankpressureend") Double pressureEnd,
+            @JacksonXmlProperty(localName = "breathingconsumptionvolume") Double breathingVolume) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {}

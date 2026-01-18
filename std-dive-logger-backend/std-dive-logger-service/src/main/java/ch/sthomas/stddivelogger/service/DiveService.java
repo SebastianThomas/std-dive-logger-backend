@@ -12,6 +12,8 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.Suit;
+import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -58,6 +60,7 @@ public class DiveService {
     public static final int DIVE_SITE_PAGE_SIZE = 10;
     public static final int DIVE_COMPUTER_PAGE_SIZE = 10;
     public static final int USER_PAGE_SIZE = 30;
+    public static final int SUIT_PAGE_SIZE = 20;
 
     private final DiveDataService diveDataService;
     private final StorageService storageService;
@@ -255,7 +258,7 @@ public class DiveService {
         if (!hasWriteAccess(user, dive.id())) {
             throw ForbiddenException.forDiveId(user, dive.id());
         }
-        return diveDataService.updateDive(dive);
+        return diveDataService.updateDive(user, dive);
     }
 
     public Dive linkBuddyDive(final User user, final long userDive, final long buddyDive) {
@@ -343,7 +346,7 @@ public class DiveService {
                 "",
                 null,
                 DiveGasConsumption.EMPTY,
-                DiveConfiguration.EMPTY,
+                DiveConfiguration.createEmpty(user),
                 diveSiteId,
                 List.of(),
                 List.of());
@@ -558,5 +561,29 @@ public class DiveService {
                             + profiles.stream().map(DiveProfile::id).toList());
         }
         return diveDataService.resetAlignedProfiles(diveId, profileIds);
+    }
+
+    public Suit createSuit(
+            final @NotNull User user,
+            final @NotNull SuitType type,
+            @Nullable final Double thickness,
+            @Nullable final String notes) {
+        return diveDataService.saveSuit(
+                user.id(),
+                new Suit(null, user.id(), type, thickness, Objects.requireNonNullElse(notes, "")));
+    }
+
+    public PagedResponse<Suit> getSuits(final User user, final int page) {
+        return diveDataService.findSuitsByUserId(user.id(), page, SUIT_PAGE_SIZE);
+    }
+
+    public Suit getSuitById(final User user, final long id) {
+        return diveDataService
+                .findSuitById(user.id(), id)
+                .orElseThrow(() -> new NoSuchElementException("Could not find suit by id " + id));
+    }
+
+    public Suit updateSuit(final @NotNull User user, final long id, @Valid final Suit suit) {
+        return diveDataService.updateSuitById(user.id(), id, suit);
     }
 }
