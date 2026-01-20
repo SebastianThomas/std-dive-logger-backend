@@ -39,12 +39,14 @@ public class ComputerController {
         return diveService.getDiveComputerManufacturers(page);
     }
 
+    public record UpdateDiveComputerBody(String customIdentifier) {}
+
     @PutMapping("/{id}")
     public DiveComputer updateDiveComputer(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long computerId,
-            @Valid @NotNull @NotBlank @RequestBody final String customIdentifier) {
-        return diveService.updateDiveComputer(user, computerId, customIdentifier);
+            @Valid @NotNull @NotBlank @RequestBody final UpdateDiveComputerBody customIdentifier) {
+        return diveService.updateDiveComputer(user, computerId, customIdentifier.customIdentifier());
     }
 
     @GetMapping("/search")
