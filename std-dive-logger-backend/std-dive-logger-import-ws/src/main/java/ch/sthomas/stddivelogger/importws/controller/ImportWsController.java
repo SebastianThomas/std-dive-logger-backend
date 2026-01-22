@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotEmpty;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,10 +31,14 @@ public class ImportWsController {
 
     @Operation(summary = "Add a dive")
     @PostMapping(path = "", consumes = MULTIPART_FORM_DATA_VALUE)
-    public UploadDiveResult uploadDive(
+    public ResponseEntity<UploadDiveResult> uploadDive(
             @AuthenticationPrincipal final User user,
             @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
             @RequestParam("file") @NotEmpty final List<MultipartFile> files) {
-        return importService.uploadDive(user, files, body);
+        final var uploaded = importService.uploadDive(user, files, body);
+        if (uploaded.dives().isEmpty() && !uploaded.errors().isEmpty()) {
+            return ResponseEntity.internalServerError().body(uploaded);
+        }
+        return ResponseEntity.ok(uploaded);
     }
 }

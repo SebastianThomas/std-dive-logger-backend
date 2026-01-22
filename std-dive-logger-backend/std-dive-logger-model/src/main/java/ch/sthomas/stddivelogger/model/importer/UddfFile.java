@@ -11,19 +11,27 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.utils.FileValidator;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.collect.MoreCollectors;
+import com.vdurmont.semver4j.Semver;
 
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotNull;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -40,9 +48,70 @@ public record UddfFile(
         @JacksonXmlProperty(localName = "profiledata") UddfProfileData profileData,
         @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
     private static final Logger logger = LoggerFactory.getLogger(UddfFile.class);
+    private static final long NANOS_PER_SECOND = 1_000_000_000L;
+    private static final BigDecimal BD_NANOS_PER_SECOND =
+            BigDecimal.valueOf((double) NANOS_PER_SECOND);
 
-    public Optional<DiveNumber> diveNumber() {
-        final var number = profileData.repetitionGroup.dive.infoBeforeDive.divenumber;
+    public static boolean validate(final UddfFile uddfFile, final int entry) {
+        final var version = new Semver(uddfFile.version, Semver.SemverType.LOOSE);
+        if (version.isLowerThan("3.0.0") || version.isGreaterThanOrEqualTo("4.0.0")) {
+            throw new IllegalArgumentException(
+                    MessageFormat.format("UDDF file version {0} not supported", version));
+        }
+
+        if (uddfFile.profileData == null || uddfFile.profileData.repetitionGroup == null) {
+            throw new IllegalArgumentException("Profile Data is null, cannot extract dive.");
+        }
+        if (entry > uddfFile.getEntries()) {
+            throw new IllegalArgumentException(
+                    MessageFormat.format(
+                            "Failed to extract entry {0} from file, only has {1} entries",
+                            entry, uddfFile.getEntries()));
+        }
+        if (uddfFile.profileData.repetitionGroup.get(entry).dive.samples.waypoint().size() <= 2) {
+            logger.info(
+                    "Repetition group {} has too few waypoints: {}, skipping.",
+                    entry,
+                    uddfFile.profileData.repetitionGroup.get(entry).dive.samples);
+            return false;
+        }
+        return true;
+    }
+
+    public int getEntries() {
+        return profileData.repetitionGroup.size();
+    }
+
+    public Optional<DiveNumber> exportDiveNumber(final int entry) {
+        return diveNumber(Objects.requireNonNull(profileData.repetitionGroup.get(entry).dive));
+    }
+
+    public Instant exportStart(final int entry) {
+        return getStart(Objects.requireNonNull(profileData.repetitionGroup.get(entry)).dive);
+    }
+
+    public Instant exportEnd(final int entry) {
+        return getEnd(Objects.requireNonNull(profileData.repetitionGroup.get(entry)).dive);
+    }
+
+    public String exportNotes(final int entry) {
+        return getNotes(profileData.repetitionGroup.get(entry).dive);
+    }
+
+    public Optional<Visibility> exportVisibility(final int entry) {
+        return getVisibility(profileData.repetitionGroup.get(entry).dive);
+    }
+
+    public DiveGasConsumption exportGasConsumption(final int entry) {
+        return getGasConsumption(profileData.repetitionGroup.get(entry).dive);
+    }
+
+    public List<DiveMeasurement> exportMeasurements(final int entry) {
+        return getMeasurements(profileData.repetitionGroup.get(entry).dive, gasDefinitions);
+    }
+
+    static Optional<DiveNumber> diveNumber(final UddfProfileDataDive dive) {
+        final var number = dive.infoBeforeDive.divenumber;
         if (number == null || number.isBlank()) {
             return Optional.empty();
         }
@@ -64,8 +133,11 @@ public record UddfFile(
         }
     }
 
-    public DiveGasConsumption getGasConsumption() {
-        final var tankData = profileData.repetitionGroup.dive.tankdata;
+    static DiveGasConsumption getGasConsumption(final UddfProfileDataDive dive) {
+        final var tankData = dive.tankdata;
+        if (tankData == null) {
+            return DiveGasConsumption.EMPTY;
+        }
         final var usedPerTank =
                 tankData.stream()
                         .map(
@@ -114,7 +186,7 @@ public record UddfFile(
     record UddfDiver(@JacksonXmlProperty(localName = "owner") UddfOwner owner, UddfBuddy buddy) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record UddfOwner(UddfOwnerEquipment equipment) {}
+    record UddfOwner(@Nullable UddfOwnerEquipment equipment) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfOwnerEquipment(
@@ -177,12 +249,59 @@ public record UddfFile(
     record UddfTableGenerationProfile(String id, int density, String decomodel) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record UddfProfileData(
-            @JacksonXmlProperty(localName = "repetitiongroup")
-                    UddfProfileRepetitionGroup repetitionGroup) {}
+    public record UddfProfileData(
+            @NotNull
+                    @JacksonXmlProperty(localName = "repetitiongroup")
+                    @JacksonXmlElementWrapper(useWrapping = false)
+                    List<UddfProfileRepetitionGroup> repetitionGroup) {
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (!(o instanceof UddfProfileData(final var group))) return false;
+            return new EqualsBuilder().append(repetitionGroup, group).isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37).append(repetitionGroup).toHashCode();
+        }
+
+        public UddfProfileRepetitionGroup getData(final int i) {
+            return Objects.requireNonNull(repetitionGroup.get(i));
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringBuilder(this).append("repetitionGroup", repetitionGroup).toString();
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record UddfProfileRepetitionGroup(UddfProfileDataDive dive) {}
+    public record UddfProfileRepetitionGroup(
+            @Nullable @JacksonXmlProperty(isAttribute = true) String id, UddfProfileDataDive dive) {
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (!(o instanceof UddfProfileRepetitionGroup(final var id1, final var dive1)))
+                return false;
+            return new EqualsBuilder().append(id, id1).append(dive, dive1).isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37).append(id).append(dive).toHashCode();
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringBuilder(this).append("id", id).append("dive", dive).toString();
+        }
+
+        public boolean timeIsValid() {
+            final var time = dive.infoBeforeDive.datetime;
+            return FileValidator.timeIsValid(time);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfProfileDataDive(
@@ -190,10 +309,50 @@ public record UddfFile(
             Object applicationdata,
             @JacksonXmlProperty(localName = "informationbeforedive")
                     UddfInfoBeforeDive infoBeforeDive,
-            @JacksonXmlElementWrapper(useWrapping = false) List<UddfTankData> tankdata,
+            @Nullable @JacksonXmlElementWrapper(useWrapping = false) List<UddfTankData> tankdata,
             UddfSamples samples,
             @JacksonXmlProperty(localName = "informationafterdive")
-                    UddfInfoAfterDive infoAfterDive) {}
+                    UddfInfoAfterDive infoAfterDive) {
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (!(o
+                    instanceof
+                    UddfProfileDataDive(
+                            final var id1,
+                            final var applicationdata1,
+                            final var beforeDive,
+                            final var _,
+                            final var samples1,
+                            final var afterDive))) return false;
+            return new EqualsBuilder()
+                    .append(id, id1)
+                    .append(samples.waypoint.toArray(), samples1.waypoint.toArray())
+                    .append(applicationdata, applicationdata1)
+                    .append(infoAfterDive, afterDive)
+                    .append(infoBeforeDive, beforeDive)
+                    .isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37)
+                    .append(id)
+                    .append(samples.waypoint.size())
+                    .toHashCode();
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringBuilder(this)
+                    .append("id", id)
+                    .append("samples.size", samples.waypoint().size())
+                    .append("applicationdata", applicationdata)
+                    .append("infoBeforeDive", infoBeforeDive)
+                    .append("infoAfterDive", infoAfterDive)
+                    .toString();
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfInfoBeforeDive(
@@ -209,9 +368,9 @@ public record UddfFile(
     record UddfInfoAfterDive(
             @JacksonXmlProperty(localName = "greatestdepth") double maxDepth,
             String visibility,
-            UddfNotes notes,
+            @Nullable UddfNotes notes,
             @JacksonXmlProperty(localName = "anysymptoms") NotesContainer anySymptoms,
-            @JacksonXmlProperty(localName = "diveduration") int duration,
+            @JacksonXmlProperty(localName = "diveduration") double duration,
             NotesContainer observations,
             @JacksonXmlProperty(localName = "averagedepth") double avgDepth) {}
 
@@ -236,7 +395,25 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "breathingconsumptionvolume") Double breathingVolume) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {}
+    record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (!(o instanceof UddfSamples(final var waypoint1))) return false;
+            logger.info("Comparing sizes: {}, {}", waypoint, waypoint1);
+            if (waypoint.size() != waypoint1.size()) return false;
+            var builder = new EqualsBuilder();
+            for (var i = 0; i < waypoint.size(); i++) {
+                builder = builder.append(waypoint.get(i), waypoint1.get(i));
+            }
+            return builder.isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37).append(waypoint.size()).toHashCode();
+        }
+    }
 
     /** <a href="https://www.streit.cc/extern/uddf_v321/en/waypoint.html">Waypoint Standard<a> */
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -249,7 +426,7 @@ public record UddfFile(
                     @Nullable
                     List<UddfDecoStop> decoStop,
             double depth,
-            @JacksonXmlProperty(localName = "divetime") int seconds,
+            @JacksonXmlProperty(localName = "divetime") double seconds,
             @JacksonXmlProperty(localName = "gradientfactor") int gf,
             @JacksonXmlProperty(localName = "heading") double compassHeading,
             @JacksonXmlProperty(localName = "measuredpo2") Double measuredPO2,
@@ -276,9 +453,10 @@ public record UddfFile(
                             .orElse(previousGas);
             // TODO: RMV
             final var po2 = PO2.fromOrNull(setPO2, measuredPO2, calcPO2);
+            final var time = getDurationFromSeconds(seconds);
             return Pair.of(
                     new DiveMeasurement(
-                            start.plusSeconds(seconds),
+                            start.plus(time),
                             new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
                             depth,
                             Duration.ofSeconds(ndl),
@@ -320,6 +498,9 @@ public record UddfFile(
     }
 
     public String exportBuddyString() {
+        if (diver.buddy() == null) {
+            return "";
+        }
         final var firstName = diver.buddy().personal().firstname();
         final var lastName = diver.buddy().personal().lastname();
         if (firstName == null && lastName == null) {
@@ -335,32 +516,43 @@ public record UddfFile(
         return firstName + " " + lastName;
     }
 
-    public Instant exportStart() {
-        return profileData.repetitionGroup.dive.infoBeforeDive.datetime;
+    static Instant getStart(final UddfProfileDataDive dive) {
+        return dive.infoBeforeDive.datetime;
     }
 
-    public Instant exportEnd() {
-        return exportStart().plusSeconds(profileData.repetitionGroup.dive.infoAfterDive.duration);
+    static Instant getEnd(final UddfProfileDataDive dive) {
+        return getStart(dive).plus(getDurationFromSeconds(dive.infoAfterDive.duration));
     }
 
     public String exportDiveComputerManufacturer() {
+        if (diver.owner.equipment == null) {
+            return "Unknown Manufacturer";
+        }
+
         return diver.owner.equipment.diveComputer.manufacturer.name;
     }
 
     public String exportDiveComputerName() {
+        if (diver.owner.equipment == null) {
+            return "Unknown Dive Computer";
+        }
         return diver.owner.equipment.diveComputer.name;
     }
 
     public String exportDiveComputerSerialNumber() {
+        if (diver.owner.equipment == null) {
+            return "Unknown Dive Computer Serial Number";
+        }
         return diver.owner.equipment.diveComputer.serialNumber;
     }
 
-    public List<DiveMeasurement> exportMeasurements() {
-        final var measurements = profileData.repetitionGroup.dive.samples.waypoint;
+    static List<DiveMeasurement> getMeasurements(
+            final UddfProfileDataDive dive, final List<UddfGasMix> gasDefinitions) {
+        final var measurements = dive.samples.waypoint;
         final var list = new ArrayList<DiveMeasurement>(measurements.size());
         Gas previousGas = null;
         for (final var m : measurements) {
-            final var res = m.toRecord(exportStart(), gasDefinitions, previousGas);
+            final var res = m.toRecord(getStart(dive), gasDefinitions, previousGas);
             list.add(res.getLeft());
             previousGas = res.getRight();
         }
@@ -383,13 +575,15 @@ public record UddfFile(
                 .orElseGet(() -> List.of(buddies));
     }
 
-    public String getNotes() {
-        return String.join(
-                "\n", profileData.repetitionGroup.dive.infoAfterDive.notes().parameters());
+    static String getNotes(final UddfProfileDataDive dive) {
+        if (dive.infoAfterDive.notes == null) {
+            return "";
+        }
+        return String.join("\n", dive.infoAfterDive.notes().parameters());
     }
 
-    public Optional<Visibility> getVisibility() {
-        final var s = profileData.repetitionGroup.dive.infoAfterDive.visibility;
+    static Optional<Visibility> getVisibility(final UddfProfileDataDive dive) {
+        final var s = dive.infoAfterDive.visibility;
         if (s == null) {
             return Optional.empty();
         }
@@ -425,5 +619,10 @@ public record UddfFile(
             return Optional.of(";");
         }
         return Optional.empty();
+    }
+
+    public static Duration getDurationFromSeconds(final double seconds) {
+        return Duration.ofNanos(
+                BigDecimal.valueOf(seconds).multiply(BD_NANOS_PER_SECOND).longValue());
     }
 }

@@ -15,6 +15,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.exception.DBResult;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
@@ -120,7 +121,7 @@ public class DiveService {
     }
 
     @Transactional
-    public SimplifiedDive saveDive(
+    public DBResult<SimplifiedDive> saveDive(
             final User user,
             final Optional<Integer> diveNumberOptional,
             final String diveIdentifier,
@@ -132,7 +133,7 @@ public class DiveService {
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies) {
         final var diveNumber = diveNumberOptional.orElseGet(() -> getNextDiveNumber(user));
-        final var dive =
+        final var diveResult =
                 diveDataService.saveDive(
                         user,
                         diveNumber,
@@ -144,8 +145,12 @@ public class DiveService {
                         diveSiteId,
                         profiles,
                         namedBuddies);
-        createSaveDivePreview(dive);
-        return diveDataService.findSimplifiedDiveById(dive.id()).orElseThrow();
+        if (diveResult.isException()) {
+            return new DBResult<>(null, diveResult.dbException());
+        }
+        createSaveDivePreview(diveResult.value());
+        return new DBResult<>(
+                diveDataService.findSimplifiedDiveById(diveResult.value().id()).orElseThrow());
     }
 
     public SimplifiedDive addProfile(
@@ -338,17 +343,19 @@ public class DiveService {
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
-        return diveDataService.saveDive(
-                user,
-                diveNumber,
-                body.diveIdentifier(),
-                "",
-                null,
-                DiveGasConsumption.EMPTY,
-                DiveConfiguration.createEmpty(user),
-                diveSiteId,
-                List.of(),
-                List.of());
+        return diveDataService
+                .saveDive(
+                        user,
+                        diveNumber,
+                        body.diveIdentifier(),
+                        "",
+                        null,
+                        DiveGasConsumption.EMPTY,
+                        DiveConfiguration.createEmpty(user),
+                        diveSiteId,
+                        List.of(),
+                        List.of())
+                .value();
     }
 
     public Optional<DiveSite> getSiteById(final long id) {

@@ -39,7 +39,7 @@ public class TestImport {
             if (filename.startsWith("Petrel")) {
                 // CCR Test
                 assertFalse(
-                        content.exportMeasurements().stream()
+                        content.exportMeasurements(0).stream()
                                 .map(DiveMeasurement::po2)
                                 .map(Optional::ofNullable)
                                 .flatMap(Optional::stream)

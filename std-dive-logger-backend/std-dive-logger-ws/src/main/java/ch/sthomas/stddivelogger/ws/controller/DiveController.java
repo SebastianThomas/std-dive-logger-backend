@@ -5,7 +5,6 @@ import static org.springframework.http.MediaType.*;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -33,7 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -274,19 +272,6 @@ public class DiveController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(diveService.createEmptyDive(user, body));
-    }
-
-    @Deprecated(forRemoval = true)
-    @Operation(summary = "Add a dive")
-    @PostMapping(path = "/upload", consumes = MULTIPART_FORM_DATA_VALUE)
-    public UploadDiveResult uploadDive(
-            @AuthenticationPrincipal final User user,
-            @Nullable @RequestPart("uploadBody") final UploadDiveBody body,
-            @RequestParam("file") final List<MultipartFile> files) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to upload dive");
-        }
-        return importService.uploadDive(user, files, body);
     }
 
     @Operation(summary = "Update a Dive")

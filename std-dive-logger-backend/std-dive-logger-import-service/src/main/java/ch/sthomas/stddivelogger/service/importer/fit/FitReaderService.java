@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.service.importer.fit;
 import static java.time.Duration.*;
 
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 public class FitReaderService extends BaseReaderService {
@@ -52,7 +54,7 @@ public class FitReaderService extends BaseReaderService {
         this.diveService = diveService;
     }
 
-    public SimplifiedDive readFitAndSaveDive(
+    public UploadDiveResultStreaming readFitAndSaveDive(
             final User user,
             final String filename,
             final UploadDiveBody body,
@@ -84,17 +86,23 @@ public class FitReaderService extends BaseReaderService {
                         summary);
         final var buddies = List.<String>of();
         final var diveName = getDiveName(body, filename);
-        return diveService.saveDive(
-                user,
-                diveNumber,
-                diveName,
-                "",
-                Visibility.EMPTY,
-                DiveGasConsumption.EMPTY,
-                DiveConfiguration.createEmpty(user),
-                diveSite.id(),
-                List.of(profile),
-                buddies);
+        final var result =
+                diveService.saveDive(
+                        user,
+                        diveNumber,
+                        diveName,
+                        "",
+                        Visibility.EMPTY,
+                        DiveGasConsumption.EMPTY,
+                        DiveConfiguration.createEmpty(user),
+                        diveSite.id(),
+                        List.of(profile),
+                        buddies);
+        if (result.isException()) {
+            return new UploadDiveResultStreaming(
+                    Stream.of(), Stream.of(result.dbException().externalMessage()));
+        }
+        return new UploadDiveResultStreaming(Stream.of(result.value()), Stream.of());
     }
 
     private static DiveComputer getComputer(

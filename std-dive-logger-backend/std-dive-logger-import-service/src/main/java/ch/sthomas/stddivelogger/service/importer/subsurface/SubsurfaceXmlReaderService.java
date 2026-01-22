@@ -5,12 +5,14 @@ import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.parseUnt
 
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.exception.DBResult;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -20,6 +22,9 @@ import ch.sthomas.stddivelogger.utils.MoreGatherers;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -29,9 +34,11 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 public class SubsurfaceXmlReaderService extends BaseReaderService {
+    private static final Logger logger = LoggerFactory.getLogger(SubsurfaceXmlReaderService.class);
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
     private final DiveSiteRepository diveSiteRepository;
@@ -45,7 +52,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         this.diveSiteRepository = diveSiteRepository;
     }
 
-    public List<SimplifiedDive> importSubsurfaceXml(
+    public Stream<UploadDiveResultStreaming> importSubsurfaceXml(
             final User user,
             final String filename,
             final UploadDiveBody body,
@@ -74,16 +81,36 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             return IntStream.range(0, subsurfaceFile.dives().size())
                     .mapToObj(i -> Pair.of(i, subsurfaceFile.dives().get(i)))
-                    .map(
-                            dive ->
-                                    importSubsurfaceXmlDive(
-                                            user,
-                                            body,
-                                            dive.getValue(),
-                                            computers,
-                                            sites,
-                                            getDiveName(body, filename) + "-" + dive.getKey()))
-                    .toList();
+                    .map(dive -> saveDiveSafe(user, filename, body, dive, computers, sites));
+        }
+    }
+
+    private @NonNull UploadDiveResultStreaming saveDiveSafe(
+            final User user,
+            final String filename,
+            final UploadDiveBody body,
+            final Pair<Integer, SubsurfaceXmlFile.SubsurfaceDive> dive,
+            final Map<String, DiveComputer> computers,
+            final Map<String, DiveSite> sites) {
+        try {
+            final var result =
+                    importSubsurfaceXmlDive(
+                            user,
+                            body,
+                            dive.getValue(),
+                            computers,
+                            sites,
+                            getDiveName(body, filename) + "-" + dive.getKey());
+            if (result.isException()) {
+                return new UploadDiveResultStreaming(
+                        Stream.of(), Stream.of(result.dbException().externalMessage()));
+            }
+            return new UploadDiveResultStreaming(Stream.of(result.value()), Stream.of());
+        } catch (final Exception e) {
+            logger.info("Could not import subsurface XML file dive #{}", dive.getLeft(), e);
+            return new UploadDiveResultStreaming(
+                    Stream.empty(),
+                    Stream.of("Could not import Subsurface XML file dive #" + dive.getLeft()));
         }
     }
 
@@ -92,7 +119,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         return Pair.of(computer.model(), computer.deviceid());
     }
 
-    private SimplifiedDive importSubsurfaceXmlDive(
+    private DBResult<SimplifiedDive> importSubsurfaceXmlDive(
             final User user,
             final UploadDiveBody body,
             final SubsurfaceXmlFile.SubsurfaceDive dive,

@@ -21,7 +21,8 @@ import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.GasMixEntity;
-import ch.sthomas.stddivelogger.model.exception.DiveConstraintException;
+import ch.sthomas.stddivelogger.model.exception.DBResult;
+import ch.sthomas.stddivelogger.model.exception.DiveDBConstraintException;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.Group;
@@ -189,7 +190,7 @@ public class DiveDataService {
     }
 
     @Transactional
-    public Dive saveDive(
+    public DBResult<Dive> saveDive(
             final User user,
             final int number,
             @NotNull final String diveIdentifier,
@@ -227,9 +228,12 @@ public class DiveDataService {
                             profileEntity ->
                                     diveProfileHistoryRepository.save(
                                             new DiveProfileHistoryEntity(profileEntity)));
-            return toRecord(savedDive);
+            return new DBResult<>(toRecord(savedDive), null);
         } catch (final DataIntegrityViolationException e) {
-            throw new DiveConstraintException("Could not save dive", e);
+            return new DBResult<>(
+                    null,
+                    new DiveDBConstraintException(
+                            "Could not save dive, it seems to be a duplicate.", e));
         }
     }
 
