@@ -5,6 +5,7 @@ import static ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperatur
 import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
@@ -81,10 +82,20 @@ public class StatsDataService {
             String key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
             implements RawGroupCounts<String> {}
 
+    public record BaseConfigurationGroupCounts(
+            BaseConfiguration key,
+            long totalDives,
+            Integer maxNumber,
+            Double maxDepth,
+            long uniqueSites)
+            implements RawGroupCounts<BaseConfiguration> {}
+
     public enum StatsType {
         BUDDY_NAME,
+        DIVE_SITE,
         YEAR,
-        DIVE_SITE;
+        CONFIGURATION,
+        ;
     }
 
     @Transactional(readOnly = true)
@@ -125,6 +136,28 @@ public class StatsDataService {
         final var buddy = dive.join("namedBuddies", JoinType.INNER);
 
         return fetchAndMap(user, query, dive, StatsType.BUDDY_NAME, buddy.get("name"), String.class)
+                .entrySet()
+                .stream()
+                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
+                .sorted(Comparator.reverseOrder())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserDiveStatsBy<BaseConfiguration>> getStatsByBaseConfiguration(final User user) {
+        final var cb = entityManager.getCriteriaBuilder();
+        final var query = cb.createQuery(BaseConfigurationGroupCounts.class);
+        final var dive = query.from(DiveEntity.class);
+        final var configuration =
+                dive.<DiveEntity, DiveConfigurationEntity>join("configuration", JoinType.INNER);
+
+        return fetchAndMap(
+                        user,
+                        query,
+                        dive,
+                        StatsType.CONFIGURATION,
+                        configuration.get("baseConfiguration"),
+                        BaseConfiguration.class)
                 .entrySet()
                 .stream()
                 .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
@@ -203,6 +236,20 @@ public class StatsDataService {
                                         .orElse(Duration.ZERO),
                                 diveRepository
                                         .findTotalDurationByUserIdAndBuddy(user.id(), buddyName)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO));
+                    }
+                    case CONFIGURATION -> {
+                        final var configuration = (BaseConfiguration) raw.key();
+                        yield Pair.of(
+                                diveRepository
+                                        .findMaxDurationByUserIdAndConfiguration_BaseConfiguration(
+                                                user.id(), configuration)
+                                        .map(Duration::ofSeconds)
+                                        .orElse(Duration.ZERO),
+                                diveRepository
+                                        .findTotalDurationByUserIdAndConfiguration_BaseConfiguration(
+                                                user.id(), configuration)
                                         .map(Duration::ofSeconds)
                                         .orElse(Duration.ZERO));
                     }

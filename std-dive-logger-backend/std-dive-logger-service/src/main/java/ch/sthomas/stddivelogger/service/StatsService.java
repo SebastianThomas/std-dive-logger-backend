@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -54,5 +55,10 @@ public class StatsService {
                 .map(u -> new UserDiveStatsBy<>(u.key(), u.stats().withBuddies(null)))
                 .sorted(Comparator.reverseOrder())
                 .toList();
+    }
+
+    public List<UserDiveStatsBy<BaseConfiguration>> getStatsForUserByBaseConfiguration(
+            final User user) {
+        return statsDataService.getStatsByBaseConfiguration(user);
     }
 }

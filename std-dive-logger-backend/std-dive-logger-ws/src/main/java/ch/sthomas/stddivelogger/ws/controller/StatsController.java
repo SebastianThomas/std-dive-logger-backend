@@ -1,11 +1,10 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
-import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
-import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.StatsService;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,46 +18,38 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v1/stats")
 public class StatsController {
-    private final DiveService diveService;
     private final StatsService statsService;
 
-    public StatsController(final DiveService diveService, StatsService statsService) {
-        this.diveService = diveService;
+    public StatsController(final StatsService statsService) {
         this.statsService = statsService;
     }
 
     @GetMapping(path = "")
     public UserDiveStats getStatsForUser(@AuthenticationPrincipal final User user) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to view your dive stats");
-        }
         return statsService.getStatsForUser(user);
     }
 
     @GetMapping(path = "/buddy")
     public List<UserDiveStatsBy<String>> getStatsForUserByBuddy(
             @AuthenticationPrincipal final User user) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to view your dive stats");
-        }
         return statsService.getStatsForUserByBuddy(user);
     }
 
     @GetMapping(path = "/dive-site")
     public List<UserDiveStatsBy<DiveSite>> getStatsForUserByDiveSite(
             @AuthenticationPrincipal final User user) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to view your dive stats");
-        }
         return statsService.getStatsForUserByDiveSite(user);
     }
 
     @GetMapping(path = "/year")
     public Map<Integer, UserDiveStats> getStatsForUserByYear(
             @AuthenticationPrincipal final User user) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to view your dive stats");
-        }
         return statsService.getStatsForUserByYear(user);
+    }
+
+    @GetMapping(path = "/base-configuration")
+    public List<UserDiveStatsBy<BaseConfiguration>> getStatsForUserByConfiguration(
+            @AuthenticationPrincipal final User user) {
+        return statsService.getStatsForUserByBaseConfiguration(user);
     }
 }

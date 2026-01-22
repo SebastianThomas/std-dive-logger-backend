@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 
 import org.springframework.data.domain.Page;
@@ -142,6 +143,26 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
                     ON s.dive.id = d.id AND d.user.id = :userId AND d.diveSite.id = :diveSiteId
                     """)
     Optional<Long> findTotalDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
+
+    @Query(
+            """
+                    SELECT MAX(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId AND d.configuration.baseConfiguration = :baseConfiguration
+                    """)
+    Optional<Long> findMaxDurationByUserIdAndConfiguration_BaseConfiguration(
+            long userId, BaseConfiguration baseConfiguration);
+
+    @Query(
+            """
+                    SELECT SUM(s.durationSeconds)
+                    FROM DiveSummaryEntity s
+                    JOIN DiveEntity d
+                    ON s.dive.id = d.id AND d.user.id = :userId AND d.configuration.baseConfiguration = :baseConfiguration
+                    """)
+    Optional<Long> findTotalDurationByUserIdAndConfiguration_BaseConfiguration(
+            long userId, BaseConfiguration baseConfiguration);
 
     @Query(
             value =

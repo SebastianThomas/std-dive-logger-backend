@@ -64,7 +64,7 @@ public class DiveEntity {
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-    private DiveConfigurationEntity configuration;
+        private DiveConfigurationEntity configuration;
 
     @JoinColumn(name = "fk_diver_id")
     @ManyToOne(cascade = CascadeType.PERSIST)
