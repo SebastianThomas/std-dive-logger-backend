@@ -36,7 +36,7 @@ public class DiveMeasurementEntity {
     @Column(name = "depth", nullable = false)
     private double depth;
 
-    @Column(name = "temperature_celsius", nullable = false)
+    @Column(name = "temperature_celsius", nullable = true)
     private Double temperatureCelsius;
 
     @OneToOne(
@@ -106,7 +106,9 @@ public class DiveMeasurementEntity {
     public DiveMeasurement toRecord() {
         return new DiveMeasurement(
                 time.toInstant(),
-                new Temperature(temperatureCelsius, Temperature.TemperatureUnit.CELSIUS),
+                Optional.ofNullable(temperatureCelsius)
+                        .map(t -> new Temperature(t, Temperature.TemperatureUnit.CELSIUS))
+                        .orElse(null),
                 depth,
                 Optional.ofNullable(ndlMinutes).map(Duration::ofMinutes).orElse(null),
                 decoStops,

@@ -78,11 +78,14 @@ public class ResamplingUtils {
                         nextMeasurement.measurement().time());
         final var nextMeasurementDiff = Duration.between(d, nextMeasurement.measurement().time());
         final var curFrac = (double) nextMeasurementDiff.toMillis() / diff.toMillis();
-        if (nextMeasurementDiff.isNegative() || curFrac < 0 || curFrac > 1) {
+        if (curFrac < 0 || curFrac > 1) {
+            logger.debug("Allow current frac {} while Resampling", curFrac);
+        } else if (nextMeasurementDiff.isNegative()) {
             logger.info(
-                    "Illegal State: Got {} Measurements, current idx: {}, current fraction: {}, d: {} and next measurement: {}",
+                    "Illegal State: Got {} Measurements, current idx: {}, next measurement diff: {}, current fraction: {}, d: {} and next measurement: {}",
                     measurements.size(),
                     measurementIdx.get(),
+                    nextMeasurementDiff,
                     curFrac,
                     d,
                     nextMeasurement);

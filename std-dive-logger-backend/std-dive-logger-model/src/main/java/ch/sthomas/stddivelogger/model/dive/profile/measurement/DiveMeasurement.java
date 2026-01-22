@@ -13,7 +13,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record DiveMeasurement(
         Instant time,
-        Temperature temperature,
+        @Nullable Temperature temperature,
         double depth,
         @Nullable Duration ndl,
         List<DecoStop> deco,

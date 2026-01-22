@@ -27,6 +27,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,12 +153,25 @@ public record UddfFile(
                                     return Pair.of(
                                             pressure.orElse(null),
                                             Optional.ofNullable(t.breathingVolume)
-                                                    .or(() -> pressure.map(p -> p * t.tankVolume))
+                                                    .or(
+                                                            () ->
+                                                                    getVolumeByTankAndPressure(
+                                                                            t, pressure))
                                                     .orElse(null));
                                 })
                         .toList();
-        final var totalLiters = usedPerTank.stream().mapToDouble(Pair::getRight).sum();
+        final var totalLiters =
+                usedPerTank.stream()
+                        .filter(Objects::nonNull)
+                        .filter(p -> p.getRight() != null)
+                        .mapToDouble(Pair::getRight)
+                        .sum();
         return new DiveGasConsumption(0, 0, totalLiters);
+    }
+
+    private static @NonNull Optional<Double> getVolumeByTankAndPressure(
+            final UddfTankData t, final Optional<Double> pressure) {
+        return pressure.flatMap(p -> Optional.ofNullable(t.tankVolume).map(v -> v * p));
     }
 
     public DiveConfiguration getConfiguration(final User user) {
@@ -454,10 +468,11 @@ public record UddfFile(
             // TODO: RMV
             final var po2 = PO2.fromOrNull(setPO2, measuredPO2, calcPO2);
             final var time = getDurationFromSeconds(seconds);
+            final var temperature = importTemperature(kelvin);
             return Pair.of(
                     new DiveMeasurement(
                             start.plus(time),
-                            new Temperature(kelvin, Temperature.TemperatureUnit.KELVIN).asCelsius(),
+                            temperature.orElse(null),
                             depth,
                             Duration.ofSeconds(ndl),
                             Optional.ofNullable(decoStop).stream()
@@ -471,6 +486,21 @@ public record UddfFile(
                             null,
                             (double) cns),
                     gas);
+        }
+
+        private Optional<Temperature> importTemperature(final double temp) {
+            if (temp == 0.0) {
+                return Optional.empty();
+            }
+            if (temp <= 32) {
+                return Optional.of(new Temperature(temp, Temperature.TemperatureUnit.CELSIUS));
+            }
+            if (temp <= 100) {
+                return Optional.of(
+                        new Temperature(temp, Temperature.TemperatureUnit.FAHRENHEIT).asCelsius());
+            }
+            return Optional.of(
+                    new Temperature(temp, Temperature.TemperatureUnit.KELVIN).asCelsius());
         }
     }
 

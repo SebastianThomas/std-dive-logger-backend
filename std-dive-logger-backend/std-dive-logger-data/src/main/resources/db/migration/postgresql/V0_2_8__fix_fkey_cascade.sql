@@ -24,3 +24,6 @@ ALTER TABLE t_dive_configuration
         FOREIGN KEY (fk_dive_id)
             REFERENCES t_dives (pk_dive_id)
             ON DELETE CASCADE;
+
+ALTER TABLE t_dive_measurements
+    ALTER COLUMN temperature_celsius DROP NOT NULL;
