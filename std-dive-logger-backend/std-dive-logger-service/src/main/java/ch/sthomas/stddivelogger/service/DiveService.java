@@ -310,11 +310,12 @@ public class DiveService {
         return diveDataService.moveProfiles(diveId, profileIds);
     }
 
+    public boolean hasWriteAccess(final @NotNull User user, final Set<Long> diveIds) {
+        return diveDataService.hasWriteAccess(user, diveIds);
+    }
+
     public boolean hasWriteAccess(final @NotNull User user, final long diveId) {
-        final var diveUser = diveDataService.findUserForDive(diveId);
-        return diveUser.isPresent()
-                && diveUser.get().id() == user.id()
-                && diveUser.get().email().equals(user.email());
+        return hasWriteAccess(user, Set.of(diveId));
     }
 
     public boolean hasReadAccess(final @NotNull User user, final long diveId) {
@@ -612,5 +613,31 @@ public class DiveService {
 
     public int deleteUnusedDiveComputers(final User user) {
         return diveDataService.deleteUnusedDiveComputers(user);
+    }
+
+    public void setSuit(final User user, final List<Long> diveIds, final long newValue) {
+        final var ids = new HashSet<>(diveIds);
+        if (!hasWriteAccess(user, ids)) {
+            throw ForbiddenException.forDiveIds(user, ids);
+        }
+        diveDataService.setSuitById(user.id(), newValue, ids);
+    }
+
+    public void updateBaseConfigurationDives(
+            final User user, final List<Long> idsList, final BaseConfiguration newValue) {
+        final var ids = new HashSet<>(idsList);
+        if (!hasWriteAccess(user, ids)) {
+            throw ForbiddenException.forDiveIds(user, ids);
+        }
+        diveDataService.setBaseConfiguration(newValue, ids);
+    }
+
+    public void updateWeightDives(
+            final User user, final List<Long> diveIds, final double newValue) {
+        final var ids = new HashSet<>(diveIds);
+        if (!hasWriteAccess(user, ids)) {
+            throw ForbiddenException.forDiveIds(user, ids);
+        }
+        diveDataService.setWeight(newValue, diveIds);
     }
 }

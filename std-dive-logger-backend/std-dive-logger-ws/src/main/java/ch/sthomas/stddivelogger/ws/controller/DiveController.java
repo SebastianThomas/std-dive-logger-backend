@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
@@ -283,6 +284,32 @@ public class DiveController {
             throw new UnauthorizedException("Please log in to update this dive.");
         }
         return diveService.updateDive(user, dive);
+    }
+
+    public record BulkUpdateDiveBody<T>(@NotNull T newValue, List<Long> diveIds) {}
+
+    @Operation(summary = "Update the base configuration of multiple dives")
+    @PutMapping(path = "/base-configuration")
+    public void updateBaseConfiguration(
+            @AuthenticationPrincipal final User user,
+            @NotNull @Valid @RequestBody final BulkUpdateDiveBody<BaseConfiguration> body) {
+        diveService.updateBaseConfigurationDives(user, body.diveIds, body.newValue);
+    }
+
+    @Operation(summary = "Update the base configuration of multiple dives")
+    @PutMapping(path = "/suit")
+    public void updateSuit(
+            @AuthenticationPrincipal final User user,
+            @NotNull @Valid @RequestBody final BulkUpdateDiveBody<Long> body) {
+        diveService.setSuit(user, body.diveIds, body.newValue);
+    }
+
+    @Operation(summary = "Update the base configuration of multiple dives")
+    @PutMapping(path = "/weight")
+    public void updateWeight(
+            @AuthenticationPrincipal final User user,
+            @NotNull @Valid @RequestBody final BulkUpdateDiveBody<Double> body) {
+        diveService.updateWeightDives(user, body.diveIds, body.newValue);
     }
 
     @Operation(summary = "Link Buddy Dive")

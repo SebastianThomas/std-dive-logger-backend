@@ -3,7 +3,7 @@ package ch.sthomas.stddivelogger.model.exception;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import java.text.MessageFormat;
-import java.util.List;
+import java.util.Collection;
 
 public class ForbiddenException extends RuntimeException {
     private final User user;
@@ -21,7 +21,7 @@ public class ForbiddenException extends RuntimeException {
                 user);
     }
 
-    public static ForbiddenException forDiveIds(final User user, final List<Long> diveIds) {
+    public static ForbiddenException forDiveIds(final User user, final Collection<Long> diveIds) {
         return new ForbiddenException(
                 MessageFormat.format(
                         "User {0} ({1}) does not have required permissions for some {2} in {3}.",

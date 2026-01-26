@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
+import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -232,4 +234,20 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             "SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId WHERE s.diveId IS NULL")
     Page<DiveEntity> findByNoSummary(Pageable pageable);
+
+    int countByIdInAndUser_Id(Collection<Long> ids, Long userId);
+
+    @Query(
+            "UPDATE DiveConfigurationEntity c SET c.baseConfiguration = :newValue WHERE c.diveId IN (:idsList)")
+    @Modifying
+    void updateBaseConfiguration(BaseConfiguration newValue, Collection<Long> idsList);
+
+    @Query("UPDATE DiveConfigurationEntity c SET c.suit = :suitEntity WHERE c.diveId IN (:idsList)")
+    @Modifying
+    void setSuit(SuitEntity suitEntity, Collection<Long> idsList);
+
+    @Query(
+            "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")
+    @Modifying
+    void setWeight(double newValue, Collection<Long> idsList);
 }

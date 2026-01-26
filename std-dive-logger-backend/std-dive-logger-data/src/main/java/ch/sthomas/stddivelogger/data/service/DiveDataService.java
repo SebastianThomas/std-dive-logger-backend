@@ -10,10 +10,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
-import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
-import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
-import ch.sthomas.stddivelogger.model.dive.gear.Suit;
+import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -979,5 +976,28 @@ public class DiveDataService {
     @Transactional
     public int deleteUnusedDiveComputers(final User user) {
         return diveComputerRepository.deleteAllByUser_IdAndProfilesIsEmpty(user.id());
+    }
+
+    public boolean hasWriteAccess(final @NotNull User user, final Set<Long> diveIds) {
+        return diveRepository.countByIdInAndUser_Id(diveIds, user.id()) == diveIds.size();
+    }
+
+    @Transactional
+    public void setBaseConfiguration(final BaseConfiguration newValue, final Set<Long> idsList) {
+        diveRepository.updateBaseConfiguration(newValue, idsList);
+    }
+
+    @Transactional
+    public void setSuitById(final long userId, final long newSuitId, final HashSet<Long> ids) {
+        final var suit = suitRepository.findByIdAndUser_Id(newSuitId, userId);
+        if (suit.isEmpty()) {
+            throw new NoSuchElementException("Could not find suit by id " + newSuitId);
+        }
+        diveRepository.setSuit(suit.get(), ids);
+    }
+
+    @Transactional
+    public void setWeight(final double newValue, final List<Long> diveIds) {
+        diveRepository.setWeight(newValue, diveIds);
     }
 }
