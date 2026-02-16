@@ -223,7 +223,7 @@ public class UserDataService {
     private String getCallbackUrl(final AccountRequestType type, final String token) {
         return switch (type) {
             case VERIFY_EMAIL -> frontendBaseUrl + "/user/email?token=" + token;
-            case LOGIN -> frontendBaseUrl + "/auth/login?token=" + token;
+            case LOGIN -> frontendBaseUrl + "/auth/magic-login?token=" + token;
             case CHANGE_PASSWORD -> throw new NotImplementedException();
         };
     }
