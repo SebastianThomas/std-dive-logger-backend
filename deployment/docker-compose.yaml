@@ -1,0 +1,117 @@
+services:
+    std_dive_logger_postgresql_db_dev:
+        image: postgis/postgis:18-3.6
+        restart: always
+        labels:
+            org.springframework.boot.service-connection: postgres  # this is needed since spring does not recognize postgis
+        environment:
+            POSTGRES_USER: std_dive_logger
+            POSTGRES_PASSWORD: {{INSERT_YOUR_SECRET}}
+            POSTGRES_DB: std_dive_logger
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U std_dive_logger -d std_dive_logger" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+        volumes:
+            - std_dive_logger_dev_postgresql_db_data:/var/lib/postgresql
+    std_dive_logger_ws_dev:
+        image: sthomasch/std-dive-logger-ws:latest
+        restart: always
+        environment:
+            SPRING_DATASOURCE_URL: jdbc:postgresql://std_dive_logger_postgresql_db_dev:5432/std_dive_logger
+            SPRING_DATASOURCE_USERNAME: std_dive_logger
+            SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
+            SPRING_CONFIG_LOCATION: /config/
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+        ports:
+            - "8092:8080"
+        healthcheck:
+            test: [ "CMD", "curl", "-f", "http://localhost:8086/actuator/health" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+            start_interval: 5s
+        depends_on:
+            - std_dive_logger_postgresql_db_dev
+        volumes:
+            - ./config/ws:/config
+    std_dive_logger_import_ws_dev:
+        image: sthomasch/std-dive-logger-import-ws:latest
+        restart: always
+        environment:
+            SPRING_DATASOURCE_URL: jdbc:postgresql://std_dive_logger_postgresql_db_dev:5432/std_dive_logger
+            SPRING_DATASOURCE_USERNAME: std_dive_logger
+            SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
+            SPRING_CONFIG_LOCATION: /config/
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+        healthcheck:
+            test: [ "CMD", "curl", "-f", "http://localhost:8087/actuator/health" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+            start_interval: 5s
+        ports:
+            - "8094:8080"
+        depends_on:
+            - std_dive_logger_postgresql_db_dev
+        volumes:
+            - ./config/import-ws:/config
+    std_dive_logger_autocomplete_dev:
+        image: sthomasch/std-dive-logger-autocomplete:latest
+        restart: always
+        environment:
+            SPRING_DATASOURCE_URL: jdbc:postgresql://std_dive_logger_postgresql_db_dev:5432/std_dive_logger
+            SPRING_DATASOURCE_USERNAME: std_dive_logger
+            SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
+            SPRING_CONFIG_LOCATION: /config/
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+        healthcheck:
+            test: [ "CMD", "curl", "-f", "http://localhost:8085/actuator/health" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+            start_interval: 5s
+        ports:
+            - "8093:8080"
+        depends_on:
+            - std_dive_logger_postgresql_db_dev
+        volumes:
+            - ./config/autocomplete:/config
+    std_dive_logger_analytics_dev:
+        image: sthomasch/std-dive-logger-analytics:latest
+        restart: always
+        environment:
+            SPRING_DATASOURCE_URL: jdbc:postgresql://std_dive_logger_postgresql_db_dev:5432/std_dive_logger
+            SPRING_DATASOURCE_USERNAME: std_dive_logger
+            SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
+            SPRING_CONFIG_LOCATION: /config/
+        healthcheck:
+            test: [ "CMD", "curl", "-f", "http://localhost:8088/actuator/health" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+            start_interval: 5s
+        depends_on:
+            - std_dive_logger_postgresql_db_dev
+        volumes:
+            - ./config/analytics:/config
+    std_dive_logger_web_dev:
+        image: sthomasch/std-dive-logger-web:latest
+        restart: always
+        ports:
+            - "3010:80" # VueJS
+        depends_on:
+            - std_dive_logger_ws_dev
+volumes:
+    std_dive_logger_dev_postgresql_db_data:
+        driver: local
+        driver_opts:
+            type: none
+            device: ./storage/postgresql
+            o: bind
