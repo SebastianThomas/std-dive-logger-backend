@@ -48,8 +48,9 @@
     </appender>
 
     <logger name="ch.sthomas.stddivelogger" level="DEBUG"/>
-    <logger name="org.springframework.web" level="DEBUG"/>
-    <logger name="org.springframework.security" level="DEBUG"/>
+    <logger name="org.springframework.web.servlet.PageNotFound" level="OFF"/>
+    <logger name="org.springframework.web" level="WARN"/>
+    <logger name="org.springframework.security" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="console"/>
