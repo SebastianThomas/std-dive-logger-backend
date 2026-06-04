@@ -129,6 +129,10 @@ public class DiveMeasurementEntity {
         return this;
     }
 
+    public List<DecoStop> getDecoStops() {
+        return decoStops;
+    }
+
     public double getDepth() {
         return depth;
     }

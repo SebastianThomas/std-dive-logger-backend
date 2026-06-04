@@ -130,6 +130,23 @@ public class DiveController {
                 user, computerId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
+    @Operation(summary = "Get dives by tag id")
+    @GetMapping(path = "/tag")
+    public PagedResponse<SimplifiedDive> getDivesByTag(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("tagId") final long tagId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        return diveService.getDivesByTag(
+                user, tagId, DiveSort.ofNullable(sortColumn, sortDirection), page);
+    }
+
     @Operation(summary = "Get dives by suit id")
     @GetMapping(path = "/suit")
     public PagedResponse<SimplifiedDive> getDivesBySuit(
@@ -403,6 +420,18 @@ public class DiveController {
         }
         final var profileIdsSet = new HashSet<>(profileIds);
         return diveService.resetAlignedProfiles(user, diveId, profileIdsSet);
+    }
+
+    @Operation(summary = "Set manual tags on a dive — body is a list of tag-definition IDs (replaces all existing manual tags)")
+    @PutMapping(path = "/{id}/tags", consumes = APPLICATION_JSON_VALUE)
+    public Dive updateTags(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @NotNull @Valid @RequestBody final List<Long> tagIds) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to update tags.");
+        }
+        return diveService.updateTags(user, diveId, tagIds);
     }
 
     @Operation(summary = "Generate or regenerate Preview image")

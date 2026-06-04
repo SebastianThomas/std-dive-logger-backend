@@ -78,4 +78,8 @@ public class DiveConfigurationEntity {
     public SuitEntity getSuitEntity() {
         return suit;
     }
+
+    public BaseConfiguration getBaseConfiguration() {
+        return baseConfiguration;
+    }
 }

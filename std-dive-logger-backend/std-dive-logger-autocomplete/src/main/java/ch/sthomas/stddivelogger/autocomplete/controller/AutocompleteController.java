@@ -2,14 +2,17 @@ package ch.sthomas.stddivelogger.autocomplete.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.TagService;
 import ch.sthomas.stddivelogger.service.UserService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,10 +24,13 @@ public class AutocompleteController {
     private static final Logger logger = LoggerFactory.getLogger(AutocompleteController.class);
     private final DiveService diveService;
     private final UserService userService;
+    private final TagService tagService;
 
-    public AutocompleteController(final DiveService diveService, final UserService userService) {
+    public AutocompleteController(final DiveService diveService, final UserService userService,
+                                  final TagService tagService) {
         this.diveService = diveService;
         this.userService = userService;
+        this.tagService = tagService;
     }
 
     @GetMapping("/user")
@@ -46,5 +52,12 @@ public class AutocompleteController {
             @RequestParam(name = "query") final String query,
             @RequestParam(name = "page", defaultValue = "0") final int page) {
         return userService.getGroupsByPartialName(query, page);
+    }
+
+    @GetMapping("/tag")
+    public List<TagDefinition> tag(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "query") final String query) {
+        return tagService.getTagsByPartialName(user, query);
     }
 }

@@ -407,6 +407,13 @@ public class DiveService {
         diveDataService.deleteDiveById(diveId);
     }
 
+    public Dive updateTags(final User user, final long diveId, final List<Long> manualTagIds) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.updateTags(diveId, user.id(), manualTagIds);
+    }
+
     public PagedResponse<User> getReaders(
             final @NotNull User authenticated, final long diveId, final int page) {
         if (!hasWriteAccess(authenticated, diveId)) {
@@ -485,6 +492,13 @@ public class DiveService {
                                                 "Cannot find computer with id " + computerId));
         return diveDataService.findDivesByUserAndComputer(
                 user, computer, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    }
+
+    public PagedResponse<SimplifiedDive> getDivesByTag(
+            final User user, final long tagId, final DiveSort diveSort, final int page) {
+        return diveDataService.findDivesByTag(
+                user.id(), tagId, diveSort,
+                PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
     public PagedResponse<SimplifiedDive> getDivesBySuit(

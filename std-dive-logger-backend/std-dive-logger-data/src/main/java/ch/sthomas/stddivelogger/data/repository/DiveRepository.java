@@ -231,6 +231,11 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     Optional<DiveEntity> findByUser_IdAndNumber(Long userId, int number);
 
+    Optional<DiveEntity> findByIdAndUser_Id(Long id, Long userId);
+
+    @Query("SELECT DISTINCT d FROM DiveEntity d JOIN d.tags t WHERE d.user.id = :userId AND t.tag.id = :tagId")
+    Page<DiveEntity> findByUser_IdAndTagId(long userId, long tagId, Pageable pageable);
+
     @Query(
             "SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId WHERE s.diveId IS NULL")
     Page<DiveEntity> findByNoSummary(Pageable pageable);
