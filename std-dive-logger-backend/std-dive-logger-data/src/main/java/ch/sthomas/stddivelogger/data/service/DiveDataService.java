@@ -548,6 +548,19 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByTags(
+            final long userId, final List<Long> tagIds, final DiveSort sort, final Pageable pageable) {
+        if (tagIds.size() == 1) {
+            // Fast-path: single-tag query is simpler
+            return findDivesByTag(userId, tagIds.get(0), sort, pageable);
+        }
+        final var result = diveRepository.findByUser_IdAndAllTagIds(
+                userId, tagIds, tagIds.size(),
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
+        return PagedResponse.of(result, this::toSimplifiedRecord);
+    }
+
+    @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> searchDives(
             final long userId, final String query, final Pageable pageable) {
         final var result =
