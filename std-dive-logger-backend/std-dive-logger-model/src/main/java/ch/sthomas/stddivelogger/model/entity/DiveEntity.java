@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -18,11 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -94,6 +93,13 @@ public class DiveEntity {
             orphanRemoval = true)
     private List<DiveBuddyNameEntity> namedBuddies;
 
+    @OneToMany(
+            mappedBy = "dive",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true)
+    private List<DiveTagEntity> tags;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -138,6 +144,7 @@ public class DiveEntity {
                         .map(b -> new DiveBuddyNameEntity(this, b))
                         .collect(Collectors.toCollection(ArrayList::new));
         this.diveSummary = new DiveSummaryEntity(this);
+        this.tags = new ArrayList<>();
     }
 
     private String getPreviewImage(@NotNull final String baseUrl) {
@@ -169,7 +176,8 @@ public class DiveEntity {
                         .map(d -> new BuddyDive(d.user.toRecord().toFrontendModel(), d.id))
                         .toList(),
                 getNamedBuddiesModels(),
-                getSummary());
+                getSummary(),
+                getTags());
     }
 
     public SimplifiedDive toSimplifiedRecord(
@@ -184,7 +192,8 @@ public class DiveEntity {
                 diveSite.toRecord(),
                 getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
                 getNamedBuddiesModels(),
-                getSummary());
+                getSummary(),
+                getTags());
     }
 
     private DiveSummary getSummary() {
@@ -261,6 +270,66 @@ public class DiveEntity {
             this.diveSummary = new DiveSummaryEntity(this);
         }
         return this;
+    }
+
+    /**
+     * Recomputes auto-detected tags from the given candidates. Should be called by the service
+     * layer after any structural change to the dive (profiles, configuration).
+     */
+    public void recomputeAutoTags(final Collection<TagDefinitionEntity> autoDetectCandidates) {
+        if (tags == null) {
+            tags = new ArrayList<>();
+        }
+        tags.removeIf(t -> !t.isManual());
+        autoDetectCandidates.stream()
+                .filter(def -> matchesAutoDetect(def.getAutoDetectRule()))
+                .map(def -> new DiveTagEntity(this, def, false))
+                .forEach(tags::add);
+    }
+
+    private boolean matchesAutoDetect(final AutoDetectRule rule) {
+        if (rule == null) {
+            return false;
+        }
+        return switch (rule) {
+            case CCR -> configuration != null
+                    && configuration.getBaseConfiguration() != null
+                    && configuration.getBaseConfiguration().name().contains("CCR");
+            case DECO -> hasDeco();
+        };
+    }
+
+    private boolean hasDeco() {
+        if (profiles == null) {
+            return false;
+        }
+        final var totalDecoSeconds =
+                profiles.stream()
+                        .flatMap(DiveProfileEntity::getMeasurementsStream)
+                        .filter(m -> m.getDecoStops() != null && !m.getDecoStops().isEmpty())
+                        .mapToLong(m -> m.getDecoStops().stream().mapToLong(d -> d.seconds()).sum())
+                        .sum();
+        return Duration.ofSeconds(totalDecoSeconds).toMinutes() >= 5;
+    }
+
+    public void setManualTags(final Collection<TagDefinitionEntity> manualTagDefs) {
+        if (tags == null) {
+            tags = new ArrayList<>();
+        }
+        tags.removeIf(DiveTagEntity::isManual);
+        manualTagDefs.stream()
+                .map(def -> new DiveTagEntity(this, def, true))
+                .forEach(tags::add);
+    }
+
+    public List<TagDefinition> getTags() {
+        if (tags == null) {
+            return List.of();
+        }
+        return tags.stream()
+                .map(t -> t.getTag().toRecord())
+                .distinct()
+                .toList();
     }
 
     public List<DiveProfileEntity> getProfiles() {

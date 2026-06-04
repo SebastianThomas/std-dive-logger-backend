@@ -78,6 +78,7 @@ public class DiveDataService {
     private final DiveProfileRepository diveProfileRepository;
     private final DiveProfileHistoryRepository diveProfileHistoryRepository;
     private final SuitRepository suitRepository;
+    private final TagDataService tagDataService;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -96,7 +97,8 @@ public class DiveDataService {
             final ReaderViewRepository readerViewRepository,
             final DiveProfileRepository diveProfileRepository,
             final DiveProfileHistoryRepository diveProfileHistoryRepository,
-            final SuitRepository suitRepository) {
+            final SuitRepository suitRepository,
+            final TagDataService tagDataService) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -104,7 +106,6 @@ public class DiveDataService {
         this.diveComputerRepository = diveComputerRepository;
         this.diveComputerManufacturerRepository = diveComputerManufacturerRepository;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
-
         this.storageService = storageService;
         this.diveBuddyNameRepository = diveBuddyNameRepository;
         this.cylinderSizeRepository = cylinderSizeRepository;
@@ -115,6 +116,7 @@ public class DiveDataService {
         this.diveProfileRepository = diveProfileRepository;
         this.diveProfileHistoryRepository = diveProfileHistoryRepository;
         this.suitRepository = suitRepository;
+        this.tagDataService = tagDataService;
     }
 
     @Transactional(readOnly = true)
@@ -218,6 +220,7 @@ public class DiveDataService {
                         namedBuddies,
                         this::toEntity);
         try {
+            recomputeAutoTags(entity, user.id());
             final var savedDive = diveRepository.save(entity);
             savedDive
                     .getProfiles()
@@ -418,17 +421,17 @@ public class DiveDataService {
                     configuration.getSuitEntity(),
                     configuration.getSuitEntity().getType());
         }
-        return toRecord(
-                diveRepository.save(
-                        existingDive.update(
-                                updateBody.number(),
-                                updateBody.customIdentifier(),
-                                updateBody.notes(),
-                                diveSiteEntity,
-                                newBuddies,
-                                configuration,
-                                gasConsumption,
-                                visibility)));
+        existingDive.update(
+                updateBody.number(),
+                updateBody.customIdentifier(),
+                updateBody.notes(),
+                diveSiteEntity,
+                newBuddies,
+                configuration,
+                gasConsumption,
+                visibility);
+        recomputeAutoTags(existingDive, user.id());
+        return toRecord(diveRepository.save(existingDive));
     }
 
     private ArrayList<DiveBuddyNameEntity> getNewNamedBuddies(
@@ -454,6 +457,20 @@ public class DiveDataService {
                         () ->
                                 diveBuddyNameRepository.save(
                                         new DiveBuddyNameEntity(existingDive, n)));
+    }
+
+    @Transactional
+    public Dive updateTags(final long diveId, final long userId, final List<Long> manualTagIds) {
+        final var dive = diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow();
+        final var manualTagDefs = tagDataService.findEntitiesByIdsVisibleToUser(manualTagIds, userId);
+        dive.setManualTags(manualTagDefs);
+        recomputeAutoTags(dive, userId);
+        return toRecord(diveRepository.save(dive));
+    }
+
+    private void recomputeAutoTags(final DiveEntity dive, final long userId) {
+        final var autoDetectDefs = tagDataService.findAutoDetectEntitiesForUser(userId);
+        dive.recomputeAutoTags(autoDetectDefs);
     }
 
     @Transactional
@@ -487,6 +504,7 @@ public class DiveDataService {
         if (newNotes != null && !newNotes.isBlank()) {
             diveEntity.appendNotes(diveNumber + "\n" + newNotes);
         }
+        recomputeAutoTags(diveEntity, user.id());
         final var savedDive = diveRepository.save(diveEntity);
         final var savedDiveProfile =
                 savedDive.getProfiles().stream()
@@ -519,6 +537,14 @@ public class DiveDataService {
         return PagedResponse.of(
                 diveRepository.findByIdentifier(userId, identifier, pageable),
                 this::toSimplifiedRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByTag(
+            final long userId, final long tagId, final DiveSort sort, final Pageable pageable) {
+        final var result = diveRepository.findByUser_IdAndTagId(
+                userId, tagId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
+        return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
     @Transactional(readOnly = true)
