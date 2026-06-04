@@ -501,6 +501,13 @@ public class DiveService {
                 PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
+    public PagedResponse<SimplifiedDive> getDivesByTags(
+            final User user, final List<Long> tagIds, final DiveSort diveSort, final int page) {
+        return diveDataService.findDivesByTags(
+                user.id(), tagIds, diveSort,
+                PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+    }
+
     public PagedResponse<SimplifiedDive> getDivesBySuit(
             final User user, final long suitId, final DiveSort diveSort, final int page) {
         final var suit = getSuitById(user, suitId);

@@ -147,6 +147,26 @@ public class DiveController {
                 user, tagId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
+    @Operation(summary = "Get dives that have ALL of the given tag IDs (AND filter, repeatable ?tagIds=1&tagIds=2)")
+    @GetMapping(path = "/tags")
+    public PagedResponse<SimplifiedDive> getDivesByTags(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("tagIds") final List<Long> tagIds,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        if (tagIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one tagId is required.");
+        }
+        return diveService.getDivesByTags(
+                user, tagIds, DiveSort.ofNullable(sortColumn, sortDirection), page);
+    }
+
     @Operation(summary = "Get dives by suit id")
     @GetMapping(path = "/suit")
     public PagedResponse<SimplifiedDive> getDivesBySuit(

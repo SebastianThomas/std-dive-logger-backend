@@ -236,6 +236,22 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query("SELECT DISTINCT d FROM DiveEntity d JOIN d.tags t WHERE d.user.id = :userId AND t.tag.id = :tagId")
     Page<DiveEntity> findByUser_IdAndTagId(long userId, long tagId, Pageable pageable);
 
+    /**
+     * AND-filter: returns only dives that carry ALL of the requested tag IDs.
+     * Uses a GROUP BY / HAVING COUNT(DISTINCT) approach so the query is safe
+     * regardless of whether individual tags appear multiple times on a dive.
+     */
+    @Query("""
+            SELECT d FROM DiveEntity d
+            WHERE d.user.id = :userId
+              AND (SELECT COUNT(DISTINCT t2.tag.id)
+                   FROM DiveTagEntity t2
+                   WHERE t2.dive.id = d.id
+                     AND t2.tag.id IN :tagIds) = :tagCount
+            """)
+    Page<DiveEntity> findByUser_IdAndAllTagIds(
+            long userId, Collection<Long> tagIds, long tagCount, Pageable pageable);
+
     @Query(
             "SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId WHERE s.diveId IS NULL")
     Page<DiveEntity> findByNoSummary(Pageable pageable);
