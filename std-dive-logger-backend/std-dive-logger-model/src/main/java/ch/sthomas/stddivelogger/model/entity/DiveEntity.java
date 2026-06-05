@@ -281,8 +281,15 @@ public class DiveEntity {
             tags = new ArrayList<>();
         }
         tags.removeIf(t -> !t.isManual());
+        // Collect tag-definition IDs already covered by a manual tag so we don't
+        // insert a duplicate row for the same (dive, tag) pair.
+        final var manualTagIds = tags.stream()
+                .filter(DiveTagEntity::isManual)
+                .map(t -> t.getTag().getId())
+                .collect(java.util.stream.Collectors.toSet());
         autoDetectCandidates.stream()
                 .filter(def -> matchesAutoDetect(def.getAutoDetectRule()))
+                .filter(def -> !manualTagIds.contains(def.getId()))
                 .map(def -> new DiveTagEntity(this, def, false))
                 .forEach(tags::add);
     }
