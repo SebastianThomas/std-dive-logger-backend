@@ -5,6 +5,9 @@ import static ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperatur
 import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
+import ch.sthomas.stddivelogger.data.repository.TagDefinitionRepository;
+import ch.sthomas.stddivelogger.model.dive.TagDefinition;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -35,14 +39,17 @@ public class StatsDataService {
     private final DiveRepository diveRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
     private final DiveSiteRepository diveSiteRepository;
+    private final TagDefinitionRepository tagDefinitionRepository;
 
     public StatsDataService(
             final DiveRepository diveRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
-            final DiveSiteRepository diveSiteRepository) {
+            final DiveSiteRepository diveSiteRepository,
+            final TagDefinitionRepository tagDefinitionRepository) {
         this.diveRepository = diveRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
         this.diveSiteRepository = diveSiteRepository;
+        this.tagDefinitionRepository = tagDefinitionRepository;
     }
 
     public record RawMainStats(
@@ -383,5 +390,101 @@ public class StatsDataService {
                         .findMinTemperatureCelsiusByUserId(user.id())
                         .map(d -> new Temperature(d, CELSIUS))
                         .orElse(null));
+    }
+
+    /**
+     * Returns stats for each tag that appears on at least one of the user's dives,
+     * sorted by dive count descending.
+     */
+    @Transactional(readOnly = true)
+    public List<UserDiveStatsBy<TagDefinition>> getStatsByTag(final User user) {
+        // Aggregate: [tagId, diveCount, maxDiveNumber, uniqueSites] per tag
+        final List<Object[]> rows = entityManager.createQuery(
+                        """
+                        SELECT dt.tag.id, COUNT(DISTINCT d.id), MAX(d.number),
+                               COUNT(DISTINCT d.diveSite.id)
+                        FROM DiveEntity d
+                        JOIN d.tags dt
+                        WHERE d.user.id = :userId AND dt.dismissed = false
+                        GROUP BY dt.tag.id
+                        ORDER BY COUNT(DISTINCT d.id) DESC
+                        """, Object[].class)
+                .setParameter("userId", user.id())
+                .getResultList();
+
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        // Look up TagDefinition records (with diveCount) for all returned tag IDs
+        final var tagIds = rows.stream().map(r -> (Long) r[0]).toList();
+        final var tagMap = tagDefinitionRepository.findAllById(tagIds).stream()
+                .collect(Collectors.toMap(e -> e.getId(), e -> e));
+
+        return rows.stream()
+                .map(row -> {
+                    final long tagId       = (Long)    row[0];
+                    final long diveCount   = (Long)    row[1];
+                    final int  maxNumber   = row[2] != null ? ((Number) row[2]).intValue() : -1;
+                    final long uniqueSites = (Long)    row[3];
+
+                    final var maxDuration   = diveRepository.findMaxDurationByUserIdAndTagId(user.id(), tagId)
+                            .map(Duration::ofSeconds).orElse(Duration.ZERO);
+                    final var totalDuration = diveRepository.findTotalDurationByUserIdAndTagId(user.id(), tagId)
+                            .map(Duration::ofSeconds).orElse(Duration.ZERO);
+                    final var maxDepth      = diveMeasurementRepository.findMaxDepthByUserIdAndTagId(user.id(), tagId)
+                            .orElse(0.0);
+
+                    final var stats = new UserDiveStats(
+                            diveCount, maxNumber, maxDuration, maxDepth, totalDuration,
+                            0L, uniqueSites, null, null);
+
+                    final var tagEntity = tagMap.get(tagId);
+                    final var tagDef = tagEntity != null
+                            ? tagEntity.toRecord(diveCount)
+                            : new TagDefinition(tagId, "Unknown", null, null, diveCount);
+
+                    return new UserDiveStatsBy<>(tagDef, stats);
+                })
+                .toList();
+    }
+
+    /**
+     * Computes stats for dives matching ALL of the specified tag IDs (AND semantics).
+     * Returns null if the tag list is empty or no dives match.
+     */
+    @Transactional(readOnly = true)
+    public UserDiveStats computeStatsForTagFilter(final User user, final Collection<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return null;
+        }
+        final var diveIds = diveRepository.findDiveIdsByTagsAndUserId(user.id(), tagIds, tagIds.size());
+        if (diveIds.isEmpty()) {
+            return new UserDiveStats(0, -1, Duration.ZERO, 0.0, Duration.ZERO, 0L, 0L, null, null);
+        }
+
+        // Aggregate main counts from the matched dive set directly via JPQL
+        final Object[] main = (Object[]) entityManager.createQuery(
+                        """
+                        SELECT COUNT(DISTINCT d.id), MAX(d.number), COUNT(DISTINCT d.diveSite.id)
+                        FROM DiveEntity d
+                        WHERE d.id IN :diveIds
+                        """)
+                .setParameter("diveIds", diveIds)
+                .getSingleResult();
+
+        final long diveCount   = (Long)    main[0];
+        final int  maxNumber   = main[1] != null ? ((Number) main[1]).intValue() : -1;
+        final long uniqueSites = (Long)    main[2];
+
+        final var maxDuration   = diveRepository.findMaxDurationByDiveIds(diveIds)
+                .map(Duration::ofSeconds).orElse(Duration.ZERO);
+        final var totalDuration = diveRepository.findTotalDurationByDiveIds(diveIds)
+                .map(Duration::ofSeconds).orElse(Duration.ZERO);
+        final var maxDepth      = diveMeasurementRepository.findMaxDepthByDiveIds(diveIds)
+                .orElse(0.0);
+
+        return new UserDiveStats(diveCount, maxNumber, maxDuration, maxDepth, totalDuration,
+                0L, uniqueSites, null, null);
     }
 }

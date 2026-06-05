@@ -1135,4 +1135,12 @@ public class DiveDataService {
     public void setWeight(final double newValue, final List<Long> diveIds) {
         diveRepository.setWeight(newValue, diveIds);
     }
+
+    @Transactional(readOnly = true)
+    public List<String> findBuddyNameSuggestions(final long userId, final String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return diveBuddyNameRepository.findDistinctBuddyNamesByUser(userId, query.trim());
+    }
 }

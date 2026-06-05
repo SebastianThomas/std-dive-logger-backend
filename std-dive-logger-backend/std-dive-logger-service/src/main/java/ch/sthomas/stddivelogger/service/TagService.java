@@ -35,4 +35,8 @@ public class TagService {
     public List<TagDefinition> getSystemTagsByPartialName(final String query) {
         return tagDataService.findSystemTagsByPartialName(query);
     }
+
+    public void deleteTag(final User user, final long tagId) {
+        tagDataService.deleteTag(user.id(), tagId);
+    }
 }

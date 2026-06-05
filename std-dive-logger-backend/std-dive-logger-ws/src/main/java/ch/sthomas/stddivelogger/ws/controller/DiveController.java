@@ -374,6 +374,17 @@ public class DiveController {
         return diveService.unlinkBuddyDive(user, diveId, buddyDiveId);
     }
 
+    @Operation(summary = "Autocomplete buddy names from the user's own dive history, ordered by frequency")
+    @GetMapping("/buddies/autocomplete")
+    public List<String> autocompleteBuddies(
+            @AuthenticationPrincipal final User user,
+            @RequestParam final String query) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to use buddy autocomplete.");
+        }
+        return diveService.getBuddyNameSuggestions(user, query);
+    }
+
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public Dive mergeDiveProfiles(

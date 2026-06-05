@@ -676,4 +676,8 @@ public class DiveService {
         }
         diveDataService.setWeight(newValue, diveIds);
     }
+
+    public List<String> getBuddyNameSuggestions(final User user, final String query) {
+        return diveDataService.findBuddyNameSuggestions(user.id(), query);
+    }
 }

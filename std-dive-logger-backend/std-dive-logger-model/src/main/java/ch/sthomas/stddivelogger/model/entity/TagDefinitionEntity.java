@@ -58,10 +58,15 @@ public class TagDefinitionEntity {
     }
 
     public TagDefinition toRecord() {
+        return toRecord(0L);
+    }
+
+    public TagDefinition toRecord(final long diveCount) {
         return new TagDefinition(
                 id,
                 name,
                 autoDetectRule,
-                user != null ? user.getId() : null);
+                user != null ? user.getId() : null,
+                diveCount);
     }
 }

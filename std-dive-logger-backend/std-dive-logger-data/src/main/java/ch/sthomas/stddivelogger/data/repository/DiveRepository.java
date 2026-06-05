@@ -271,4 +271,54 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")
     @Modifying
     void setWeight(double newValue, Collection<Long> idsList);
+
+    // ── Tag-filtered stats queries ─────────────────────────────────────────────
+
+    /**
+     * Returns IDs of dives owned by the user that carry ALL of the specified tags
+     * (non-dismissed). Uses a HAVING COUNT = tagCount to enforce AND semantics.
+     */
+    @Query("""
+            SELECT d.id
+            FROM DiveEntity d
+            JOIN d.tags dt
+            WHERE d.user.id = :userId
+              AND dt.dismissed = false
+              AND dt.tag.id IN :tagIds
+            GROUP BY d.id
+            HAVING COUNT(DISTINCT dt.tag.id) = :tagCount
+            """)
+    List<Long> findDiveIdsByTagsAndUserId(long userId, Collection<Long> tagIds, long tagCount);
+
+    /** Duration stats for a specific tag (dives carrying that tag, non-dismissed). */
+    @Query("""
+            SELECT MAX(s.durationSeconds)
+            FROM DiveSummaryEntity s
+            JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
+            JOIN d.tags dt ON dt.tag.id = :tagId AND dt.dismissed = false
+            """)
+    Optional<Long> findMaxDurationByUserIdAndTagId(long userId, long tagId);
+
+    @Query("""
+            SELECT SUM(s.durationSeconds)
+            FROM DiveSummaryEntity s
+            JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
+            JOIN d.tags dt ON dt.tag.id = :tagId AND dt.dismissed = false
+            """)
+    Optional<Long> findTotalDurationByUserIdAndTagId(long userId, long tagId);
+
+    /** Duration stats for a set of dive IDs (used for tag-combination stats). */
+    @Query("""
+            SELECT MAX(s.durationSeconds)
+            FROM DiveSummaryEntity s
+            WHERE s.dive.id IN :diveIds
+            """)
+    Optional<Long> findMaxDurationByDiveIds(Collection<Long> diveIds);
+
+    @Query("""
+            SELECT SUM(s.durationSeconds)
+            FROM DiveSummaryEntity s
+            WHERE s.dive.id IN :diveIds
+            """)
+    Optional<Long> findTotalDurationByDiveIds(Collection<Long> diveIds);
 }
