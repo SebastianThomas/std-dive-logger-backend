@@ -79,6 +79,7 @@ public class DiveDataService {
     private final DiveProfileHistoryRepository diveProfileHistoryRepository;
     private final SuitRepository suitRepository;
     private final TagDataService tagDataService;
+    private final DiveTagRepository diveTagRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -98,7 +99,8 @@ public class DiveDataService {
             final DiveProfileRepository diveProfileRepository,
             final DiveProfileHistoryRepository diveProfileHistoryRepository,
             final SuitRepository suitRepository,
-            final TagDataService tagDataService) {
+            final TagDataService tagDataService,
+            final DiveTagRepository diveTagRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -117,6 +119,7 @@ public class DiveDataService {
         this.diveProfileHistoryRepository = diveProfileHistoryRepository;
         this.suitRepository = suitRepository;
         this.tagDataService = tagDataService;
+        this.diveTagRepository = diveTagRepository;
     }
 
     @Transactional(readOnly = true)
@@ -466,12 +469,47 @@ public class DiveDataService {
     }
 
     @Transactional
-    public Dive updateTags(final long diveId, final long userId, final List<Long> manualTagIds) {
-        final var dive = diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow();
+    public Dive updateTags(
+            final long diveId,
+            final long userId,
+            final List<Long> manualTagIds,
+            final List<Long> dismissedAutoTagIds) {
+        // Resolve all tag definitions before touching the dive entity, so that no
+        // Hibernate auto-flush can occur while the tag collection is in a transient state.
         final var manualTagDefs = tagDataService.findEntitiesByIdsVisibleToUser(manualTagIds, userId);
-        dive.setManualTags(manualTagDefs);
-        recomputeAutoTags(dive, userId);
-        return toRecord(diveRepository.save(dive));
+        final var autoDetectDefs = tagDataService.findAutoDetectEntitiesForUser(userId);
+
+        // Load the dive after all SELECTs are done to avoid auto-flush surprises.
+        final var dive = diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow();
+
+        // Build the complete desired tag set independently of the entity's collection.
+        final var manualDefIds = manualTagDefs.stream()
+                .map(TagDefinitionEntity::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        // A manually-added tag clears any prior dismissal even if it was in dismissedAutoTagIds.
+        final var effectiveDismissed = new java.util.HashSet<>(dismissedAutoTagIds);
+        effectiveDismissed.removeAll(manualDefIds);
+
+        final var newTags = new java.util.ArrayList<DiveTagEntity>();
+        // Manual tags (dismissed=false, clears any prior dismissal for the same tag).
+        manualTagDefs.stream()
+                .map(def -> new DiveTagEntity(dive, def, true, false))
+                .forEach(newTags::add);
+        // Auto-detected tags: dismissed ones are kept as invisible rows so they won't
+        // be re-added automatically; active ones are added normally.
+        autoDetectDefs.stream()
+                .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
+                .filter(def -> !manualDefIds.contains(def.getId()))
+                .map(def -> new DiveTagEntity(dive, def, false, effectiveDismissed.contains(def.getId())))
+                .forEach(newTags::add);
+
+        // Replace all existing rows atomically: delete then insert via repository,
+        // completely bypassing the entity's managed tags collection.
+        diveTagRepository.deleteAllByDiveId(diveId);
+        diveTagRepository.flush();
+        diveTagRepository.saveAll(newTags);
+
+        return toRecord(diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow());
     }
 
     private void recomputeAutoTags(final DiveEntity dive, final long userId) {

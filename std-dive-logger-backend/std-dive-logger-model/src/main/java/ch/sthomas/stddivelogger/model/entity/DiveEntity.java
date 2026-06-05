@@ -280,21 +280,20 @@ public class DiveEntity {
         if (tags == null) {
             tags = new ArrayList<>();
         }
-        tags.removeIf(t -> !t.isManual());
-        // Collect tag-definition IDs already covered by a manual tag so we don't
-        // insert a duplicate row for the same (dive, tag) pair.
-        final var manualTagIds = tags.stream()
-                .filter(DiveTagEntity::isManual)
+        // Remove non-dismissed auto tags — dismissed rows stay so they are not re-added.
+        tags.removeIf(t -> !t.isManual() && !t.isDismissed());
+        // Collect IDs already covered by a manual or dismissed tag so we don't insert duplicates.
+        final var coveredTagIds = tags.stream()
                 .map(t -> t.getTag().getId())
                 .collect(java.util.stream.Collectors.toSet());
         autoDetectCandidates.stream()
                 .filter(def -> matchesAutoDetect(def.getAutoDetectRule()))
-                .filter(def -> !manualTagIds.contains(def.getId()))
+                .filter(def -> !coveredTagIds.contains(def.getId()))
                 .map(def -> new DiveTagEntity(this, def, false))
                 .forEach(tags::add);
     }
 
-    private boolean matchesAutoDetect(final AutoDetectRule rule) {
+    public boolean matchesAutoDetect(final AutoDetectRule rule) {
         if (rule == null) {
             return false;
         }
@@ -323,9 +322,14 @@ public class DiveEntity {
         if (tags == null) {
             tags = new ArrayList<>();
         }
-        tags.removeIf(DiveTagEntity::isManual);
+        final var manualDefIds = manualTagDefs.stream()
+                .map(TagDefinitionEntity::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        // Remove all existing manual tags AND any auto/dismissed tags whose tag ID
+        // appears in the incoming manual set (re-adding manually clears dismissed flag).
+        tags.removeIf(t -> t.isManual() || manualDefIds.contains(t.getTag().getId()));
         manualTagDefs.stream()
-                .map(def -> new DiveTagEntity(this, def, true))
+                .map(def -> new DiveTagEntity(this, def, true, false))
                 .forEach(tags::add);
     }
 
@@ -334,6 +338,7 @@ public class DiveEntity {
             return List.of();
         }
         return tags.stream()
+                .filter(t -> !t.isDismissed())
                 .map(t -> t.getTag().toRecord())
                 .distinct()
                 .toList();
