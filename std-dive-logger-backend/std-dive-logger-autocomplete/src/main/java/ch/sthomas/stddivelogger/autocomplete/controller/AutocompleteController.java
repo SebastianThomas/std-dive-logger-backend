@@ -58,6 +58,11 @@ public class AutocompleteController {
     public List<TagDefinition> tag(
             @AuthenticationPrincipal final User user,
             @RequestParam(name = "query") final String query) {
+        // The autocomplete service has no JWT filter, so user may be null.
+        // Fall back to system-wide tags only in that case.
+        if (user == null) {
+            return tagService.getSystemTagsByPartialName(query);
+        }
         return tagService.getTagsByPartialName(user, query);
     }
 }

@@ -57,6 +57,14 @@ public class TagDataService {
                 .toList();
     }
 
+    /** Used by the autocomplete service which has no authenticated user context. */
+    @Transactional(readOnly = true)
+    public List<TagDefinition> findSystemTagsByPartialName(final String query) {
+        return tagDefinitionRepository.findByPartialNameSystemOnly(query).stream()
+                .map(TagDefinitionEntity::toRecord)
+                .toList();
+    }
+
     @Transactional
     public TagDefinition createTag(final long userId, @NotBlank final String name) {
         if (tagDefinitionRepository.existsByNameIgnoreCaseAndUserIsNull(name)
