@@ -265,6 +265,17 @@ public class DiveService {
         return diveDataService.updateDive(user, dive);
     }
 
+    /**
+     * Refreshes auto-detected tags for the given dive and returns the updated dive.
+     * Intended to be called by the frontend when opening the edit page.
+     */
+    public Dive refreshAutoTags(final User user, final long diveId) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.refreshAutoTags(diveId, user.id());
+    }
+
     public Dive linkBuddyDive(final User user, final long userDive, final long buddyDive) {
         if (!hasWriteAccess(user, userDive) || !hasReadAccess(user, buddyDive)) {
             throw ForbiddenException.forDiveIds(user, List.of(userDive, buddyDive));
