@@ -45,6 +45,12 @@ public class VisibilityEntity {
         this.description = description;
     }
 
+    public void update(final Visibility visibility) {
+        this.visibilityMeters = visibility.meters();
+        this.feeling = visibility.feeling();
+        this.description = visibility.description();
+    }
+
     public Visibility toRecord() {
         return new Visibility(visibilityMeters, description, feeling);
     }

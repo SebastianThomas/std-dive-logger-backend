@@ -48,6 +48,12 @@ public class DiveGasConsumptionEntity {
         this.totalLiters = totalLiters;
     }
 
+    public void update(final DiveGasConsumption gasConsumption) {
+        this.sacBar = gasConsumption.sacBar();
+        this.rmvLiters = gasConsumption.rmvLiters();
+        this.totalLiters = gasConsumption.totalLiters();
+    }
+
     public DiveGasConsumption toRecord() {
         return new DiveGasConsumption(sacBar, rmvLiters, totalLiters);
     }

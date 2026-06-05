@@ -387,4 +387,20 @@ public class DiveEntity {
     public void setConfiguration(final DiveConfigurationEntity configuration) {
         this.configuration = configuration;
     }
+
+    public DiveGasConsumptionEntity getGasConsumption() {
+        return gasConsumption;
+    }
+
+    public void setGasConsumption(final DiveGasConsumptionEntity gasConsumption) {
+        this.gasConsumption = gasConsumption;
+    }
+
+    public VisibilityEntity getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(final VisibilityEntity visibility) {
+        this.visibility = visibility;
+    }
 }

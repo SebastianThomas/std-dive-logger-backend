@@ -408,23 +408,34 @@ public class DiveDataService {
             }
             logger.info("Set new configuration with suit: {}, {}", suit, suit.getType());
         }
-        final var gasConsumption =
-                updateBody.gasConsumption() != null
-                        ? new DiveGasConsumptionEntity(existingDive, updateBody.gasConsumption())
-                        : null;
-        final var visibility =
-                updateBody.visibility() != null
-                        ? new VisibilityEntity(existingDive, updateBody.visibility())
-                        : null;
+        // Mutate gasConsumption in-place (same @MapsId constraint as configuration).
+        if (updateBody.gasConsumption() != null) {
+            if (existingDive.getGasConsumption() != null) {
+                existingDive.getGasConsumption().update(updateBody.gasConsumption());
+            } else {
+                existingDive.setGasConsumption(
+                        new DiveGasConsumptionEntity(existingDive, updateBody.gasConsumption()));
+            }
+        }
+        // Mutate visibility in-place (same @MapsId constraint as configuration).
+        if (updateBody.visibility() != null) {
+            if (existingDive.getVisibility() != null) {
+                existingDive.getVisibility().update(updateBody.visibility());
+            } else {
+                existingDive.setVisibility(
+                        new VisibilityEntity(existingDive, updateBody.visibility()));
+            }
+        }
+        // All @MapsId child entities already mutated above — pass null to avoid re-assignment.
         existingDive.update(
                 updateBody.number(),
                 updateBody.customIdentifier(),
                 updateBody.notes(),
                 diveSiteEntity,
                 newBuddies,
-                null,          // configuration already mutated in-place above
-                gasConsumption,
-                visibility);
+                null,   // configuration mutated in-place above
+                null,   // gasConsumption mutated in-place above
+                null);  // visibility mutated in-place above
         recomputeAutoTags(existingDive, user.id());
         return toRecord(diveRepository.save(existingDive));
     }
