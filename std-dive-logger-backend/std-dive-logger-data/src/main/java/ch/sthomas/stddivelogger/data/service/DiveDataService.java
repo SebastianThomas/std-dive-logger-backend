@@ -439,8 +439,37 @@ public class DiveDataService {
                 null,   // configuration mutated in-place above
                 null,   // gasConsumption mutated in-place above
                 null);  // visibility mutated in-place above
-        recomputeAutoTags(existingDive, user.id());
         return toRecord(diveRepository.save(existingDive));
+    }
+
+    /**
+     * Refreshes the auto-detected tags for a dive and returns the updated dive.
+     * Manual and dismissed tag rows are preserved; only the active auto-detected rows
+     * are replaced. This is called by the frontend when opening the edit page so that
+     * the user always sees up-to-date auto-tags before editing.
+     */
+    @Transactional
+    public Dive refreshAutoTags(final long diveId, final long userId) {
+        // Fetch auto-detect defs before loading the entity to avoid auto-flush on a
+        // dirty tags collection (Hibernate insert-before-delete ordering issue).
+        final var autoDetectDefs = tagDataService.findAutoDetectEntitiesForUser(userId);
+        final var coveredTagIds = diveTagRepository.findCoveredTagIdsByDiveId(diveId);
+        final var dive = diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow();
+
+        diveTagRepository.deleteActiveAutoTagsByDiveId(diveId);
+        diveTagRepository.flush();
+
+        final var newAutoTags = autoDetectDefs.stream()
+                .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
+                .filter(def -> !coveredTagIds.contains(def.getId()))
+                .map(def -> new DiveTagEntity(dive, def, false, false))
+                .toList();
+        diveTagRepository.saveAll(newAutoTags);
+
+        // Clear the 1st-level cache so the reload below fetches fresh rows from DB
+        // rather than returning the stale entity that was loaded before the tag operations.
+        entityManager.clear();
+        return toRecord(diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow());
     }
 
     private ArrayList<DiveBuddyNameEntity> getNewNamedBuddies(
@@ -531,6 +560,10 @@ public class DiveDataService {
             final DiveNumber diveNumber,
             final String newNotes,
             final DiveProfileUpload profile) {
+        // Fetch auto-detect defs FIRST so the later SELECT cannot trigger an auto-flush
+        // on a dirty entity (same insert-before-delete issue as updateDive).
+        final var autoDetectDefs = tagDataService.findAutoDetectEntitiesForUser(user.id());
+
         final var diveEntityOpt =
                 diveRepository.findByUser_IdAndNumber(user.id(), diveNumber.number());
         if (diveEntityOpt.isEmpty()) {
@@ -542,14 +575,33 @@ public class DiveDataService {
                             + ", try adding the first / base dive first.");
         }
         final var diveEntity = diveEntityOpt.get();
+        final long diveId = diveEntity.getId();
         final var profileEntity = createDiveProfileEntity(profile);
         diveEntity.addProfiles(List.of(profileEntity));
         final var savedProfile = diveProfileRepository.save(profileEntity);
         if (newNotes != null && !newNotes.isBlank()) {
             diveEntity.appendNotes(diveNumber + "\n" + newNotes);
         }
-        recomputeAutoTags(diveEntity, user.id());
-        final var savedDive = diveRepository.save(diveEntity);
+        diveRepository.save(diveEntity);
+
+        // Evict so the stale tags collection cannot be re-cascaded after the repository ops.
+        entityManager.flush();
+        entityManager.clear();
+
+        final var coveredTagIds = diveTagRepository.findCoveredTagIdsByDiveId(diveId);
+        final var freshDive = diveRepository.findById(diveId).orElseThrow();
+        diveTagRepository.deleteActiveAutoTagsByDiveId(diveId);
+        diveTagRepository.flush();
+        final var newAutoTags = autoDetectDefs.stream()
+                .filter(def -> freshDive.matchesAutoDetect(def.getAutoDetectRule()))
+                .filter(def -> !coveredTagIds.contains(def.getId()))
+                .map(def -> new DiveTagEntity(freshDive, def, false, false))
+                .toList();
+        diveTagRepository.saveAll(newAutoTags);
+
+        // Clear so the final reload fetches fresh rows rather than the stale cached entity.
+        entityManager.clear();
+        final var savedDive = diveRepository.findById(diveId).orElseThrow();
         final var savedDiveProfile =
                 savedDive.getProfiles().stream()
                         .filter(p -> p.getId() == savedProfile.getId())

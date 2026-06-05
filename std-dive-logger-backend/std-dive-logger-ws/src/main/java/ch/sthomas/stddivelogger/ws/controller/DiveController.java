@@ -455,6 +455,17 @@ public class DiveController {
         return diveService.updateTags(user, diveId, body.manualTagIds(), body.dismissedAutoTagIds());
     }
 
+    @Operation(summary = "Refresh auto-detected tags and return the updated dive. Call this when opening the edit page.")
+    @PostMapping(path = "/{id}/refresh-tags")
+    public Dive refreshAutoTags(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to refresh tags.");
+        }
+        return diveService.refreshAutoTags(user, diveId);
+    }
+
     @Operation(summary = "Generate or regenerate Preview image")
     @PostMapping(path = "/{id}/preview")
     public ResponseEntity<Dive> generatePreview(
