@@ -379,4 +379,12 @@ public class DiveEntity {
     public long getUserId() {
         return user.getId();
     }
+
+    public DiveConfigurationEntity getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(final DiveConfigurationEntity configuration) {
+        this.configuration = configuration;
+    }
 }

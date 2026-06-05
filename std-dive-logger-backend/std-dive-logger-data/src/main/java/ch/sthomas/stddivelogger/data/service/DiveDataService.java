@@ -394,19 +394,20 @@ public class DiveDataService {
                                 Collectors.toMap(
                                         DiveBuddyNameEntity::getName, Function.identity()));
         final var newBuddies = getNewNamedBuddies(updateBody, namedBuddies, existingDive);
-        final var configuration =
-                updateBody.configuration() != null
-                        ? new DiveConfigurationEntity(
-                                existingDive,
-                                suitRepository
-                                        .findByIdAndUser_Id(updateBody.suitId(), user.id())
-                                        .orElseThrow(
-                                                () ->
-                                                        new NoSuchElementException(
-                                                                "Could not find Suit")),
-                                updateBody.configuration(),
-                                this::toEntity)
-                        : null;
+        // Mutate the *existing* configuration entity in-place to avoid a Hibernate
+        // DuplicateKeyException caused by @MapsId sharing the dive PK.
+        if (updateBody.configuration() != null) {
+            final var suit = suitRepository
+                    .findByIdAndUser_Id(updateBody.suitId(), user.id())
+                    .orElseThrow(() -> new NoSuchElementException("Could not find Suit"));
+            if (existingDive.getConfiguration() != null) {
+                existingDive.getConfiguration().update(suit, updateBody.configuration(), this::toEntity);
+            } else {
+                existingDive.setConfiguration(
+                        new DiveConfigurationEntity(existingDive, suit, updateBody.configuration(), this::toEntity));
+            }
+            logger.info("Set new configuration with suit: {}, {}", suit, suit.getType());
+        }
         final var gasConsumption =
                 updateBody.gasConsumption() != null
                         ? new DiveGasConsumptionEntity(existingDive, updateBody.gasConsumption())
@@ -415,19 +416,13 @@ public class DiveDataService {
                 updateBody.visibility() != null
                         ? new VisibilityEntity(existingDive, updateBody.visibility())
                         : null;
-        if (configuration != null) {
-            logger.info(
-                    "Set new configuration with suit: {}, {}",
-                    configuration.getSuitEntity(),
-                    configuration.getSuitEntity().getType());
-        }
         existingDive.update(
                 updateBody.number(),
                 updateBody.customIdentifier(),
                 updateBody.notes(),
                 diveSiteEntity,
                 newBuddies,
-                configuration,
+                null,          // configuration already mutated in-place above
                 gasConsumption,
                 visibility);
         recomputeAutoTags(existingDive, user.id());

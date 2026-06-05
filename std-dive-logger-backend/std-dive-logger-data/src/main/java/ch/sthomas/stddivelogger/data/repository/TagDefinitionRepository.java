@@ -29,4 +29,8 @@ public interface TagDefinitionRepository extends JpaRepository<TagDefinitionEnti
 
     @Query("SELECT t FROM TagDefinitionEntity t WHERE (t.user IS NULL OR t.user.id = :userId) AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<TagDefinitionEntity> findByPartialNameVisibleToUser(String query, long userId);
+
+    /** System-only partial-name lookup — used when no authenticated user is available. */
+    @Query("SELECT t FROM TagDefinitionEntity t WHERE t.user IS NULL AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<TagDefinitionEntity> findByPartialNameSystemOnly(String query);
 }

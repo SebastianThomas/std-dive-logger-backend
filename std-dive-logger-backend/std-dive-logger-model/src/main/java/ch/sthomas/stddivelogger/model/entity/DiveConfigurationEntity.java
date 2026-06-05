@@ -75,6 +75,31 @@ public class DiveConfigurationEntity {
                 cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList());
     }
 
+    /**
+     * Updates this entity's fields in-place so that Hibernate never sees two managed
+     * objects with the same identifier in the same session.
+     */
+    public void update(
+            final SuitEntity suit,
+            final DiveConfiguration configuration,
+            final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
+        this.suit = suit;
+        this.baseConfiguration = configuration.base();
+        this.weightKg = configuration.weight();
+        this.weightFeeling = configuration.weightFeeling();
+        this.cylinders =
+                configuration.cylinders().stream()
+                        .map(
+                                c ->
+                                        new DiveConfigurationCylinderEntity(
+                                                this,
+                                                getCylinderSizeEntity.apply(c.size()),
+                                                c.startBar(),
+                                                c.endBar(),
+                                                c.notes()))
+                        .toList();
+    }
+
     public SuitEntity getSuitEntity() {
         return suit;
     }

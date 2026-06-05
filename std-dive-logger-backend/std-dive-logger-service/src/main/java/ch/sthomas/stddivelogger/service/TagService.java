@@ -30,4 +30,9 @@ public class TagService {
     public List<TagDefinition> getTagsByPartialName(final User user, final String query) {
         return tagDataService.findByPartialName(query, user.id());
     }
+
+    /** Fallback used when no authenticated user is available (e.g. autocomplete service). */
+    public List<TagDefinition> getSystemTagsByPartialName(final String query) {
+        return tagDataService.findSystemTagsByPartialName(query);
+    }
 }
