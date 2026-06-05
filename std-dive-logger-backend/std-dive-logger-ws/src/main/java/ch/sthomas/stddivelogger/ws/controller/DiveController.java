@@ -4,6 +4,7 @@ import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
+import ch.sthomas.stddivelogger.model.controller.UpdateTagsBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
@@ -447,11 +448,11 @@ public class DiveController {
     public Dive updateTags(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") final long diveId,
-            @NotNull @Valid @RequestBody final List<Long> tagIds) {
+            @NotNull @Valid @RequestBody final UpdateTagsBody body) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to update tags.");
         }
-        return diveService.updateTags(user, diveId, tagIds);
+        return diveService.updateTags(user, diveId, body.manualTagIds(), body.dismissedAutoTagIds());
     }
 
     @Operation(summary = "Generate or regenerate Preview image")

@@ -25,12 +25,29 @@ public class DiveTagEntity {
     @Column(name = "manual", nullable = false)
     private boolean manual;
 
+    /**
+     * Whether the user explicitly dismissed this auto-detected tag. A dismissed tag is kept in the
+     * database so it is not re-added by auto-detection, but it is not surfaced in {@code getTags()}.
+     * The flag is cleared when the user manually re-adds the tag.
+     */
+    @Column(name = "dismissed", nullable = false)
+    private boolean dismissed;
+
     public DiveTagEntity() {}
 
     public DiveTagEntity(final DiveEntity dive, final TagDefinitionEntity tag, final boolean manual) {
+        this(dive, tag, manual, false);
+    }
+
+    public DiveTagEntity(
+            final DiveEntity dive,
+            final TagDefinitionEntity tag,
+            final boolean manual,
+            final boolean dismissed) {
         this.dive = dive;
         this.tag = tag;
         this.manual = manual;
+        this.dismissed = dismissed;
     }
 
     public TagDefinitionEntity getTag() {
@@ -39,5 +56,9 @@ public class DiveTagEntity {
 
     public boolean isManual() {
         return manual;
+    }
+
+    public boolean isDismissed() {
+        return dismissed;
     }
 }

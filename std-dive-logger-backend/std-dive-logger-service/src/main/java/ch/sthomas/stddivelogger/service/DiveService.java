@@ -407,11 +407,15 @@ public class DiveService {
         diveDataService.deleteDiveById(diveId);
     }
 
-    public Dive updateTags(final User user, final long diveId, final List<Long> manualTagIds) {
+    public Dive updateTags(
+            final User user,
+            final long diveId,
+            final List<Long> manualTagIds,
+            final List<Long> dismissedAutoTagIds) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);
         }
-        return diveDataService.updateTags(diveId, user.id(), manualTagIds);
+        return diveDataService.updateTags(diveId, user.id(), manualTagIds, dismissedAutoTagIds);
     }
 
     public PagedResponse<User> getReaders(
