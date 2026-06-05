@@ -8,8 +8,10 @@ import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "t_dive_configuration")
@@ -63,7 +65,7 @@ public class DiveConfigurationEntity {
                                                 c.startBar(),
                                                 c.endBar(),
                                                 c.notes()))
-                        .toList();
+                        .collect(Collectors.toCollection(ArrayList::new));
     }
 
     public DiveConfiguration toRecord() {
@@ -97,7 +99,7 @@ public class DiveConfigurationEntity {
                                                 c.startBar(),
                                                 c.endBar(),
                                                 c.notes()))
-                        .toList();
+                        .collect(Collectors.toCollection(ArrayList::new));
     }
 
     public SuitEntity getSuitEntity() {
