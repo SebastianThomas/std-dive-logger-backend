@@ -7,10 +7,9 @@ import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.TagDefinitionRepository;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
-import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-import ch.sthomas.stddivelogger.model.dive.stats.StatsCategoryPoint;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsBreakdownDimension;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
@@ -613,55 +612,92 @@ public class StatsDataService {
         return rs.wasNull() ? null : value;
     }
 
+    /** Shared by the main aggregate query and the breakdown query — identical metric columns either way. */
+    private static final String METRIC_SELECT_LIST =
+            """
+                    COUNT(*) AS dive_count,
+                    AVG(fd.rmv_liters) AS avg_rmv_liters,
+                    MAX(fd.max_depth) AS max_depth,
+                    AVG(fd.avg_depth) AS avg_depth,
+                    COALESCE(SUM(fd.duration_seconds), 0) AS total_duration_seconds,
+                    COALESCE(MAX(fd.duration_seconds), 0) AS max_duration_seconds,
+                    AVG(ec.cns) AS avg_end_cns,
+                    AVG(at.avg_temp_celsius) AS avg_temperature_celsius,
+                    AVG(fd.visibility_meters) AS avg_visibility_meters,
+                    AVG(fd.weight_kg) AS avg_weight_kg
+            """;
+
+    /**
+     * Adds the {@code end_cns}/{@code avg_temp} CTEs (shared by the main query and the breakdown
+     * query) on top of the already-built {@code filtered_dives} CTE.
+     */
+    private String metricCtePreamble(final String filteredDivesCte) {
+        return filteredDivesCte
+                + """
+                , end_cns AS (
+                    SELECT DISTINCT ON (dp.fk_dive_id) dp.fk_dive_id AS dive_id, dm.cns
+                    FROM t_dive_measurements dm
+                    JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
+                    WHERE dm.cns IS NOT NULL
+                      AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
+                    ORDER BY dp.fk_dive_id, dp.dive_profile_end DESC, dm.time DESC
+                ),
+                avg_temp AS (
+                    SELECT dp.fk_dive_id AS dive_id, AVG(dm.temperature_celsius) AS avg_temp_celsius
+                    FROM t_dive_measurements dm
+                    JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
+                    WHERE dm.temperature_celsius IS NOT NULL
+                      AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
+                    GROUP BY dp.fk_dive_id
+                )
+                """;
+    }
+
+    private StatsTimeSeriesPoint mapPoint(final ResultSet rs, final boolean withCategory)
+            throws SQLException {
+        return new StatsTimeSeriesPoint(
+                rs.getTimestamp("bucket_start").toInstant(),
+                withCategory ? null : nullableLong(rs, "dive_id_col"),
+                withCategory ? rs.getString("category") : null,
+                rs.getLong("dive_count"),
+                nullableDouble(rs, "avg_rmv_liters"),
+                nullableDouble(rs, "max_depth"),
+                nullableDouble(rs, "avg_depth"),
+                rs.getLong("total_duration_seconds"),
+                rs.getLong("max_duration_seconds"),
+                nullableDouble(rs, "avg_end_cns"),
+                nullableDouble(rs, "avg_temperature_celsius"),
+                nullableDouble(rs, "avg_visibility_meters"),
+                nullableDouble(rs, "avg_weight_kg"));
+    }
+
     /**
      * Buckets the user's dives (after applying {@code filters}) by {@code granularity} and
-     * returns per-bucket aggregates for every numeric metric, plus a suit-usage and
-     * base-configuration-usage breakdown (dive count per category per bucket).
+     * returns per-bucket aggregates for every numeric metric. When {@code breakdownBy} is
+     * non-null, also returns the same set of metrics grouped by (bucket, category) for that
+     * dimension, so any selected metric can be split into one line per suit / base configuration.
      */
     @Transactional(readOnly = true)
     public StatsTimeSeries getTimeSeries(
-            final User user, final StatsGranularity granularity, final StatsFilters filters) {
+            final User user,
+            final StatsGranularity granularity,
+            final StatsFilters filters,
+            final StatsBreakdownDimension breakdownBy) {
         final var cteAndParams = filteredDivesCte(user.id(), filters);
         final var filteredDivesCte = cteAndParams.getLeft();
         final var params = cteAndParams.getRight();
         final var bucket = bucketSql(granularity);
+        final var preamble = metricCtePreamble(filteredDivesCte);
 
         final var mainSql =
-                filteredDivesCte
-                        + """
-                        , end_cns AS (
-                            SELECT DISTINCT ON (dp.fk_dive_id) dp.fk_dive_id AS dive_id, dm.cns
-                            FROM t_dive_measurements dm
-                            JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
-                            WHERE dm.cns IS NOT NULL
-                              AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
-                            ORDER BY dp.fk_dive_id, dp.dive_profile_end DESC, dm.time DESC
-                        ),
-                        avg_temp AS (
-                            SELECT dp.fk_dive_id AS dive_id, AVG(dm.temperature_celsius) AS avg_temp_celsius
-                            FROM t_dive_measurements dm
-                            JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
-                            WHERE dm.temperature_celsius IS NOT NULL
-                              AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
-                            GROUP BY dp.fk_dive_id
-                        )
-                        SELECT
-                        """
+                preamble
+                        + "SELECT\n"
                         + bucket.selectExpr()
                         + " AS bucket_start,\n"
                         + bucket.diveIdExpr()
                         + " AS dive_id_col,\n"
+                        + METRIC_SELECT_LIST
                         + """
-                                COUNT(*) AS dive_count,
-                                AVG(fd.rmv_liters) AS avg_rmv_liters,
-                                MAX(fd.max_depth) AS max_depth,
-                                AVG(fd.avg_depth) AS avg_depth,
-                                COALESCE(SUM(fd.duration_seconds), 0) AS total_duration_seconds,
-                                COALESCE(MAX(fd.duration_seconds), 0) AS max_duration_seconds,
-                                AVG(ec.cns) AS avg_end_cns,
-                                AVG(at.avg_temp_celsius) AS avg_temperature_celsius,
-                                AVG(fd.visibility_meters) AS avg_visibility_meters,
-                                AVG(fd.weight_kg) AS avg_weight_kg
                             FROM filtered_dives fd
                             LEFT JOIN end_cns ec ON ec.dive_id = fd.dive_id
                             LEFT JOIN avg_temp at ON at.dive_id = fd.dive_id
@@ -672,60 +708,48 @@ public class StatsDataService {
 
         final var points =
                 namedParameterJdbcTemplate.query(
-                        mainSql,
-                        params,
-                        (rs, rowNum) ->
-                                new StatsTimeSeriesPoint(
-                                        rs.getTimestamp("bucket_start").toInstant(),
-                                        nullableLong(rs, "dive_id_col"),
-                                        rs.getLong("dive_count"),
-                                        nullableDouble(rs, "avg_rmv_liters"),
-                                        nullableDouble(rs, "max_depth"),
-                                        nullableDouble(rs, "avg_depth"),
-                                        rs.getLong("total_duration_seconds"),
-                                        rs.getLong("max_duration_seconds"),
-                                        nullableDouble(rs, "avg_end_cns"),
-                                        nullableDouble(rs, "avg_temperature_celsius"),
-                                        nullableDouble(rs, "avg_visibility_meters"),
-                                        nullableDouble(rs, "avg_weight_kg")));
+                        mainSql, params, (rs, rowNum) -> mapPoint(rs, false));
 
-        final var suitUsage = categoryBreakdown(filteredDivesCte, bucket, params, true);
-        final var baseConfigurationUsage = categoryBreakdown(filteredDivesCte, bucket, params, false);
+        final var breakdown =
+                breakdownBy == null
+                        ? List.<StatsTimeSeriesPoint>of()
+                        : categoryBreakdown(preamble, bucket, params, breakdownBy);
 
-        return new StatsTimeSeries(points, suitUsage, baseConfigurationUsage);
+        return new StatsTimeSeries(points, breakdown);
     }
 
-    private List<StatsCategoryPoint> categoryBreakdown(
-            final String filteredDivesCte,
+    private List<StatsTimeSeriesPoint> categoryBreakdown(
+            final String preamble,
             final BucketSql bucket,
             final MapSqlParameterSource params,
-            final boolean bySuit) {
+            final StatsBreakdownDimension dimension) {
         final var categoryExpr =
-                bySuit
+                dimension == StatsBreakdownDimension.SUIT
                         ? "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')"
                         : "COALESCE(fd.base_configuration, 'UNKNOWN')";
-        final var joinClause = bySuit ? "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id" : "";
+        final var joinClause =
+                dimension == StatsBreakdownDimension.SUIT
+                        ? "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id\n"
+                        : "";
 
         final var sql =
-                filteredDivesCte
-                        + "SELECT "
+                preamble
+                        + "SELECT\n"
                         + bucket.selectExpr()
-                        + " AS bucket_start, "
+                        + " AS bucket_start,\n"
                         + categoryExpr
-                        + " AS category, COUNT(*) AS dive_count\n"
+                        + " AS category,\n"
+                        + METRIC_SELECT_LIST
                         + "FROM filtered_dives fd\n"
                         + joinClause
-                        + "\nGROUP BY "
+                        + """
+                            LEFT JOIN end_cns ec ON ec.dive_id = fd.dive_id
+                            LEFT JOIN avg_temp at ON at.dive_id = fd.dive_id
+                            GROUP BY
+                        """
                         + bucket.groupByExpr()
                         + ", category\nORDER BY bucket_start";
 
-        return namedParameterJdbcTemplate.query(
-                sql,
-                params,
-                (rs, rowNum) ->
-                        new StatsCategoryPoint(
-                                rs.getTimestamp("bucket_start").toInstant(),
-                                rs.getString("category"),
-                                rs.getLong("dive_count")));
+        return namedParameterJdbcTemplate.query(sql, params, (rs, rowNum) -> mapPoint(rs, true));
     }
 }

@@ -530,6 +530,12 @@ public class DiveService {
                 user, suit, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
+    public PagedResponse<SimplifiedDive> getFilteredDives(
+            final User user, final DiveFilterParams filters, final DiveSort diveSort, final int page) {
+        return diveDataService.findFiltered(
+                user.id(), filters, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    }
+
     // TODO: Pagination
     public List<DiveSiteWithDives<DiveSite>> getSitesByUser(
             final User user, final boolean onlyOwn) {

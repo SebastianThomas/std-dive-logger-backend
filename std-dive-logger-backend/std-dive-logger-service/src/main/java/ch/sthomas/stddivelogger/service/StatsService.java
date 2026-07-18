@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsBreakdownDimension;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
@@ -76,7 +77,10 @@ public class StatsService {
     }
 
     public StatsTimeSeries getTimeSeries(
-            final User user, final StatsGranularity granularity, final StatsFilters filters) {
-        return statsDataService.getTimeSeries(user, granularity, filters);
+            final User user,
+            final StatsGranularity granularity,
+            final StatsFilters filters,
+            final StatsBreakdownDimension breakdownBy) {
+        return statsDataService.getTimeSeries(user, granularity, filters, breakdownBy);
     }
 }

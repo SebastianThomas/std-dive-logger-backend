@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsBreakdownDimension;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
@@ -81,10 +82,12 @@ public class StatsController {
             @RequestParam(required = false) final Long diveSiteId,
             @RequestParam(required = false) final Long suitId,
             @RequestParam(required = false) final BaseConfiguration baseConfiguration,
-            @RequestParam(required = false) @Nullable final String query) {
+            @RequestParam(required = false) @Nullable final String query,
+            @RequestParam(required = false) @Nullable final StatsBreakdownDimension breakdownBy) {
         return statsService.getTimeSeries(
                 user,
                 granularity,
-                new StatsFilters(tagIds, diveSiteId, suitId, baseConfiguration, query));
+                new StatsFilters(tagIds, diveSiteId, suitId, baseConfiguration, query),
+                breakdownBy);
     }
 }

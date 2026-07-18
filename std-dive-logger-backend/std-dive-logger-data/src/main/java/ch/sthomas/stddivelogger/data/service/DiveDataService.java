@@ -35,6 +35,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import org.hibernate.query.SortDirection;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -692,6 +693,106 @@ public class DiveDataService {
                 userId, tagIds, tagIds.size(),
                 PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
+    }
+
+    /**
+     * Combines every filter dimension (tags, site, suit, base configuration, text query, dive-start
+     * date range) with AND semantics, unlike the single-dimension {@code findDivesBy*} methods
+     * above. Used by the dive-list "view dives in this time range" link from the stats timeline.
+     */
+    @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findFiltered(
+            final long userId, final DiveFilterParams filters, final DiveSort sort, final int page,
+            final int pageSize) {
+        final var params = new MapSqlParameterSource().addValue("userId", userId);
+        final var where = new StringBuilder("d.fk_diver_id = :userId");
+
+        if (filters.diveSiteId() != null) {
+            where.append(" AND d.dive_site = :diveSiteId");
+            params.addValue("diveSiteId", filters.diveSiteId());
+        }
+        if (filters.suitId() != null) {
+            where.append(" AND dc.fk_suit_id = :suitId");
+            params.addValue("suitId", filters.suitId());
+        }
+        if (filters.baseConfiguration() != null) {
+            where.append(" AND dc.base_configuration = :baseConfiguration");
+            params.addValue("baseConfiguration", filters.baseConfiguration().name());
+        }
+        if (filters.query() != null && !filters.query().isBlank()) {
+            where.append(" AND d.dive_identifier ILIKE :query");
+            params.addValue("query", "%" + filters.query().trim() + "%");
+        }
+        if (filters.startDate() != null) {
+            where.append(" AND ds.dive_start >= :startDate");
+            params.addValue("startDate", filters.startDate());
+        }
+        if (filters.endDate() != null) {
+            where.append(" AND ds.dive_start < :endDate");
+            params.addValue("endDate", filters.endDate());
+        }
+        if (filters.tagIds() != null && !filters.tagIds().isEmpty()) {
+            where.append(
+                    """
+                     AND d.pk_dive_id IN (
+                        SELECT dt.fk_dive_id FROM t_dive_tags dt
+                        WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
+                        GROUP BY dt.fk_dive_id
+                        HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
+                    )""");
+            params.addValue("tagIds", filters.tagIds());
+            params.addValue("tagCount", (long) filters.tagIds().size());
+        }
+
+        final var fromClause =
+                """
+                FROM t_dives d
+                JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                WHERE """
+                        + where;
+
+        final var totalElements =
+                namedParameterJdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) " + fromClause, params, Long.class);
+
+        params.addValue("limit", pageSize);
+        params.addValue("offset", (long) page * pageSize);
+        final var sortColumn = sqlSortColumn(sort.column());
+        final var sortDir = sort.direction() == SortDirection.ASCENDING ? "ASC" : "DESC";
+        final var ids =
+                namedParameterJdbcTemplate.queryForList(
+                        "SELECT d.pk_dive_id "
+                                + fromClause
+                                + " ORDER BY d."
+                                + sortColumn
+                                + " "
+                                + sortDir
+                                + " LIMIT :limit OFFSET :offset",
+                        params,
+                        Long.class);
+
+        final var entitiesById =
+                diveRepository.findAllById(ids).stream()
+                        .collect(java.util.stream.Collectors.toMap(DiveEntity::getId, e -> e));
+        final var ordered =
+                ids.stream()
+                        .map(entitiesById::get)
+                        .filter(java.util.Objects::nonNull)
+                        .map(this::toSimplifiedRecord)
+                        .toList();
+
+        final var total = totalElements == null ? 0L : totalElements;
+        final var totalPages = total == 0 ? 0 : (int) Math.ceil(total / (double) pageSize);
+        return new PagedResponse<>(pageSize, totalPages, total, ordered);
+    }
+
+    private static String sqlSortColumn(final DiveSortColumn column) {
+        return switch (column) {
+            case ID -> "pk_dive_id";
+            case NUMBER -> "dive_number";
+            case CUSTOM_IDENTIFIER -> "dive_identifier";
+        };
     }
 
     @Transactional(readOnly = true)

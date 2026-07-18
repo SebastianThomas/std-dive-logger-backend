@@ -186,6 +186,37 @@ public class DiveController {
                 user, suitId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
+    @Operation(
+            summary =
+                    "Get dives matching any combination of filters (tags, site, suit, base"
+                            + " configuration, text query, dive-start date range), ANDed together")
+    @GetMapping(path = "/filtered")
+    public PagedResponse<SimplifiedDive> getFilteredDives(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "tagIds", required = false) final List<Long> tagIds,
+            @RequestParam(name = "diveSiteId", required = false) final Long diveSiteId,
+            @RequestParam(name = "suitId", required = false) final Long suitId,
+            @RequestParam(name = "baseConfiguration", required = false) @Nullable
+                    final BaseConfiguration baseConfiguration,
+            @RequestParam(name = "query", required = false) @Nullable final String query,
+            @RequestParam(name = "startDate", required = false) @Nullable final Instant startDate,
+            @RequestParam(name = "endDate", required = false) @Nullable final Instant endDate,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        return diveService.getFilteredDives(
+                user,
+                new DiveFilterParams(
+                        tagIds, diveSiteId, suitId, baseConfiguration, query, startDate, endDate),
+                DiveSort.ofNullable(sortColumn, sortDirection),
+                page);
+    }
+
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
     public PagedResponse<SimplifiedDive> searchDives(
