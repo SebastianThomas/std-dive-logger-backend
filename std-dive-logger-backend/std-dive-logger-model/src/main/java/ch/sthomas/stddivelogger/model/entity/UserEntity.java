@@ -31,6 +31,12 @@ public class UserEntity {
     @Column(name = "verified", nullable = false)
     private boolean verified;
 
+    @Column(name = "custom_icon_url")
+    private String customIconUrl;
+
+    @Column(name = "custom_background_url")
+    private String customBackgroundUrl;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMemberEntity> groups;
 
@@ -66,7 +72,16 @@ public class UserEntity {
     }
 
     public User toRecord() {
-        return new User(id, email, password, name, verified, createdAt, updatedAt);
+        return new User(
+                id,
+                email,
+                password,
+                name,
+                verified,
+                createdAt,
+                updatedAt,
+                customIconUrl,
+                customBackgroundUrl);
     }
 
     public String getEmail() {
@@ -75,5 +90,13 @@ public class UserEntity {
 
     public long getId() {
         return id;
+    }
+
+    public void setCustomIconUrl(final String customIconUrl) {
+        this.customIconUrl = customIconUrl;
+    }
+
+    public void setCustomBackgroundUrl(final String customBackgroundUrl) {
+        this.customBackgroundUrl = customBackgroundUrl;
     }
 }

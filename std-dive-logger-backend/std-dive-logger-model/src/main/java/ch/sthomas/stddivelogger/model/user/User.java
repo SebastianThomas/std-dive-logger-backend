@@ -14,7 +14,9 @@ public record User(
         String name,
         boolean emailVerified,
         Instant createdAt,
-        Instant updatedAt)
+        Instant updatedAt,
+        String customIconUrl,
+        String customBackgroundUrl)
         implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -32,6 +34,6 @@ public record User(
     }
 
     public FrontendUser toFrontendModel() {
-        return new FrontendUser(id, name);
+        return new FrontendUser(id, name, customIconUrl, customBackgroundUrl);
     }
 }

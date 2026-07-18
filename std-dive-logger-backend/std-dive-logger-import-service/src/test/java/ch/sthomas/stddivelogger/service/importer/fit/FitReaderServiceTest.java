@@ -35,7 +35,7 @@ public class FitReaderServiceTest {
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             final var result =
                     service.readFitAndSaveDive(
-                            new User(0, "", "", "", true, Instant.now(), Instant.now()),
+                            new User(0, "", "", "", true, Instant.now(), Instant.now(), null, null),
                             filename,
                             new UploadDiveBody(1, "TestID", null, null, null),
                             inputStream);

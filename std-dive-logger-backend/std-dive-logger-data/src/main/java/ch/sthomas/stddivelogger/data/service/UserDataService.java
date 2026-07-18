@@ -234,6 +234,20 @@ public class UserDataService {
         return userRepository.findById(user.id()).map(UserEntity::toRecord).orElseThrow();
     }
 
+    @Transactional
+    public User setCustomIconUrl(final User user, @Nullable final String iconUrl) {
+        final var entity = userRepository.findById(user.id()).orElseThrow();
+        entity.setCustomIconUrl(iconUrl);
+        return userRepository.save(entity).toRecord();
+    }
+
+    @Transactional
+    public User setCustomBackgroundUrl(final User user, @Nullable final String backgroundUrl) {
+        final var entity = userRepository.findById(user.id()).orElseThrow();
+        entity.setCustomBackgroundUrl(backgroundUrl);
+        return userRepository.save(entity).toRecord();
+    }
+
     @Transactional(readOnly = true)
     public boolean isGroupMember(final long groupId, final User member) {
         return groupMemberRepository

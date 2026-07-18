@@ -220,7 +220,7 @@ public class GraphImageCreatorTest {
         final var testDive =
                 new Dive(
                         0,
-                        new FrontendUser(1, "TestName"),
+                        new FrontendUser(1, "TestName", null, null),
                         1,
                         "Some Dive",
                         null,

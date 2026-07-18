@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.repository.GroupMemberRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
+import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.exception.UserCreationException;
@@ -23,10 +24,15 @@ import org.passay.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -37,8 +43,14 @@ public class UserService {
     public static final int USERS_PAGE_SIZE = 10;
     public static final int GROUPS_PAGE_SIZE = 10;
 
+    private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES =
+            Set.of("image/png", "image/jpeg", "image/webp");
+    private static final long MAX_ICON_SIZE_BYTES = 1_000_000; // 1 MB
+    private static final long MAX_BACKGROUND_SIZE_BYTES = 5_000_000; // 5 MB
+
     private final UserDataService userDataService;
     private final PasswordEncoder passwordEncoder;
+    private final StorageService storageService;
 
     private final Pattern emailPattern = Pattern.compile("(?<name>.*)@(?<domain>.*)");
     private final PasswordValidator passwordValidator =
@@ -59,11 +71,13 @@ public class UserService {
             final UserDataService userDataService,
             final PasswordEncoder passwordEncoder,
             final AccountRequestRepository accountRequestRepository,
-            GroupMemberRepository groupMemberRepository) {
+            GroupMemberRepository groupMemberRepository,
+            final StorageService storageService) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
         this.accountRequestRepository = accountRequestRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.storageService = storageService;
     }
 
     public User getUserById(final long userId) {
@@ -247,5 +261,75 @@ public class UserService {
             throw new UnauthorizedException("User does not have permission to delete this group.");
         }
         userDataService.deleteGroupById(group.id());
+    }
+
+    /**
+     * Uploads a custom dive-site marker icon for the user, replacing the app's default diver
+     * icon everywhere their map markers are shown. SVG is intentionally not accepted here since
+     * it can carry embedded scripts; only raster formats are allowed for user uploads.
+     */
+    @Transactional
+    public User uploadCustomIcon(final User user, final MultipartFile file) {
+        final var absoluteUrl = validateAndUploadImage(user, file, "user-icon", MAX_ICON_SIZE_BYTES);
+        return userDataService.setCustomIconUrl(user, absoluteUrl);
+    }
+
+    @Transactional
+    public User resetCustomIcon(final User user) {
+        return userDataService.setCustomIconUrl(user, null);
+    }
+
+    /**
+     * Uploads a custom background photo for the user, replacing the app's default underwater
+     * background everywhere it's shown. Same format restrictions as {@link #uploadCustomIcon}.
+     */
+    @Transactional
+    public User uploadCustomBackground(final User user, final MultipartFile file) {
+        final var absoluteUrl =
+                validateAndUploadImage(user, file, "user-background", MAX_BACKGROUND_SIZE_BYTES);
+        return userDataService.setCustomBackgroundUrl(user, absoluteUrl);
+    }
+
+    @Transactional
+    public User resetCustomBackground(final User user) {
+        return userDataService.setCustomBackgroundUrl(user, null);
+    }
+
+    /**
+     * Validates an uploaded image (non-empty, within {@code maxSizeBytes}, an allowed raster
+     * content type) and uploads it to blob storage under {@code "<category>/<userId>.<ext>"},
+     * returning the resulting absolute URL.
+     */
+    private String validateAndUploadImage(
+            final User user,
+            final MultipartFile file,
+            final String category,
+            final long maxSizeBytes) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Uploaded file is empty.");
+        }
+        if (file.getSize() > maxSizeBytes) {
+            throw new IllegalArgumentException(
+                    "File is too large; the limit is " + maxSizeBytes / 1_000_000 + " MB.");
+        }
+        final var contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_CONTENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException(
+                    "Unsupported file type. Allowed types: PNG, JPEG, WEBP.");
+        }
+        final var extension =
+                switch (contentType) {
+                    case "image/png" -> "png";
+                    case "image/jpeg" -> "jpg";
+                    case "image/webp" -> "webp";
+                    default -> throw new IllegalArgumentException("Unsupported file type.");
+                };
+        final var path = String.format("%s/%d.%s", category, user.id(), extension);
+        try {
+            storageService.upload(path, file.getInputStream(), contentType, (int) file.getSize());
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Could not read the uploaded file.", e);
+        }
+        return URI.create(storageService.baseUrl()).resolve(path).toString();
     }
 }
