@@ -3,10 +3,15 @@ package ch.sthomas.stddivelogger.ws.controller;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.StatsService;
+
+import jakarta.annotation.Nullable;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,5 +71,20 @@ public class StatsController {
             @AuthenticationPrincipal final User user,
             @RequestParam final List<Long> tagIds) {
         return statsService.getStatsForUserByTagFilter(user, tagIds);
+    }
+
+    @GetMapping(path = "/timeseries")
+    public StatsTimeSeries getTimeSeries(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(defaultValue = "PER_DIVE") final StatsGranularity granularity,
+            @RequestParam(required = false) final List<Long> tagIds,
+            @RequestParam(required = false) final Long diveSiteId,
+            @RequestParam(required = false) final Long suitId,
+            @RequestParam(required = false) final BaseConfiguration baseConfiguration,
+            @RequestParam(required = false) @Nullable final String query) {
+        return statsService.getTimeSeries(
+                user,
+                granularity,
+                new StatsFilters(tagIds, diveSiteId, suitId, baseConfiguration, query));
     }
 }

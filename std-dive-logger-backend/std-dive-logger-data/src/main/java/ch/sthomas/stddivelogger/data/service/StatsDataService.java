@@ -10,6 +10,11 @@ import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsCategoryPoint;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeriesPoint;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.entity.*;
@@ -20,9 +25,13 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,16 +49,19 @@ public class StatsDataService {
     private final DiveMeasurementRepository diveMeasurementRepository;
     private final DiveSiteRepository diveSiteRepository;
     private final TagDefinitionRepository tagDefinitionRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     public StatsDataService(
             final DiveRepository diveRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
             final DiveSiteRepository diveSiteRepository,
-            final TagDefinitionRepository tagDefinitionRepository) {
+            final TagDefinitionRepository tagDefinitionRepository,
+            final NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         this.diveRepository = diveRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
         this.diveSiteRepository = diveSiteRepository;
         this.tagDefinitionRepository = tagDefinitionRepository;
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
     public record RawMainStats(
@@ -486,5 +498,234 @@ public class StatsDataService {
 
         return new UserDiveStats(diveCount, maxNumber, maxDuration, maxDepth, totalDuration,
                 0L, uniqueSites, null, null);
+    }
+
+    private record BucketSql(String selectExpr, String groupByExpr, String diveIdExpr) {}
+
+    /**
+     * The bucket expression is chosen from this fixed whitelist only (never from user input), so
+     * interpolating it directly into the SQL text below is safe. {@code diveIdExpr} only resolves
+     * to a real dive id for {@code PER_DIVE} (where a bucket is exactly one dive); it's a SQL
+     * NULL literal for the other granularities, where a bucket spans many dives.
+     */
+    private static BucketSql bucketSql(final StatsGranularity granularity) {
+        return switch (granularity) {
+            case PER_DIVE ->
+                    new BucketSql("fd.dive_start", "fd.dive_id, fd.dive_start", "fd.dive_id");
+            case WEEK ->
+                    new BucketSql(
+                            "date_trunc('week', fd.dive_start)",
+                            "date_trunc('week', fd.dive_start)",
+                            "NULL::bigint");
+            case MONTH ->
+                    new BucketSql(
+                            "date_trunc('month', fd.dive_start)",
+                            "date_trunc('month', fd.dive_start)",
+                            "NULL::bigint");
+            case QUARTER ->
+                    new BucketSql(
+                            "date_trunc('quarter', fd.dive_start)",
+                            "date_trunc('quarter', fd.dive_start)",
+                            "NULL::bigint");
+            case YEAR ->
+                    new BucketSql(
+                            "date_trunc('year', fd.dive_start)",
+                            "date_trunc('year', fd.dive_start)",
+                            "NULL::bigint");
+        };
+    }
+
+    /**
+     * Builds the shared "filtered_dives" CTE (as a WITH-clause prefix, including the trailing
+     * closing paren) plus the bound parameters for every filter dimension that was supplied.
+     * Reused verbatim by the main aggregation query and both category-breakdown queries.
+     */
+    private Pair<String, MapSqlParameterSource> filteredDivesCte(
+            final long userId, final StatsFilters filters) {
+        final var params = new MapSqlParameterSource().addValue("userId", userId);
+        final var where = new StringBuilder("d.fk_diver_id = :userId");
+
+        if (filters.diveSiteId() != null) {
+            where.append(" AND d.dive_site = :diveSiteId");
+            params.addValue("diveSiteId", filters.diveSiteId());
+        }
+        if (filters.suitId() != null) {
+            where.append(" AND dc.fk_suit_id = :suitId");
+            params.addValue("suitId", filters.suitId());
+        }
+        if (filters.baseConfiguration() != null) {
+            where.append(" AND dc.base_configuration = :baseConfiguration");
+            params.addValue("baseConfiguration", filters.baseConfiguration().name());
+        }
+        if (filters.query() != null && !filters.query().isBlank()) {
+            where.append(" AND d.dive_identifier ILIKE :query");
+            params.addValue("query", "%" + filters.query().trim() + "%");
+        }
+        if (filters.tagIds() != null && !filters.tagIds().isEmpty()) {
+            where.append(
+                    """
+                     AND d.pk_dive_id IN (
+                        SELECT dt.fk_dive_id FROM t_dive_tags dt
+                        WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
+                        GROUP BY dt.fk_dive_id
+                        HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
+                    )""");
+            params.addValue("tagIds", filters.tagIds());
+            params.addValue("tagCount", (long) filters.tagIds().size());
+        }
+
+        final var cte =
+                """
+                WITH filtered_dives AS (
+                    SELECT
+                        d.pk_dive_id AS dive_id,
+                        ds.dive_start,
+                        ds.max_depth,
+                        ds.avg_depth,
+                        ds.duration_seconds,
+                        gc.rmv_liters,
+                        v.visibility_meters,
+                        dc.weight_kg,
+                        dc.fk_suit_id,
+                        dc.base_configuration
+                    FROM t_dives d
+                    JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                    LEFT JOIN t_dive_gas_consumption gc ON gc.fk_dive_id = d.pk_dive_id
+                    LEFT JOIN t_dive_visibility v ON v.fk_dive_id = d.pk_dive_id
+                    LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                    WHERE
+                """
+                        + where
+                        + "\n)\n";
+
+        return Pair.of(cte, params);
+    }
+
+    private static Double nullableDouble(final ResultSet rs, final String column)
+            throws SQLException {
+        final var value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static Long nullableLong(final ResultSet rs, final String column)
+            throws SQLException {
+        final var value = rs.getLong(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    /**
+     * Buckets the user's dives (after applying {@code filters}) by {@code granularity} and
+     * returns per-bucket aggregates for every numeric metric, plus a suit-usage and
+     * base-configuration-usage breakdown (dive count per category per bucket).
+     */
+    @Transactional(readOnly = true)
+    public StatsTimeSeries getTimeSeries(
+            final User user, final StatsGranularity granularity, final StatsFilters filters) {
+        final var cteAndParams = filteredDivesCte(user.id(), filters);
+        final var filteredDivesCte = cteAndParams.getLeft();
+        final var params = cteAndParams.getRight();
+        final var bucket = bucketSql(granularity);
+
+        final var mainSql =
+                filteredDivesCte
+                        + """
+                        , end_cns AS (
+                            SELECT DISTINCT ON (dp.fk_dive_id) dp.fk_dive_id AS dive_id, dm.cns
+                            FROM t_dive_measurements dm
+                            JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
+                            WHERE dm.cns IS NOT NULL
+                              AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
+                            ORDER BY dp.fk_dive_id, dp.dive_profile_end DESC, dm.time DESC
+                        ),
+                        avg_temp AS (
+                            SELECT dp.fk_dive_id AS dive_id, AVG(dm.temperature_celsius) AS avg_temp_celsius
+                            FROM t_dive_measurements dm
+                            JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
+                            WHERE dm.temperature_celsius IS NOT NULL
+                              AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
+                            GROUP BY dp.fk_dive_id
+                        )
+                        SELECT
+                        """
+                        + bucket.selectExpr()
+                        + " AS bucket_start,\n"
+                        + bucket.diveIdExpr()
+                        + " AS dive_id_col,\n"
+                        + """
+                                COUNT(*) AS dive_count,
+                                AVG(fd.rmv_liters) AS avg_rmv_liters,
+                                MAX(fd.max_depth) AS max_depth,
+                                AVG(fd.avg_depth) AS avg_depth,
+                                COALESCE(SUM(fd.duration_seconds), 0) AS total_duration_seconds,
+                                COALESCE(MAX(fd.duration_seconds), 0) AS max_duration_seconds,
+                                AVG(ec.cns) AS avg_end_cns,
+                                AVG(at.avg_temp_celsius) AS avg_temperature_celsius,
+                                AVG(fd.visibility_meters) AS avg_visibility_meters,
+                                AVG(fd.weight_kg) AS avg_weight_kg
+                            FROM filtered_dives fd
+                            LEFT JOIN end_cns ec ON ec.dive_id = fd.dive_id
+                            LEFT JOIN avg_temp at ON at.dive_id = fd.dive_id
+                            GROUP BY
+                        """
+                        + bucket.groupByExpr()
+                        + "\nORDER BY bucket_start";
+
+        final var points =
+                namedParameterJdbcTemplate.query(
+                        mainSql,
+                        params,
+                        (rs, rowNum) ->
+                                new StatsTimeSeriesPoint(
+                                        rs.getTimestamp("bucket_start").toInstant(),
+                                        nullableLong(rs, "dive_id_col"),
+                                        rs.getLong("dive_count"),
+                                        nullableDouble(rs, "avg_rmv_liters"),
+                                        nullableDouble(rs, "max_depth"),
+                                        nullableDouble(rs, "avg_depth"),
+                                        rs.getLong("total_duration_seconds"),
+                                        rs.getLong("max_duration_seconds"),
+                                        nullableDouble(rs, "avg_end_cns"),
+                                        nullableDouble(rs, "avg_temperature_celsius"),
+                                        nullableDouble(rs, "avg_visibility_meters"),
+                                        nullableDouble(rs, "avg_weight_kg")));
+
+        final var suitUsage = categoryBreakdown(filteredDivesCte, bucket, params, true);
+        final var baseConfigurationUsage = categoryBreakdown(filteredDivesCte, bucket, params, false);
+
+        return new StatsTimeSeries(points, suitUsage, baseConfigurationUsage);
+    }
+
+    private List<StatsCategoryPoint> categoryBreakdown(
+            final String filteredDivesCte,
+            final BucketSql bucket,
+            final MapSqlParameterSource params,
+            final boolean bySuit) {
+        final var categoryExpr =
+                bySuit
+                        ? "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')"
+                        : "COALESCE(fd.base_configuration, 'UNKNOWN')";
+        final var joinClause = bySuit ? "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id" : "";
+
+        final var sql =
+                filteredDivesCte
+                        + "SELECT "
+                        + bucket.selectExpr()
+                        + " AS bucket_start, "
+                        + categoryExpr
+                        + " AS category, COUNT(*) AS dive_count\n"
+                        + "FROM filtered_dives fd\n"
+                        + joinClause
+                        + "\nGROUP BY "
+                        + bucket.groupByExpr()
+                        + ", category\nORDER BY bucket_start";
+
+        return namedParameterJdbcTemplate.query(
+                sql,
+                params,
+                (rs, rowNum) ->
+                        new StatsCategoryPoint(
+                                rs.getTimestamp("bucket_start").toInstant(),
+                                rs.getString("category"),
+                                rs.getLong("dive_count")));
     }
 }
