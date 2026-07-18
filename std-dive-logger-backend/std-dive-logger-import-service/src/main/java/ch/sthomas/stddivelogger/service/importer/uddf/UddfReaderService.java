@@ -186,6 +186,32 @@ public class UddfReaderService extends BaseReaderService {
         return uddfFile.exportMeasurements(entry);
     }
 
+    /**
+     * Re-parses a single entry of a UDDF file and replaces the measurements of an existing dive
+     * profile with the result, leaving every other property of the dive untouched. Recovery tool
+     * for backfilling dives that were imported before a parser fix (e.g. missing deco stops).
+     */
+    public Dive reimportProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final int entry,
+            final InputStream inputStream)
+            throws IOException {
+        final var file = xmlMapper.readValue(inputStream, UddfFile.class);
+        if (!UddfFile.validate(file, entry)) {
+            throw new IllegalArgumentException(
+                    "Entry " + entry + " of the file has too few waypoints to reimport");
+        }
+        return diveService.reimportProfile(
+                user,
+                diveId,
+                profileId,
+                file.exportMeasurements(entry),
+                file.exportStart(entry),
+                file.exportEnd(entry));
+    }
+
     private DiveComputer getOrCreateDiveComputer(final User user, final UddfFile uddfFile) {
         final var serialNumber = uddfFile.exportDiveComputerSerialNumber();
         final var customIdentifier = uddfFile.exportDiveComputerName();

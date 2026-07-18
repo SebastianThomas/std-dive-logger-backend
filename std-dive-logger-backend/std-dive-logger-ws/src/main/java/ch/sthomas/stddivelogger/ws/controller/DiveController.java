@@ -34,6 +34,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -385,6 +386,31 @@ public class DiveController {
         return diveService.getBuddyNameSuggestions(user, query);
     }
 
+    @Operation(summary = "List all named dive buddies used across your dives, ordered by frequency")
+    @GetMapping("/buddies")
+    public List<String> getBuddyNames(@AuthenticationPrincipal final User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your buddies.");
+        }
+        return diveService.getAllBuddyNames(user);
+    }
+
+    public record RenameBuddyBody(@NotNull String oldName, @NotNull String newName) {}
+
+    @Operation(
+            summary =
+                    "Rename a named dive buddy — applies to every dive of the current user that lists"
+                            + " this buddy")
+    @PutMapping(path = "/buddies/rename", consumes = APPLICATION_JSON_VALUE)
+    public List<String> renameBuddy(
+            @AuthenticationPrincipal final User user,
+            @Valid @RequestBody final RenameBuddyBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to rename a buddy.");
+        }
+        return diveService.renameBuddyName(user, body.oldName(), body.newName());
+    }
+
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public Dive mergeDiveProfiles(
@@ -452,6 +478,25 @@ public class DiveController {
         }
         final var profileIdsSet = new HashSet<>(profileIds);
         return diveService.resetAlignedProfiles(user, diveId, profileIdsSet);
+    }
+
+    @Operation(
+            summary =
+                    "Reimport a profile's raw measurements from its original source file, leaving every"
+                            + " other dive property (suit, gas consumption, weight, visibility, notes, tags,"
+                            + " buddies, ...) untouched. Recovery tool for fixing importer bugs after the fact;"
+                            + " currently only supports UDDF files.")
+    @PostMapping(path = "/{id}/profiles/{profileId}/reimport", consumes = MULTIPART_FORM_DATA_VALUE)
+    public Dive reimportProfile(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") final long diveId,
+            @PathVariable("profileId") final long profileId,
+            @RequestParam(value = "entry", defaultValue = "0") final int entry,
+            @RequestParam("file") final MultipartFile file) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to reimport a profile.");
+        }
+        return importService.reimportProfile(user, diveId, profileId, entry, file);
     }
 
     @Operation(summary = "Set manual tags on a dive — body is a list of tag-definition IDs (replaces all existing manual tags)")

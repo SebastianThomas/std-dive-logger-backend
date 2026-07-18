@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.*;
@@ -80,6 +81,7 @@ public class DiveDataService {
     private final SuitRepository suitRepository;
     private final TagDataService tagDataService;
     private final DiveTagRepository diveTagRepository;
+    private final DiveMeasurementRepository diveMeasurementRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -100,7 +102,8 @@ public class DiveDataService {
             final DiveProfileHistoryRepository diveProfileHistoryRepository,
             final SuitRepository suitRepository,
             final TagDataService tagDataService,
-            final DiveTagRepository diveTagRepository) {
+            final DiveTagRepository diveTagRepository,
+            final DiveMeasurementRepository diveMeasurementRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -120,6 +123,7 @@ public class DiveDataService {
         this.suitRepository = suitRepository;
         this.tagDataService = tagDataService;
         this.diveTagRepository = diveTagRepository;
+        this.diveMeasurementRepository = diveMeasurementRepository;
     }
 
     @Transactional(readOnly = true)
@@ -283,15 +287,49 @@ public class DiveDataService {
                 computer,
                 diveProfileUpload.start(),
                 diveProfileUpload.end(),
-                diveProfileUpload.measurements().stream()
-                        .map(
-                                m ->
-                                        new DiveMeasurementEntity(
-                                                m,
-                                                Optional.ofNullable(m.gas())
-                                                        .map(this::toEntity)
-                                                        .orElse(null)))
-                        .toList());
+                toMeasurementEntities(diveProfileUpload.measurements()));
+    }
+
+    private List<DiveMeasurementEntity> toMeasurementEntities(
+            final List<DiveMeasurement> measurements) {
+        return measurements.stream()
+                .map(
+                        m ->
+                                new DiveMeasurementEntity(
+                                        m, Optional.ofNullable(m.gas()).map(this::toEntity).orElse(null)))
+                .toList();
+    }
+
+    /**
+     * Replaces only the raw measurement data (and start/end) of an existing profile, leaving the
+     * parent dive's other properties (suit, gas consumption, weight, visibility, notes, tags,
+     * buddies, ...) untouched. Intended as a recovery tool for fixing parser bugs after the fact.
+     */
+    @Transactional
+    public Dive reimportProfileMeasurements(
+            final long diveId,
+            final long profileId,
+            final List<DiveMeasurement> newMeasurements,
+            final Instant start,
+            final Instant end) {
+        final var dive = findDiveEntityById(diveId);
+        final var profile =
+                dive.getProfiles().stream()
+                        .filter(p -> p.getId() == profileId)
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find profile "
+                                                        + profileId
+                                                        + " on dive "
+                                                        + diveId));
+        // Replace all existing rows atomically: delete then insert via repository,
+        // completely bypassing the entity's managed measurements collection (no orphanRemoval).
+        diveMeasurementRepository.deleteAllByProfile_Id(profileId);
+        diveMeasurementRepository.flush();
+        profile.replaceMeasurements(toMeasurementEntities(newMeasurements), start, end);
+        return toRecord(diveRepository.save(dive));
     }
 
     @Transactional(readOnly = true)
@@ -1142,5 +1180,50 @@ public class DiveDataService {
             return List.of();
         }
         return diveBuddyNameRepository.findDistinctBuddyNamesByUser(userId, query.trim());
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findAllBuddyNames(final long userId) {
+        return diveBuddyNameRepository.findDistinctBuddyNamesByUser(userId, "");
+    }
+
+    /**
+     * Renames a named (free-text, non-linked-account) dive buddy across every dive the user
+     * owns. If a dive already has a buddy entry with the new name, the old-name row on that
+     * dive is dropped instead of renamed, to avoid duplicate buddy names on the same dive.
+     *
+     * @return the number of dives whose buddy list was affected
+     */
+    @Transactional
+    public int renameBuddyName(final long userId, final String oldName, final String newName) {
+        final var trimmedOld = oldName.trim();
+        final var trimmedNew = newName.trim();
+        if (trimmedOld.equals(trimmedNew)) {
+            return 0;
+        }
+        final var oldMatches = diveBuddyNameRepository.findAllByDive_User_IdAndName(userId, trimmedOld);
+        if (oldMatches.isEmpty()) {
+            return 0;
+        }
+        final var diveIdsWithNewName =
+                diveBuddyNameRepository.findAllByDive_User_IdAndName(userId, trimmedNew).stream()
+                        .map(b -> b.getDive().getId())
+                        .collect(Collectors.toSet());
+
+        final var toDelete =
+                oldMatches.stream().filter(b -> diveIdsWithNewName.contains(b.getDive().getId())).toList();
+        final var toRename =
+                oldMatches.stream()
+                        .filter(b -> !diveIdsWithNewName.contains(b.getDive().getId()))
+                        .toList();
+
+        if (!toDelete.isEmpty()) {
+            diveBuddyNameRepository.deleteAll(toDelete);
+        }
+        toRename.forEach(b -> b.setName(trimmedNew));
+        if (!toRename.isEmpty()) {
+            diveBuddyNameRepository.saveAll(toRename);
+        }
+        return oldMatches.size();
     }
 }

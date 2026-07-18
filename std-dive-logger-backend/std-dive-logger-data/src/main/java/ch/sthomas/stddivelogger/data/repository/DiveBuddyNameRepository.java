@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface DiveBuddyNameRepository extends JpaRepository<DiveBuddyNameEntity, Long> {
     Optional<DiveBuddyNameEntity> findByDive_IdAndName(Long diveId, String name);
 
+    List<DiveBuddyNameEntity> findAllByDive_User_IdAndName(long userId, String name);
+
     /**
      * Returns distinct buddy names from the user's own dives that contain the query string
      * (case-insensitive), ordered by frequency of appearance descending then alphabetically.

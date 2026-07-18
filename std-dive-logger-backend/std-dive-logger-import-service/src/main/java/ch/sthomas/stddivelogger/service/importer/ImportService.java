@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
+import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderService;
@@ -14,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.stream.Stream;
@@ -78,5 +80,30 @@ public class ImportService {
                     subsurfaceXmlReaderService.importSubsurfaceXml(
                             user, filename, body, inputStream);
         };
+    }
+
+    /**
+     * Reimports a single profile's raw measurements from its original source file, leaving every
+     * other dive property untouched. Currently only supported for UDDF files.
+     */
+    public Dive reimportProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final int entry,
+            final MultipartFile file) {
+        final var filename = file.getOriginalFilename();
+        final var fileType = UploadFileType.fromFilename(filename);
+        if (fileType != UploadFileType.UDDF_SHEARWATER) {
+            throw new IllegalArgumentException(
+                    "Reimporting a profile is currently only supported for UDDF files, got: "
+                            + filename);
+        }
+        try {
+            return uddfReaderService.reimportProfile(
+                    user, diveId, profileId, entry, file.getInputStream());
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Could not read uploaded file " + filename, e);
+        }
     }
 }

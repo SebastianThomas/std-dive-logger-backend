@@ -613,6 +613,25 @@ public class DiveService {
         return diveDataService.resetAlignedProfiles(diveId, profileIds);
     }
 
+    /**
+     * Replaces a single profile's raw measurement data by re-parsing its original source file.
+     * Leaves every other dive property (suit, gas consumption, weight, visibility, notes, tags,
+     * buddies, ...) untouched. Recovery tool for fixing importer bugs after the fact.
+     */
+    public Dive reimportProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final List<DiveMeasurement> newMeasurements,
+            final Instant start,
+            final Instant end) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.reimportProfileMeasurements(
+                diveId, profileId, newMeasurements, start, end);
+    }
+
     public Suit createSuit(
             final @NotNull User user,
             final @NotNull SuitType type,
@@ -679,5 +698,24 @@ public class DiveService {
 
     public List<String> getBuddyNameSuggestions(final User user, final String query) {
         return diveDataService.findBuddyNameSuggestions(user.id(), query);
+    }
+
+    public List<String> getAllBuddyNames(final User user) {
+        return diveDataService.findAllBuddyNames(user.id());
+    }
+
+    /**
+     * Renames a named dive buddy across every dive the user owns. Scoped to {@code user.id()},
+     * so there is no separate ownership check to perform here.
+     */
+    public List<String> renameBuddyName(final User user, final String oldName, final String newName) {
+        if (oldName == null || oldName.isBlank()) {
+            throw new IllegalArgumentException("Buddy name to rename must not be blank");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("New buddy name must not be blank");
+        }
+        diveDataService.renameBuddyName(user.id(), oldName, newName);
+        return diveDataService.findAllBuddyNames(user.id());
     }
 }

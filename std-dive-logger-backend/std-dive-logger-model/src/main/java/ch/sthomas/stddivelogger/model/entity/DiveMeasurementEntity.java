@@ -91,6 +91,7 @@ public class DiveMeasurementEntity {
         this.n2 = diveMeasurement.n2();
         this.o2Tox = diveMeasurement.o2Tox();
         this.cns = diveMeasurement.cns();
+        this.decoStops = diveMeasurement.deco();
         this.po2 =
                 Optional.ofNullable(diveMeasurement.po2())
                         .map(p -> new PO2Entity(p, this))

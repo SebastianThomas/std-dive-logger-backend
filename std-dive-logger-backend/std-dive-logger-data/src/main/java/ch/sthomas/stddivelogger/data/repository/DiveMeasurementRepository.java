@@ -14,6 +14,8 @@ import java.util.Optional;
 public interface DiveMeasurementRepository extends JpaRepository<DiveMeasurementEntity, Long> {
     List<DiveMeasurementEntity> findAllByProfile_IdOrderByTimeAsc(Long profileId);
 
+    void deleteAllByProfile_Id(long profileId);
+
     @Query(
             "SELECT MAX(m.depth) FROM DiveMeasurementEntity m JOIN DiveProfileEntity p ON m.profile.id = p.id JOIN DiveEntity d ON p.dive.id = d.id AND d.user.id = :userId")
     Optional<Double> findMaxDepthByUserId(long userId);
