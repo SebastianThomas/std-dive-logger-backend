@@ -71,7 +71,7 @@ public class DiveMeasurementEntity {
     private GasEntity gas;
 
     @JoinColumn(name = "fk_dive_profile_id")
-    @ManyToOne(cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(cascade = CascadeType.PERSIST, optional = false)
     private DiveProfileEntity profile;
 
     public DiveMeasurementEntity() {}

@@ -39,7 +39,7 @@ public class DiveProfileEntity {
     private OffsetDateTime profileEnd;
 
     @JoinColumn(name = "fk_dive_id")
-    @ManyToOne(cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(cascade = CascadeType.PERSIST, optional = false)
     private DiveEntity dive;
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
