@@ -725,11 +725,11 @@ public class DiveDataService {
         }
         if (filters.startDate() != null) {
             where.append(" AND ds.dive_start >= :startDate");
-            params.addValue("startDate", filters.startDate());
+            params.addValue("startDate", java.sql.Timestamp.from(filters.startDate()));
         }
         if (filters.endDate() != null) {
             where.append(" AND ds.dive_start < :endDate");
-            params.addValue("endDate", filters.endDate());
+            params.addValue("endDate", java.sql.Timestamp.from(filters.endDate()));
         }
         if (filters.tagIds() != null && !filters.tagIds().isEmpty()) {
             where.append(
@@ -743,13 +743,27 @@ public class DiveDataService {
             params.addValue("tagIds", filters.tagIds());
             params.addValue("tagCount", (long) filters.tagIds().size());
         }
+        if (filters.startTime() != null && filters.endTime() != null) {
+            // Time-of-day overlap (e.g. "morning dives"), compared against the dive's own
+            // start/end wall-clock time rather than requiring it to be fully contained in the
+            // range. The dive's own window is assumed not to cross midnight (true in practice);
+            // the filter range itself may, e.g. a "night" preset of 22:00-06:00.
+            if (!filters.startTime().isAfter(filters.endTime())) {
+                where.append(" AND ds.dive_start::time < :endTime AND ds.dive_end::time > :startTime");
+            } else {
+                where.append(" AND (ds.dive_end::time > :startTime OR ds.dive_start::time < :endTime)");
+            }
+            params.addValue("startTime", java.sql.Time.valueOf(filters.startTime()));
+            params.addValue("endTime", java.sql.Time.valueOf(filters.endTime()));
+        }
 
         final var fromClause =
                 """
                 FROM t_dives d
                 JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
                 LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
-                WHERE """
+                WHERE
+                """
                         + where;
 
         final var totalElements =

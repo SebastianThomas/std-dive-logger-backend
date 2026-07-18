@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 
@@ -201,6 +202,8 @@ public class DiveController {
             @RequestParam(name = "query", required = false) @Nullable final String query,
             @RequestParam(name = "startDate", required = false) @Nullable final Instant startDate,
             @RequestParam(name = "endDate", required = false) @Nullable final Instant endDate,
+            @RequestParam(name = "startTime", required = false) @Nullable final LocalTime startTime,
+            @RequestParam(name = "endTime", required = false) @Nullable final LocalTime endTime,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
                     final DiveSortColumn sortColumn,
@@ -212,7 +215,15 @@ public class DiveController {
         return diveService.getFilteredDives(
                 user,
                 new DiveFilterParams(
-                        tagIds, diveSiteId, suitId, baseConfiguration, query, startDate, endDate),
+                        tagIds,
+                        diveSiteId,
+                        suitId,
+                        baseConfiguration,
+                        query,
+                        startDate,
+                        endDate,
+                        startTime,
+                        endTime),
                 DiveSort.ofNullable(sortColumn, sortDirection),
                 page);
     }
