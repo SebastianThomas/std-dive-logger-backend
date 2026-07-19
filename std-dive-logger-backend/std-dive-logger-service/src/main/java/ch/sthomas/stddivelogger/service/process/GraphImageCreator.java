@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.service.process;
 
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Instant;
@@ -36,6 +38,7 @@ public class GraphImageCreator {
     private static final int FONT_SIZE = 6;
     private static final double FONT_ASCENT_MULTIPLIER = 1.0 / 3;
     private static final int TEXT_PADDING = FONT_SIZE - 1;
+    private static final Color DECO_ZONE_COLOR = new Color(220, 38, 38, 70);
 
     public static void fromDive(
             final Dive dive,
@@ -73,6 +76,10 @@ public class GraphImageCreator {
         graphics.setSVGCanvasSize(canvasSize);
         graphics.setColor(Color.DARK_GRAY);
         graphics.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+        // Drawn before the metric lines below so the depth line renders on top of the shading,
+        // scaled against depth's own min/max so the zone lines up with the depth line beneath it.
+        drawDecoZone(dive, graphics, widthCalculator, height);
 
         extractorsAndLegendTypes.forEach(
                 (property, extractorAndType) -> {
@@ -149,6 +156,39 @@ public class GraphImageCreator {
                         });
     }
 
+    /**
+     * Renders the mandatory decompression "keep-out zone": a shaded area from the surface down
+     * to the current ceiling depth (the deepest active mandatory deco stop), mirroring the same
+     * zone the frontend chart draws for a dive's profile.
+     */
+    private static void drawDecoZone(
+            final Dive dive,
+            final SVGGraphics2D graphics,
+            final DoubleUnaryOperator widthCalculator,
+            final int height) {
+        final var depthRows = getDataRow(dive, DiveMeasurement::depth).data();
+        final var ceilingRows = getDataRow(dive, GraphImageCreator::decoCeiling).data();
+        graphics.setColor(DECO_ZONE_COLOR);
+        for (int i = 0; i < depthRows.size() && i < ceilingRows.size(); i++) {
+            final var ceilingRow = ceilingRows.get(i);
+            if (ceilingRow.max() <= 0) {
+                continue;
+            }
+            graphics.fill(
+                    depthRows
+                            .get(i)
+                            .getDecoZonePath(ceilingRow, widthCalculator, height, PADDING));
+        }
+    }
+
+    private static double decoCeiling(final DiveMeasurement measurement) {
+        final var stops = measurement.deco();
+        if (stops == null || stops.isEmpty()) {
+            return 0.0;
+        }
+        return stops.stream().mapToDouble(DecoStop::depth).max().orElse(0.0);
+    }
+
     private static Color getColor(final DiveMeasurement.DiveMeasurementProperty property) {
         return switch (property) {
             case TEMPERATURE -> new Color(63, 105, 212);
@@ -223,6 +263,48 @@ public class GraphImageCreator {
                                                     pair.getRight().time().toEpochMilli()),
                                             getHeight.applyAsDouble(
                                                     pair.getRight().measurement())));
+        }
+
+        /**
+         * Builds a single closed shape tracing the ceiling depth over time (top edge) and back
+         * along the surface (bottom edge, depth 0) — scaled against THIS row's own min/max, so
+         * the shading lines up with the depth line drawn from the same data. Where the ceiling
+         * is 0 (no active stop), the top and bottom edges coincide, so that stretch fills to
+         * zero width instead of drawing a spurious highlighted band.
+         */
+        public Path2D.Double getDecoZonePath(
+                final ProfileRow ceilingRow,
+                final DoubleUnaryOperator getXCoordinateFromTime,
+                final int height,
+                final double padding) {
+            final var min = min();
+            final var max = max();
+            final DoubleUnaryOperator getHeight =
+                    min == max
+                            ? (_) -> height / 2.0
+                            : (a) -> height * (a - min) / (max - min) + padding;
+            final var surfaceY = getHeight.applyAsDouble(0.0);
+
+            final var path = new Path2D.Double();
+            final var ceilingPoints = ceilingRow.data();
+            for (int i = 0; i < ceilingPoints.size(); i++) {
+                final var point = ceilingPoints.get(i);
+                final var x = getXCoordinateFromTime.applyAsDouble(point.time().toEpochMilli());
+                final var y = getHeight.applyAsDouble(point.measurement());
+                if (i == 0) {
+                    path.moveTo(x, y);
+                } else {
+                    path.lineTo(x, y);
+                }
+            }
+            for (int i = ceilingPoints.size() - 1; i >= 0; i--) {
+                final var x =
+                        getXCoordinateFromTime.applyAsDouble(
+                                ceilingPoints.get(i).time().toEpochMilli());
+                path.lineTo(x, surfaceY);
+            }
+            path.closePath();
+            return path;
         }
     }
 
