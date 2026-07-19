@@ -704,6 +704,11 @@ public class DiveDataService {
     public PagedResponse<SimplifiedDive> findFiltered(
             final long userId, final DiveFilterParams filters, final DiveSort sort, final int page,
             final int pageSize) {
+        // OFFSET is computed by hand below (native SQL, not a JPA Pageable) so it doesn't get the
+        // usual PageRequest.of validation for free — trigger it explicitly for the same clean
+        // IllegalArgumentException every other paginated method here already gives on bad input,
+        // instead of a raw "OFFSET must not be negative" PSQLException surfacing as a 500.
+        PageRequest.of(page, pageSize);
         final var params = new MapSqlParameterSource().addValue("userId", userId);
         final var where = new StringBuilder("d.fk_diver_id = :userId");
 
