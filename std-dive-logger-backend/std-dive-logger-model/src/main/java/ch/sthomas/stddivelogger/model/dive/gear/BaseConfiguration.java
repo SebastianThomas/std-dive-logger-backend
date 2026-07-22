@@ -14,4 +14,9 @@ public enum BaseConfiguration {
     DUAL_CCR_BACKMOUNT_CHESTMOUNT,
     DUAL_CCR_SIDEMOUNT_CHESTMOUNT,
     OTHER;
+
+    /** Whether this rig type is any kind of closed-circuit rebreather setup. */
+    public boolean isCcr() {
+        return name().contains("CCR");
+    }
 }

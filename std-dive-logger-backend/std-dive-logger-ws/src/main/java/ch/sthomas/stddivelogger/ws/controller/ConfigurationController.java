@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -51,5 +52,35 @@ public class ConfigurationController {
             @PathVariable final long id,
             @RequestBody @Valid final Suit suit) {
         return diveService.updateSuit(user, id, suit);
+    }
+
+    public record CreateCcrUnitBody(@NotNull String name, @Nullable String notes) {}
+
+    @GetMapping("/ccrUnit")
+    public PagedResponse<CcrUnit> getCcrUnits(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return diveService.getCcrUnits(user, page);
+    }
+
+    @GetMapping("/ccrUnit/{id}")
+    public CcrUnit getCcrUnit(
+            @AuthenticationPrincipal @NotNull final User user, @PathVariable final long id) {
+        return diveService.getCcrUnitById(user, id);
+    }
+
+    @PostMapping("/ccrUnit")
+    public CcrUnit createCcrUnit(
+            @AuthenticationPrincipal @NotNull final User user,
+            @RequestBody @Valid final CreateCcrUnitBody body) {
+        return diveService.createCcrUnit(user, body.name(), body.notes());
+    }
+
+    @PutMapping("/ccrUnit/{id}")
+    public CcrUnit updateCcrUnit(
+            @AuthenticationPrincipal @NotNull final User user,
+            @PathVariable final long id,
+            @RequestBody @Valid final CcrUnit ccrUnit) {
+        return diveService.updateCcrUnit(user, id, ccrUnit);
     }
 }

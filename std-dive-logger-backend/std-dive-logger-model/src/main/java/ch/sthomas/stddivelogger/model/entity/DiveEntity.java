@@ -117,6 +117,7 @@ public class DiveEntity {
             final Visibility visibility,
             final DiveGasConsumption gasConsumption,
             final SuitEntity suit,
+            @Nullable final CcrUnitEntity ccrUnit,
             final DiveConfiguration configuration,
             final UserEntity userEntity,
             final DiveSiteEntity diveSiteEntity,
@@ -128,7 +129,8 @@ public class DiveEntity {
         this.visibility = new VisibilityEntity(this, visibility);
         this.gasConsumption = new DiveGasConsumptionEntity(this, gasConsumption);
         this.configuration =
-                new DiveConfigurationEntity(this, suit, configuration, getCylinderSizeEntity);
+                new DiveConfigurationEntity(
+                        this, suit, ccrUnit, configuration, getCylinderSizeEntity);
         this.user = userEntity;
         this.previewImage = null;
         this.notes = notes;

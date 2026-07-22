@@ -197,6 +197,7 @@ public class DiveController {
             @RequestParam(name = "tagIds", required = false) final List<Long> tagIds,
             @RequestParam(name = "diveSiteId", required = false) final Long diveSiteId,
             @RequestParam(name = "suitId", required = false) final Long suitId,
+            @RequestParam(name = "ccrUnitId", required = false) final Long ccrUnitId,
             @RequestParam(name = "baseConfiguration", required = false) @Nullable
                     final BaseConfiguration baseConfiguration,
             @RequestParam(name = "query", required = false) @Nullable final String query,
@@ -218,6 +219,7 @@ public class DiveController {
                         tagIds,
                         diveSiteId,
                         suitId,
+                        ccrUnitId,
                         baseConfiguration,
                         query,
                         startDate,
@@ -226,6 +228,23 @@ public class DiveController {
                         endTime),
                 DiveSort.ofNullable(sortColumn, sortDirection),
                 page);
+    }
+
+    @Operation(summary = "Get dives by CCR unit id")
+    @GetMapping(path = "/ccrUnit")
+    public PagedResponse<SimplifiedDive> getDivesByCcrUnit(
+            @AuthenticationPrincipal final User user,
+            @RequestParam("ccrUnitId") final long ccrUnitId,
+            @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
+            @RequestParam(name = "sortCol", required = false) @Nullable
+                    final DiveSortColumn sortColumn,
+            @RequestParam(name = "sortDirection", required = false) @Nullable
+                    final SortDirection sortDirection) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your dives.");
+        }
+        return diveService.getDivesByCcrUnit(
+                user, ccrUnitId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
     @Operation(summary = "Get dives by custom identifier")
@@ -383,6 +402,18 @@ public class DiveController {
             @AuthenticationPrincipal final User user,
             @NotNull @Valid @RequestBody final BulkUpdateDiveBody<Long> body) {
         diveService.setSuit(user, body.diveIds, body.newValue);
+    }
+
+    @Operation(
+            summary =
+                    "Set the CCR unit on multiple dives at once. Any dive in the request that"
+                            + " isn't itself CCR-configured is left untouched rather than"
+                            + " rejecting the whole batch.")
+    @PutMapping(path = "/ccrUnit")
+    public void updateCcrUnit(
+            @AuthenticationPrincipal final User user,
+            @NotNull @Valid @RequestBody final BulkUpdateDiveBody<Long> body) {
+        diveService.setCcrUnit(user, body.diveIds, body.newValue);
     }
 
     @Operation(summary = "Update the base configuration of multiple dives")

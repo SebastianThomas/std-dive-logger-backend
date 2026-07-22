@@ -11,9 +11,10 @@ public record DiveConfiguration(
         BaseConfiguration base,
         Double weight,
         @Nullable WeightFeeling weightFeeling,
-        List<DiveConfigurationCylinder> cylinders) {
+        List<DiveConfigurationCylinder> cylinders,
+        @Nullable CcrUnit ccrUnit) {
     public static DiveConfiguration createEmpty(final User user) {
         return new DiveConfiguration(
-                Suit.createUnknown(user), BaseConfiguration.OTHER, null, null, List.of());
+                Suit.createUnknown(user), BaseConfiguration.OTHER, null, null, List.of(), null);
     }
 }

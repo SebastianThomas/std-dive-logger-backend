@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.data.repository;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.entity.CcrUnitEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 
@@ -24,6 +25,9 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     Page<DiveEntity> findByUser_IdAndConfiguration_Suit_Id(
             long userId, long configurationSuitId, Pageable pageable);
+
+    Page<DiveEntity> findByUser_IdAndConfiguration_CcrUnit_Id(
+            long userId, long configurationCcrUnitId, Pageable pageable);
 
     Page<DiveEntity> findByUser_Id(long id, Pageable pageable);
 
@@ -266,6 +270,19 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query("UPDATE DiveConfigurationEntity c SET c.suit = :suitEntity WHERE c.diveId IN (:idsList)")
     @Modifying
     void setSuit(SuitEntity suitEntity, Collection<Long> idsList);
+
+    /**
+     * Only touches dives that are themselves CCR-configured — any non-CCR dive in
+     * {@code idsList} is silently left alone rather than failing the whole batch.
+     */
+    @Query(
+            "UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity"
+                    + " WHERE c.diveId IN (:idsList) AND c.baseConfiguration IN (:ccrBaseConfigs)")
+    @Modifying
+    void setCcrUnit(
+            CcrUnitEntity ccrUnitEntity,
+            Collection<Long> idsList,
+            Collection<BaseConfiguration> ccrBaseConfigs);
 
     @Query(
             "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")

@@ -80,6 +80,7 @@ public class DiveDataService {
     private final DiveProfileRepository diveProfileRepository;
     private final DiveProfileHistoryRepository diveProfileHistoryRepository;
     private final SuitRepository suitRepository;
+    private final CcrUnitRepository ccrUnitRepository;
     private final TagDataService tagDataService;
     private final DiveTagRepository diveTagRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
@@ -102,6 +103,7 @@ public class DiveDataService {
             final DiveProfileRepository diveProfileRepository,
             final DiveProfileHistoryRepository diveProfileHistoryRepository,
             final SuitRepository suitRepository,
+            final CcrUnitRepository ccrUnitRepository,
             final TagDataService tagDataService,
             final DiveTagRepository diveTagRepository,
             final DiveMeasurementRepository diveMeasurementRepository) {
@@ -122,6 +124,7 @@ public class DiveDataService {
         this.diveProfileRepository = diveProfileRepository;
         this.diveProfileHistoryRepository = diveProfileHistoryRepository;
         this.suitRepository = suitRepository;
+        this.ccrUnitRepository = ccrUnitRepository;
         this.tagDataService = tagDataService;
         this.diveTagRepository = diveTagRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
@@ -168,6 +171,19 @@ public class DiveDataService {
         final var result =
                 diveRepository.findByUser_IdAndConfiguration_Suit_Id(
                         user.id(), suit.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
+        return PagedResponse.of(result, this::toSimplifiedRecord);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<SimplifiedDive> findDivesByUserAndCcrUnit(
+            final User user,
+            final CcrUnit ccrUnit,
+            final DiveSort diveSort,
+            final int page,
+            final int pageSize) {
+        final var result =
+                diveRepository.findByUser_IdAndConfiguration_CcrUnit_Id(
+                        user.id(), ccrUnit.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -221,6 +237,7 @@ public class DiveDataService {
                         Optional.ofNullable(visibility).orElse(Visibility.EMPTY),
                         gasConsumption,
                         findOrCreateSuit(userEntity, configuration.suit()),
+                        resolveCcrUnitForConfiguration(userEntity, configuration),
                         configuration,
                         userEntity,
                         diveSite,
@@ -259,6 +276,36 @@ public class DiveDataService {
                 suitRepository.findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
                         user.getId(), suit.type(), suit.thickness(), suit.notes());
         return existing.orElseGet(() -> suitRepository.save(new SuitEntity(user, suit)));
+    }
+
+    @Transactional
+    public CcrUnitEntity findOrCreateCcrUnit(final UserEntity user, final CcrUnit ccrUnit) {
+        if (ccrUnit.id() != null) {
+            return ccrUnitRepository
+                    .findByIdAndUser_Id(ccrUnit.id(), user.getId())
+                    .orElseThrow(
+                            () ->
+                                    new NoSuchElementException(
+                                            "Could not find CCR unit by id " + ccrUnit.id()));
+        }
+        final var existing =
+                ccrUnitRepository.findByUser_IdAndNameAndAdditionalNotes(
+                        user.getId(), ccrUnit.name(), ccrUnit.notes());
+        return existing.orElseGet(() -> ccrUnitRepository.save(new CcrUnitEntity(user, ccrUnit)));
+    }
+
+    /**
+     * A CCR unit only ever applies to a CCR-type configuration — for anything else, any CCR
+     * unit sent along with the request is simply ignored rather than rejected, and no unit is
+     * required in the first place when the configuration genuinely is CCR.
+     */
+    @Nullable
+    private CcrUnitEntity resolveCcrUnitForConfiguration(
+            final UserEntity user, final DiveConfiguration configuration) {
+        if (!configuration.base().isCcr() || configuration.ccrUnit() == null) {
+            return null;
+        }
+        return findOrCreateCcrUnit(user, configuration.ccrUnit());
     }
 
     @Transactional
@@ -442,11 +489,16 @@ public class DiveDataService {
             final var suit = suitRepository
                     .findByIdAndUser_Id(updateBody.suitId(), user.id())
                     .orElseThrow(() -> new NoSuchElementException("Could not find Suit"));
+            final var userEntity = userRepository.findById(user.id()).orElseThrow();
+            final var ccrUnit = resolveCcrUnitForConfiguration(userEntity, updateBody.configuration());
             if (existingDive.getConfiguration() != null) {
-                existingDive.getConfiguration().update(suit, updateBody.configuration(), this::toEntity);
+                existingDive
+                        .getConfiguration()
+                        .update(suit, ccrUnit, updateBody.configuration(), this::toEntity);
             } else {
                 existingDive.setConfiguration(
-                        new DiveConfigurationEntity(existingDive, suit, updateBody.configuration(), this::toEntity));
+                        new DiveConfigurationEntity(
+                                existingDive, suit, ccrUnit, updateBody.configuration(), this::toEntity));
             }
             logger.info("Set new configuration with suit: {}, {}", suit, suit.getType());
         }
@@ -719,6 +771,10 @@ public class DiveDataService {
         if (filters.suitId() != null) {
             where.append(" AND dc.fk_suit_id = :suitId");
             params.addValue("suitId", filters.suitId());
+        }
+        if (filters.ccrUnitId() != null) {
+            where.append(" AND dc.fk_ccr_unit_id = :ccrUnitId");
+            params.addValue("ccrUnitId", filters.ccrUnitId());
         }
         if (filters.baseConfiguration() != null) {
             where.append(" AND dc.base_configuration = :baseConfiguration");
@@ -1247,6 +1303,47 @@ public class DiveDataService {
                 SuitEntity::toRecord);
     }
 
+    @Transactional
+    public CcrUnit saveCcrUnit(final long userId, final CcrUnit ccrUnitWithoutId) {
+        return ccrUnitRepository
+                .save(
+                        new CcrUnitEntity(
+                                userRepository.findById(userId).orElseThrow(), ccrUnitWithoutId))
+                .toRecord();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<CcrUnit> findCcrUnitById(final long userId, final long id) {
+        return ccrUnitRepository.findByIdAndUser_Id(id, userId).map(CcrUnitEntity::toRecord);
+    }
+
+    @Transactional
+    public CcrUnit updateCcrUnitById(final long userId, final long id, final @Valid CcrUnit ccrUnit) {
+        final var existing =
+                ccrUnitRepository
+                        .findByIdAndUser_Id(id, userId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find CCR unit by id " + id));
+        existing.setName(ccrUnit.name());
+        existing.setAdditionalNotes(ccrUnit.notes());
+        return ccrUnitRepository.save(existing).toRecord();
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<CcrUnit> findCcrUnitsByUserId(
+            final long id, final int page, final int pageSize) {
+        return PagedResponse.of(
+                ccrUnitRepository.findByUser_Id(
+                        id,
+                        PageRequest.of(
+                                page,
+                                pageSize,
+                                Sort.by(new Sort.Order(Sort.Direction.DESC, "id")))),
+                CcrUnitEntity::toRecord);
+    }
+
     @Transactional(readOnly = true)
     public PagedResponse<DiveComputerManufacturer> findDiveComputerManufacturers(
             final Pageable pageable) {
@@ -1287,6 +1384,23 @@ public class DiveDataService {
             throw new NoSuchElementException("Could not find suit by id " + newSuitId);
         }
         diveRepository.setSuit(suit.get(), ids);
+    }
+
+    private static final List<BaseConfiguration> CCR_BASE_CONFIGURATIONS =
+            Arrays.stream(BaseConfiguration.values()).filter(BaseConfiguration::isCcr).toList();
+
+    /**
+     * Applies the CCR unit only to whichever of {@code ids} are themselves CCR-configured
+     * dives (enforced by {@link DiveRepository#setCcrUnit}) — any non-CCR dive included in the
+     * batch is simply left alone rather than failing the whole request.
+     */
+    @Transactional
+    public void setCcrUnitById(final long userId, final long newCcrUnitId, final HashSet<Long> ids) {
+        final var ccrUnit = ccrUnitRepository.findByIdAndUser_Id(newCcrUnitId, userId);
+        if (ccrUnit.isEmpty()) {
+            throw new NoSuchElementException("Could not find CCR unit by id " + newCcrUnitId);
+        }
+        diveRepository.setCcrUnit(ccrUnit.get(), ids, CCR_BASE_CONFIGURATIONS);
     }
 
     @Transactional

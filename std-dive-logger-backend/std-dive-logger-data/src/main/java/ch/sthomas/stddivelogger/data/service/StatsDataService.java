@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -552,6 +553,10 @@ public class StatsDataService {
             where.append(" AND dc.fk_suit_id = :suitId");
             params.addValue("suitId", filters.suitId());
         }
+        if (filters.ccrUnitId() != null) {
+            where.append(" AND dc.fk_ccr_unit_id = :ccrUnitId");
+            params.addValue("ccrUnitId", filters.ccrUnitId());
+        }
         if (filters.baseConfiguration() != null) {
             where.append(" AND dc.base_configuration = :baseConfiguration");
             params.addValue("baseConfiguration", filters.baseConfiguration().name());
@@ -586,6 +591,7 @@ public class StatsDataService {
                         v.visibility_meters,
                         dc.weight_kg,
                         dc.fk_suit_id,
+                        dc.fk_ccr_unit_id,
                         dc.base_configuration
                     FROM t_dives d
                     JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
@@ -718,19 +724,38 @@ public class StatsDataService {
         return new StatsTimeSeries(points, breakdown);
     }
 
+    private static final List<String> CCR_BASE_CONFIGURATION_NAMES =
+            Arrays.stream(BaseConfiguration.values())
+                    .filter(BaseConfiguration::isCcr)
+                    .map(Enum::name)
+                    .toList();
+
     private List<StatsTimeSeriesPoint> categoryBreakdown(
             final String preamble,
             final BucketSql bucket,
             final MapSqlParameterSource params,
             final StatsBreakdownDimension dimension) {
         final var categoryExpr =
-                dimension == StatsBreakdownDimension.SUIT
-                        ? "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')"
-                        : "COALESCE(fd.base_configuration, 'UNKNOWN')";
+                switch (dimension) {
+                    case SUIT ->
+                            "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')";
+                    case CCR_UNIT -> "COALESCE(cu.name, 'No CCR unit')";
+                    case BASE_CONFIGURATION -> "COALESCE(fd.base_configuration, 'UNKNOWN')";
+                };
         final var joinClause =
-                dimension == StatsBreakdownDimension.SUIT
-                        ? "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id\n"
-                        : "";
+                switch (dimension) {
+                    case SUIT -> "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id\n";
+                    case CCR_UNIT -> "LEFT JOIN t_ccr_units cu ON cu.pk_ccr_unit_id = fd.fk_ccr_unit_id\n";
+                    case BASE_CONFIGURATION -> "";
+                };
+        // A CCR unit only ever makes sense on a CCR-configured dive — scope this specific
+        // breakdown to those, so it isn't swamped by every other (non-CCR) dive all lumped into
+        // one "No CCR unit" bucket.
+        final var whereClause = new StringBuilder();
+        if (dimension == StatsBreakdownDimension.CCR_UNIT) {
+            whereClause.append("WHERE fd.base_configuration IN (:ccrBaseConfigurations)\n");
+            params.addValue("ccrBaseConfigurations", CCR_BASE_CONFIGURATION_NAMES);
+        }
 
         final var sql =
                 preamble
@@ -742,11 +767,10 @@ public class StatsDataService {
                         + METRIC_SELECT_LIST
                         + "FROM filtered_dives fd\n"
                         + joinClause
-                        + """
-                            LEFT JOIN end_cns ec ON ec.dive_id = fd.dive_id
-                            LEFT JOIN avg_temp at ON at.dive_id = fd.dive_id
-                            GROUP BY
-                        """
+                        + "LEFT JOIN end_cns ec ON ec.dive_id = fd.dive_id\n"
+                        + "LEFT JOIN avg_temp at ON at.dive_id = fd.dive_id\n"
+                        + whereClause
+                        + "GROUP BY\n"
                         + bucket.groupByExpr()
                         + ", category\nORDER BY bucket_start";
 

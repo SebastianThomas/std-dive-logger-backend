@@ -61,6 +61,7 @@ public class DiveService {
     public static final int DIVE_COMPUTER_MANUFACTURER_PAGE_SIZE = 20;
     public static final int USER_PAGE_SIZE = 30;
     public static final int SUIT_PAGE_SIZE = 20;
+    public static final int CCR_UNIT_PAGE_SIZE = 20;
 
     private final DiveDataService diveDataService;
     private final StorageService storageService;
@@ -530,6 +531,13 @@ public class DiveService {
                 user, suit, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
+    public PagedResponse<SimplifiedDive> getDivesByCcrUnit(
+            final User user, final long ccrUnitId, final DiveSort diveSort, final int page) {
+        final var ccrUnit = getCcrUnitById(user, ccrUnitId);
+        return diveDataService.findDivesByUserAndCcrUnit(
+                user, ccrUnit, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
+    }
+
     public PagedResponse<SimplifiedDive> getFilteredDives(
             final User user, final DiveFilterParams filters, final DiveSort diveSort, final int page) {
         return diveDataService.findFiltered(
@@ -662,6 +670,27 @@ public class DiveService {
         return diveDataService.updateSuitById(user.id(), id, suit);
     }
 
+    public CcrUnit createCcrUnit(
+            final @NotNull User user, final @NotNull String name, @Nullable final String notes) {
+        return diveDataService.saveCcrUnit(
+                user.id(), new CcrUnit(null, user.id(), name, Objects.requireNonNullElse(notes, "")));
+    }
+
+    public PagedResponse<CcrUnit> getCcrUnits(final User user, final int page) {
+        return diveDataService.findCcrUnitsByUserId(user.id(), page, CCR_UNIT_PAGE_SIZE);
+    }
+
+    public CcrUnit getCcrUnitById(final User user, final long id) {
+        return diveDataService
+                .findCcrUnitById(user.id(), id)
+                .orElseThrow(
+                        () -> new NoSuchElementException("Could not find CCR unit by id " + id));
+    }
+
+    public CcrUnit updateCcrUnit(final @NotNull User user, final long id, @Valid final CcrUnit ccrUnit) {
+        return diveDataService.updateCcrUnitById(user.id(), id, ccrUnit);
+    }
+
     public PagedResponse<DiveComputerManufacturer> getDiveComputerManufacturers(final int page) {
         return diveDataService.findDiveComputerManufacturers(
                 PageRequest.of(page, DIVE_COMPUTER_MANUFACTURER_PAGE_SIZE));
@@ -682,6 +711,14 @@ public class DiveService {
             throw ForbiddenException.forDiveIds(user, ids);
         }
         diveDataService.setSuitById(user.id(), newValue, ids);
+    }
+
+    public void setCcrUnit(final User user, final List<Long> diveIds, final long newValue) {
+        final var ids = new HashSet<>(diveIds);
+        if (!hasWriteAccess(user, ids)) {
+            throw ForbiddenException.forDiveIds(user, ids);
+        }
+        diveDataService.setCcrUnitById(user.id(), newValue, ids);
     }
 
     public void updateBaseConfigurationDives(

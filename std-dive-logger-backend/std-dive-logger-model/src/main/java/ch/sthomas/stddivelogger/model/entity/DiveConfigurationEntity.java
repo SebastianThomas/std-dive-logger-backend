@@ -29,6 +29,12 @@ public class DiveConfigurationEntity {
     @JoinColumn(name = "fk_suit_id")
     private SuitEntity suit;
 
+    // Nullable — only meaningful when baseConfiguration is a CCR variant. Unlike suit, most
+    // dives simply have none.
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @JoinColumn(name = "fk_ccr_unit_id")
+    private CcrUnitEntity ccrUnit;
+
     @Column(name = "base_configuration")
     @Enumerated(EnumType.STRING)
     private BaseConfiguration baseConfiguration;
@@ -47,11 +53,13 @@ public class DiveConfigurationEntity {
     public DiveConfigurationEntity(
             final DiveEntity dive,
             final SuitEntity suit,
+            final CcrUnitEntity ccrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.diveId = dive.getId();
         this.dive = dive;
         this.suit = suit;
+        this.ccrUnit = ccrUnit;
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
@@ -74,7 +82,8 @@ public class DiveConfigurationEntity {
                 baseConfiguration,
                 weightKg,
                 weightFeeling,
-                cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList());
+                cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList(),
+                ccrUnit != null ? ccrUnit.toRecord() : null);
     }
 
     /**
@@ -83,9 +92,11 @@ public class DiveConfigurationEntity {
      */
     public void update(
             final SuitEntity suit,
+            final CcrUnitEntity ccrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.suit = suit;
+        this.ccrUnit = ccrUnit;
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();

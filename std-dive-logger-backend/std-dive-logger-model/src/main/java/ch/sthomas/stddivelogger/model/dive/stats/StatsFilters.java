@@ -10,7 +10,8 @@ public record StatsFilters(
         @Nullable List<Long> tagIds,
         @Nullable Long diveSiteId,
         @Nullable Long suitId,
+        @Nullable Long ccrUnitId,
         @Nullable BaseConfiguration baseConfiguration,
         @Nullable String query) {
-    public static final StatsFilters EMPTY = new StatsFilters(null, null, null, null, null);
+    public static final StatsFilters EMPTY = new StatsFilters(null, null, null, null, null, null);
 }

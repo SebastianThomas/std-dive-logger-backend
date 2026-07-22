@@ -12,6 +12,7 @@ public record DiveFilterParams(
         @Nullable List<Long> tagIds,
         @Nullable Long diveSiteId,
         @Nullable Long suitId,
+        @Nullable Long ccrUnitId,
         @Nullable BaseConfiguration baseConfiguration,
         @Nullable String query,
         @Nullable Instant startDate,
