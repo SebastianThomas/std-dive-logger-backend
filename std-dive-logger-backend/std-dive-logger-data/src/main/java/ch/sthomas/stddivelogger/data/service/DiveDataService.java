@@ -1328,7 +1328,26 @@ public class DiveDataService {
                                                 "Could not find CCR unit by id " + id));
         existing.setName(ccrUnit.name());
         existing.setAdditionalNotes(ccrUnit.notes());
+        existing.setPublic(ccrUnit.isPublic());
         return ccrUnitRepository.save(existing).toRecord();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> findCcrUnitNameSuggestions(final String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return ccrUnitRepository.findDistinctNames(query.trim());
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findUsersByPublicCcrUnitName(final String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return ccrUnitRepository.findUsersByPublicName(query.trim()).stream()
+                .map(UserEntity::toRecord)
+                .toList();
     }
 
     @Transactional(readOnly = true)

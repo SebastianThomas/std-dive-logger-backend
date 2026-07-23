@@ -19,6 +19,7 @@ import ch.sthomas.stddivelogger.model.exception.DBResult;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
@@ -671,9 +672,14 @@ public class DiveService {
     }
 
     public CcrUnit createCcrUnit(
-            final @NotNull User user, final @NotNull String name, @Nullable final String notes) {
+            final @NotNull User user,
+            final @NotNull String name,
+            @Nullable final String notes,
+            final boolean isPublic) {
         return diveDataService.saveCcrUnit(
-                user.id(), new CcrUnit(null, user.id(), name, Objects.requireNonNullElse(notes, "")));
+                user.id(),
+                new CcrUnit(
+                        null, user.id(), name, Objects.requireNonNullElse(notes, ""), isPublic));
     }
 
     public PagedResponse<CcrUnit> getCcrUnits(final User user, final int page) {
@@ -689,6 +695,16 @@ public class DiveService {
 
     public CcrUnit updateCcrUnit(final @NotNull User user, final long id, @Valid final CcrUnit ccrUnit) {
         return diveDataService.updateCcrUnitById(user.id(), id, ccrUnit);
+    }
+
+    public List<String> getCcrUnitNameSuggestions(final String query) {
+        return diveDataService.findCcrUnitNameSuggestions(query);
+    }
+
+    public List<FrontendUser> getUsersByPublicCcrUnitName(final String query) {
+        return diveDataService.findUsersByPublicCcrUnitName(query).stream()
+                .map(User::toFrontendModel)
+                .toList();
     }
 
     public PagedResponse<DiveComputerManufacturer> getDiveComputerManufacturers(final int page) {

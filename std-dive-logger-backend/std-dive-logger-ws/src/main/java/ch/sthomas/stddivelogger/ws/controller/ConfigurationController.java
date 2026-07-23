@@ -4,6 +4,8 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
+import ch.sthomas.stddivelogger.model.user.FrontendUser;
+import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
@@ -13,6 +15,8 @@ import jakarta.validation.constraints.NotNull;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/v1/dives/configuration")
@@ -54,7 +58,8 @@ public class ConfigurationController {
         return diveService.updateSuit(user, id, suit);
     }
 
-    public record CreateCcrUnitBody(@NotNull String name, @Nullable String notes) {}
+    public record CreateCcrUnitBody(
+            @NotNull String name, @Nullable String notes, boolean isPublic) {}
 
     @GetMapping("/ccrUnit")
     public PagedResponse<CcrUnit> getCcrUnits(
@@ -73,7 +78,7 @@ public class ConfigurationController {
     public CcrUnit createCcrUnit(
             @AuthenticationPrincipal @NotNull final User user,
             @RequestBody @Valid final CreateCcrUnitBody body) {
-        return diveService.createCcrUnit(user, body.name(), body.notes());
+        return diveService.createCcrUnit(user, body.name(), body.notes(), body.isPublic());
     }
 
     @PutMapping("/ccrUnit/{id}")
@@ -82,5 +87,23 @@ public class ConfigurationController {
             @PathVariable final long id,
             @RequestBody @Valid final CcrUnit ccrUnit) {
         return diveService.updateCcrUnit(user, id, ccrUnit);
+    }
+
+    @GetMapping("/ccrUnit/autocomplete")
+    public List<String> autocompleteCcrUnitNames(
+            @AuthenticationPrincipal final User user, @RequestParam final String query) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to use CCR unit autocomplete.");
+        }
+        return diveService.getCcrUnitNameSuggestions(query);
+    }
+
+    @GetMapping("/ccrUnit/users")
+    public List<FrontendUser> searchUsersByCcrUnit(
+            @AuthenticationPrincipal final User user, @RequestParam final String query) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to search divers by CCR unit.");
+        }
+        return diveService.getUsersByPublicCcrUnitName(query);
     }
 }

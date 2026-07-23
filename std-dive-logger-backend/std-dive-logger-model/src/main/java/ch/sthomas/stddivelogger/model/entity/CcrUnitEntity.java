@@ -22,6 +22,9 @@ public class CcrUnitEntity {
     @Column(name = "additional_notes", nullable = false)
     private String additionalNotes;
 
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic;
+
     public CcrUnitEntity() {}
 
     public CcrUnitEntity(final UserEntity user, final CcrUnit ccrUnit) {
@@ -31,10 +34,11 @@ public class CcrUnitEntity {
         this.user = user;
         this.name = ccrUnit.name();
         this.additionalNotes = ccrUnit.notes();
+        this.isPublic = ccrUnit.isPublic();
     }
 
     public CcrUnit toRecord() {
-        return new CcrUnit(id, user.getId(), name, additionalNotes);
+        return new CcrUnit(id, user.getId(), name, additionalNotes, isPublic);
     }
 
     public String getName() {
@@ -47,5 +51,13 @@ public class CcrUnitEntity {
 
     public void setAdditionalNotes(final String additionalNotes) {
         this.additionalNotes = additionalNotes;
+    }
+
+    public void setPublic(final boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+
+    public UserEntity getUser() {
+        return user;
     }
 }

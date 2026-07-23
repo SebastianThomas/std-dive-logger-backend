@@ -8,4 +8,5 @@ import jakarta.validation.constraints.NotNull;
  * ever references a CcrUnit when its {@link BaseConfiguration} is a CCR variant — for any other
  * configuration, no CcrUnit applies and none is required.
  */
-public record CcrUnit(Long id, long userId, @NotNull String name, @NotNull String notes) {}
+public record CcrUnit(
+        Long id, long userId, @NotNull String name, @NotNull String notes, boolean isPublic) {}
