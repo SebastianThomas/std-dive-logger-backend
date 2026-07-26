@@ -521,7 +521,8 @@ public record UddfFile(
     record UddfDiveMode(@JacksonXmlProperty(isAttribute = true) String type) {}
 
     public String exportSite() {
-        return Optional.ofNullable(diveSite.site())
+        return Optional.ofNullable(diveSite)
+                .map(UddfDiveSite::site)
                 .map(UddfSite::geography)
                 .map(UddfGeography::location)
                 .orElse(null);

@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -60,6 +61,14 @@ public class DiveSiteController {
     public List<DiveSite> findDiveSiteByLocation(
             @RequestParam("lat") final double lat, @RequestParam("lon") final double lon) {
         return diveService.getSitesByLocation(new Location(lat, lon));
+    }
+
+    @Operation(summary = "Search DiveSites by name (partial, fuzzy match)")
+    @GetMapping(path = "/search")
+    public PagedResponse<DiveSite> searchDiveSitesByName(
+            @RequestParam("query") final String query,
+            @RequestParam(name = "page", defaultValue = "0") final int page) {
+        return diveService.getSiteByPartialName(query, page);
     }
 
     public record CreateDiveSiteBody(String name, double lat, double lon) {}

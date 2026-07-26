@@ -16,7 +16,8 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
-import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
+import ch.sthomas.stddivelogger.model.exception.MissingValueException;
+import ch.sthomas.stddivelogger.model.exception.MissingValueField;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -142,7 +143,7 @@ public class FitReaderService extends BaseReaderService {
             return diveService.getSiteById(body.diveSiteId()).orElseThrow();
         }
         if (session.getStartPositionLong() == null || session.getStartPositionLat() == null) {
-            throw new MissingDiveSiteValueException("");
+            throw new MissingValueException(MissingValueField.DIVE_SITE);
         }
         final var startCoordinateLon = semicirclesToDegrees(session.getStartPositionLong());
         final var startCoordinateLat = semicirclesToDegrees(session.getStartPositionLat());

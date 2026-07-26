@@ -11,6 +11,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -47,6 +48,17 @@ public class TestImport {
                                 .isEmpty());
             }
         }
+    }
+
+    @Test
+    void testExportSiteWhenDiveSiteElementAbsent() throws IOException {
+        // No <divesite> element at all, as opposed to an empty <divesite /> which is
+        // already covered by testImportUddf above.
+        final var xml =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?><uddf version=\"3.2.3\"></uddf>";
+        final var content = xmlMapper.readValue(xml, UddfFile.class);
+        assertNotNull(content);
+        assertNull(content.exportSite());
     }
 
     @ParameterizedTest
