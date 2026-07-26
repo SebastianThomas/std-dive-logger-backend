@@ -1,2 +1,11 @@
 ### Hello
 POST {{baseurl}}/v1/upload
+
+### Divesoft import
+POST {{baseurl}}/v1/import/divesoft
+Content-Type: application/json
+
+{
+  "dives": [],
+  "body": null
+}

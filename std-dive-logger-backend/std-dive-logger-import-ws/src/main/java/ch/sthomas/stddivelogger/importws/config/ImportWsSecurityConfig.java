@@ -61,7 +61,7 @@ public class ImportWsSecurityConfig {
             final JwtAuthFilter jwtAuthFilter)
             throws Exception {
         http.cors(withDefaults())
-                .securityMatcher("/v1/import")
+                .securityMatcher("/v1/import/**")
                 .authenticationManager(applicationAuthenticationManager)
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)

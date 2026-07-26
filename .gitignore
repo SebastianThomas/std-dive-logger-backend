@@ -32,4 +32,6 @@ std-dive-logger-backend/std-dive-logger-import-service/src/test/resources/2025-1
 std-dive-logger-backend/local-storage
 local-storage
 
+divesoft-local/
+
 .claude
