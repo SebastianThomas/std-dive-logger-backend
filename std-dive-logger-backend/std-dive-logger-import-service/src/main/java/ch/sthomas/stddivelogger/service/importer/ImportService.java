@@ -1,11 +1,13 @@
 package ch.sthomas.stddivelogger.service.importer;
 
+import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.user.User;
+import ch.sthomas.stddivelogger.service.importer.divesoft.DivesoftReaderService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderService;
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
@@ -25,14 +27,25 @@ public class ImportService {
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
     private final SubsurfaceXmlReaderService subsurfaceXmlReaderService;
+    private final DivesoftReaderService divesoftReaderService;
 
     public ImportService(
             final FitReaderService fitReaderService,
             final UddfReaderService uddfReaderService,
-            final SubsurfaceXmlReaderService subsurfaceXmlReaderService) {
+            final SubsurfaceXmlReaderService subsurfaceXmlReaderService,
+            final DivesoftReaderService divesoftReaderService) {
         this.fitReaderService = fitReaderService;
         this.uddfReaderService = uddfReaderService;
         this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;
+        this.divesoftReaderService = divesoftReaderService;
+    }
+
+    public UploadDiveResult importDivesoft(final User user, final DivesoftImportRequest request) {
+        return divesoftReaderService
+                .importDivesoft(user, request)
+                .reduce(UploadDiveResultStreaming::concat)
+                .map(UploadDiveResultStreaming::toResult)
+                .orElse(new UploadDiveResult(List.of(), List.of("No dive imported")));
     }
 
     public UploadDiveResult uploadDive(
