@@ -1,7 +1,11 @@
 package ch.sthomas.stddivelogger.model.exception;
 
-public class UnauthorizedException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+import java.net.URI;
+
+public class UnauthorizedException extends AbstractThrowableProblem {
     public UnauthorizedException(final String message) {
-        super(message);
+        super(URI.create("/problem/unauthorized"), "Unauthorized", HttpStatus.UNAUTHORIZED, message);
     }
 }

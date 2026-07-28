@@ -1,3 +1,9 @@
 package ch.sthomas.stddivelogger.model.user;
 
-public record FrontendUser(long id, String name, String customIconUrl, String customBackgroundUrl) {}
+import org.jspecify.annotations.Nullable;
+
+public record FrontendUser(
+        long id,
+        String name,
+        @Nullable String customIconUrl,
+        @Nullable String customBackgroundUrl) {}

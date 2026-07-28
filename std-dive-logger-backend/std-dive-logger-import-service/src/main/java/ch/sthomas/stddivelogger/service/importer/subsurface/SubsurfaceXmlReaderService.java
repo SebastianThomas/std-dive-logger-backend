@@ -19,7 +19,7 @@ import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import ch.sthomas.stddivelogger.utils.MoreGatherers;
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.NonNull;

@@ -5,7 +5,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Math.min;
 
 import org.apache.commons.lang3.function.TriFunction;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Spliterator;
 import java.util.Spliterators;

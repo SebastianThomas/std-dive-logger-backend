@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
@@ -23,7 +24,7 @@ public class SuitEntity {
     private SuitType type;
 
     @Column(name = "thickness_mm")
-    private Double thicknessMM;
+    private @Nullable Double thicknessMM;
 
     @Column(name = "additional_notes", nullable = false)
     private String additionalNotes;
@@ -52,7 +53,7 @@ public class SuitEntity {
         this.type = type;
     }
 
-    public void setThicknessMM(final Double thicknessMM) {
+    public void setThicknessMM(@Nullable final Double thicknessMM) {
         this.thicknessMM = thicknessMM;
     }
 

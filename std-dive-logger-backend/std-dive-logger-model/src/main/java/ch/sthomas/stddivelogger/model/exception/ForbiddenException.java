@@ -2,14 +2,17 @@ package ch.sthomas.stddivelogger.model.exception;
 
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.springframework.http.HttpStatus;
+
+import java.net.URI;
 import java.text.MessageFormat;
 import java.util.Collection;
 
-public class ForbiddenException extends RuntimeException {
+public class ForbiddenException extends AbstractThrowableProblem {
     private final User user;
 
     private ForbiddenException(final String message, final User user) {
-        super(message);
+        super(URI.create("/problem/forbidden"), "Forbidden", HttpStatus.FORBIDDEN, message);
         this.user = user;
     }
 

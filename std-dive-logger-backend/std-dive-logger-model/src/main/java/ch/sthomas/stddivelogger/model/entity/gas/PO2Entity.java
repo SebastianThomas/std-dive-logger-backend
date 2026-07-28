@@ -3,7 +3,7 @@ package ch.sthomas.stddivelogger.model.entity.gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 @Entity

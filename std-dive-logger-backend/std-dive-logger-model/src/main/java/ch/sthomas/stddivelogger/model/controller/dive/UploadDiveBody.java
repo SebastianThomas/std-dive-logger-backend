@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.controller.dive;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 

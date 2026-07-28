@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.utils;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -27,7 +29,7 @@ public class MoreGatherers {
     public static <T> Collector<T, ?, Optional<T>> lastWhile(final Predicate<? super T> predicate) {
         class Acc {
             boolean stillTaking = true;
-            T last;
+            @Nullable T last;
 
             void add(final T t) {
                 if (stillTaking && predicate.test(t)) {

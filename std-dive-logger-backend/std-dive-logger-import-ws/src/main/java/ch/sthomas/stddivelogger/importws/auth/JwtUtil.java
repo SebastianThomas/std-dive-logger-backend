@@ -3,6 +3,8 @@ package ch.sthomas.stddivelogger.importws.auth;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
+import org.jspecify.annotations.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +30,7 @@ public class JwtUtil {
         return true;
     }
 
-    public static String extractUsername(final String token, final SecretKey signingKey)
+    public static @Nullable String extractUsername(final String token, final SecretKey signingKey)
             throws JwtException {
         return Jwts.parser()
                 .verifyWith(signingKey)

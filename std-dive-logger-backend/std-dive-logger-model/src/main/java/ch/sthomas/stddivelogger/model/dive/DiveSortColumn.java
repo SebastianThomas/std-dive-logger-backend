@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import org.jspecify.annotations.Nullable;
+
 public enum DiveSortColumn {
     ID,
     NUMBER,
@@ -7,7 +9,7 @@ public enum DiveSortColumn {
 
     public static final DiveSortColumn DEFAULT = NUMBER;
 
-    public static DiveSortColumn orDefault(final DiveSortColumn sort) {
+    public static DiveSortColumn orDefault(@Nullable final DiveSortColumn sort) {
         if (sort != null) {
             return sort;
         }

@@ -7,6 +7,8 @@ import ch.sthomas.stddivelogger.service.TagService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
+import org.jspecify.annotations.Nullable;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,7 +34,7 @@ public class TagController {
     @Operation(summary = "List all tag definitions visible to the current user (system defaults + own tags), sorted by usage count DESC. Pass ?query= to filter by name.")
     @GetMapping
     public List<TagDefinition> getTags(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(required = false) final String query) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view tags.");
@@ -46,7 +48,7 @@ public class TagController {
     @Operation(summary = "Create a new user-defined tag")
     @PostMapping
     public TagDefinition createTag(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @NotNull @NotBlank @RequestParam final String name) {
         if (user == null) {
             throw new UnauthorizedException("Log in to create tags.");
@@ -57,7 +59,7 @@ public class TagController {
     @Operation(summary = "Delete a user-owned tag (system/auto-detect tags cannot be deleted)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTag(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable final long id) {
         if (user == null) {
             throw new UnauthorizedException("Log in to delete tags.");

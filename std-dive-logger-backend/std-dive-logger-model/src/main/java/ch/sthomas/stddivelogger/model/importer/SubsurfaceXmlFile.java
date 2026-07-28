@@ -8,11 +8,11 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.google.common.collect.Streams;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
@@ -36,14 +36,14 @@ public record SubsurfaceXmlFile(
         return ofHours(hours).plusMinutes(minutes);
     }
 
-    static double parsePercent(final String percent) {
+    static double parsePercent(final @Nullable String percent) {
         if (percent == null) {
             return 0;
         }
         return Double.parseDouble(percent.replace("%", "").trim());
     }
 
-    static CylinderSize parseCylinderSize(final String cylinderSize) {
+    static @Nullable CylinderSize parseCylinderSize(final @Nullable String cylinderSize) {
         if (cylinderSize == null) {
             return null;
         }
@@ -55,7 +55,7 @@ public record SubsurfaceXmlFile(
         return new CylinderSize(CylinderSizeUnit.CUFT, value);
     }
 
-    static GasContent parseGasContent(final String gasContent) {
+    static @Nullable GasContent parseGasContent(final @Nullable String gasContent) {
         if (gasContent == null) {
             return null;
         }
@@ -249,18 +249,18 @@ public record SubsurfaceXmlFile(
             return parseDuration(time);
         }
 
-        public Duration ndlToDuration() {
+        public @Nullable Duration ndlToDuration() {
             return Optional.ofNullable(ndl).map(SubsurfaceXmlFile::parseDuration).orElse(null);
         }
 
-        public List<Duration> stopTimes() {
+        public @Nullable List<Duration> stopTimes() {
             if (stoptime == null) {
                 return null;
             }
             return List.of(parseDuration(Objects.requireNonNull(stoptime)));
         }
 
-        public List<Double> stopDepths() {
+        public @Nullable List<Double> stopDepths() {
             if (stopdepth == null) {
                 return null;
             }

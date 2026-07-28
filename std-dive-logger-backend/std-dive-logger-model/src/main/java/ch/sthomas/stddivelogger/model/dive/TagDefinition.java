@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public record TagDefinition(
         long id,

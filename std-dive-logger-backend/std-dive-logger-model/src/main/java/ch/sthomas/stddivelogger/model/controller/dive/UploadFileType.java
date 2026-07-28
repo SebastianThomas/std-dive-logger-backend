@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.model.controller.dive;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -16,13 +18,13 @@ public enum UploadFileType {
             Arrays.stream(UploadFileType.values())
                     .filter(t -> t.extension != null)
                     .collect(Collectors.toMap(f -> f.extension, Function.identity()));
-    private final String extension;
+    private final @Nullable String extension;
 
-    UploadFileType(final String extension) {
+    UploadFileType(final @Nullable String extension) {
         this.extension = extension;
     }
 
-    public static UploadFileType fromFilename(final String filename) {
+    public static @Nullable UploadFileType fromFilename(final @Nullable String filename) {
         if (filename == null) {
             return NONE;
         }
@@ -30,7 +32,7 @@ public enum UploadFileType {
         return fromExtension(extension);
     }
 
-    public static UploadFileType fromExtension(final String extension) {
+    public static @Nullable UploadFileType fromExtension(final @Nullable String extension) {
         if (extension == null) {
             return NONE;
         }

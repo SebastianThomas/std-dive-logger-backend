@@ -3,7 +3,7 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.AutoDetectRule;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 @Entity

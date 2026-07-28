@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -32,10 +33,10 @@ public class UserEntity {
     private boolean verified;
 
     @Column(name = "custom_icon_url")
-    private String customIconUrl;
+    private @Nullable String customIconUrl;
 
     @Column(name = "custom_background_url")
-    private String customBackgroundUrl;
+    private @Nullable String customBackgroundUrl;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMemberEntity> groups;
@@ -92,11 +93,11 @@ public class UserEntity {
         return id;
     }
 
-    public void setCustomIconUrl(final String customIconUrl) {
+    public void setCustomIconUrl(@Nullable final String customIconUrl) {
         this.customIconUrl = customIconUrl;
     }
 
-    public void setCustomBackgroundUrl(final String customBackgroundUrl) {
+    public void setCustomBackgroundUrl(@Nullable final String customBackgroundUrl) {
         this.customBackgroundUrl = customBackgroundUrl;
     }
 }

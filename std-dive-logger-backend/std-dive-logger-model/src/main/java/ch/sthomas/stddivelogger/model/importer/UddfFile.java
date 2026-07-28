@@ -14,13 +14,13 @@ import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.utils.FileValidator;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.collect.MoreCollectors;
 import com.vdurmont.semver4j.Semver;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -43,10 +43,10 @@ public record UddfFile(
         String version,
         UddfGenerator generator,
         UddfDiver diver,
-        @JacksonXmlProperty(localName = "divesite") UddfDiveSite diveSite,
+        @JacksonXmlProperty(localName = "divesite") @Nullable UddfDiveSite diveSite,
         @JacksonXmlProperty(localName = "gasdefinitions") List<UddfGasMix> gasDefinitions,
         @JacksonXmlProperty(localName = "decomodel") Map<String, UddfDecoModel> decoModel,
-        @JacksonXmlProperty(localName = "profiledata") UddfProfileData profileData,
+        @JacksonXmlProperty(localName = "profiledata") @Nullable UddfProfileData profileData,
         @JacksonXmlProperty(localName = "tablegeneration") UddfTableGeneration tableGeneration) {
     private static final Logger logger = LoggerFactory.getLogger(UddfFile.class);
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
@@ -197,7 +197,9 @@ public record UddfFile(
     record UddfContact(String language, String phone, String fax, String email, String homepage) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record UddfDiver(@JacksonXmlProperty(localName = "owner") UddfOwner owner, UddfBuddy buddy) {}
+    record UddfDiver(
+            @JacksonXmlProperty(localName = "owner") UddfOwner owner,
+            @Nullable UddfBuddy buddy) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfOwner(@Nullable UddfOwnerEquipment equipment) {}
@@ -371,7 +373,7 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfInfoBeforeDive(
             @JacksonXmlElementWrapper(useWrapping = false) List<Link> link,
-            String divenumber,
+            @Nullable String divenumber,
             Instant datetime,
             double airtemperature,
             SurfaceIntervalBeforeDive surfaceintervalbeforedive,
@@ -403,10 +405,11 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfTankData(
             @JacksonXmlProperty(localName = "link") Link link,
-            @JacksonXmlProperty(localName = "tankvolume") Double tankVolume,
-            @JacksonXmlProperty(localName = "tankpressurebegin") Double pressureStart,
-            @JacksonXmlProperty(localName = "tankpressureend") Double pressureEnd,
-            @JacksonXmlProperty(localName = "breathingconsumptionvolume") Double breathingVolume) {}
+            @JacksonXmlProperty(localName = "tankvolume") @Nullable Double tankVolume,
+            @JacksonXmlProperty(localName = "tankpressurebegin") @Nullable Double pressureStart,
+            @JacksonXmlProperty(localName = "tankpressureend") @Nullable Double pressureEnd,
+            @JacksonXmlProperty(localName = "breathingconsumptionvolume") @Nullable
+                    Double breathingVolume) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {
@@ -433,7 +436,7 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSample(
             @JacksonXmlProperty(localName = "batterychargecondition") double battery,
-            @JacksonXmlProperty(localName = "calculatedpo2") Double calcPO2,
+            @JacksonXmlProperty(localName = "calculatedpo2") @Nullable Double calcPO2,
             int cns,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "decostop")
@@ -443,11 +446,11 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "divetime") double seconds,
             @JacksonXmlProperty(localName = "gradientfactor") int gf,
             @JacksonXmlProperty(localName = "heading") double compassHeading,
-            @JacksonXmlProperty(localName = "measuredpo2") Double measuredPO2,
+            @JacksonXmlProperty(localName = "measuredpo2") @Nullable Double measuredPO2,
             @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlProperty(localName = "otu") double otu,
-            @JacksonXmlProperty(localName = "setpo2") Double setPO2,
+            @JacksonXmlProperty(localName = "setpo2") @Nullable Double setPO2,
             @JacksonXmlProperty(localName = "remainingo2time") double remainingO2Seconds,
             @Nullable UddfSwitchMix switchmix,
             @JacksonXmlProperty(localName = "tankpressure") double tankPressure,
@@ -520,7 +523,7 @@ public record UddfFile(
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfDiveMode(@JacksonXmlProperty(isAttribute = true) String type) {}
 
-    public String exportSite() {
+    public @Nullable String exportSite() {
         return Optional.ofNullable(diveSite)
                 .map(UddfDiveSite::site)
                 .map(UddfSite::geography)
@@ -528,7 +531,7 @@ public record UddfFile(
                 .orElse(null);
     }
 
-    public String exportBuddyString() {
+    public @Nullable String exportBuddyString() {
         if (diver.buddy() == null) {
             return "";
         }

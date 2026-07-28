@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.exception;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 public record DBResult<T>(@Nullable T value, @Nullable DiveDBConstraintException dbException) {

@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.user;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -15,8 +16,8 @@ public record User(
         boolean emailVerified,
         Instant createdAt,
         Instant updatedAt,
-        String customIconUrl,
-        String customBackgroundUrl)
+        @Nullable String customIconUrl,
+        @Nullable String customBackgroundUrl)
         implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

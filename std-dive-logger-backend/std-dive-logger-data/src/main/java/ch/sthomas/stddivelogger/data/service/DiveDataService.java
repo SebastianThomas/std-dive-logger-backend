@@ -29,7 +29,7 @@ import ch.sthomas.stddivelogger.utils.LocationUtils;
 
 import com.google.common.collect.MoreCollectors;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -563,7 +563,7 @@ public class DiveDataService {
         return toRecord(diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow());
     }
 
-    private ArrayList<DiveBuddyNameEntity> getNewNamedBuddies(
+    private @Nullable ArrayList<DiveBuddyNameEntity> getNewNamedBuddies(
             final UpdateDiveBody dive,
             final Map<String, DiveBuddyNameEntity> namedBuddies,
             final DiveEntity existingDive) {
@@ -649,7 +649,7 @@ public class DiveDataService {
     public SimplifiedDive addProfileToDiveWithDiveId(
             final User user,
             final DiveNumber diveNumber,
-            final String newNotes,
+            final @Nullable String newNotes,
             final DiveProfileUpload profile) {
         // Fetch auto-detect defs FIRST so the later SELECT cannot trigger an auto-flush
         // on a dirty entity (same insert-before-delete issue as updateDive).
@@ -1333,7 +1333,7 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> findCcrUnitNameSuggestions(final String query) {
+    public List<String> findCcrUnitNameSuggestions(final @Nullable String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
@@ -1341,7 +1341,7 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> findUsersByPublicCcrUnitName(final String query) {
+    public List<User> findUsersByPublicCcrUnitName(final @Nullable String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
@@ -1428,7 +1428,7 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> findBuddyNameSuggestions(final long userId, final String query) {
+    public List<String> findBuddyNameSuggestions(final long userId, final @Nullable String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }

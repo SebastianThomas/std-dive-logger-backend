@@ -5,6 +5,8 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.service.UserService;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,7 +36,7 @@ public class GroupController {
 
     @PostMapping("")
     public GroupWithMembers group(
-            @AuthenticationPrincipal final User user, @RequestBody final GroupBody body) {
+            @AuthenticationPrincipal final @Nullable User user, @RequestBody final GroupBody body) {
         if (user == null) {
             throw new UnauthorizedException("Not logged in");
         }

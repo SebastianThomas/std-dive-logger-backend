@@ -12,6 +12,8 @@ import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
 import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderService;
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -74,7 +76,7 @@ public class ImportService {
 
     private Stream<UploadDiveResultStreaming> importFile(
             final User user,
-            final String filename,
+            final @Nullable String filename,
             final UploadDiveBody body,
             final InputStream inputStream)
             throws IOException {

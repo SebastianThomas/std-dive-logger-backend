@@ -1,19 +1,16 @@
 package ch.sthomas.stddivelogger.utils.advice;
 
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.Problem;
-import org.zalando.problem.Status;
-import org.zalando.problem.spring.web.advice.AdviceTrait;
 
 import java.util.NoSuchElementException;
 
-public interface NoSuchElementAdviceTrait extends AdviceTrait {
+public interface NoSuchElementAdviceTrait {
 
-    @ExceptionHandler
-    default ResponseEntity<Problem> handleUnsupportedOperation(
-            final NoSuchElementException exception, final NativeWebRequest request) {
-        return create(Status.NOT_FOUND, exception, request);
+    @ExceptionHandler(NoSuchElementException.class)
+    default ProblemDetail handleNoSuchElement(final NoSuchElementException exception) {
+        final var detail = exception.getMessage() != null ? exception.getMessage() : "Not found";
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, detail);
     }
 }

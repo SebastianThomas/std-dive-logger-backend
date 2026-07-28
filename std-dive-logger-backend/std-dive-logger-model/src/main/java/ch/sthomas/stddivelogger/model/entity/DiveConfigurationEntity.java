@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.WeightFeeling;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public class DiveConfigurationEntity {
     // dives simply have none.
     @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinColumn(name = "fk_ccr_unit_id")
-    private CcrUnitEntity ccrUnit;
+    private @Nullable CcrUnitEntity ccrUnit;
 
     @Column(name = "base_configuration")
     @Enumerated(EnumType.STRING)
@@ -53,7 +54,7 @@ public class DiveConfigurationEntity {
     public DiveConfigurationEntity(
             final DiveEntity dive,
             final SuitEntity suit,
-            final CcrUnitEntity ccrUnit,
+            @Nullable final CcrUnitEntity ccrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.diveId = dive.getId();
@@ -92,7 +93,7 @@ public class DiveConfigurationEntity {
      */
     public void update(
             final SuitEntity suit,
-            final CcrUnitEntity ccrUnit,
+            @Nullable final CcrUnitEntity ccrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.suit = suit;

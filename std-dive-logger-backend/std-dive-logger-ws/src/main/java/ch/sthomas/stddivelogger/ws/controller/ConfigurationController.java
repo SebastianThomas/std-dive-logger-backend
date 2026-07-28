@@ -9,7 +9,7 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -91,7 +91,7 @@ public class ConfigurationController {
 
     @GetMapping("/ccrUnit/autocomplete")
     public List<String> autocompleteCcrUnitNames(
-            @AuthenticationPrincipal final User user, @RequestParam final String query) {
+            @AuthenticationPrincipal final @Nullable User user, @RequestParam final String query) {
         if (user == null) {
             throw new UnauthorizedException("Log in to use CCR unit autocomplete.");
         }
@@ -100,7 +100,7 @@ public class ConfigurationController {
 
     @GetMapping("/ccrUnit/users")
     public List<FrontendUser> searchUsersByCcrUnit(
-            @AuthenticationPrincipal final User user, @RequestParam final String query) {
+            @AuthenticationPrincipal final @Nullable User user, @RequestParam final String query) {
         if (user == null) {
             throw new UnauthorizedException("Log in to search divers by CCR unit.");
         }

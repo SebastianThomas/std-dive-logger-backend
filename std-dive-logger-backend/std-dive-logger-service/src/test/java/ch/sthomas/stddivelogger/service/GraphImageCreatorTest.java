@@ -15,10 +15,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
-
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -26,6 +23,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.awt.*;
 import java.io.FileWriter;
@@ -379,9 +378,6 @@ public class GraphImageCreatorTest {
     }
 
     public static XmlMapper xmlMapper() {
-        final var xmlMapper = new XmlMapper();
-        xmlMapper.registerModule(new Jdk8Module());
-        xmlMapper.registerModule(new JavaTimeModule());
-        return xmlMapper;
+        return ObjectMapperUtils.xmlMapperBuilder(customizer -> {}).build();
     }
 }

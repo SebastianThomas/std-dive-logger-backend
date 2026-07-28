@@ -12,7 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.StatsService;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

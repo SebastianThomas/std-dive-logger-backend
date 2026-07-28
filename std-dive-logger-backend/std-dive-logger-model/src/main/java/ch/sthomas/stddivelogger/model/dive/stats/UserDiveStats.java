@@ -4,21 +4,23 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Duration;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserDiveStats(
         long diveCount,
         long maxDiveNr,
-        Duration longestDive,
+        @Nullable Duration longestDive,
         double maxDepth,
-        Duration totalTime,
-        Long nrOfBuddies,
-        Long nrOfSites,
-        Temperature maxTemp,
-        Temperature minTemp)
+        @Nullable Duration totalTime,
+        @Nullable Long nrOfBuddies,
+        @Nullable Long nrOfSites,
+        @Nullable Temperature maxTemp,
+        @Nullable Temperature minTemp)
         implements Comparable<UserDiveStats> {
-    public UserDiveStats withBuddies(final Long l) {
+    public UserDiveStats withBuddies(@Nullable final Long l) {
         return new UserDiveStats(
                 diveCount,
                 maxDiveNr,
@@ -31,7 +33,7 @@ public record UserDiveStats(
                 maxTemp);
     }
 
-    public UserDiveStats withSites(final Long l) {
+    public UserDiveStats withSites(@Nullable final Long l) {
         return new UserDiveStats(
                 diveCount,
                 maxDiveNr,

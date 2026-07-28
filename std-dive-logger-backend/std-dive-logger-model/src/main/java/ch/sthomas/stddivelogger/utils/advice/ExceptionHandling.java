@@ -1,18 +1,12 @@
 package ch.sthomas.stddivelogger.utils.advice;
 
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.zalando.problem.spring.web.advice.ProblemHandling;
-import org.zalando.problem.spring.web.advice.security.SecurityAdviceTrait;
-import org.zalando.problem.spring.web.advice.validation.ConstraintViolationAdviceTrait;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class ExceptionHandling
-        implements ProblemHandling,
-                SecurityAdviceTrait,
+public class ExceptionHandling extends ResponseEntityExceptionHandler
+        implements ThrowableProblemAdviceTrait,
                 NoSuchElementAdviceTrait,
                 IllegalArgumentAdviceTrait,
                 ConstraintViolationAdviceTrait,
-                DiveConstraintAdviceTrait,
-                UnauthorizedAdviceTrait,
-                UserCreationAdviceTrait,
-                ForbiddenAdviceTrait {}
+                SecurityAdviceTrait {}

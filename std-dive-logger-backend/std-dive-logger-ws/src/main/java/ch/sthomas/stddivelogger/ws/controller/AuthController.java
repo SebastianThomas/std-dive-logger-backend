@@ -18,6 +18,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import org.jspecify.annotations.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -107,7 +109,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = false)
-                    final String refreshToken) {
+                    final @Nullable String refreshToken) {
         if (refreshToken != null && !refreshToken.isBlank()) {
             authService.logout(refreshToken);
         }

@@ -4,7 +4,7 @@ import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDiveDetailRespon
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 

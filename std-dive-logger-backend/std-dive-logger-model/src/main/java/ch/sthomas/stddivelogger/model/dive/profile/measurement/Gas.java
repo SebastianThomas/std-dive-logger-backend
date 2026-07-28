@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive.profile.measurement;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public record Gas(
         double o2,
@@ -31,8 +31,8 @@ public record Gas(
     public Gas(
             final double o2,
             final double he,
-            final CylinderSize size,
-            final GasContent content,
+            @Nullable final CylinderSize size,
+            @Nullable final GasContent content,
             final String description) {
         this(o2, 1 - o2 - he, he, 0.0, size, content, description);
     }

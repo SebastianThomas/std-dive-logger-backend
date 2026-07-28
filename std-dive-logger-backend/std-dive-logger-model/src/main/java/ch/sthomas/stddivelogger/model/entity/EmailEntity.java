@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.Email;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -35,7 +36,7 @@ public class EmailEntity {
     private boolean sending;
 
     @Column(name = "sent_at")
-    private OffsetDateTime sentAt;
+    private @Nullable OffsetDateTime sentAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)

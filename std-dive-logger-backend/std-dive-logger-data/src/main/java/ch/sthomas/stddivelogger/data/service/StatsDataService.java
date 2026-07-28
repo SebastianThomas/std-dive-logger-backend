@@ -24,6 +24,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.*;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -65,14 +66,17 @@ public class StatsDataService {
     }
 
     public record RawMainStats(
-            long totalDives, Integer maxDiveNumber, Double maxDepth, long uniqueSites) {}
+            long totalDives,
+            @Nullable Integer maxDiveNumber,
+            @Nullable Double maxDepth,
+            long uniqueSites) {}
 
-    private record TemperatureStats(Double maxC, Double minC) {
-        public Temperature maxTemp() {
+    private record TemperatureStats(@Nullable Double maxC, @Nullable Double minC) {
+        public @Nullable Temperature maxTemp() {
             return maxC == null ? null : new Temperature(maxC, CELSIUS);
         }
 
-        public Temperature minTemp() {
+        public @Nullable Temperature minTemp() {
             return minC == null ? null : new Temperature(minC, CELSIUS);
         }
     }
@@ -82,30 +86,42 @@ public class StatsDataService {
 
         long totalDives();
 
-        Integer maxNumber();
+        @Nullable Integer maxNumber();
 
-        Double maxDepth();
+        @Nullable Double maxDepth();
 
         long uniqueSites();
     }
 
     public record LongGroupCounts(
-            Long key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            Long key,
+            long totalDives,
+            @Nullable Integer maxNumber,
+            @Nullable Double maxDepth,
+            long uniqueSites)
             implements RawGroupCounts<Long> {}
 
     public record IntegerGroupCounts(
-            Integer key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            Integer key,
+            long totalDives,
+            @Nullable Integer maxNumber,
+            @Nullable Double maxDepth,
+            long uniqueSites)
             implements RawGroupCounts<Integer> {}
 
     public record StringGroupCounts(
-            String key, long totalDives, Integer maxNumber, Double maxDepth, long uniqueSites)
+            String key,
+            long totalDives,
+            @Nullable Integer maxNumber,
+            @Nullable Double maxDepth,
+            long uniqueSites)
             implements RawGroupCounts<String> {}
 
     public record BaseConfigurationGroupCounts(
             BaseConfiguration key,
             long totalDives,
-            Integer maxNumber,
-            Double maxDepth,
+            @Nullable Integer maxNumber,
+            @Nullable Double maxDepth,
             long uniqueSites)
             implements RawGroupCounts<BaseConfiguration> {}
 
@@ -466,7 +482,8 @@ public class StatsDataService {
      * Returns null if the tag list is empty or no dives match.
      */
     @Transactional(readOnly = true)
-    public UserDiveStats computeStatsForTagFilter(final User user, final Collection<Long> tagIds) {
+    public @Nullable UserDiveStats computeStatsForTagFilter(
+            final User user, final @Nullable Collection<Long> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
             return null;
         }
@@ -606,13 +623,13 @@ public class StatsDataService {
         return Pair.of(cte, params);
     }
 
-    private static Double nullableDouble(final ResultSet rs, final String column)
+    private static @Nullable Double nullableDouble(final ResultSet rs, final String column)
             throws SQLException {
         final var value = rs.getDouble(column);
         return rs.wasNull() ? null : value;
     }
 
-    private static Long nullableLong(final ResultSet rs, final String column)
+    private static @Nullable Long nullableLong(final ResultSet rs, final String column)
             throws SQLException {
         final var value = rs.getLong(column);
         return rs.wasNull() ? null : value;
@@ -688,7 +705,7 @@ public class StatsDataService {
             final User user,
             final StatsGranularity granularity,
             final StatsFilters filters,
-            final StatsBreakdownDimension breakdownBy) {
+            final @Nullable StatsBreakdownDimension breakdownBy) {
         final var cteAndParams = filteredDivesCte(user.id(), filters);
         final var filteredDivesCte = cteAndParams.getLeft();
         final var params = cteAndParams.getRight();

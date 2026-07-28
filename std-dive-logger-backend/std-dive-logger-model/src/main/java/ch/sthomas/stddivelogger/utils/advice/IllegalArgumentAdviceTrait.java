@@ -2,23 +2,22 @@ package ch.sthomas.stddivelogger.utils.advice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.context.request.NativeWebRequest;
-import org.zalando.problem.Problem;
-import org.zalando.problem.Status;
-import org.zalando.problem.spring.web.advice.AdviceTrait;
+import org.springframework.web.context.request.WebRequest;
 
-public interface IllegalArgumentAdviceTrait extends AdviceTrait {
+public interface IllegalArgumentAdviceTrait {
     Logger logger = LoggerFactory.getLogger(IllegalArgumentAdviceTrait.class);
 
-    @ExceptionHandler
-    default ResponseEntity<Problem> handleIllegalArgumentOperation(
-            final IllegalArgumentException exception, final NativeWebRequest request) {
+    @ExceptionHandler(IllegalArgumentException.class)
+    default ProblemDetail handleIllegalArgument(
+            final IllegalArgumentException exception, final WebRequest request) {
         logger.warn(
                 "IllegalArgumentException while handling request to {}.",
                 request.getDescription(false),
                 exception);
-        return create(Status.BAD_REQUEST, exception, request);
+        final var detail = exception.getMessage() != null ? exception.getMessage() : "Bad request";
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 }

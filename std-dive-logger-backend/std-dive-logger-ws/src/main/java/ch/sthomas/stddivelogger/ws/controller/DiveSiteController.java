@@ -9,6 +9,8 @@ import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.UserService;
 
+import org.jspecify.annotations.Nullable;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 
@@ -77,7 +79,7 @@ public class DiveSiteController {
     @PostMapping(path = "")
     public DiveSite createDiveSite(
             @Valid @NotNull @RequestBody final CreateDiveSiteBody body,
-            @AuthenticationPrincipal final User user) {
+            @AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("Log in to create a dive site");
         }

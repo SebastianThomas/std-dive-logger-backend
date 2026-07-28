@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.dive.stats;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 
@@ -14,12 +14,12 @@ public record StatsTimeSeriesPoint(
         /** Only set on entries in {@link StatsTimeSeries#breakdown()}, never on {@code points}. */
         @Nullable String category,
         long diveCount,
-        Double avgRmvLiters,
-        Double maxDepth,
-        Double avgDepth,
+        @Nullable Double avgRmvLiters,
+        @Nullable Double maxDepth,
+        @Nullable Double avgDepth,
         long totalDurationSeconds,
         long maxDurationSeconds,
-        Double avgEndCns,
-        Double avgTemperatureCelsius,
-        Double avgVisibilityMeters,
-        Double avgWeightKg) {}
+        @Nullable Double avgEndCns,
+        @Nullable Double avgTemperatureCelsius,
+        @Nullable Double avgVisibilityMeters,
+        @Nullable Double avgWeightKg) {}

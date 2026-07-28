@@ -4,7 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContent;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContentUnit;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import java.util.Optional;
@@ -24,17 +24,17 @@ public class GasEntity {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "fk_cylinder_size_id")
-    public CylinderSizeEntity cylinderSize;
+    public @Nullable CylinderSizeEntity cylinderSize;
 
     @Column(name = "description", columnDefinition = "TEXT")
-    public String description;
+    public @Nullable String description;
 
     @Column(name = "content_value")
-    public Double contentValue;
+    public @Nullable Double contentValue;
 
     @Column(name = "content_unit")
     @Enumerated(EnumType.STRING)
-    public GasContentUnit contentUnit;
+    public @Nullable GasContentUnit contentUnit;
 
     public GasEntity() {}
 

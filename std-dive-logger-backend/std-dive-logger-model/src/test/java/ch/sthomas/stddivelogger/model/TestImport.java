@@ -5,10 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
-
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -17,6 +14,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -74,9 +73,6 @@ public class TestImport {
     }
 
     public static XmlMapper xmlMapper() {
-        final var xmlMapper = new XmlMapper();
-        xmlMapper.registerModule(new Jdk8Module());
-        xmlMapper.registerModule(new JavaTimeModule());
-        return xmlMapper;
+        return ObjectMapperUtils.xmlMapperBuilder(customizer -> {}).build();
     }
 }

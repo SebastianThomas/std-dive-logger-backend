@@ -1,22 +1,20 @@
 package ch.sthomas.stddivelogger.model.exception;
 
-import com.google.common.collect.Streams;
-
 import org.apache.commons.lang3.tuple.Pair;
-import org.zalando.problem.AbstractThrowableProblem;
-import org.zalando.problem.Status;
+
+import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 
 import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MissingValueException extends AbstractThrowableProblem {
     private final ExceptionReason reason;
     private final MissingValueField field;
-    private final String additionalInfo;
+    private final @Nullable String additionalInfo;
+    private final Map<String, Object> additionalProperties;
 
     public MissingValueException(final MissingValueField field) {
         this(field, null, List.of());
@@ -24,29 +22,30 @@ public class MissingValueException extends AbstractThrowableProblem {
 
     public MissingValueException(
             final MissingValueField field,
-            final String additionalInfo,
+            final @Nullable String additionalInfo,
             final List<Pair<String, Object>> additionalParams) {
-        final var reason = ExceptionReason.MISSING_VALUE;
-        final Map<String, Object> map =
-                Streams.concat(
-                                Stream.<Map.Entry<String, Object>>of(
-                                        Map.entry("reason", reason), Map.entry("field", field)),
-                                Optional.ofNullable(additionalInfo)
-                                        .map(a -> Map.entry("additionalInfo", a))
-                                        .stream(),
-                                additionalParams.stream())
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         super(
                 URI.create("/problem/missing-value"),
                 "Missing value",
-                Status.BAD_REQUEST,
-                null,
-                null,
-                null,
-                map);
-        this.reason = reason;
+                HttpStatus.BAD_REQUEST,
+                additionalInfo != null ? additionalInfo : "Missing value for field " + field);
+        this.reason = ExceptionReason.MISSING_VALUE;
         this.field = field;
         this.additionalInfo = additionalInfo;
+
+        final var properties = new LinkedHashMap<String, Object>();
+        properties.put("reason", reason);
+        properties.put("field", field);
+        if (additionalInfo != null) {
+            properties.put("additionalInfo", additionalInfo);
+        }
+        additionalParams.forEach(param -> properties.put(param.getKey(), param.getValue()));
+        this.additionalProperties = Map.copyOf(properties);
+    }
+
+    @Override
+    public Map<String, Object> additionalProperties() {
+        return additionalProperties;
     }
 
     public ExceptionReason reason() {
@@ -57,7 +56,7 @@ public class MissingValueException extends AbstractThrowableProblem {
         return field;
     }
 
-    public String getAdditionalMessage() {
+    public @Nullable String getAdditionalMessage() {
         return additionalInfo;
     }
 }

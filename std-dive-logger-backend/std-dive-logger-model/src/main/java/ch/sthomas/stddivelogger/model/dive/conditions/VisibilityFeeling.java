@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive.conditions;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
 

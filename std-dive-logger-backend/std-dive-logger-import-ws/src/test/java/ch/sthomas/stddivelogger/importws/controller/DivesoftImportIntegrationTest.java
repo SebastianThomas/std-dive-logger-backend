@@ -2,7 +2,6 @@ package ch.sthomas.stddivelogger.importws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ch.sthomas.stddivelogger.model.controller.dive.DivesoftConfigResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 
 import io.jsonwebtoken.Jwts;
@@ -12,11 +11,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -77,13 +75,6 @@ class DivesoftImportIntegrationTest {
     }
 
     @Test
-    void divesoftConfigEndpointRejectsUnauthenticatedRequests() {
-        final var response =
-                restTemplate.getForEntity("/v1/import/divesoft/config", String.class);
-        assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
-    }
-
-    @Test
     void divesoftImportEndpointRejectsUnauthenticatedRequests() {
         final var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -93,22 +84,6 @@ class DivesoftImportIntegrationTest {
                         new HttpEntity<>("{\"dives\":[]}", headers),
                         String.class);
         assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
-    }
-
-    @Test
-    void divesoftConfigEndpointReturnsNonSecretAppConfigWhenAuthenticated() {
-        final var headers = new HttpHeaders();
-        headers.setBearerAuth(bearerToken());
-        final var response =
-                restTemplate.exchange(
-                        "/v1/import/divesoft/config",
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers),
-                        DivesoftConfigResponse.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().domain()).isEqualTo("wetnotes.eu.auth0.com");
-        assertThat(response.getBody().realm()).isEqualTo("Username-Password-Authentication");
     }
 
     @Test

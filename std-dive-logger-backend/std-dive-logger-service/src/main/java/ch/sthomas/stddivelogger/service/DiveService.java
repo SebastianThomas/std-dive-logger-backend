@@ -26,7 +26,7 @@ import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
 import ch.sthomas.stddivelogger.service.processing.ProfileAlignService;
 import ch.sthomas.stddivelogger.utils.LocationUtils;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -172,7 +172,7 @@ public class DiveService {
                                     DiveMeasurement.DiveMeasurementProperty.DEPTH,
                                     Pair.of(DiveMeasurement::depth, LegendType.RIGHT)));
 
-    public Dive createSaveDivePreview(final User user, final long diveId) {
+    public @Nullable Dive createSaveDivePreview(final User user, final long diveId) {
         final var dive = getDiveById(user, diveId).orElseThrow();
         final var result = createSaveDivePreview(dive);
         if (result == null || result.previewImage() == null) {
@@ -181,7 +181,7 @@ public class DiveService {
         return result;
     }
 
-    public Dive createSaveDivePreview(final Dive dive) {
+    public @Nullable Dive createSaveDivePreview(final Dive dive) {
         try {
             final var d = createSaveDivePreviewUnsafe(dive);
             logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);
@@ -767,7 +767,8 @@ public class DiveService {
      * Renames a named dive buddy across every dive the user owns. Scoped to {@code user.id()},
      * so there is no separate ownership check to perform here.
      */
-    public List<String> renameBuddyName(final User user, final String oldName, final String newName) {
+    public List<String> renameBuddyName(
+            final User user, @Nullable final String oldName, @Nullable final String newName) {
         if (oldName == null || oldName.isBlank()) {
             throw new IllegalArgumentException("Buddy name to rename must not be blank");
         }

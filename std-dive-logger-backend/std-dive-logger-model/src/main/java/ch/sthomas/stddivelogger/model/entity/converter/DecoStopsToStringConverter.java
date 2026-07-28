@@ -2,9 +2,9 @@ package ch.sthomas.stddivelogger.model.entity.converter;
 
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-
 import jakarta.persistence.Converter;
+
+import tools.jackson.core.type.TypeReference;
 
 import java.util.List;
 

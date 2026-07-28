@@ -8,6 +8,8 @@ import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.UserService;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,7 +25,7 @@ public class UsersController {
     }
 
     @GetMapping("/")
-    public FrontendUser loggedInUser(@AuthenticationPrincipal final User user) {
+    public FrontendUser loggedInUser(@AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to access users.");
         }
@@ -32,7 +34,7 @@ public class UsersController {
 
     @GetMapping("/{id}")
     public FrontendUser user(
-            @AuthenticationPrincipal final User user, @PathVariable final long id) {
+            @AuthenticationPrincipal final @Nullable User user, @PathVariable final long id) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to access users.");
         }
@@ -41,7 +43,7 @@ public class UsersController {
 
     @GetMapping("/search")
     public PagedResponse<FrontendUser> user(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "query") final String query,
             @RequestParam(name = "page", defaultValue = "0") final int page) {
         if (user == null) {
@@ -52,7 +54,7 @@ public class UsersController {
 
     @PostMapping(path = "/icon", consumes = MULTIPART_FORM_DATA_VALUE)
     public FrontendUser uploadIcon(
-            @AuthenticationPrincipal final User user, @RequestParam("file") final MultipartFile file) {
+            @AuthenticationPrincipal final @Nullable User user, @RequestParam("file") final MultipartFile file) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to upload an icon.");
         }
@@ -60,7 +62,7 @@ public class UsersController {
     }
 
     @DeleteMapping("/icon")
-    public FrontendUser resetIcon(@AuthenticationPrincipal final User user) {
+    public FrontendUser resetIcon(@AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to reset your icon.");
         }
@@ -69,7 +71,7 @@ public class UsersController {
 
     @PostMapping(path = "/background", consumes = MULTIPART_FORM_DATA_VALUE)
     public FrontendUser uploadBackground(
-            @AuthenticationPrincipal final User user, @RequestParam("file") final MultipartFile file) {
+            @AuthenticationPrincipal final @Nullable User user, @RequestParam("file") final MultipartFile file) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to upload a background image.");
         }
@@ -77,7 +79,7 @@ public class UsersController {
     }
 
     @DeleteMapping("/background")
-    public FrontendUser resetBackground(@AuthenticationPrincipal final User user) {
+    public FrontendUser resetBackground(@AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("You must be logged in to reset your background image.");
         }

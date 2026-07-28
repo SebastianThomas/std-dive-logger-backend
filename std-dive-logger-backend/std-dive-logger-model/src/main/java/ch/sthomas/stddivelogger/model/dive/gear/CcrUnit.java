@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive.gear;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -9,4 +10,8 @@ import jakarta.validation.constraints.NotNull;
  * configuration, no CcrUnit applies and none is required.
  */
 public record CcrUnit(
-        Long id, long userId, @NotNull String name, @NotNull String notes, boolean isPublic) {}
+        @Nullable Long id,
+        long userId,
+        @NotNull String name,
+        @NotNull String notes,
+        boolean isPublic) {}

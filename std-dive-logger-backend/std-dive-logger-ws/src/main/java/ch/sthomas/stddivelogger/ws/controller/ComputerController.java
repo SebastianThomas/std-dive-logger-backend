@@ -7,6 +7,8 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
+import org.jspecify.annotations.Nullable;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,7 +27,7 @@ public class ComputerController {
 
     @GetMapping("")
     public PagedResponse<DiveComputer> getUserDiveComputers(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "page", defaultValue = "0") final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to access your dive computers");
@@ -52,7 +54,7 @@ public class ComputerController {
 
     @GetMapping("/search")
     public PagedResponse<DiveComputer> getUserDiveComputersByName(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "query") final String query,
             @RequestParam(name = "page", defaultValue = "0") final int page) {
         if (user == null) {

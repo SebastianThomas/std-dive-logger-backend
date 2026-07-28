@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 @Entity
@@ -18,14 +19,14 @@ public class VisibilityEntity {
     private DiveEntity dive;
 
     @Column(name = "visibility_meters")
-    private Double visibilityMeters;
+    private @Nullable Double visibilityMeters;
 
     @Column(name = "visibility_feeling")
     @Enumerated(EnumType.STRING)
-    private VisibilityFeeling feeling;
+    private @Nullable VisibilityFeeling feeling;
 
     @Column(name = "visibility_description")
-    private String description;
+    private @Nullable String description;
 
     public VisibilityEntity() {}
 
@@ -35,9 +36,9 @@ public class VisibilityEntity {
 
     public VisibilityEntity(
             final DiveEntity dive,
-            final Double visibilityMeters,
-            final VisibilityFeeling feeling,
-            final String description) {
+            @Nullable final Double visibilityMeters,
+            @Nullable final VisibilityFeeling feeling,
+            @Nullable final String description) {
         this.diveId = dive.getId();
         this.dive = dive;
         this.visibilityMeters = visibilityMeters;

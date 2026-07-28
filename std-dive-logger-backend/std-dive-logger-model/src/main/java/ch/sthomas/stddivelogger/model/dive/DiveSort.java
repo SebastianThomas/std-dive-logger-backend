@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.query.SortDirection;

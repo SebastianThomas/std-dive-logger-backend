@@ -18,9 +18,9 @@ import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftPressureSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftTemperatureSample;
 import ch.sthomas.stddivelogger.service.DiveService;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.junit.jupiter.api.Test;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +29,7 @@ import java.time.Instant;
 import java.util.List;
 
 class DivesoftReaderServiceTest {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final JsonMapper objectMapper = new JsonMapper();
     private static final DiveComputer computer =
             new DiveComputer(1L, new DiveComputerManufacturer(1L, "Divesoft"), "serial", "serial");
 

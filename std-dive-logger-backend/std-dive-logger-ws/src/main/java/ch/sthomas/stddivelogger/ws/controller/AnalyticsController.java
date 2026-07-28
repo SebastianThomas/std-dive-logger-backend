@@ -6,6 +6,8 @@ import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +27,7 @@ public class AnalyticsController {
 
     @GetMapping("/segments")
     public List<DiveProfileSegmentWithId> segments(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Login to find analytics for dive " + diveId);
@@ -35,7 +37,7 @@ public class AnalyticsController {
 
     @GetMapping("/depth-variance")
     public List<AnalyticsDepthVarianceResponse> depthVarianceByDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Login to find analytics for dive " + diveId);

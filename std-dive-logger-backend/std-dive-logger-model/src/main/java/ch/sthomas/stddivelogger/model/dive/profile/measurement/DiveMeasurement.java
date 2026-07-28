@@ -4,7 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;

@@ -8,7 +8,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
@@ -44,26 +44,26 @@ public class DiveEntity {
     private String diveIdentifier;
 
     @Column(name = "preview_image", nullable = false)
-    private String previewImage;
+    private @Nullable String previewImage;
 
     @Column(name = "notes", nullable = false)
     private String notes;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-    private DiveSummaryEntity diveSummary;
+    private @Nullable DiveSummaryEntity diveSummary;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-    private VisibilityEntity visibility;
+    private @Nullable VisibilityEntity visibility;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-    private DiveGasConsumptionEntity gasConsumption;
+    private @Nullable DiveGasConsumptionEntity gasConsumption;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-        private DiveConfigurationEntity configuration;
+        private @Nullable DiveConfigurationEntity configuration;
 
     @JoinColumn(name = "fk_diver_id")
     @ManyToOne(cascade = CascadeType.PERSIST)
@@ -98,7 +98,7 @@ public class DiveEntity {
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
             orphanRemoval = true)
-    private List<DiveTagEntity> tags;
+    private @Nullable List<DiveTagEntity> tags;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -149,7 +149,7 @@ public class DiveEntity {
         this.tags = new ArrayList<>();
     }
 
-    private String getPreviewImage(@NotNull final String baseUrl) {
+    private @Nullable String getPreviewImage(@NotNull final String baseUrl) {
         if (previewImage == null) {
             return null;
         }
@@ -234,7 +234,7 @@ public class DiveEntity {
     public DiveEntity update(
             final int number,
             final String diveIdentifier,
-            final String notes,
+            @Nullable final String notes,
             @Nullable final DiveSiteEntity diveSiteEntity,
             @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies,
             @Nullable final DiveConfigurationEntity configuration,
@@ -295,7 +295,7 @@ public class DiveEntity {
                 .forEach(tags::add);
     }
 
-    public boolean matchesAutoDetect(final AutoDetectRule rule) {
+    public boolean matchesAutoDetect(@Nullable final AutoDetectRule rule) {
         if (rule == null) {
             return false;
         }
@@ -394,7 +394,7 @@ public class DiveEntity {
         return user.getId();
     }
 
-    public DiveConfigurationEntity getConfiguration() {
+    public @Nullable DiveConfigurationEntity getConfiguration() {
         return configuration;
     }
 
@@ -402,7 +402,7 @@ public class DiveEntity {
         this.configuration = configuration;
     }
 
-    public DiveGasConsumptionEntity getGasConsumption() {
+    public @Nullable DiveGasConsumptionEntity getGasConsumption() {
         return gasConsumption;
     }
 
@@ -410,7 +410,7 @@ public class DiveEntity {
         this.gasConsumption = gasConsumption;
     }
 
-    public VisibilityEntity getVisibility() {
+    public @Nullable VisibilityEntity getVisibility() {
         return visibility;
     }
 

@@ -23,7 +23,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -64,7 +64,7 @@ public class DiveController {
     @Operation(summary = "Get Dives for User")
     @GetMapping(path = "")
     public PagedResponse<SimplifiedDive> getDivesForUser(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
                     final DiveSortColumn sortColumn,
@@ -84,7 +84,7 @@ public class DiveController {
 
     @GetMapping("/group/{groupId}")
     public PagedResponse<SimplifiedDive> getDivesForGroup(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable final long groupId,
             @RequestParam(value = "page", defaultValue = "0") final int page) {
         if (user == null) {
@@ -96,7 +96,7 @@ public class DiveController {
     @Operation(summary = "Find dives by ID")
     @GetMapping("/ids")
     public List<SimplifiedDive> findDivesById(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "ids") final List<Long> ids) {
         if (user == null) {
             throw new UnauthorizedException("Log in to find your dives.");
@@ -107,7 +107,7 @@ public class DiveController {
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/custom-name")
     public PagedResponse<SimplifiedDive> searchDivesByIdentifier(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("query") final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
@@ -119,7 +119,7 @@ public class DiveController {
     @Operation(summary = "Get dives by dive computer id")
     @GetMapping(path = "/computer")
     public PagedResponse<SimplifiedDive> getDivesByComputer(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("computerId") final int computerId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -136,7 +136,7 @@ public class DiveController {
     @Operation(summary = "Get dives by tag id")
     @GetMapping(path = "/tag")
     public PagedResponse<SimplifiedDive> getDivesByTag(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("tagId") final long tagId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -153,7 +153,7 @@ public class DiveController {
     @Operation(summary = "Get dives that have ALL of the given tag IDs (AND filter, repeatable ?tagIds=1&tagIds=2)")
     @GetMapping(path = "/tags")
     public PagedResponse<SimplifiedDive> getDivesByTags(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("tagIds") final List<Long> tagIds,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -173,7 +173,7 @@ public class DiveController {
     @Operation(summary = "Get dives by suit id")
     @GetMapping(path = "/suit")
     public PagedResponse<SimplifiedDive> getDivesBySuit(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("suitId") final int suitId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -193,7 +193,7 @@ public class DiveController {
                             + " configuration, text query, dive-start date range), ANDed together")
     @GetMapping(path = "/filtered")
     public PagedResponse<SimplifiedDive> getFilteredDives(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "tagIds", required = false) final List<Long> tagIds,
             @RequestParam(name = "diveSiteId", required = false) final Long diveSiteId,
             @RequestParam(name = "suitId", required = false) final Long suitId,
@@ -233,7 +233,7 @@ public class DiveController {
     @Operation(summary = "Get dives by CCR unit id")
     @GetMapping(path = "/ccrUnit")
     public PagedResponse<SimplifiedDive> getDivesByCcrUnit(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("ccrUnitId") final long ccrUnitId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -250,7 +250,7 @@ public class DiveController {
     @Operation(summary = "Get dives by custom identifier")
     @GetMapping(path = "/search")
     public PagedResponse<SimplifiedDive> searchDives(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("query") final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page,
             @RequestParam(
@@ -265,7 +265,7 @@ public class DiveController {
 
     @Operation(summary = "Get next dive number")
     @GetMapping(path = "/next")
-    public int nextDiveNumber(@AuthenticationPrincipal final User user) {
+    public int nextDiveNumber(@AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("Log in to get your next dive number");
         }
@@ -282,7 +282,7 @@ public class DiveController {
             })
     @GetMapping(path = "/{id}/readers")
     public PagedResponse<FrontendUser> getReadersOfDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @RequestParam(name = "page", required = false, defaultValue = "0") final int page) {
         if (user == null) {
@@ -301,7 +301,7 @@ public class DiveController {
             })
     @PostMapping(path = "/{id}/readers")
     public PagedResponse<FrontendUser> addReadersOfDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @Schema(example = "[userId1, userId2]", description = "New userIDs") @Valid @RequestBody
                     final List<Long> userIds) {
@@ -313,7 +313,7 @@ public class DiveController {
 
     @DeleteMapping("/{id}/readers")
     public PagedResponse<FrontendUser> deleteReadersOfDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @Schema(example = "[userId1, userId2]", description = "userIDs to delete")
                     @Valid
@@ -335,7 +335,7 @@ public class DiveController {
             })
     @PostMapping(path = "/{id}/group-readers")
     public PagedResponse<FrontendUser> addGroupReadersOfDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @RequestBody final long groupId) {
         if (user == null) {
@@ -346,7 +346,7 @@ public class DiveController {
 
     @GetMapping(path = "/{id}/group-readers")
     public List<Group> getGroupReadersOfDive(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+            @AuthenticationPrincipal final @Nullable User user, @PathVariable("id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view group readers");
         }
@@ -355,7 +355,7 @@ public class DiveController {
 
     @DeleteMapping("/{id}/group-readers")
     public PagedResponse<FrontendUser> deleteGroupReadersOfDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @RequestParam("groupId") final long groupId) {
         if (user == null) {
@@ -368,7 +368,7 @@ public class DiveController {
     @PostMapping(path = "/create")
     public ResponseEntity<Dive> createDive(
             @Valid @NotNull @RequestBody final UploadDiveBody body,
-            @AuthenticationPrincipal final User user) {
+            @AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -378,7 +378,7 @@ public class DiveController {
     @Operation(summary = "Update a Dive")
     @PutMapping(path = "", consumes = APPLICATION_JSON_VALUE)
     public Dive updateDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @NotNull @Valid @RequestBody final UpdateDiveBody dive) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to update this dive.");
@@ -427,7 +427,7 @@ public class DiveController {
     @Operation(summary = "Link Buddy Dive")
     @PostMapping(path = "/{id}/link")
     public Dive linkBuddyDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @RequestParam final long buddyDiveId) {
         if (user == null) {
@@ -439,7 +439,7 @@ public class DiveController {
     @Operation(summary = "Remove linked Buddy Dive")
     @DeleteMapping(path = "/{id}/link")
     public Dive unlinkBuddyDive(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @RequestParam final long buddyDiveId) {
         if (user == null) {
@@ -451,7 +451,7 @@ public class DiveController {
     @Operation(summary = "Autocomplete buddy names from the user's own dive history, ordered by frequency")
     @GetMapping("/buddies/autocomplete")
     public List<String> autocompleteBuddies(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam final String query) {
         if (user == null) {
             throw new UnauthorizedException("Log in to use buddy autocomplete.");
@@ -461,7 +461,7 @@ public class DiveController {
 
     @Operation(summary = "List all named dive buddies used across your dives, ordered by frequency")
     @GetMapping("/buddies")
-    public List<String> getBuddyNames(@AuthenticationPrincipal final User user) {
+    public List<String> getBuddyNames(@AuthenticationPrincipal final @Nullable User user) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your buddies.");
         }
@@ -476,7 +476,7 @@ public class DiveController {
                             + " this buddy")
     @PutMapping(path = "/buddies/rename", consumes = APPLICATION_JSON_VALUE)
     public List<String> renameBuddy(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @Valid @RequestBody final RenameBuddyBody body) {
         if (user == null) {
             throw new UnauthorizedException("Log in to rename a buddy.");
@@ -487,7 +487,7 @@ public class DiveController {
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public Dive mergeDiveProfiles(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long baseDiveId,
             @RequestParam final long toAddDiveId,
             @RequestParam final boolean keepToAddDive) {
@@ -502,7 +502,7 @@ public class DiveController {
     @Operation(summary = "Move Profiles between dives")
     @PostMapping(path = "/profiles/separate", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Dive> moveProfiles(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestBody final MoveProfilesRequestBody body) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -561,7 +561,7 @@ public class DiveController {
                             + " currently only supports UDDF files.")
     @PostMapping(path = "/{id}/profiles/{profileId}/reimport", consumes = MULTIPART_FORM_DATA_VALUE)
     public Dive reimportProfile(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @PathVariable("profileId") final long profileId,
             @RequestParam(value = "entry", defaultValue = "0") final int entry,
@@ -575,7 +575,7 @@ public class DiveController {
     @Operation(summary = "Set manual tags on a dive — body is a list of tag-definition IDs (replaces all existing manual tags)")
     @PutMapping(path = "/{id}/tags", consumes = APPLICATION_JSON_VALUE)
     public Dive updateTags(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId,
             @NotNull @Valid @RequestBody final UpdateTagsBody body) {
         if (user == null) {
@@ -587,7 +587,7 @@ public class DiveController {
     @Operation(summary = "Refresh auto-detected tags and return the updated dive. Call this when opening the edit page.")
     @PostMapping(path = "/{id}/refresh-tags")
     public Dive refreshAutoTags(
-            @AuthenticationPrincipal final User user,
+            @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to refresh tags.");
@@ -598,7 +598,7 @@ public class DiveController {
     @Operation(summary = "Generate or regenerate Preview image")
     @PostMapping(path = "/{id}/preview")
     public ResponseEntity<Dive> generatePreview(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+            @AuthenticationPrincipal final @Nullable User user, @PathVariable("id") final long diveId) {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -612,7 +612,7 @@ public class DiveController {
     @Operation(summary = "Get Dive by ID")
     @GetMapping(path = "/{id}")
     public Dive getDiveById(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+            @AuthenticationPrincipal final @Nullable User user, @PathVariable("id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Log in to access dives.");
         }
@@ -624,7 +624,7 @@ public class DiveController {
                     "Delete a dive, including all associated processed items (e.g., analytics, images)")
     @DeleteMapping(path = "/{id}")
     public void deleteDive(
-            @AuthenticationPrincipal final User user, @PathVariable("id") final long diveId) {
+            @AuthenticationPrincipal final @Nullable User user, @PathVariable("id") final long diveId) {
         if (user == null) {
             throw new UnauthorizedException("Log in to delete dives.");
         }

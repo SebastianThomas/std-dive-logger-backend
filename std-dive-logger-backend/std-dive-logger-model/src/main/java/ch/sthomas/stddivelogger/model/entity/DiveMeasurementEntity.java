@@ -10,7 +10,7 @@ import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverte
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.PO2Entity;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.JdbcTypeCode;
@@ -37,26 +37,26 @@ public class DiveMeasurementEntity {
     private double depth;
 
     @Column(name = "temperature_celsius", nullable = true)
-    private Double temperatureCelsius;
+    private @Nullable Double temperatureCelsius;
 
     @OneToOne(
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
             optional = true,
             mappedBy = "measurement")
-    private PO2Entity po2;
+    private @Nullable PO2Entity po2;
 
     @Column(name = "rmv_liters", nullable = true)
-    private Double rmv;
+    private @Nullable Double rmv;
 
     @Column(name = "n2", nullable = true)
-    private Double n2;
+    private @Nullable Double n2;
 
     @Column(name = "o2_tox", nullable = true)
-    private Double o2Tox;
+    private @Nullable Double o2Tox;
 
     @Column(name = "cns", nullable = true)
-    private Double cns;
+    private @Nullable Double cns;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Convert(converter = DecoStopsToStringConverter.class)
@@ -64,11 +64,11 @@ public class DiveMeasurementEntity {
     private List<DecoStop> decoStops;
 
     @Column(name = "ndl_minutes", nullable = true)
-    private Integer ndlMinutes;
+    private @Nullable Integer ndlMinutes;
 
     @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_gas_id")
-    private GasEntity gas;
+    private @Nullable GasEntity gas;
 
     @JoinColumn(name = "fk_dive_profile_id")
     @ManyToOne(cascade = CascadeType.PERSIST, optional = false)

@@ -26,7 +26,7 @@ import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import com.garmin.fit.*;
 import com.google.common.base.CaseFormat;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.jspecify.annotations.NonNull;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -308,10 +308,10 @@ public class FitReaderService extends BaseReaderService {
                 .toList();
     }
 
-    private DiveComputer getComputer(
+    private @Nullable DiveComputer getComputer(
             final User user,
             final String manufacturer,
-            final Long serialNumber,
+            final @Nullable Long serialNumber,
             final String product,
             final Instant timeCreated) {
         if (serialNumber == null) {

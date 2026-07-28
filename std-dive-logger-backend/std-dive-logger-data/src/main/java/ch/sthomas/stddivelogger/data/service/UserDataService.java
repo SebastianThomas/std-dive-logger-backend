@@ -14,7 +14,7 @@ import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import com.google.common.collect.MoreCollectors;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.hibernate.exception.ConstraintViolationException;

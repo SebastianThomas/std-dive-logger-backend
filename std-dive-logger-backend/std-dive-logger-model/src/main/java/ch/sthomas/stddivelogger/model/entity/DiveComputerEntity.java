@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +19,7 @@ public class DiveComputerEntity {
     private Long id;
 
     @Column(name = "serial_number")
-    private String serialNumber;
+    private @Nullable String serialNumber;
 
     @Column(name = "custom_identifier", nullable = false)
     private String customIdentifier;

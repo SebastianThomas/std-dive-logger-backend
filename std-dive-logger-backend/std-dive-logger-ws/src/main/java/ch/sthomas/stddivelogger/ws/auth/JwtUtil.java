@@ -9,6 +9,8 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import org.jspecify.annotations.Nullable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -71,7 +73,7 @@ public class JwtUtil {
         return builder.signWith(getSigningKey(tokenType)).compact();
     }
 
-    public String extractUsername(final String token, final TokenType tokenType)
+    public @Nullable String extractUsername(final String token, final TokenType tokenType)
             throws JwtException {
         return Jwts.parser()
                 .verifyWith(getSigningKey(tokenType))

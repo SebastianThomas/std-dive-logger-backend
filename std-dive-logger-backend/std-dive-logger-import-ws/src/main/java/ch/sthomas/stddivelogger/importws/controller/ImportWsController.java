@@ -3,17 +3,15 @@ package ch.sthomas.stddivelogger.importws.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
-import ch.sthomas.stddivelogger.model.controller.dive.DivesoftConfigResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.importer.ImportService;
-import ch.sthomas.stddivelogger.service.importer.divesoft.DivesoftConfigService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotEmpty;
 
 import org.springframework.http.ResponseEntity;
@@ -28,12 +26,9 @@ import java.util.List;
 public class ImportWsController {
 
     private final ImportService importService;
-    private final DivesoftConfigService divesoftConfigService;
 
-    public ImportWsController(
-            final ImportService importService, final DivesoftConfigService divesoftConfigService) {
+    public ImportWsController(final ImportService importService) {
         this.importService = importService;
-        this.divesoftConfigService = divesoftConfigService;
     }
 
     @Operation(summary = "Add a dive")
@@ -59,14 +54,5 @@ public class ImportWsController {
             return ResponseEntity.internalServerError().body(imported);
         }
         return ResponseEntity.ok(imported);
-    }
-
-    @Operation(
-            summary =
-                    "Get the (non-secret) wetnotes.com Auth0 app config needed to sign in to Divesoft"
-                            + " client-side. Never includes a user's actual wetnotes.com credentials.")
-    @GetMapping(path = "/divesoft/config")
-    public ResponseEntity<DivesoftConfigResponse> getDivesoftConfig() {
-        return ResponseEntity.ok(divesoftConfigService.getConfig());
     }
 }

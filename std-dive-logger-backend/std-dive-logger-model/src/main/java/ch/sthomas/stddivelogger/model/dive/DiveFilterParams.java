@@ -2,7 +2,7 @@ package ch.sthomas.stddivelogger.model.dive;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.time.LocalTime;

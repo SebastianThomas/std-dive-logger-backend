@@ -1,12 +1,15 @@
 package ch.sthomas.stddivelogger.utils;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
-import com.fasterxml.jackson.module.paranamer.ParanamerModule;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.json.ProblemDetailJacksonMixin;
+import org.springframework.http.converter.json.ProblemDetailJacksonXmlMixin;
+
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.cfg.EnumFeature;
+import tools.jackson.databind.ext.javatime.ser.LocalDateSerializer;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -18,28 +21,36 @@ public class ObjectMapperUtils {
         final var jsonMapperBuilder =
                 JsonMapper.builder()
                         // support for LocalDate to String conversion in ISO yyyy-MM-dd format
-                        .addModule(javaTimeModule())
-                        // ParanamerModule allows using @JsonCreator without needing @JsonProperty
-                        .addModule(new ParanamerModule())
-                        // Jdk8Module supports Optional
-                        .addModule(new Jdk8Module())
-                        .disable(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS)
-                        .disable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
-                        .disable(SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
-                        .enable(
-                                DeserializationFeature
-                                        .READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+                        .addModule(localDateModule())
+                        .addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class)
+                        .disable(DateTimeFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS)
+                        .disable(DateTimeFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+                        .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
+                        .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
 
         customizer.accept(jsonMapperBuilder);
 
         return jsonMapperBuilder;
     }
 
-    public static JavaTimeModule javaTimeModule() {
-        final var javaTimeModule = new JavaTimeModule();
+    public static XmlMapper.Builder xmlMapperBuilder(
+            final Consumer<XmlMapper.Builder> customizer) {
+        final var xmlMapperBuilder =
+                XmlMapper.builder()
+                        // support for LocalDate to String conversion in ISO yyyy-MM-dd format
+                        .addModule(localDateModule())
+                        .addMixIn(ProblemDetail.class, ProblemDetailJacksonXmlMixin.class);
+
+        customizer.accept(xmlMapperBuilder);
+
+        return xmlMapperBuilder;
+    }
+
+    public static SimpleModule localDateModule() {
+        final var module = new SimpleModule();
         final var localDateSerializer =
                 new LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        javaTimeModule.addSerializer(LocalDate.class, localDateSerializer);
-        return javaTimeModule;
+        module.addSerializer(LocalDate.class, localDateSerializer);
+        return module;
     }
 }
