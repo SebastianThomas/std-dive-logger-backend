@@ -10,10 +10,12 @@ public record PagedResponse<T>(int pageSize, int totalPages, long totalElements,
         final var pageSize = elements.getPageable().getPageSize();
         final var totalPages = elements.getTotalPages();
         final var totalElements = elements.getTotalElements();
-        return new PagedResponse<>(pageSize, totalPages, totalElements, elements.stream().map(mapper).toList());
+        return new PagedResponse<>(
+                pageSize, totalPages, totalElements, elements.stream().map(mapper).toList());
     }
 
     public <R> PagedResponse<R> map(final Function<T, R> mapper) {
-        return new PagedResponse<>(pageSize, totalPages, totalElements, result.stream().map(mapper).toList());
+        return new PagedResponse<>(
+                pageSize, totalPages, totalElements, result.stream().map(mapper).toList());
     }
 }

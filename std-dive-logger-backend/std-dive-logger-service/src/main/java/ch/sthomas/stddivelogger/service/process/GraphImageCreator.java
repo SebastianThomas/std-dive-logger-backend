@@ -2,8 +2,8 @@ package ch.sthomas.stddivelogger.service.process;
 
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 
 import com.google.common.collect.Streams;
@@ -157,9 +157,9 @@ public class GraphImageCreator {
     }
 
     /**
-     * Renders the mandatory decompression "keep-out zone": a shaded area from the surface down
-     * to the current ceiling depth (the deepest active mandatory deco stop), mirroring the same
-     * zone the frontend chart draws for a dive's profile.
+     * Renders the mandatory decompression "keep-out zone": a shaded area from the surface down to
+     * the current ceiling depth (the deepest active mandatory deco stop), mirroring the same zone
+     * the frontend chart draws for a dive's profile.
      */
     private static void drawDecoZone(
             final Dive dive,
@@ -175,9 +175,7 @@ public class GraphImageCreator {
                 continue;
             }
             graphics.fill(
-                    depthRows
-                            .get(i)
-                            .getDecoZonePath(ceilingRow, widthCalculator, height, PADDING));
+                    depthRows.get(i).getDecoZonePath(ceilingRow, widthCalculator, height, PADDING));
         }
     }
 
@@ -213,7 +211,11 @@ public class GraphImageCreator {
         final var start = profile.start();
         final var end = profile.end();
         final var measurements =
-                profile.measurements().stream()
+                Objects.requireNonNull(
+                                profile.measurements(),
+                                "Graph generation requires a profile fetched with measurements"
+                                        + " included")
+                        .stream()
                         .map(
                                 m ->
                                         new MeasurementData(
@@ -267,10 +269,10 @@ public class GraphImageCreator {
 
         /**
          * Builds a single closed shape tracing the ceiling depth over time (top edge) and back
-         * along the surface (bottom edge, depth 0) — scaled against THIS row's own min/max, so
-         * the shading lines up with the depth line drawn from the same data. Where the ceiling
-         * is 0 (no active stop), the top and bottom edges coincide, so that stretch fills to
-         * zero width instead of drawing a spurious highlighted band.
+         * along the surface (bottom edge, depth 0) — scaled against THIS row's own min/max, so the
+         * shading lines up with the depth line drawn from the same data. Where the ceiling is 0 (no
+         * active stop), the top and bottom edges coincide, so that stretch fills to zero width
+         * instead of drawing a spurious highlighted band.
          */
         public Path2D.Double getDecoZonePath(
                 final ProfileRow ceilingRow,

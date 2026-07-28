@@ -2,17 +2,18 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.Email;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Entity
 @Table(name = "t_email")
+@SuppressWarnings("NullAway.Init")
 public class EmailEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

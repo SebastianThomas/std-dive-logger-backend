@@ -19,7 +19,8 @@ public interface DiveBuddyNameRepository extends JpaRepository<DiveBuddyNameEnti
      * Returns distinct buddy names from the user's own dives that contain the query string
      * (case-insensitive), ordered by frequency of appearance descending then alphabetically.
      */
-    @Query("""
+    @Query(
+            """
             SELECT b.name
             FROM DiveBuddyNameEntity b
             WHERE b.dive.user.id = :userId

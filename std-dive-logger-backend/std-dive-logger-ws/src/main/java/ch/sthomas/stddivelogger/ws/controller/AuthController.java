@@ -19,18 +19,19 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 
 @RestController
 @RequestMapping("/api/auth")
+@Validated
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -48,7 +49,7 @@ public class AuthController {
         return authService.login(request);
     }
 
-    public record EmailBody(@Email String email) {}
+    public record EmailBody(@NotBlank @Email String email) {}
 
     @Operation(summary = "Create a Magic Login Token")
     @PostMapping("/login/magic/create")
@@ -56,18 +57,18 @@ public class AuthController {
         userService.createLoginToken(email.email().trim());
     }
 
-    public record TokenBody(String token) {}
+    public record TokenBody(@NotBlank String token) {}
 
     @Operation(summary = "Log in using a magic link / token")
     @PostMapping("/login/magic")
-    public ResponseEntity<AuthResponse> login(@RequestBody final TokenBody token) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody final TokenBody token) {
         return authService.tokenLogin(token.token);
     }
 
     @Operation(summary = "Get a new access token")
     @PostMapping("/refresh")
     public String refresh(
-            @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = true)
+            @CookieValue(value = AuthService.REFRESH_TOKEN_COOKIE_NAME, required = true) @NotBlank
                     final String refreshToken) {
         return authService.refresh(refreshToken);
     }

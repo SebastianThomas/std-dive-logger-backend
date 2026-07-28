@@ -4,13 +4,15 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContent;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContentUnit;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
 
 @Entity
 @Table(name = "t_gas")
+@SuppressWarnings("NullAway.Init")
 public class GasEntity {
 
     @Id

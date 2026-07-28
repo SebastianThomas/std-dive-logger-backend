@@ -17,7 +17,9 @@ public record DiveFilterParams(
         @Nullable String query,
         @Nullable Instant startDate,
         @Nullable Instant endDate,
-        /** Time-of-day range (e.g. "morning dives"); matches when the dive's own start/end
-         * window overlaps this range at all, not just when it's fully contained in it. */
+        /**
+         * Time-of-day range (e.g. "morning dives"); matches when the dive's own start/end window
+         * overlaps this range at all, not just when it's fully contained in it.
+         */
         @Nullable LocalTime startTime,
         @Nullable LocalTime endTime) {}

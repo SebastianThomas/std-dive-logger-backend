@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_group_member")
+@SuppressWarnings("NullAway.Init")
 public class GroupMemberEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

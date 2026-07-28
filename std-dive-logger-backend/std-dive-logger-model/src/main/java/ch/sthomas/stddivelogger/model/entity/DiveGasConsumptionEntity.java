@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_dive_gas_consumption")
+@SuppressWarnings("NullAway.Init")
 public class DiveGasConsumptionEntity {
     @Id
     @Column(name = "fk_dive_id")

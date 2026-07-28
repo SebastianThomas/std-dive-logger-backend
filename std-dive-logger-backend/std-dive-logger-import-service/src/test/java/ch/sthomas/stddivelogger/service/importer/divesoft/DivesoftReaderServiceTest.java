@@ -33,12 +33,14 @@ class DivesoftReaderServiceTest {
     private static final DiveComputer computer =
             new DiveComputer(1L, new DiveComputerManufacturer(1L, "Divesoft"), "serial", "serial");
 
-    private final DivesoftReaderService service = new DivesoftReaderService(mock(DiveService.class));
+    private final DivesoftReaderService service =
+            new DivesoftReaderService(mock(DiveService.class));
 
     private static DivesoftDive loadFixture(final String filename) throws IOException {
         try (final InputStream inputStream =
                 DivesoftReaderServiceTest.class.getClassLoader().getResourceAsStream(filename)) {
-            final var response = objectMapper.readValue(inputStream, DivesoftDiveDetailResponse.class);
+            final var response =
+                    objectMapper.readValue(inputStream, DivesoftDiveDetailResponse.class);
             return response.diveAndMixes().dive();
         }
     }
@@ -50,7 +52,9 @@ class DivesoftReaderServiceTest {
 
         assertEquals(computer.id(), profile.diveComputerId());
         assertEquals(708, profile.measurements().size());
-        assertEquals(profile.start().plus(Duration.ofHours(1).plusMinutes(20).plusSeconds(8)), profile.end());
+        assertEquals(
+                profile.start().plus(Duration.ofHours(1).plusMinutes(20).plusSeconds(8)),
+                profile.end());
 
         final var first = profile.measurements().getFirst();
         assertEquals(1.59, first.depth());
@@ -92,9 +96,15 @@ class DivesoftReaderServiceTest {
                         List.of(
                                 new DivesoftTemperatureSample(0, 20.0),
                                 new DivesoftTemperatureSample(60, 20.0)),
-                        List.of(new DivesoftCeilingSample(0, 0.0), new DivesoftCeilingSample(60, 3.0)),
-                        List.of(new DivesoftPressureSample(0, 0.7), new DivesoftPressureSample(60, 0.7)),
-                        List.of(new DivesoftPressureSample(0, 1.0), new DivesoftPressureSample(60, 1.0)),
+                        List.of(
+                                new DivesoftCeilingSample(0, 0.0),
+                                new DivesoftCeilingSample(60, 3.0)),
+                        List.of(
+                                new DivesoftPressureSample(0, 0.7),
+                                new DivesoftPressureSample(60, 0.7)),
+                        List.of(
+                                new DivesoftPressureSample(0, 1.0),
+                                new DivesoftPressureSample(60, 1.0)),
                         List.of(),
                         List.of(new DivesoftGraphMix(0, "21", "0", "air")));
         final var dive =

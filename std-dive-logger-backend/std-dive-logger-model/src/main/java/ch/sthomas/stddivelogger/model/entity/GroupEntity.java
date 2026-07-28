@@ -9,6 +9,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "t_groups")
+@SuppressWarnings("NullAway.Init")
 public class GroupEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

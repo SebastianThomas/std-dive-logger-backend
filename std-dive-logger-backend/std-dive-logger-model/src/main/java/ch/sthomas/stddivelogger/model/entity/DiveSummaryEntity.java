@@ -15,6 +15,7 @@ import java.util.stream.Gatherers;
 
 @Entity
 @Table(name = "t_dive_summary")
+@SuppressWarnings("NullAway.Init")
 public class DiveSummaryEntity {
 
     @Id

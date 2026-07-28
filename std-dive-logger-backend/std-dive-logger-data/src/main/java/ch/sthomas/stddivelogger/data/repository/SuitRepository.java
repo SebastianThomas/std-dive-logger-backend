@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,5 +19,5 @@ public interface SuitRepository extends JpaRepository<SuitEntity, Long> {
     Page<SuitEntity> findByUser_Id(Long userId, Pageable pageable);
 
     Optional<SuitEntity> findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
-            Long userId, SuitType type, Double thicknessMM, String additionalNotes);
+            Long userId, SuitType type, @Nullable Double thicknessMM, String additionalNotes);
 }

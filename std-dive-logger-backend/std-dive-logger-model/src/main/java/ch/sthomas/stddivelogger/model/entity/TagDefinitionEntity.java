@@ -3,13 +3,15 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.AutoDetectRule;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(
         name = "t_tag_definitions",
         uniqueConstraints = @UniqueConstraint(columnNames = {"fk_user_id", "name"}))
+@SuppressWarnings("NullAway.Init")
 public class TagDefinitionEntity {
 
     @Id
@@ -32,8 +34,10 @@ public class TagDefinitionEntity {
 
     public TagDefinitionEntity() {}
 
-    public TagDefinitionEntity(final String name, @Nullable final UserEntity user,
-                               @Nullable final AutoDetectRule autoDetectRule) {
+    public TagDefinitionEntity(
+            final String name,
+            @Nullable final UserEntity user,
+            @Nullable final AutoDetectRule autoDetectRule) {
         this.name = name;
         this.user = user;
         this.autoDetectRule = autoDetectRule;
@@ -63,10 +67,6 @@ public class TagDefinitionEntity {
 
     public TagDefinition toRecord(final long diveCount) {
         return new TagDefinition(
-                id,
-                name,
-                autoDetectRule,
-                user != null ? user.getId() : null,
-                diveCount);
+                id, name, autoDetectRule, user != null ? user.getId() : null, diveCount);
     }
 }

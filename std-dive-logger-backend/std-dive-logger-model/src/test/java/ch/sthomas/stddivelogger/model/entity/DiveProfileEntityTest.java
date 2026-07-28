@@ -36,8 +36,7 @@ class DiveProfileEntityTest {
 
         final var newStart = Instant.parse("2026-01-01T10:00:00Z");
         final var newEnd = Instant.parse("2026-01-01T11:00:00Z");
-        final var newMeasurements =
-                List.of(measurementAt(newStart, 10), measurementAt(newEnd, 5));
+        final var newMeasurements = List.of(measurementAt(newStart, 10), measurementAt(newEnd, 5));
 
         profile.replaceMeasurements(newMeasurements, newStart, newEnd);
 
@@ -46,7 +45,8 @@ class DiveProfileEntityTest {
         assertEquals(newMeasurements.size(), profile.getMeasurements().size());
         assertEquals(
                 List.of(newStart, newEnd),
-                profile.getMeasurements().stream().map(DiveMeasurementEntity::toRecord)
+                profile.getMeasurements().stream()
+                        .map(DiveMeasurementEntity::toRecord)
                         .map(DiveMeasurement::time)
                         .toList());
     }

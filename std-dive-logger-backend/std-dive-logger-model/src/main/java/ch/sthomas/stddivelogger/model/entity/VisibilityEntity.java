@@ -3,11 +3,13 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "t_dive_visibility")
+@SuppressWarnings("NullAway.Init")
 public class VisibilityEntity {
     @Id
     @Column(name = "fk_dive_id")

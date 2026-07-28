@@ -8,12 +8,14 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.google.common.collect.Streams;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
+
+import org.jspecify.annotations.Nullable;
+
+import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
 import java.time.Duration;
 import java.time.Instant;

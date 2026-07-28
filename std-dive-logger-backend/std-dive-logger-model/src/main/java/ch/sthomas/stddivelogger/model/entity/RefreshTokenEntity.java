@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "t_refresh_tokens")
+@SuppressWarnings("NullAway.Init")
 public class RefreshTokenEntity {
     @Id
     @Column(name = "jti", nullable = false, unique = true)

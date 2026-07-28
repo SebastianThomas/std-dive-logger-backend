@@ -12,9 +12,12 @@ import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.StatsService;
 
-import org.jspecify.annotations.Nullable;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +28,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/v1/stats")
+@Validated
 public class StatsController {
     private final StatsService statsService;
 
@@ -68,9 +72,9 @@ public class StatsController {
     }
 
     @GetMapping(path = "/tags")
-    public UserDiveStats getStatsForUserByTagFilter(
+    public @Nullable UserDiveStats getStatsForUserByTagFilter(
             @AuthenticationPrincipal final User user,
-            @RequestParam final List<Long> tagIds) {
+            @RequestParam @NotEmpty final List<Long> tagIds) {
         return statsService.getStatsForUserByTagFilter(user, tagIds);
     }
 
@@ -78,10 +82,10 @@ public class StatsController {
     public StatsTimeSeries getTimeSeries(
             @AuthenticationPrincipal final User user,
             @RequestParam(defaultValue = "PER_DIVE") final StatsGranularity granularity,
-            @RequestParam(required = false) final List<Long> tagIds,
-            @RequestParam(required = false) final Long diveSiteId,
-            @RequestParam(required = false) final Long suitId,
-            @RequestParam(required = false) final Long ccrUnitId,
+            @RequestParam(required = false) @Nullable final List<Long> tagIds,
+            @RequestParam(required = false) @Positive final Long diveSiteId,
+            @RequestParam(required = false) @Positive final Long suitId,
+            @RequestParam(required = false) @Positive final Long ccrUnitId,
             @RequestParam(required = false) final BaseConfiguration baseConfiguration,
             @RequestParam(required = false) @Nullable final String query,
             @RequestParam(required = false) @Nullable final StatsBreakdownDimension breakdownBy) {

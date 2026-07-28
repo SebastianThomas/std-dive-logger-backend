@@ -5,4 +5,4 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-public class AnalyticsSchedulingConfig { }
+public class AnalyticsSchedulingConfig {}

@@ -275,23 +275,50 @@ public class GraphImageCreatorTest {
                 List.of(
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start, fifteenC, 1, null, noDeco, Gas.AIR, null, null,
-                                        null, null, null),
+                                        start, fifteenC, 1, null, noDeco, Gas.AIR, null, null, null,
+                                        null, null),
                                 0),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(5), fifteenC, 20, null, withDeco,
-                                        Gas.AIR, null, null, null, null, null),
+                                        start.plusSeconds(5),
+                                        fifteenC,
+                                        20,
+                                        null,
+                                        withDeco,
+                                        Gas.AIR,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null),
                                 1),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(10), fifteenC, 18, null, withDeco,
-                                        Gas.AIR, null, null, null, null, null),
+                                        start.plusSeconds(10),
+                                        fifteenC,
+                                        18,
+                                        null,
+                                        withDeco,
+                                        Gas.AIR,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null),
                                 2),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
-                                        start.plusSeconds(15), fifteenC, 0, null, noDeco, Gas.AIR,
-                                        null, null, null, null, null),
+                                        start.plusSeconds(15),
+                                        fifteenC,
+                                        0,
+                                        null,
+                                        noDeco,
+                                        Gas.AIR,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null),
                                 3));
         final var computer = new DiveComputer(0, null, "SN", "Computer");
         final var end = start.plusSeconds(15);

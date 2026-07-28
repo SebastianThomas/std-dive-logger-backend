@@ -26,7 +26,6 @@ import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
 import ch.sthomas.stddivelogger.service.processing.ProfileAlignService;
 import ch.sthomas.stddivelogger.utils.LocationUtils;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -35,6 +34,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.hibernate.query.SortDirection;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -142,8 +142,9 @@ public class DiveService {
                         diveIdentifier,
                         notes,
                         visibility,
-                        gasConsumption,
-                        configuration,
+                        Optional.ofNullable(gasConsumption).orElse(DiveGasConsumption.EMPTY),
+                        Optional.ofNullable(configuration)
+                                .orElseGet(() -> DiveConfiguration.createEmpty(user)),
                         diveSiteId,
                         profiles,
                         namedBuddies);
@@ -268,8 +269,8 @@ public class DiveService {
     }
 
     /**
-     * Refreshes auto-detected tags for the given dive and returns the updated dive.
-     * Intended to be called by the frontend when opening the edit page.
+     * Refreshes auto-detected tags for the given dive and returns the updated dive. Intended to be
+     * called by the frontend when opening the edit page.
      */
     public Dive refreshAutoTags(final User user, final long diveId) {
         if (!hasWriteAccess(user, diveId)) {
@@ -356,12 +357,18 @@ public class DiveService {
                                                 "Duration is required to save dive manually."));
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
+        final var diveIdentifier =
+                Optional.ofNullable(body.diveIdentifier())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Dive Identifier is required to save dive manually."));
         // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
         return diveDataService
                 .saveDive(
                         user,
                         diveNumber,
-                        body.diveIdentifier(),
+                        diveIdentifier,
                         "",
                         null,
                         DiveGasConsumption.EMPTY,
@@ -514,15 +521,13 @@ public class DiveService {
     public PagedResponse<SimplifiedDive> getDivesByTag(
             final User user, final long tagId, final DiveSort diveSort, final int page) {
         return diveDataService.findDivesByTag(
-                user.id(), tagId, diveSort,
-                PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+                user.id(), tagId, diveSort, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
     public PagedResponse<SimplifiedDive> getDivesByTags(
             final User user, final List<Long> tagIds, final DiveSort diveSort, final int page) {
         return diveDataService.findDivesByTags(
-                user.id(), tagIds, diveSort,
-                PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+                user.id(), tagIds, diveSort, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
     public PagedResponse<SimplifiedDive> getDivesBySuit(
@@ -540,7 +545,10 @@ public class DiveService {
     }
 
     public PagedResponse<SimplifiedDive> getFilteredDives(
-            final User user, final DiveFilterParams filters, final DiveSort diveSort, final int page) {
+            final User user,
+            final DiveFilterParams filters,
+            final DiveSort diveSort,
+            final int page) {
         return diveDataService.findFiltered(
                 user.id(), filters, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
@@ -693,7 +701,8 @@ public class DiveService {
                         () -> new NoSuchElementException("Could not find CCR unit by id " + id));
     }
 
-    public CcrUnit updateCcrUnit(final @NotNull User user, final long id, @Valid final CcrUnit ccrUnit) {
+    public CcrUnit updateCcrUnit(
+            final @NotNull User user, final long id, @Valid final CcrUnit ccrUnit) {
         return diveDataService.updateCcrUnitById(user.id(), id, ccrUnit);
     }
 
@@ -764,8 +773,8 @@ public class DiveService {
     }
 
     /**
-     * Renames a named dive buddy across every dive the user owns. Scoped to {@code user.id()},
-     * so there is no separate ownership check to perform here.
+     * Renames a named dive buddy across every dive the user owns. Scoped to {@code user.id()}, so
+     * there is no separate ownership check to perform here.
      */
     public List<String> renameBuddyName(
             final User user, @Nullable final String oldName, @Nullable final String newName) {

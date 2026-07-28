@@ -8,6 +8,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "t_gas_mix", uniqueConstraints = @UniqueConstraint(columnNames = {"o2", "n2", "he"}))
+@SuppressWarnings("NullAway.Init")
 public class GasMixEntity {
 
     @Id

@@ -14,6 +14,7 @@ import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -72,7 +73,8 @@ public class StatsService {
         return statsDataService.getStatsByTag(user);
     }
 
-    public UserDiveStats getStatsForUserByTagFilter(final User user, final Collection<Long> tagIds) {
+    public @Nullable UserDiveStats getStatsForUserByTagFilter(
+            final User user, final Collection<Long> tagIds) {
         return statsDataService.computeStatsForTagFilter(user, tagIds);
     }
 
@@ -80,7 +82,7 @@ public class StatsService {
             final User user,
             final StatsGranularity granularity,
             final StatsFilters filters,
-            final StatsBreakdownDimension breakdownBy) {
+            @Nullable final StatsBreakdownDimension breakdownBy) {
         return statsDataService.getTimeSeries(user, granularity, filters, breakdownBy);
     }
 }

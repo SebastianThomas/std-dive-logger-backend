@@ -16,13 +16,12 @@ import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 
-import tools.jackson.dataformat.xml.XmlMapper;
-
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,6 +61,11 @@ public class UddfReaderService extends BaseReaderService {
                 .map(i -> importUddfSafe(user, filename, body, i, file));
     }
 
+    // Pre-existing behavior: a well-formed UDDF file always has a <profiledata> element, so this
+    // assumes Jackson populated it; a genuinely malformed file surfaces as an NPE bubbling out of
+    // importUddf(...) rather than a clean validation error (this predates the NullAway rollout,
+    // not addressed here).
+    @SuppressWarnings("NullAway")
     private static Gatherer<Integer, HashMap<UddfFile.UddfProfileRepetitionGroup, Integer>, Integer>
             uniqueProfileGatherer(final int entries, final UddfFile file) {
         return Gatherer.ofSequential(
@@ -78,6 +82,7 @@ public class UddfReaderService extends BaseReaderService {
                 });
     }
 
+    @SuppressWarnings("NullAway")
     private UploadDiveResultStreaming importUddfSafe(
             final User user,
             final String filename,
@@ -85,6 +90,8 @@ public class UddfReaderService extends BaseReaderService {
             final int i,
             final UddfFile file) {
         try {
+            // A null profileData here would NPE and get caught below as a per-entry import
+            // failure, same as any other malformed-file error.
             final var data = file.profileData().getData(i);
             if (!data.timeIsValid()) {
                 throw new IllegalArgumentException(
@@ -124,7 +131,9 @@ public class UddfReaderService extends BaseReaderService {
             final int entry,
             final UddfFile uddfFile) {
         if (!UddfFile.validate(uddfFile, entry)) {
-            return new DBResult<>(null);
+            // Explicitly the 2-arg (value, exception) constructor, both null: this represents
+            // "nothing to import" rather than the 1-arg @NotNull-value success constructor.
+            return new DBResult<>(null, null);
         }
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber())
@@ -154,12 +163,11 @@ public class UddfReaderService extends BaseReaderService {
 
     private long getDiveSiteIdForImport(
             @Nullable final Long siteId, @Nullable final String diveSite) {
-        final var isSiteId = siteId != null;
-        if (!isSiteId && diveSite == null) {
+        if (siteId == null && diveSite == null) {
             throw new MissingValueException(MissingValueField.DIVE_SITE);
         }
         final var site =
-                isSiteId
+                siteId != null
                         ? diveDataService
                                 .findDiveSiteById(siteId)
                                 .orElseThrow(
@@ -167,8 +175,11 @@ public class UddfReaderService extends BaseReaderService {
                                                 new NoSuchElementException(
                                                         "Could not find DiveSite by ID " + siteId))
                         : diveDataService
-                                .findDiveSiteByName(diveSite)
-                                .orElseThrow(() -> new MissingDiveSiteValueException(diveSite));
+                                .findDiveSiteByName(Objects.requireNonNull(diveSite))
+                                .orElseThrow(
+                                        () ->
+                                                new MissingDiveSiteValueException(
+                                                        Objects.requireNonNull(diveSite)));
         return site.id();
     }
 

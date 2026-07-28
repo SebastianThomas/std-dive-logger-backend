@@ -14,6 +14,7 @@ import java.util.Optional;
 
 @Entity
 @Table(name = "t_account_request")
+@SuppressWarnings("NullAway.Init")
 public class AccountRequestEntity {
     @Id
     @Column(name = "pk_account_request_id", updatable = false, nullable = false)

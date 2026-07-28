@@ -33,8 +33,7 @@ public class ObjectMapperUtils {
         return jsonMapperBuilder;
     }
 
-    public static XmlMapper.Builder xmlMapperBuilder(
-            final Consumer<XmlMapper.Builder> customizer) {
+    public static XmlMapper.Builder xmlMapperBuilder(final Consumer<XmlMapper.Builder> customizer) {
         final var xmlMapperBuilder =
                 XmlMapper.builder()
                         // support for LocalDate to String conversion in ISO yyyy-MM-dd format

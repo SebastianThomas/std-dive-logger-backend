@@ -19,13 +19,13 @@ import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import ch.sthomas.stddivelogger.utils.MoreGatherers;
 
-import tools.jackson.dataformat.xml.XmlMapper;
-
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -156,7 +156,14 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         final var gases =
                 dive.cylinders().stream().map(SubsurfaceXmlFile.SubsurfaceCylinder::toGas).toList();
         return dive.diveComputers().stream()
-                .map(computer -> getProfile(computer, computers.get(computer.deviceid()), gases))
+                .map(
+                        computer ->
+                                getProfile(
+                                        computer,
+                                        // present by construction: computers is built from the
+                                        // union of every dive's computers in the file.
+                                        Objects.requireNonNull(computers.get(computer.deviceid())),
+                                        gases))
                 .toList();
     }
 

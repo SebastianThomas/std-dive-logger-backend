@@ -1,7 +1,6 @@
 package ch.sthomas.stddivelogger.model.exception;
 
 import org.apache.commons.lang3.tuple.Pair;
-
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 

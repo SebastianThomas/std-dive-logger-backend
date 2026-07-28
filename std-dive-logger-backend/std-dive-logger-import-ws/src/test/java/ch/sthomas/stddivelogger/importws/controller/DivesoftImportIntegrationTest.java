@@ -10,8 +10,8 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,15 +24,15 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import javax.crypto.SecretKey;
-
 import java.util.Date;
+
+import javax.crypto.SecretKey;
 
 /**
  * A real end-to-end test of the Divesoft import HTTP path against a throwaway Testcontainers
- * Postgres instance: confirms the new endpoints are actually reachable and covered by the
- * existing security filter chain (rather than silently falling outside its securityMatcher), and
- * that a posted dive JSON really gets persisted through the full stack.
+ * Postgres instance: confirms the new endpoints are actually reachable and covered by the existing
+ * security filter chain (rather than silently falling outside its securityMatcher), and that a
+ * posted dive JSON really gets persisted through the full stack.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -42,11 +42,11 @@ class DivesoftImportIntegrationTest {
             "integration-test-jwt-signing-secret-needs-to-be-long-enough";
     private static final String TEST_USER_EMAIL = "test@test.ch";
 
-    @Container
-    @ServiceConnection
+    @Container @ServiceConnection
     static final PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>(
-                    DockerImageName.parse("postgis/postgis:18-3.6").asCompatibleSubstituteFor("postgres"));
+                    DockerImageName.parse("postgis/postgis:18-3.6")
+                            .asCompatibleSubstituteFor("postgres"));
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {

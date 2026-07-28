@@ -6,8 +6,9 @@ import ch.sthomas.stddivelogger.model.dive.gear.WeightFeeling;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "t_dive_configuration")
+@SuppressWarnings("NullAway.Init")
 public class DiveConfigurationEntity {
     @Id
     @Column(name = "fk_dive_id")
@@ -41,10 +43,10 @@ public class DiveConfigurationEntity {
     private BaseConfiguration baseConfiguration;
 
     @Column(name = "weight_kg")
-    private Double weightKg;
+    private @Nullable Double weightKg;
 
     @Column(name = "weight_feeling")
-    private WeightFeeling weightFeeling;
+    private @Nullable WeightFeeling weightFeeling;
 
     @OneToMany(mappedBy = "configuration", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<DiveConfigurationCylinderEntity> cylinders;
@@ -88,8 +90,8 @@ public class DiveConfigurationEntity {
     }
 
     /**
-     * Updates this entity's fields in-place so that Hibernate never sees two managed
-     * objects with the same identifier in the same session.
+     * Updates this entity's fields in-place so that Hibernate never sees two managed objects with
+     * the same identifier in the same session.
      */
     public void update(
             final SuitEntity suit,

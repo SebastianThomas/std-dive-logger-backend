@@ -14,13 +14,9 @@ import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.utils.FileValidator;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
-import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
-import tools.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.google.common.collect.MoreCollectors;
 import com.vdurmont.semver4j.Semver;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -28,8 +24,13 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import tools.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 import java.math.BigDecimal;
 import java.text.MessageFormat;
@@ -79,34 +80,45 @@ public record UddfFile(
         return true;
     }
 
+    // profileData is only @Nullable to model malformed/unexpected input during deserialization;
+    // callers must invoke validate(this, entry) first, which rejects a null/incomplete
+    // profileData before any of the methods below ever run.
+    @SuppressWarnings("NullAway")
     public int getEntries() {
         return profileData.repetitionGroup.size();
     }
 
+    @SuppressWarnings("NullAway")
     public Optional<DiveNumber> exportDiveNumber(final int entry) {
         return diveNumber(Objects.requireNonNull(profileData.repetitionGroup.get(entry).dive));
     }
 
+    @SuppressWarnings("NullAway")
     public Instant exportStart(final int entry) {
         return getStart(Objects.requireNonNull(profileData.repetitionGroup.get(entry)).dive);
     }
 
+    @SuppressWarnings("NullAway")
     public Instant exportEnd(final int entry) {
         return getEnd(Objects.requireNonNull(profileData.repetitionGroup.get(entry)).dive);
     }
 
+    @SuppressWarnings("NullAway")
     public String exportNotes(final int entry) {
         return getNotes(profileData.repetitionGroup.get(entry).dive);
     }
 
+    @SuppressWarnings("NullAway")
     public Optional<Visibility> exportVisibility(final int entry) {
         return getVisibility(profileData.repetitionGroup.get(entry).dive);
     }
 
+    @SuppressWarnings("NullAway")
     public DiveGasConsumption exportGasConsumption(final int entry) {
         return getGasConsumption(profileData.repetitionGroup.get(entry).dive);
     }
 
+    @SuppressWarnings("NullAway")
     public List<DiveMeasurement> exportMeasurements(final int entry) {
         return getMeasurements(profileData.repetitionGroup.get(entry).dive, gasDefinitions);
     }
@@ -198,8 +210,7 @@ public record UddfFile(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfDiver(
-            @JacksonXmlProperty(localName = "owner") UddfOwner owner,
-            @Nullable UddfBuddy buddy) {}
+            @JacksonXmlProperty(localName = "owner") UddfOwner owner, @Nullable UddfBuddy buddy) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfOwner(@Nullable UddfOwnerEquipment equipment) {}
@@ -408,8 +419,8 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "tankvolume") @Nullable Double tankVolume,
             @JacksonXmlProperty(localName = "tankpressurebegin") @Nullable Double pressureStart,
             @JacksonXmlProperty(localName = "tankpressureend") @Nullable Double pressureEnd,
-            @JacksonXmlProperty(localName = "breathingconsumptionvolume") @Nullable
-                    Double breathingVolume) {}
+            @JacksonXmlProperty(localName = "breathingconsumptionvolume")
+                    @Nullable Double breathingVolume) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {
@@ -440,8 +451,7 @@ public record UddfFile(
             int cns,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "decostop")
-                    @Nullable
-                    List<UddfDecoStop> decoStop,
+                    @Nullable List<UddfDecoStop> decoStop,
             double depth,
             @JacksonXmlProperty(localName = "divetime") double seconds,
             @JacksonXmlProperty(localName = "gradientfactor") int gf,
@@ -456,7 +466,9 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "tankpressure") double tankPressure,
             @JacksonXmlProperty(localName = "temperature") double kelvin) {
         public Pair<DiveMeasurement, Gas> toRecord(
-                final Instant start, final List<UddfGasMix> mixes, final Gas previousGas) {
+                final Instant start,
+                final List<UddfGasMix> mixes,
+                @Nullable final Gas previousGas) {
             final var gas =
                     Optional.ofNullable(switchmix)
                             .flatMap(
@@ -610,7 +622,7 @@ public record UddfFile(
     }
 
     static String getNotes(final UddfProfileDataDive dive) {
-        if (dive.infoAfterDive.notes == null) {
+        if (dive.infoAfterDive.notes() == null) {
             return "";
         }
         return String.join("\n", dive.infoAfterDive.notes().parameters());

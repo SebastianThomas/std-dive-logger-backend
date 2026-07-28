@@ -3,12 +3,14 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import org.jspecify.annotations.Nullable;
+
 @Entity
 @Table(name = "t_suits")
+@SuppressWarnings("NullAway.Init")
 public class SuitEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

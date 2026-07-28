@@ -12,6 +12,7 @@ import java.util.Set;
 @Table(
         name = "t_cylinder_size",
         uniqueConstraints = @UniqueConstraint(columnNames = {"unit", "value"}))
+@SuppressWarnings("NullAway.Init")
 public class CylinderSizeEntity {
 
     @Id

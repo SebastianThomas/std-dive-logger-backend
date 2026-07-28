@@ -1,7 +1,8 @@
 package ch.sthomas.stddivelogger.model.exception;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
+
+import org.jspecify.annotations.Nullable;
 
 public record DBResult<T>(@Nullable T value, @Nullable DiveDBConstraintException dbException) {
 
@@ -15,6 +16,9 @@ public record DBResult<T>(@Nullable T value, @Nullable DiveDBConstraintException
         }
     }
 
+    // isException()/the constructor invariant guarantee value is non-null here, but that's a
+    // runtime invariant NullAway's flow analysis can't see across the two accessor methods.
+    @SuppressWarnings("NullAway")
     public T value() {
         if (isException()) {
             throw new UnsupportedOperationException("DBResult is an exception");
@@ -22,6 +26,7 @@ public record DBResult<T>(@Nullable T value, @Nullable DiveDBConstraintException
         return value;
     }
 
+    @SuppressWarnings("NullAway")
     public DiveDBConstraintException dbException() {
         if (!isException()) {
             throw new UnsupportedOperationException("DBResult is not an exception");

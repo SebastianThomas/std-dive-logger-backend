@@ -3,8 +3,9 @@ package ch.sthomas.stddivelogger.model.dive;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 

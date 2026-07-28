@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_computer_manufacturer")
+@SuppressWarnings("NullAway.Init")
 public class DiveComputerManufacturerEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -116,14 +117,20 @@ public class AnalyticsDataService {
                                         a ->
                                                 new AnalyticsDepthVarianceEntity(
                                                         a,
-                                                        segmentEntitiesById.get(
-                                                                a.segmentWithId().id())))
+                                                        // present by construction: same key set
+                                                        // as segmentsById, built just above.
+                                                        Objects.requireNonNull(
+                                                                segmentEntitiesById.get(
+                                                                        a.segmentWithId().id()))))
                                 .toList())
                 .stream()
                 .map(
                         e ->
                                 new AnalyticsDepthVariance(
-                                        segmentsById.get(e.getSegmentId()), e.toStats()))
+                                        // present by construction: every saved entity's segment
+                                        // id originates from a key of segmentsById above.
+                                        Objects.requireNonNull(segmentsById.get(e.getSegmentId())),
+                                        e.toStats()))
                 .toList();
     }
 

@@ -43,7 +43,8 @@ public interface DiveMeasurementRepository extends JpaRepository<DiveMeasurement
     Optional<Double> findMinTemperatureCelsiusByUserId(long userId);
 
     /** Max depth across a specific set of dives (used for tag-combination stats). */
-    @Query("""
+    @Query(
+            """
             SELECT MAX(m.depth)
             FROM DiveMeasurementEntity m
             JOIN DiveProfileEntity p ON m.profile.id = p.id
@@ -52,7 +53,8 @@ public interface DiveMeasurementRepository extends JpaRepository<DiveMeasurement
     Optional<Double> findMaxDepthByDiveIds(Collection<Long> diveIds);
 
     /** Max depth for dives carrying a specific tag. */
-    @Query("""
+    @Query(
+            """
             SELECT MAX(m.depth)
             FROM DiveMeasurementEntity m
             JOIN DiveProfileEntity p ON m.profile.id = p.id

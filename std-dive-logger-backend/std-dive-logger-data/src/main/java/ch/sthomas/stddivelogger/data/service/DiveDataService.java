@@ -29,7 +29,6 @@ import ch.sthomas.stddivelogger.utils.LocationUtils;
 
 import com.google.common.collect.MoreCollectors;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -37,6 +36,7 @@ import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.query.SortDirection;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -170,7 +170,9 @@ public class DiveDataService {
             final int pageSize) {
         final var result =
                 diveRepository.findByUser_IdAndConfiguration_Suit_Id(
-                        user.id(), suit.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
+                        user.id(),
+                        Objects.requireNonNull(suit.id(), "Cannot query dives by an unsaved suit"),
+                        PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -183,7 +185,10 @@ public class DiveDataService {
             final int pageSize) {
         final var result =
                 diveRepository.findByUser_IdAndConfiguration_CcrUnit_Id(
-                        user.id(), ccrUnit.id(), PageRequest.of(page, pageSize, toSort(diveSort)));
+                        user.id(),
+                        Objects.requireNonNull(
+                                ccrUnit.id(), "Cannot query dives by an unsaved CCR unit"),
+                        PageRequest.of(page, pageSize, toSort(diveSort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -295,9 +300,9 @@ public class DiveDataService {
     }
 
     /**
-     * A CCR unit only ever applies to a CCR-type configuration — for anything else, any CCR
-     * unit sent along with the request is simply ignored rather than rejected, and no unit is
-     * required in the first place when the configuration genuinely is CCR.
+     * A CCR unit only ever applies to a CCR-type configuration — for anything else, any CCR unit
+     * sent along with the request is simply ignored rather than rejected, and no unit is required
+     * in the first place when the configuration genuinely is CCR.
      */
     @Nullable
     private CcrUnitEntity resolveCcrUnitForConfiguration(
@@ -344,7 +349,10 @@ public class DiveDataService {
                 .map(
                         m ->
                                 new DiveMeasurementEntity(
-                                        m, Optional.ofNullable(m.gas()).map(this::toEntity).orElse(null)))
+                                        m,
+                                        Optional.ofNullable(m.gas())
+                                                .map(this::toEntity)
+                                                .orElse(null)))
                 .toList();
     }
 
@@ -486,11 +494,13 @@ public class DiveDataService {
         // Mutate the *existing* configuration entity in-place to avoid a Hibernate
         // DuplicateKeyException caused by @MapsId sharing the dive PK.
         if (updateBody.configuration() != null) {
-            final var suit = suitRepository
-                    .findByIdAndUser_Id(updateBody.suitId(), user.id())
-                    .orElseThrow(() -> new NoSuchElementException("Could not find Suit"));
+            final var suit =
+                    suitRepository
+                            .findByIdAndUser_Id(updateBody.suitId(), user.id())
+                            .orElseThrow(() -> new NoSuchElementException("Could not find Suit"));
             final var userEntity = userRepository.findById(user.id()).orElseThrow();
-            final var ccrUnit = resolveCcrUnitForConfiguration(userEntity, updateBody.configuration());
+            final var ccrUnit =
+                    resolveCcrUnitForConfiguration(userEntity, updateBody.configuration());
             if (existingDive.getConfiguration() != null) {
                 existingDive
                         .getConfiguration()
@@ -498,7 +508,11 @@ public class DiveDataService {
             } else {
                 existingDive.setConfiguration(
                         new DiveConfigurationEntity(
-                                existingDive, suit, ccrUnit, updateBody.configuration(), this::toEntity));
+                                existingDive,
+                                suit,
+                                ccrUnit,
+                                updateBody.configuration(),
+                                this::toEntity));
             }
             logger.info("Set new configuration with suit: {}, {}", suit, suit.getType());
         }
@@ -527,17 +541,17 @@ public class DiveDataService {
                 updateBody.notes(),
                 diveSiteEntity,
                 newBuddies,
-                null,   // configuration mutated in-place above
-                null,   // gasConsumption mutated in-place above
-                null);  // visibility mutated in-place above
+                null, // configuration mutated in-place above
+                null, // gasConsumption mutated in-place above
+                null); // visibility mutated in-place above
         return toRecord(diveRepository.save(existingDive));
     }
 
     /**
-     * Refreshes the auto-detected tags for a dive and returns the updated dive.
-     * Manual and dismissed tag rows are preserved; only the active auto-detected rows
-     * are replaced. This is called by the frontend when opening the edit page so that
-     * the user always sees up-to-date auto-tags before editing.
+     * Refreshes the auto-detected tags for a dive and returns the updated dive. Manual and
+     * dismissed tag rows are preserved; only the active auto-detected rows are replaced. This is
+     * called by the frontend when opening the edit page so that the user always sees up-to-date
+     * auto-tags before editing.
      */
     @Transactional
     public Dive refreshAutoTags(final long diveId, final long userId) {
@@ -550,11 +564,12 @@ public class DiveDataService {
         diveTagRepository.deleteActiveAutoTagsByDiveId(diveId);
         diveTagRepository.flush();
 
-        final var newAutoTags = autoDetectDefs.stream()
-                .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
-                .filter(def -> !coveredTagIds.contains(def.getId()))
-                .map(def -> new DiveTagEntity(dive, def, false, false))
-                .toList();
+        final var newAutoTags =
+                autoDetectDefs.stream()
+                        .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
+                        .filter(def -> !coveredTagIds.contains(def.getId()))
+                        .map(def -> new DiveTagEntity(dive, def, false, false))
+                        .toList();
         diveTagRepository.saveAll(newAutoTags);
 
         // Clear the 1st-level cache so the reload below fetches fresh rows from DB
@@ -596,16 +611,18 @@ public class DiveDataService {
             final List<Long> dismissedAutoTagIds) {
         // Resolve all tag definitions before touching the dive entity, so that no
         // Hibernate auto-flush can occur while the tag collection is in a transient state.
-        final var manualTagDefs = tagDataService.findEntitiesByIdsVisibleToUser(manualTagIds, userId);
+        final var manualTagDefs =
+                tagDataService.findEntitiesByIdsVisibleToUser(manualTagIds, userId);
         final var autoDetectDefs = tagDataService.findAutoDetectEntitiesForUser(userId);
 
         // Load the dive after all SELECTs are done to avoid auto-flush surprises.
         final var dive = diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow();
 
         // Build the complete desired tag set independently of the entity's collection.
-        final var manualDefIds = manualTagDefs.stream()
-                .map(TagDefinitionEntity::getId)
-                .collect(java.util.stream.Collectors.toSet());
+        final var manualDefIds =
+                manualTagDefs.stream()
+                        .map(TagDefinitionEntity::getId)
+                        .collect(java.util.stream.Collectors.toSet());
         // A manually-added tag clears any prior dismissal even if it was in dismissedAutoTagIds.
         final var effectiveDismissed = new java.util.HashSet<>(dismissedAutoTagIds);
         effectiveDismissed.removeAll(manualDefIds);
@@ -620,7 +637,10 @@ public class DiveDataService {
         autoDetectDefs.stream()
                 .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
                 .filter(def -> !manualDefIds.contains(def.getId()))
-                .map(def -> new DiveTagEntity(dive, def, false, effectiveDismissed.contains(def.getId())))
+                .map(
+                        def ->
+                                new DiveTagEntity(
+                                        dive, def, false, effectiveDismissed.contains(def.getId())))
                 .forEach(newTags::add);
 
         // Replace all existing rows atomically: delete then insert via repository,
@@ -683,11 +703,12 @@ public class DiveDataService {
         final var freshDive = diveRepository.findById(diveId).orElseThrow();
         diveTagRepository.deleteActiveAutoTagsByDiveId(diveId);
         diveTagRepository.flush();
-        final var newAutoTags = autoDetectDefs.stream()
-                .filter(def -> freshDive.matchesAutoDetect(def.getAutoDetectRule()))
-                .filter(def -> !coveredTagIds.contains(def.getId()))
-                .map(def -> new DiveTagEntity(freshDive, def, false, false))
-                .toList();
+        final var newAutoTags =
+                autoDetectDefs.stream()
+                        .filter(def -> freshDive.matchesAutoDetect(def.getAutoDetectRule()))
+                        .filter(def -> !coveredTagIds.contains(def.getId()))
+                        .map(def -> new DiveTagEntity(freshDive, def, false, false))
+                        .toList();
         diveTagRepository.saveAll(newAutoTags);
 
         // Clear so the final reload fetches fresh rows rather than the stale cached entity.
@@ -729,21 +750,32 @@ public class DiveDataService {
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByTag(
             final long userId, final long tagId, final DiveSort sort, final Pageable pageable) {
-        final var result = diveRepository.findByUser_IdAndTagId(
-                userId, tagId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
+        final var result =
+                diveRepository.findByUser_IdAndTagId(
+                        userId,
+                        tagId,
+                        PageRequest.of(
+                                pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findDivesByTags(
-            final long userId, final List<Long> tagIds, final DiveSort sort, final Pageable pageable) {
+            final long userId,
+            final List<Long> tagIds,
+            final DiveSort sort,
+            final Pageable pageable) {
         if (tagIds.size() == 1) {
             // Fast-path: single-tag query is simpler
             return findDivesByTag(userId, tagIds.get(0), sort, pageable);
         }
-        final var result = diveRepository.findByUser_IdAndAllTagIds(
-                userId, tagIds, tagIds.size(),
-                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
+        final var result =
+                diveRepository.findByUser_IdAndAllTagIds(
+                        userId,
+                        tagIds,
+                        tagIds.size(),
+                        PageRequest.of(
+                                pageable.getPageNumber(), pageable.getPageSize(), toSort(sort)));
         return PagedResponse.of(result, this::toSimplifiedRecord);
     }
 
@@ -754,7 +786,10 @@ public class DiveDataService {
      */
     @Transactional(readOnly = true)
     public PagedResponse<SimplifiedDive> findFiltered(
-            final long userId, final DiveFilterParams filters, final DiveSort sort, final int page,
+            final long userId,
+            final DiveFilterParams filters,
+            final DiveSort sort,
+            final int page,
             final int pageSize) {
         // OFFSET is computed by hand below (native SQL, not a JPA Pageable) so it doesn't get the
         // usual PageRequest.of validation for free — trigger it explicitly for the same clean
@@ -810,9 +845,11 @@ public class DiveDataService {
             // range. The dive's own window is assumed not to cross midnight (true in practice);
             // the filter range itself may, e.g. a "night" preset of 22:00-06:00.
             if (!filters.startTime().isAfter(filters.endTime())) {
-                where.append(" AND ds.dive_start::time < :endTime AND ds.dive_end::time > :startTime");
+                where.append(
+                        " AND ds.dive_start::time < :endTime AND ds.dive_end::time > :startTime");
             } else {
-                where.append(" AND (ds.dive_end::time > :startTime OR ds.dive_start::time < :endTime)");
+                where.append(
+                        " AND (ds.dive_end::time > :startTime OR ds.dive_start::time < :endTime)");
             }
             params.addValue("startTime", java.sql.Time.valueOf(filters.startTime()));
             params.addValue("endTime", java.sql.Time.valueOf(filters.endTime()));
@@ -835,17 +872,23 @@ public class DiveDataService {
         params.addValue("offset", (long) page * pageSize);
         final var sortColumn = sqlSortColumn(sort.column());
         final var sortDir = sort.direction() == SortDirection.ASCENDING ? "ASC" : "DESC";
+        // pk_dive_id is a primary key column, so it is never actually null - requireNonNull just
+        // narrows the type back from JdbcTemplate's unannotated List<@Nullable Long>.
         final var ids =
-                namedParameterJdbcTemplate.queryForList(
-                        "SELECT d.pk_dive_id "
-                                + fromClause
-                                + " ORDER BY d."
-                                + sortColumn
-                                + " "
-                                + sortDir
-                                + " LIMIT :limit OFFSET :offset",
-                        params,
-                        Long.class);
+                namedParameterJdbcTemplate
+                        .queryForList(
+                                "SELECT d.pk_dive_id "
+                                        + fromClause
+                                        + " ORDER BY d."
+                                        + sortColumn
+                                        + " "
+                                        + sortDir
+                                        + " LIMIT :limit OFFSET :offset",
+                                params,
+                                Long.class)
+                        .stream()
+                        .map(java.util.Objects::requireNonNull)
+                        .toList();
 
         final var entitiesById =
                 diveRepository.findAllById(ids).stream()
@@ -1318,7 +1361,8 @@ public class DiveDataService {
     }
 
     @Transactional
-    public CcrUnit updateCcrUnitById(final long userId, final long id, final @Valid CcrUnit ccrUnit) {
+    public CcrUnit updateCcrUnitById(
+            final long userId, final long id, final @Valid CcrUnit ccrUnit) {
         final var existing =
                 ccrUnitRepository
                         .findByIdAndUser_Id(id, userId)
@@ -1409,12 +1453,13 @@ public class DiveDataService {
             Arrays.stream(BaseConfiguration.values()).filter(BaseConfiguration::isCcr).toList();
 
     /**
-     * Applies the CCR unit only to whichever of {@code ids} are themselves CCR-configured
-     * dives (enforced by {@link DiveRepository#setCcrUnit}) — any non-CCR dive included in the
-     * batch is simply left alone rather than failing the whole request.
+     * Applies the CCR unit only to whichever of {@code ids} are themselves CCR-configured dives
+     * (enforced by {@link DiveRepository#setCcrUnit}) — any non-CCR dive included in the batch is
+     * simply left alone rather than failing the whole request.
      */
     @Transactional
-    public void setCcrUnitById(final long userId, final long newCcrUnitId, final HashSet<Long> ids) {
+    public void setCcrUnitById(
+            final long userId, final long newCcrUnitId, final HashSet<Long> ids) {
         final var ccrUnit = ccrUnitRepository.findByIdAndUser_Id(newCcrUnitId, userId);
         if (ccrUnit.isEmpty()) {
             throw new NoSuchElementException("Could not find CCR unit by id " + newCcrUnitId);
@@ -1441,9 +1486,9 @@ public class DiveDataService {
     }
 
     /**
-     * Renames a named (free-text, non-linked-account) dive buddy across every dive the user
-     * owns. If a dive already has a buddy entry with the new name, the old-name row on that
-     * dive is dropped instead of renamed, to avoid duplicate buddy names on the same dive.
+     * Renames a named (free-text, non-linked-account) dive buddy across every dive the user owns.
+     * If a dive already has a buddy entry with the new name, the old-name row on that dive is
+     * dropped instead of renamed, to avoid duplicate buddy names on the same dive.
      *
      * @return the number of dives whose buddy list was affected
      */
@@ -1454,7 +1499,8 @@ public class DiveDataService {
         if (trimmedOld.equals(trimmedNew)) {
             return 0;
         }
-        final var oldMatches = diveBuddyNameRepository.findAllByDive_User_IdAndName(userId, trimmedOld);
+        final var oldMatches =
+                diveBuddyNameRepository.findAllByDive_User_IdAndName(userId, trimmedOld);
         if (oldMatches.isEmpty()) {
             return 0;
         }
@@ -1464,7 +1510,9 @@ public class DiveDataService {
                         .collect(Collectors.toSet());
 
         final var toDelete =
-                oldMatches.stream().filter(b -> diveIdsWithNewName.contains(b.getDive().getId())).toList();
+                oldMatches.stream()
+                        .filter(b -> diveIdsWithNewName.contains(b.getDive().getId()))
+                        .toList();
         final var toRename =
                 oldMatches.stream()
                         .filter(b -> !diveIdsWithNewName.contains(b.getDive().getId()))

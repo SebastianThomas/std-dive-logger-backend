@@ -237,15 +237,17 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     Optional<DiveEntity> findByIdAndUser_Id(Long id, Long userId);
 
-    @Query("SELECT DISTINCT d FROM DiveEntity d JOIN d.tags t WHERE d.user.id = :userId AND t.tag.id = :tagId")
+    @Query(
+            "SELECT DISTINCT d FROM DiveEntity d JOIN d.tags t WHERE d.user.id = :userId AND t.tag.id = :tagId")
     Page<DiveEntity> findByUser_IdAndTagId(long userId, long tagId, Pageable pageable);
 
     /**
-     * AND-filter: returns only dives that carry ALL of the requested tag IDs.
-     * Uses a GROUP BY / HAVING COUNT(DISTINCT) approach so the query is safe
-     * regardless of whether individual tags appear multiple times on a dive.
+     * AND-filter: returns only dives that carry ALL of the requested tag IDs. Uses a GROUP BY /
+     * HAVING COUNT(DISTINCT) approach so the query is safe regardless of whether individual tags
+     * appear multiple times on a dive.
      */
-    @Query("""
+    @Query(
+            """
             SELECT d FROM DiveEntity d
             WHERE d.user.id = :userId
               AND (SELECT COUNT(DISTINCT t2.tag.id)
@@ -272,8 +274,8 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     void setSuit(SuitEntity suitEntity, Collection<Long> idsList);
 
     /**
-     * Only touches dives that are themselves CCR-configured — any non-CCR dive in
-     * {@code idsList} is silently left alone rather than failing the whole batch.
+     * Only touches dives that are themselves CCR-configured — any non-CCR dive in {@code idsList}
+     * is silently left alone rather than failing the whole batch.
      */
     @Query(
             "UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity"
@@ -292,10 +294,11 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     // ── Tag-filtered stats queries ─────────────────────────────────────────────
 
     /**
-     * Returns IDs of dives owned by the user that carry ALL of the specified tags
-     * (non-dismissed). Uses a HAVING COUNT = tagCount to enforce AND semantics.
+     * Returns IDs of dives owned by the user that carry ALL of the specified tags (non-dismissed).
+     * Uses a HAVING COUNT = tagCount to enforce AND semantics.
      */
-    @Query("""
+    @Query(
+            """
             SELECT d.id
             FROM DiveEntity d
             JOIN d.tags dt
@@ -308,7 +311,8 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     List<Long> findDiveIdsByTagsAndUserId(long userId, Collection<Long> tagIds, long tagCount);
 
     /** Duration stats for a specific tag (dives carrying that tag, non-dismissed). */
-    @Query("""
+    @Query(
+            """
             SELECT MAX(s.durationSeconds)
             FROM DiveSummaryEntity s
             JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
@@ -316,7 +320,8 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             """)
     Optional<Long> findMaxDurationByUserIdAndTagId(long userId, long tagId);
 
-    @Query("""
+    @Query(
+            """
             SELECT SUM(s.durationSeconds)
             FROM DiveSummaryEntity s
             JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
@@ -325,14 +330,16 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     Optional<Long> findTotalDurationByUserIdAndTagId(long userId, long tagId);
 
     /** Duration stats for a set of dive IDs (used for tag-combination stats). */
-    @Query("""
+    @Query(
+            """
             SELECT MAX(s.durationSeconds)
             FROM DiveSummaryEntity s
             WHERE s.dive.id IN :diveIds
             """)
     Optional<Long> findMaxDurationByDiveIds(Collection<Long> diveIds);
 
-    @Query("""
+    @Query(
+            """
             SELECT SUM(s.durationSeconds)
             FROM DiveSummaryEntity s
             WHERE s.dive.id IN :diveIds

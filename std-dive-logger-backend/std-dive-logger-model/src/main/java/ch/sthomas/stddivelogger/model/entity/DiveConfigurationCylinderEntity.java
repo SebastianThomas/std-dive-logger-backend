@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_dive_configuration_cylinder")
+@SuppressWarnings("NullAway.Init")
 public class DiveConfigurationCylinderEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

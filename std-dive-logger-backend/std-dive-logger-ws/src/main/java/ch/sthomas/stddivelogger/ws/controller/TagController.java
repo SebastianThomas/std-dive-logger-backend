@@ -7,14 +7,14 @@ import ch.sthomas.stddivelogger.service.TagService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
-import org.jspecify.annotations.Nullable;
-
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/v1/tags")
-@Valid
+@Validated
 public class TagController {
 
     private final TagService tagService;
@@ -31,7 +31,9 @@ public class TagController {
         this.tagService = tagService;
     }
 
-    @Operation(summary = "List all tag definitions visible to the current user (system defaults + own tags), sorted by usage count DESC. Pass ?query= to filter by name.")
+    @Operation(
+            summary =
+                    "List all tag definitions visible to the current user (system defaults + own tags), sorted by usage count DESC. Pass ?query= to filter by name.")
     @GetMapping
     public List<TagDefinition> getTags(
             @AuthenticationPrincipal final @Nullable User user,
@@ -60,7 +62,7 @@ public class TagController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTag(
             @AuthenticationPrincipal final @Nullable User user,
-            @PathVariable final long id) {
+            @PathVariable @Positive final long id) {
         if (user == null) {
             throw new UnauthorizedException("Log in to delete tags.");
         }

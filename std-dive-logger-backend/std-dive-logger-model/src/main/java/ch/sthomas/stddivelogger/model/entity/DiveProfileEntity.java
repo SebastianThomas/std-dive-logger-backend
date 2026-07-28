@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 @Entity
 @Table(name = "t_dive_profiles")
+@SuppressWarnings("NullAway.Init")
 public class DiveProfileEntity {
 
     @Id
@@ -147,12 +148,14 @@ public class DiveProfileEntity {
     }
 
     /**
-     * Replaces the raw measurement data for this profile only. Callers are responsible for
-     * deleting the previous measurement rows first (no {@code orphanRemoval} on this
-     * collection), so reassigning the list here does not by itself clean up the old rows.
+     * Replaces the raw measurement data for this profile only. Callers are responsible for deleting
+     * the previous measurement rows first (no {@code orphanRemoval} on this collection), so
+     * reassigning the list here does not by itself clean up the old rows.
      */
     public void replaceMeasurements(
-            final List<DiveMeasurementEntity> newMeasurements, final Instant start, final Instant end) {
+            final List<DiveMeasurementEntity> newMeasurements,
+            final Instant start,
+            final Instant end) {
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
         this.measurements =

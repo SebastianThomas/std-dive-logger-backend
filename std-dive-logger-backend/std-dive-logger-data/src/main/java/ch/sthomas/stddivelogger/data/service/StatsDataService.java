@@ -33,8 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -52,6 +52,9 @@ public class StatsDataService {
     private final TagDefinitionRepository tagDefinitionRepository;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+    // entityManager is populated by Spring's @PersistenceContext field injection, not by this
+    // constructor.
+    @SuppressWarnings("NullAway.Init")
     public StatsDataService(
             final DiveRepository diveRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
@@ -421,14 +424,16 @@ public class StatsDataService {
     }
 
     /**
-     * Returns stats for each tag that appears on at least one of the user's dives,
-     * sorted by dive count descending.
+     * Returns stats for each tag that appears on at least one of the user's dives, sorted by dive
+     * count descending.
      */
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<TagDefinition>> getStatsByTag(final User user) {
         // Aggregate: [tagId, diveCount, maxDiveNumber, uniqueSites] per tag
-        final List<Object[]> rows = entityManager.createQuery(
-                        """
+        final List<Object[]> rows =
+                entityManager
+                        .createQuery(
+                                """
                         SELECT dt.tag.id, COUNT(DISTINCT d.id), MAX(d.number),
                                COUNT(DISTINCT d.diveSite.id)
                         FROM DiveEntity d
@@ -436,9 +441,10 @@ public class StatsDataService {
                         WHERE d.user.id = :userId AND dt.dismissed = false
                         GROUP BY dt.tag.id
                         ORDER BY COUNT(DISTINCT d.id) DESC
-                        """, Object[].class)
-                .setParameter("userId", user.id())
-                .getResultList();
+                        """,
+                                Object[].class)
+                        .setParameter("userId", user.id())
+                        .getResultList();
 
         if (rows.isEmpty()) {
             return List.of();
@@ -446,40 +452,61 @@ public class StatsDataService {
 
         // Look up TagDefinition records (with diveCount) for all returned tag IDs
         final var tagIds = rows.stream().map(r -> (Long) r[0]).toList();
-        final var tagMap = tagDefinitionRepository.findAllById(tagIds).stream()
-                .collect(Collectors.toMap(e -> e.getId(), e -> e));
+        final var tagMap =
+                tagDefinitionRepository.findAllById(tagIds).stream()
+                        .collect(Collectors.toMap(e -> e.getId(), e -> e));
 
         return rows.stream()
-                .map(row -> {
-                    final long tagId       = (Long)    row[0];
-                    final long diveCount   = (Long)    row[1];
-                    final int  maxNumber   = row[2] != null ? ((Number) row[2]).intValue() : -1;
-                    final long uniqueSites = (Long)    row[3];
+                .map(
+                        row -> {
+                            final long tagId = (Long) row[0];
+                            final long diveCount = (Long) row[1];
+                            final int maxNumber =
+                                    row[2] != null ? ((Number) row[2]).intValue() : -1;
+                            final long uniqueSites = (Long) row[3];
 
-                    final var maxDuration   = diveRepository.findMaxDurationByUserIdAndTagId(user.id(), tagId)
-                            .map(Duration::ofSeconds).orElse(Duration.ZERO);
-                    final var totalDuration = diveRepository.findTotalDurationByUserIdAndTagId(user.id(), tagId)
-                            .map(Duration::ofSeconds).orElse(Duration.ZERO);
-                    final var maxDepth      = diveMeasurementRepository.findMaxDepthByUserIdAndTagId(user.id(), tagId)
-                            .orElse(0.0);
+                            final var maxDuration =
+                                    diveRepository
+                                            .findMaxDurationByUserIdAndTagId(user.id(), tagId)
+                                            .map(Duration::ofSeconds)
+                                            .orElse(Duration.ZERO);
+                            final var totalDuration =
+                                    diveRepository
+                                            .findTotalDurationByUserIdAndTagId(user.id(), tagId)
+                                            .map(Duration::ofSeconds)
+                                            .orElse(Duration.ZERO);
+                            final var maxDepth =
+                                    diveMeasurementRepository
+                                            .findMaxDepthByUserIdAndTagId(user.id(), tagId)
+                                            .orElse(0.0);
 
-                    final var stats = new UserDiveStats(
-                            diveCount, maxNumber, maxDuration, maxDepth, totalDuration,
-                            0L, uniqueSites, null, null);
+                            final var stats =
+                                    new UserDiveStats(
+                                            diveCount,
+                                            maxNumber,
+                                            maxDuration,
+                                            maxDepth,
+                                            totalDuration,
+                                            0L,
+                                            uniqueSites,
+                                            null,
+                                            null);
 
-                    final var tagEntity = tagMap.get(tagId);
-                    final var tagDef = tagEntity != null
-                            ? tagEntity.toRecord(diveCount)
-                            : new TagDefinition(tagId, "Unknown", null, null, diveCount);
+                            final var tagEntity = tagMap.get(tagId);
+                            final var tagDef =
+                                    tagEntity != null
+                                            ? tagEntity.toRecord(diveCount)
+                                            : new TagDefinition(
+                                                    tagId, "Unknown", null, null, diveCount);
 
-                    return new UserDiveStatsBy<>(tagDef, stats);
-                })
+                            return new UserDiveStatsBy<>(tagDef, stats);
+                        })
                 .toList();
     }
 
     /**
-     * Computes stats for dives matching ALL of the specified tag IDs (AND semantics).
-     * Returns null if the tag list is empty or no dives match.
+     * Computes stats for dives matching ALL of the specified tag IDs (AND semantics). Returns null
+     * if the tag list is empty or no dives match.
      */
     @Transactional(readOnly = true)
     public @Nullable UserDiveStats computeStatsForTagFilter(
@@ -487,34 +514,51 @@ public class StatsDataService {
         if (tagIds == null || tagIds.isEmpty()) {
             return null;
         }
-        final var diveIds = diveRepository.findDiveIdsByTagsAndUserId(user.id(), tagIds, tagIds.size());
+        final var diveIds =
+                diveRepository.findDiveIdsByTagsAndUserId(user.id(), tagIds, tagIds.size());
         if (diveIds.isEmpty()) {
             return new UserDiveStats(0, -1, Duration.ZERO, 0.0, Duration.ZERO, 0L, 0L, null, null);
         }
 
         // Aggregate main counts from the matched dive set directly via JPQL
-        final Object[] main = (Object[]) entityManager.createQuery(
-                        """
+        final Object[] main =
+                (Object[])
+                        entityManager
+                                .createQuery(
+                                        """
                         SELECT COUNT(DISTINCT d.id), MAX(d.number), COUNT(DISTINCT d.diveSite.id)
                         FROM DiveEntity d
                         WHERE d.id IN :diveIds
                         """)
-                .setParameter("diveIds", diveIds)
-                .getSingleResult();
+                                .setParameter("diveIds", diveIds)
+                                .getSingleResult();
 
-        final long diveCount   = (Long)    main[0];
-        final int  maxNumber   = main[1] != null ? ((Number) main[1]).intValue() : -1;
-        final long uniqueSites = (Long)    main[2];
+        final long diveCount = (Long) main[0];
+        final int maxNumber = main[1] != null ? ((Number) main[1]).intValue() : -1;
+        final long uniqueSites = (Long) main[2];
 
-        final var maxDuration   = diveRepository.findMaxDurationByDiveIds(diveIds)
-                .map(Duration::ofSeconds).orElse(Duration.ZERO);
-        final var totalDuration = diveRepository.findTotalDurationByDiveIds(diveIds)
-                .map(Duration::ofSeconds).orElse(Duration.ZERO);
-        final var maxDepth      = diveMeasurementRepository.findMaxDepthByDiveIds(diveIds)
-                .orElse(0.0);
+        final var maxDuration =
+                diveRepository
+                        .findMaxDurationByDiveIds(diveIds)
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO);
+        final var totalDuration =
+                diveRepository
+                        .findTotalDurationByDiveIds(diveIds)
+                        .map(Duration::ofSeconds)
+                        .orElse(Duration.ZERO);
+        final var maxDepth = diveMeasurementRepository.findMaxDepthByDiveIds(diveIds).orElse(0.0);
 
-        return new UserDiveStats(diveCount, maxNumber, maxDuration, maxDepth, totalDuration,
-                0L, uniqueSites, null, null);
+        return new UserDiveStats(
+                diveCount,
+                maxNumber,
+                maxDuration,
+                maxDepth,
+                totalDuration,
+                0L,
+                uniqueSites,
+                null,
+                null);
     }
 
     private record BucketSql(String selectExpr, String groupByExpr, String diveIdExpr) {}
@@ -522,8 +566,8 @@ public class StatsDataService {
     /**
      * The bucket expression is chosen from this fixed whitelist only (never from user input), so
      * interpolating it directly into the SQL text below is safe. {@code diveIdExpr} only resolves
-     * to a real dive id for {@code PER_DIVE} (where a bucket is exactly one dive); it's a SQL
-     * NULL literal for the other granularities, where a bucket spans many dives.
+     * to a real dive id for {@code PER_DIVE} (where a bucket is exactly one dive); it's a SQL NULL
+     * literal for the other granularities, where a bucket spans many dives.
      */
     private static BucketSql bucketSql(final StatsGranularity granularity) {
         return switch (granularity) {
@@ -554,8 +598,8 @@ public class StatsDataService {
 
     /**
      * Builds the shared "filtered_dives" CTE (as a WITH-clause prefix, including the trailing
-     * closing paren) plus the bound parameters for every filter dimension that was supplied.
-     * Reused verbatim by the main aggregation query and both category-breakdown queries.
+     * closing paren) plus the bound parameters for every filter dimension that was supplied. Reused
+     * verbatim by the main aggregation query and both category-breakdown queries.
      */
     private Pair<String, MapSqlParameterSource> filteredDivesCte(
             final long userId, final StatsFilters filters) {
@@ -635,7 +679,10 @@ public class StatsDataService {
         return rs.wasNull() ? null : value;
     }
 
-    /** Shared by the main aggregate query and the breakdown query — identical metric columns either way. */
+    /**
+     * Shared by the main aggregate query and the breakdown query — identical metric columns either
+     * way.
+     */
     private static final String METRIC_SELECT_LIST =
             """
                     COUNT(*) AS dive_count,
@@ -695,10 +742,10 @@ public class StatsDataService {
     }
 
     /**
-     * Buckets the user's dives (after applying {@code filters}) by {@code granularity} and
-     * returns per-bucket aggregates for every numeric metric. When {@code breakdownBy} is
-     * non-null, also returns the same set of metrics grouped by (bucket, category) for that
-     * dimension, so any selected metric can be split into one line per suit / base configuration.
+     * Buckets the user's dives (after applying {@code filters}) by {@code granularity} and returns
+     * per-bucket aggregates for every numeric metric. When {@code breakdownBy} is non-null, also
+     * returns the same set of metrics grouped by (bucket, category) for that dimension, so any
+     * selected metric can be split into one line per suit / base configuration.
      */
     @Transactional(readOnly = true)
     public StatsTimeSeries getTimeSeries(
@@ -762,7 +809,8 @@ public class StatsDataService {
         final var joinClause =
                 switch (dimension) {
                     case SUIT -> "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id\n";
-                    case CCR_UNIT -> "LEFT JOIN t_ccr_units cu ON cu.pk_ccr_unit_id = fd.fk_ccr_unit_id\n";
+                    case CCR_UNIT ->
+                            "LEFT JOIN t_ccr_units cu ON cu.pk_ccr_unit_id = fd.fk_ccr_unit_id\n";
                     case BASE_CONFIGURATION -> "";
                 };
         // A CCR unit only ever makes sense on a CCR-configured dive — scope this specific

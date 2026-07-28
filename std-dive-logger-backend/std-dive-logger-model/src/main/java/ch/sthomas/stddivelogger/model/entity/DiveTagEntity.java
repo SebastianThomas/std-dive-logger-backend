@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 @Table(
         name = "t_dive_tags",
         uniqueConstraints = @UniqueConstraint(columnNames = {"fk_dive_id", "fk_tag_id"}))
+@SuppressWarnings("NullAway.Init")
 public class DiveTagEntity {
 
     @Id
@@ -27,15 +28,16 @@ public class DiveTagEntity {
 
     /**
      * Whether the user explicitly dismissed this auto-detected tag. A dismissed tag is kept in the
-     * database so it is not re-added by auto-detection, but it is not surfaced in {@code getTags()}.
-     * The flag is cleared when the user manually re-adds the tag.
+     * database so it is not re-added by auto-detection, but it is not surfaced in {@code
+     * getTags()}. The flag is cleared when the user manually re-adds the tag.
      */
     @Column(name = "dismissed", nullable = false)
     private boolean dismissed;
 
     public DiveTagEntity() {}
 
-    public DiveTagEntity(final DiveEntity dive, final TagDefinitionEntity tag, final boolean manual) {
+    public DiveTagEntity(
+            final DiveEntity dive, final TagDefinitionEntity tag, final boolean manual) {
         this(dive, tag, manual, false);
     }
 

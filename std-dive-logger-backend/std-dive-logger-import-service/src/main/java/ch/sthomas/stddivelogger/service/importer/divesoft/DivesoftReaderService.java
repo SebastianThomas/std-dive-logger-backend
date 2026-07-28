@@ -6,7 +6,6 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
-import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
@@ -14,6 +13,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftCeilingSample;
@@ -27,7 +27,6 @@ import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -61,14 +61,17 @@ public class DivesoftReaderService extends BaseReaderService {
     public Stream<UploadDiveResultStreaming> importDivesoft(
             final User user, final DivesoftImportRequest request) {
         final var body = Optional.ofNullable(request.body()).orElse(EMPTY_BODY);
-        final var dives =
-                request.dives().stream().map(d -> d.diveAndMixes().dive()).toList();
+        final var dives = request.dives().stream().map(d -> d.diveAndMixes().dive()).toList();
         // Only let a missing-dive-site error propagate as-is when importing a single dive: the
         // frontend's existing retry flow re-submits with body.diveSiteId() set, which is only
         // correct when there is exactly one dive in the request.
         final var isSingleDive = dives.size() == 1;
         return dives.stream()
-                .map(dive -> isSingleDive ? importOne(user, dive, body) : importOneSafe(user, dive, body));
+                .map(
+                        dive ->
+                                isSingleDive
+                                        ? importOne(user, dive, body)
+                                        : importOneSafe(user, dive, body));
     }
 
     private UploadDiveResultStreaming importOneSafe(
@@ -96,7 +99,9 @@ public class DivesoftReaderService extends BaseReaderService {
                         .or(() -> Optional.ofNullable(dive.description()).filter(s -> !s.isBlank()))
                         .orElse("Divesoft dive " + dive.id());
         final var visibility =
-                dive.visibility() != null ? new Visibility(dive.visibility(), "", null) : Visibility.EMPTY;
+                dive.visibility() != null
+                        ? new Visibility(dive.visibility(), "", null)
+                        : Visibility.EMPTY;
         final var result =
                 diveService.saveDive(
                         user,
@@ -147,7 +152,9 @@ public class DivesoftReaderService extends BaseReaderService {
     DiveProfileUpload getDiveProfile(final DiveComputer computer, final DivesoftDive dive) {
         final var graph = dive.graphData();
         final var depthSamples =
-                graph != null && graph.depth() != null ? graph.depth() : List.<DivesoftDepthSample>of();
+                graph != null && graph.depth() != null
+                        ? graph.depth()
+                        : List.<DivesoftDepthSample>of();
         final var temperatureSamples =
                 graph != null && graph.temperature() != null
                         ? graph.temperature()
@@ -173,7 +180,11 @@ public class DivesoftReaderService extends BaseReaderService {
                         .sorted(Comparator.comparingLong(DivesoftGraphMix::timestamp))
                         .toList();
 
-        final var start = parseStartDate(dive.startDate());
+        final var start =
+                parseStartDate(
+                        Objects.requireNonNull(
+                                dive.startDate(),
+                                "Divesoft dive " + dive.id() + " has no startDate"));
         final var duration = parseDuration(dive.duration());
         final var end = duration != null ? start.plus(duration) : start;
 
@@ -183,7 +194,8 @@ public class DivesoftReaderService extends BaseReaderService {
         for (var i = 0; i < depthSamples.size(); i++) {
             final var depthSample = depthSamples.get(i);
             final var timestamp = depthSample.timestamp();
-            while (mixIndex + 1 < mixes.size() && mixes.get(mixIndex + 1).timestamp() <= timestamp) {
+            while (mixIndex + 1 < mixes.size()
+                    && mixes.get(mixIndex + 1).timestamp() <= timestamp) {
                 mixIndex++;
                 currentGas = toGas(mixes.get(mixIndex));
             }

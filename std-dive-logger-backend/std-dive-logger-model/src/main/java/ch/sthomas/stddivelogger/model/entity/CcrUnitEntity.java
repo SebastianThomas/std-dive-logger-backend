@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_ccr_units")
+@SuppressWarnings("NullAway.Init")
 public class CcrUnitEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

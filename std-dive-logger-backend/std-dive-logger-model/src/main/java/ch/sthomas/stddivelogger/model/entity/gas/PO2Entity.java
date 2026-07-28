@@ -3,11 +3,13 @@ package ch.sthomas.stddivelogger.model.entity.gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "t_dive_measurement_po2")
+@SuppressWarnings("NullAway.Init")
 public class PO2Entity {
     @Id
     @Column(name = "fk_measurement_id")
@@ -19,16 +21,13 @@ public class PO2Entity {
     private DiveMeasurementEntity measurement;
 
     @Column(name = "max_set_point")
-    @Nullable
-    Double maxSetPoint;
+    @Nullable Double maxSetPoint;
 
     @Column(name = "measured")
-    @Nullable
-    Double measured;
+    @Nullable Double measured;
 
     @Column(name = "calculated")
-    @Nullable
-    Double calculated;
+    @Nullable Double calculated;
 
     public PO2Entity() {}
 

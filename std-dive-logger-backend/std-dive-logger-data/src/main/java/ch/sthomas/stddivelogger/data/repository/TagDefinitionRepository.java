@@ -17,7 +17,8 @@ public interface TagDefinitionRepository extends JpaRepository<TagDefinitionEnti
     List<TagDefinitionEntity> findAllVisibleToUser(long userId);
 
     /** Returns only auto-detect tags visible to the given user. */
-    @Query("SELECT t FROM TagDefinitionEntity t WHERE t.autoDetectRule IS NOT NULL AND (t.user IS NULL OR t.user.id = :userId)")
+    @Query(
+            "SELECT t FROM TagDefinitionEntity t WHERE t.autoDetectRule IS NOT NULL AND (t.user IS NULL OR t.user.id = :userId)")
     List<TagDefinitionEntity> findAutoDetectTagsForUser(long userId);
 
     Optional<TagDefinitionEntity> findByIdAndUser_Id(Long id, Long userId);
@@ -27,10 +28,12 @@ public interface TagDefinitionRepository extends JpaRepository<TagDefinitionEnti
 
     boolean existsByNameIgnoreCaseAndUserIsNull(String name);
 
-    @Query("SELECT t FROM TagDefinitionEntity t WHERE (t.user IS NULL OR t.user.id = :userId) AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
+    @Query(
+            "SELECT t FROM TagDefinitionEntity t WHERE (t.user IS NULL OR t.user.id = :userId) AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<TagDefinitionEntity> findByPartialNameVisibleToUser(String query, long userId);
 
     /** System-only partial-name lookup — used when no authenticated user is available. */
-    @Query("SELECT t FROM TagDefinitionEntity t WHERE t.user IS NULL AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
+    @Query(
+            "SELECT t FROM TagDefinitionEntity t WHERE t.user IS NULL AND LOWER(t.name) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<TagDefinitionEntity> findByPartialNameSystemOnly(String query);
 }

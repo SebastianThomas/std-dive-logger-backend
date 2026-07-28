@@ -19,8 +19,7 @@ public abstract class ObjectMapperToStringConverter<T> implements AttributeConve
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final JsonMapper objectMapper =
-            ObjectMapperUtils.objectMapperBuilder(_ -> {}).build();
+    private final JsonMapper objectMapper = ObjectMapperUtils.objectMapperBuilder(_ -> {}).build();
 
     private final TypeReference<T> typeReference;
 

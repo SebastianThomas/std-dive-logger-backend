@@ -7,17 +7,20 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
-import org.jspecify.annotations.Nullable;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/v1/computers")
+@Validated
 public class ComputerController {
     private final DiveService diveService;
 
@@ -28,7 +31,7 @@ public class ComputerController {
     @GetMapping("")
     public PagedResponse<DiveComputer> getUserDiveComputers(
             @AuthenticationPrincipal final @Nullable User user,
-            @RequestParam(name = "page", defaultValue = "0") final int page) {
+            @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to access your dive computers");
         }
@@ -37,7 +40,7 @@ public class ComputerController {
 
     @GetMapping("/manufacturers")
     public PagedResponse<DiveComputerManufacturer> getUserDiveComputerManufacturers(
-            @RequestParam(name = "page", defaultValue = "0") final int page) {
+            @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
         return diveService.getDiveComputerManufacturers(page);
     }
 
@@ -46,7 +49,7 @@ public class ComputerController {
     @PutMapping("/{id}")
     public DiveComputer updateDiveComputer(
             @AuthenticationPrincipal final User user,
-            @PathVariable("id") final long computerId,
+            @PathVariable("id") @Positive final long computerId,
             @Valid @NotNull @RequestBody final UpdateDiveComputerBody customIdentifier) {
         return diveService.updateDiveComputer(
                 user, computerId, customIdentifier.customIdentifier());
@@ -55,8 +58,8 @@ public class ComputerController {
     @GetMapping("/search")
     public PagedResponse<DiveComputer> getUserDiveComputersByName(
             @AuthenticationPrincipal final @Nullable User user,
-            @RequestParam(name = "query") final String query,
-            @RequestParam(name = "page", defaultValue = "0") final int page) {
+            @RequestParam(name = "query") @NotBlank final String query,
+            @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
         if (user == null) {
             throw new UnauthorizedException("Log in to search dive computers");
         }

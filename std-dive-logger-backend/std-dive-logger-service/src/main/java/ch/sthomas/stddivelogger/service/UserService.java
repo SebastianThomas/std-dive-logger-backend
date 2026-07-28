@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.service;
 
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.repository.GroupMemberRepository;
@@ -13,13 +15,12 @@ import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.model.user.*;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
-import jdk.jshell.Snippet;
+import org.jspecify.annotations.Nullable;
 import org.passay.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,8 +36,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
-import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 @Service
 public class UserService {
@@ -264,13 +263,14 @@ public class UserService {
     }
 
     /**
-     * Uploads a custom dive-site marker icon for the user, replacing the app's default diver
-     * icon everywhere their map markers are shown. SVG is intentionally not accepted here since
-     * it can carry embedded scripts; only raster formats are allowed for user uploads.
+     * Uploads a custom dive-site marker icon for the user, replacing the app's default diver icon
+     * everywhere their map markers are shown. SVG is intentionally not accepted here since it can
+     * carry embedded scripts; only raster formats are allowed for user uploads.
      */
     @Transactional
     public User uploadCustomIcon(final User user, final MultipartFile file) {
-        final var absoluteUrl = validateAndUploadImage(user, file, "user-icon", MAX_ICON_SIZE_BYTES);
+        final var absoluteUrl =
+                validateAndUploadImage(user, file, "user-icon", MAX_ICON_SIZE_BYTES);
         return userDataService.setCustomIconUrl(user, absoluteUrl);
     }
 

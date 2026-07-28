@@ -10,11 +10,11 @@ import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverte
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.PO2Entity;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -23,6 +23,7 @@ import java.util.Optional;
 
 @Entity
 @Table(name = "t_dive_measurements")
+@SuppressWarnings("NullAway.Init")
 public class DiveMeasurementEntity {
 
     @Id
@@ -80,7 +81,10 @@ public class DiveMeasurementEntity {
             final DiveMeasurement diveMeasurement, @Nullable final GasEntity gas) {
         this.time = diveMeasurement.time().atOffset(UTC);
         this.depth = diveMeasurement.depth();
-        this.temperatureCelsius = diveMeasurement.temperature().celsius();
+        this.temperatureCelsius =
+                Optional.ofNullable(diveMeasurement.temperature())
+                        .map(Temperature::celsius)
+                        .orElse(null);
         this.ndlMinutes =
                 Optional.ofNullable(diveMeasurement.ndl())
                         .map(Duration::toMinutes)

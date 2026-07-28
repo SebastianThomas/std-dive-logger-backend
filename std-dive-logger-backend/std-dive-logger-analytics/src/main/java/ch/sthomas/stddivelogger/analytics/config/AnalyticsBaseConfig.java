@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.analytics.config;
 
-import ch.sthomas.stddivelogger.analytics.config.SpringDocConfig;
 import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
 
 import org.locationtech.jts.geom.GeometryFactory;

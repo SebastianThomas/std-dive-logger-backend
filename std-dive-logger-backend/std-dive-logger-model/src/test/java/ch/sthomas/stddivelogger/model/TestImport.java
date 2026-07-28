@@ -53,8 +53,7 @@ public class TestImport {
     void testExportSiteWhenDiveSiteElementAbsent() throws IOException {
         // No <divesite> element at all, as opposed to an empty <divesite /> which is
         // already covered by testImportUddf above.
-        final var xml =
-                "<?xml version=\"1.0\" encoding=\"utf-8\"?><uddf version=\"3.2.3\"></uddf>";
+        final var xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><uddf version=\"3.2.3\"></uddf>";
         final var content = xmlMapper.readValue(xml, UddfFile.class);
         assertNotNull(content);
         assertNull(content.exportSite());

@@ -11,6 +11,7 @@ import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "t_dive_profile_history")
+@SuppressWarnings("NullAway.Init")
 public class DiveProfileHistoryEntity {
     @Id
     @Column(name = "fk_dive_profile_id")

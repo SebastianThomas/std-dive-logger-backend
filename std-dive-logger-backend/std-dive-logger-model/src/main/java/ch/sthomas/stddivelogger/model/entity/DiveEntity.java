@@ -2,19 +2,18 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
-import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +28,7 @@ import java.util.stream.Stream;
 
 @Entity
 @Table(name = "t_dives")
+@SuppressWarnings("NullAway.Init")
 public class DiveEntity {
     private static final Logger logger = LoggerFactory.getLogger(DiveEntity.class);
 
@@ -63,7 +63,7 @@ public class DiveEntity {
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
-        private @Nullable DiveConfigurationEntity configuration;
+    private @Nullable DiveConfigurationEntity configuration;
 
     @JoinColumn(name = "fk_diver_id")
     @ManyToOne(cascade = CascadeType.PERSIST)
@@ -233,7 +233,7 @@ public class DiveEntity {
 
     public DiveEntity update(
             final int number,
-            final String diveIdentifier,
+            @Nullable final String diveIdentifier,
             @Nullable final String notes,
             @Nullable final DiveSiteEntity diveSiteEntity,
             @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies,
@@ -241,7 +241,9 @@ public class DiveEntity {
             @Nullable final DiveGasConsumptionEntity gasConsumption,
             @Nullable final VisibilityEntity visibility) {
         this.number = number;
-        this.diveIdentifier = diveIdentifier;
+        if (diveIdentifier != null) {
+            this.diveIdentifier = diveIdentifier;
+        }
         if (notes != null) {
             this.notes = notes;
         }
@@ -285,9 +287,10 @@ public class DiveEntity {
         // Remove non-dismissed auto tags — dismissed rows stay so they are not re-added.
         tags.removeIf(t -> !t.isManual() && !t.isDismissed());
         // Collect IDs already covered by a manual or dismissed tag so we don't insert duplicates.
-        final var coveredTagIds = tags.stream()
-                .map(t -> t.getTag().getId())
-                .collect(java.util.stream.Collectors.toSet());
+        final var coveredTagIds =
+                tags.stream()
+                        .map(t -> t.getTag().getId())
+                        .collect(java.util.stream.Collectors.toSet());
         autoDetectCandidates.stream()
                 .filter(def -> matchesAutoDetect(def.getAutoDetectRule()))
                 .filter(def -> !coveredTagIds.contains(def.getId()))
@@ -300,9 +303,10 @@ public class DiveEntity {
             return false;
         }
         return switch (rule) {
-            case CCR -> configuration != null
-                    && configuration.getBaseConfiguration() != null
-                    && configuration.getBaseConfiguration().name().contains("CCR");
+            case CCR ->
+                    configuration != null
+                            && configuration.getBaseConfiguration() != null
+                            && configuration.getBaseConfiguration().name().contains("CCR");
             case DECO -> hasDeco();
         };
     }
@@ -324,9 +328,10 @@ public class DiveEntity {
         if (tags == null) {
             tags = new ArrayList<>();
         }
-        final var manualDefIds = manualTagDefs.stream()
-                .map(TagDefinitionEntity::getId)
-                .collect(java.util.stream.Collectors.toSet());
+        final var manualDefIds =
+                manualTagDefs.stream()
+                        .map(TagDefinitionEntity::getId)
+                        .collect(java.util.stream.Collectors.toSet());
         // Remove all existing manual tags AND any auto/dismissed tags whose tag ID
         // appears in the incoming manual set (re-adding manually clears dismissed flag).
         tags.removeIf(t -> t.isManual() || manualDefIds.contains(t.getTag().getId()));

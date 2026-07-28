@@ -9,6 +9,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "t_dive_profile_segments")
+@SuppressWarnings("NullAway.Init")
 public class DiveProfileSegmentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

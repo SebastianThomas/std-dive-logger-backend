@@ -1,7 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive.profile.measurement;
 
 import org.jspecify.annotations.Nullable;
-
 import org.springframework.lang.Contract;
 
 public record PO2(

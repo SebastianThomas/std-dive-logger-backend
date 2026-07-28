@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 @Entity
 @Table(name = "t_dive_buddy")
+@SuppressWarnings("NullAway.Init")
 public class DiveBuddyEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

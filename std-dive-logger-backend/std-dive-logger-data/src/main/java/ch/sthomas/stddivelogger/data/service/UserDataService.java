@@ -14,11 +14,10 @@ import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import com.google.common.collect.MoreCollectors;
 
-import org.jspecify.annotations.Nullable;
-
 import org.apache.commons.lang3.NotImplementedException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.DataException;
+import org.jspecify.annotations.Nullable;
 import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +93,8 @@ public class UserDataService {
         } catch (final DataIntegrityViolationException e) {
             if (e.getCause() instanceof final ConstraintViolationException c) {
                 if (c.getCause() instanceof final PSQLException p
-                        && p.getMessage().contains("t_users_email_key")) {
+                        && Objects.requireNonNullElse(p.getMessage(), "")
+                                .contains("t_users_email_key")) {
                     throw new IllegalArgumentException(
                             "User with email " + email + " already exists");
                 }
@@ -143,7 +143,8 @@ public class UserDataService {
         try {
             return groupRepository.save(new GroupEntity(name, admin)).toRecordWithMembers();
         } catch (final DataIntegrityViolationException e) {
-            if (e.getMessage().contains("t_groups_group_name_key")) {
+            if (Objects.requireNonNullElse(e.getMessage(), "")
+                    .contains("t_groups_group_name_key")) {
                 throw new IllegalArgumentException("A group with this name already exists.");
             }
             throw new IllegalArgumentException("Exception while saving the group.", e);

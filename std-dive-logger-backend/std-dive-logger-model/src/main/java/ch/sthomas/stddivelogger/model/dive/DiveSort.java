@@ -1,9 +1,9 @@
 package ch.sthomas.stddivelogger.model.dive;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.query.SortDirection;
+import org.jspecify.annotations.Nullable;
 
 public record DiveSort(@NotNull DiveSortColumn column, @NotNull SortDirection direction) {
     public static DiveSort ofNullable(

@@ -17,6 +17,7 @@ import org.locationtech.jts.geom.Point;
             @ColumnResult(name = "dive_numbers", type = Long[].class),
             @ColumnResult(name = "dive_identifiers", type = String[].class)
         })
+@SuppressWarnings("NullAway.Init")
 public class DiveSiteEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

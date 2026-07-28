@@ -13,7 +13,6 @@ import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderS
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
 
 import org.jspecify.annotations.Nullable;
-
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +21,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 @Service
@@ -82,18 +82,27 @@ public class ImportService {
             throws IOException {
         final var fileType = UploadFileType.fromFilename(filename);
         return switch (fileType) {
+            case null ->
+                    throw new IllegalArgumentException(
+                            MessageFormat.format(
+                                    "Could not resolve file type for filename {0}, supported extensions: {1}",
+                                    filename, UploadFileType.supportedExtensions()));
             case NONE ->
                     throw new IllegalArgumentException(
                             MessageFormat.format(
                                     "Could not resolve file type for filename {0}, supported extensions: {1}",
                                     filename, UploadFileType.supportedExtensions()));
-            case UDDF_SHEARWATER -> uddfReaderService.importUddf(user, filename, body, inputStream);
+            // fromFilename(...) only ever returns one of these for a non-null filename.
+            case UDDF_SHEARWATER ->
+                    uddfReaderService.importUddf(
+                            user, Objects.requireNonNull(filename), body, inputStream);
             case FIT_GARMIN ->
                     Stream.of(
-                            fitReaderService.readFitAndSaveDive(user, filename, body, inputStream));
+                            fitReaderService.readFitAndSaveDive(
+                                    user, Objects.requireNonNull(filename), body, inputStream));
             case XML_SUBSURFACE ->
                     subsurfaceXmlReaderService.importSubsurfaceXml(
-                            user, filename, body, inputStream);
+                            user, Objects.requireNonNull(filename), body, inputStream);
         };
     }
 

@@ -9,7 +9,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DiveProfileRepository extends JpaRepository<DiveProfileEntity, Long> {
-    @Query(value = "UPDATE t_dive_profiles SET fk_dive_id = :baseDiveId WHERE fk_dive_id = :toAddDiveId", nativeQuery = true)
+    @Query(
+            value =
+                    "UPDATE t_dive_profiles SET fk_dive_id = :baseDiveId WHERE fk_dive_id = :toAddDiveId",
+            nativeQuery = true)
     @Modifying
     void setDiveWhereDiveIs(long baseDiveId, long toAddDiveId);
 }

@@ -26,9 +26,8 @@ import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import com.garmin.fit.*;
 import com.google.common.base.CaseFormat;
 
-import org.jspecify.annotations.Nullable;
-
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

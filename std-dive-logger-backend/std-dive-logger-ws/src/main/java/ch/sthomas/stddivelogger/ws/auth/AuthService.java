@@ -8,7 +8,6 @@ import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
 
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 @Service
 public class AuthService {
@@ -46,7 +46,9 @@ public class AuthService {
 
     public String refresh(@Nullable final String refreshToken) {
         final var username = assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
-        if (!jwtUtil.isTokenValid(refreshToken, username, JwtUtil.TokenType.REFRESH_TOKEN)) {
+        // assertValidForUser already threw above if refreshToken was null.
+        if (!jwtUtil.isTokenValid(
+                Objects.requireNonNull(refreshToken), username, JwtUtil.TokenType.REFRESH_TOKEN)) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
         return jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);

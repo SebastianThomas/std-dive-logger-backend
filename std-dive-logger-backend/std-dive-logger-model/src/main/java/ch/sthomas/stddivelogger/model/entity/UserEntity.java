@@ -2,17 +2,18 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.user.User;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.List;
 
 @Entity
 @Table(name = "t_users")
+@SuppressWarnings("NullAway.Init")
 public class UserEntity {
 
     @Id

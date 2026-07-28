@@ -30,6 +30,7 @@ public class AnalyticsSegmentGathererState {
     public AnalyticsSegmentGathererState() {
         this.currentIdx = new AtomicInteger(0);
         this.measurements = new ArrayList<>();
+        this.lastProcessedWindow = List.of();
     }
 
     public ArrayList<MeasurementsWithType> measurements() {

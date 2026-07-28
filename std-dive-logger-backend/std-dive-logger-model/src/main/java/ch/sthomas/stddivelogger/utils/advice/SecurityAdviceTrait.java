@@ -22,8 +22,7 @@ public interface SecurityAdviceTrait {
 
     @ExceptionHandler(AuthenticationException.class)
     default ProblemDetail handleAuthenticationException(final AuthenticationException exception) {
-        final var detail =
-                exception.getMessage() != null ? exception.getMessage() : "Unauthorized";
+        final var detail = exception.getMessage() != null ? exception.getMessage() : "Unauthorized";
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
     }
 }

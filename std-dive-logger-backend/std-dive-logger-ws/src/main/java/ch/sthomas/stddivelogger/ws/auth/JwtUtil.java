@@ -10,7 +10,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,7 +94,7 @@ public class JwtUtil {
     public boolean isTokenValid(
             final String token, final String username, final TokenType tokenType) {
         final var extractedUsername = extractUsername(token, tokenType);
-        if (!extractedUsername.equals(username) || isTokenExpired(token, tokenType)) {
+        if (!username.equals(extractedUsername) || isTokenExpired(token, tokenType)) {
             logger.info("Invalid refresh token. Refresh token expired.");
             return false;
         }

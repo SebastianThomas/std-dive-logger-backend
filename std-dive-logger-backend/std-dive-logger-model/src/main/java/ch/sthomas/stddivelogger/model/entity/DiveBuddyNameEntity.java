@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_dive_buddy_name")
+@SuppressWarnings("NullAway.Init")
 public class DiveBuddyNameEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -4,23 +4,25 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
 public record UpdateDiveBody(
-        long id,
-        int number,
+        @Positive long id,
+        @PositiveOrZero int number,
         @Nullable String notes,
-        long suitId,
+        @PositiveOrZero long suitId,
         @Nullable DiveConfiguration configuration,
         @Nullable DiveGasConsumption gasConsumption,
         @Nullable Visibility visibility,
         @Nullable String customIdentifier,
-        @Nullable Long siteId,
+        @Nullable @Positive Long siteId,
         @Nullable List<String> namedBuddies) {
     @Override
     @NotNull

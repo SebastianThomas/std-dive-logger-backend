@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "t_analytics_depth_variance")
+@SuppressWarnings("NullAway.Init")
 public class AnalyticsDepthVarianceEntity {
     @EmbeddedId private AnalyticsDepthVarianceId id;
 

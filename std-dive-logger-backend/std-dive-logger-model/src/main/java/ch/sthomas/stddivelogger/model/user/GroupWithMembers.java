@@ -2,8 +2,9 @@ package ch.sthomas.stddivelogger.model.user;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import org.jspecify.annotations.Nullable;
 import jakarta.validation.constraints.NotNull;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 
