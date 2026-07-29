@@ -1,22 +1,25 @@
 package ch.sthomas.stddivelogger.data.service;
 
-import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.data.model.DivesToRecompute;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
-import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileRatesResponse;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmenter;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
+import ch.sthomas.stddivelogger.model.entity.AnalyticsJobStateEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
 import ch.sthomas.stddivelogger.model.user.User;
 
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -27,7 +30,12 @@ import java.util.stream.IntStream;
 
 @Service
 public class AnalyticsDataService {
+    // Fetching one extra id lets us tell "there are more dives needing recompute than this
+    // batch" without a separate COUNT query.
+    private static final int RECOMPUTE_OVERFETCH = 1;
+
     private final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository;
+    private final AnalyticsJobStateRepository analyticsJobStateRepository;
     private final DiveRepository diveRepository;
     private final StorageService storageService;
     private final DiveProfileRepository diveProfileRepository;
@@ -36,12 +44,14 @@ public class AnalyticsDataService {
 
     public AnalyticsDataService(
             final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository,
+            final AnalyticsJobStateRepository analyticsJobStateRepository,
             final DiveRepository diveRepository,
             final StorageService storageService,
             final DiveProfileRepository diveProfileRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
             final DiveProfileSegmentRepository diveProfileSegmentRepository) {
         this.analyticsDepthVarianceEntityRepository = analyticsDepthVarianceEntityRepository;
+        this.analyticsJobStateRepository = analyticsJobStateRepository;
         this.diveRepository = diveRepository;
         this.storageService = storageService;
         this.diveProfileRepository = diveProfileRepository;
@@ -83,16 +93,47 @@ public class AnalyticsDataService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Long> findLatestAnalyticsDepthVarianceDiveId(final long version) {
-        return analyticsDepthVarianceEntityRepository.findMaxDiveIdByVersion(version);
+    public DivesToRecompute findDivesNeedingRecompute(
+            final String module, final String jobName, final long version, final int limit) {
+        final var ids =
+                analyticsJobStateRepository.findDiveIdsNeedingRecompute(
+                        module, jobName, version, PageRequest.of(0, limit + RECOMPUTE_OVERFETCH));
+        final var hasMore = ids.size() > limit;
+        final var pageIds = hasMore ? ids.subList(0, limit) : ids;
+        final var dives =
+                diveRepository.findAllById(pageIds).stream()
+                        .map(d -> d.toRecord(storageService.baseUrl(), false))
+                        .toList();
+        return new DivesToRecompute(dives, hasMore);
     }
 
-    @Transactional(readOnly = true)
-    public PagedResponse<Dive> findAllDivesSince(
-            final Optional<Long> lastId, final Pageable pageable) {
-        final var result =
-                diveRepository.findByIdGreaterThanOrderByIdAsc(lastId.orElse(-1L), pageable);
-        return PagedResponse.of(result, d -> d.toRecord(storageService.baseUrl(), false));
+    @Transactional
+    public void deleteExistingSegmentsAndAnalytics(final long diveId) {
+        // Depth-variance rows for these segments cascade-delete at the DB level.
+        diveProfileSegmentRepository.deleteAllByDiveId(diveId);
+        diveProfileSegmentRepository.flush();
+    }
+
+    @Transactional
+    public void recordJobState(
+            final long diveId,
+            final String module,
+            final String jobName,
+            final long version,
+            final Instant computedAt) {
+        final var existing =
+                analyticsJobStateRepository.findByDive_IdAndModuleAndJobName(
+                        diveId, module, jobName);
+        if (existing.isPresent()) {
+            final var entity = existing.get();
+            entity.setVersion(version);
+            entity.setComputedAt(computedAt);
+            analyticsJobStateRepository.save(entity);
+            return;
+        }
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        analyticsJobStateRepository.save(
+                new AnalyticsJobStateEntity(dive, module, jobName, version, computedAt));
     }
 
     @Transactional
@@ -153,5 +194,37 @@ public class AnalyticsDataService {
         return analyticsDepthVarianceEntityRepository.findByReaderAndDiveId(userId, diveId).stream()
                 .map(AnalyticsDepthVarianceEntity::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DiveProfileRatesResponse> findRatesByDiveId(final User user, final long diveId) {
+        final var segments = diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), diveId);
+        if (segments.isEmpty()) {
+            throw new NoSuchElementException(
+                    "There are no segments computed for dive "
+                            + diveId
+                            + ", maybe check again later if this dive is new.");
+        }
+        final var profileIds =
+                segments.stream().map(s -> s.getProfile().getId()).distinct().toList();
+        return profileIds.stream().map(this::ratesForProfile).toList();
+    }
+
+    private DiveProfileRatesResponse ratesForProfile(final long profileId) {
+        final var measurements =
+                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId).stream()
+                        .map(DiveMeasurementEntity::toRecordWithId)
+                        .toList();
+        final var rates = DiveProfileSegmenter.smoothedRates(measurements);
+        final var ratePoints =
+                IntStream.range(0, measurements.size())
+                        .mapToObj(
+                                i ->
+                                        new DiveProfileRatesResponse.RatePoint(
+                                                measurements.get(i).measurement().time(),
+                                                measurements.get(i).measurement().depth(),
+                                                rates[i]))
+                        .toList();
+        return new DiveProfileRatesResponse(profileId, ratePoints);
     }
 }

@@ -146,4 +146,26 @@ class DiveProfileSegmenterTest {
                         .map(DiveMeasurementWithId::id)
                         .collect(Collectors.toList()));
     }
+
+    @Test
+    void smoothedRatesMatchSegmentClassificationSignConvention() {
+        final var measurements = new ArrayList<DiveMeasurementWithId>();
+        var id = 0;
+        // steady 10 m/min descent from 0 to 20m
+        for (var t = 0; t <= 120; t++) {
+            measurements.add(sample(id++, t, Math.min(20.0, t * (10.0 / 60.0))));
+        }
+        // steady 10 m/min ascent back to the surface
+        for (var t = 121; t <= 241; t++) {
+            measurements.add(sample(id++, t, Math.max(0.0, 20.0 - (t - 120) * (10.0 / 60.0))));
+        }
+
+        final var rates = DiveProfileSegmenter.smoothedRates(measurements);
+        assertEquals(measurements.size(), rates.length);
+
+        final var midDescent = rates[60];
+        final var midAscent = rates[180];
+        assertTrue(midDescent > 8 && midDescent < 12, "expected ~10 m/min descent, got " + midDescent);
+        assertTrue(midAscent < -8 && midAscent > -12, "expected ~-10 m/min ascent, got " + midAscent);
+    }
 }

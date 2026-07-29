@@ -8,19 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface AnalyticsDepthVarianceRepository
         extends JpaRepository<AnalyticsDepthVarianceEntity, AnalyticsDepthVarianceId> {
-    @Query("SELECT MAX(a.profileSegment.profile.dive.id) FROM AnalyticsDepthVarianceEntity a")
-    Optional<Long> findMaxDiveId();
-
-    @Query(
-            "SELECT MAX(a.profileSegment.profile.dive.id) FROM AnalyticsDepthVarianceEntity a WHERE a.id.version = :version")
-    Optional<Long> findMaxDiveIdByVersion(long version);
-
-    // @Query("SELECT a FROM AnalyticsDepthVarianceEntity a WHERE a.profile.dive.id = :diveId")
     @Query(
             value =
                     """

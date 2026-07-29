@@ -50,12 +50,7 @@ public class AnalyticsSecurityConfig {
         return http.cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers("/v1/analytics/**")
-                                        .permitAll()
-                                        .requestMatchers("/actuator/**")
-                                        .permitAll())
+                        authorize -> authorize.requestMatchers("/actuator/**").permitAll())
                 .build();
     }
 

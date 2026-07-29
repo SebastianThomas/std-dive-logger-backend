@@ -14,10 +14,10 @@ import com.google.common.math.Stats;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +26,12 @@ import java.util.stream.DoubleStream;
 @Service
 public class AnalyticsService {
     public static final long ANALYTICS_VERSION = 1;
-    private static final long MAX_DIVES_PER_RUN = 100;
+    // Identifies this recomputation job's state in AnalyticsJobState, per dive, so a bumped
+    // ANALYTICS_VERSION tells us exactly which dives are stale instead of reprocessing
+    // everything (or, worse, silently reprocessing nothing).
+    public static final String JOB_MODULE = "analytics";
+    public static final String JOB_NAME = "dive-profile-segments";
+    private static final int MAX_DIVES_PER_RUN = 100;
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsService.class);
 
     private final AnalyticsDataService analyticsDataService;
@@ -43,34 +48,37 @@ public class AnalyticsService {
     }
 
     public AnalyticsResult computeAnalytics() {
-        final var lastAnalyticsDive =
-                analyticsDataService.findLatestAnalyticsDepthVarianceDiveId(ANALYTICS_VERSION);
-        final var divesSinceLast =
-                analyticsDataService.findAllDivesSince(lastAnalyticsDive, PageRequest.of(0, 100));
+        final var candidates =
+                analyticsDataService.findDivesNeedingRecompute(
+                        JOB_MODULE, JOB_NAME, ANALYTICS_VERSION, MAX_DIVES_PER_RUN);
         final var result =
-                divesSinceLast.result().stream()
+                candidates.dives().stream()
                         .map(this::computeAnalytics)
                         .reduce(AnalyticsResult::merge)
                         .orElse(new AnalyticsResult(true, List.of()));
-        if (divesSinceLast.totalPages() <= 1) {
-            if (divesSinceLast.totalPages() == 1) {
-                logger.debug("Finished computing {} analytics.", divesSinceLast.result().size());
+        if (!candidates.hasMore()) {
+            if (!candidates.dives().isEmpty()) {
+                logger.debug("Finished computing {} analytics.", candidates.dives().size());
             }
             return result;
         }
         logger.info(
-                "Got {} pages of {} dives each, only processed the first page.",
-                divesSinceLast.totalPages(),
-                divesSinceLast.pageSize());
+                "More than {} dives need recomputing, only processed the first batch.",
+                MAX_DIVES_PER_RUN);
         return result.merge(
                 new AnalyticsResult(
                         false, List.of("There are more than " + MAX_DIVES_PER_RUN + " dives.")));
     }
 
     private AnalyticsResult computeAnalytics(final Dive dive) {
+        // Delete-and-replace: otherwise a recompute (e.g. after a version bump) would just pile
+        // new segment/depth-variance rows up next to the stale ones instead of replacing them.
+        analyticsDataService.deleteExistingSegmentsAndAnalytics(dive.id());
         final var splits = createSegments(dive);
         final var analytics = splits.stream().map(this::createAnalytics).toList();
         final var savedAnalytics = analyticsDataService.saveAll(analytics);
+        analyticsDataService.recordJobState(
+                dive.id(), JOB_MODULE, JOB_NAME, ANALYTICS_VERSION, Instant.now());
         return new AnalyticsResult(
                 true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics.size())));
     }

@@ -3,12 +3,18 @@ package ch.sthomas.stddivelogger.data.repository;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
 public interface DiveProfileSegmentRepository
         extends JpaRepository<DiveProfileSegmentEntity, Long> {
+
+    // t_analytics_depth_variance rows for these segments cascade-delete at the DB level.
+    @Modifying
+    @Query("DELETE FROM DiveProfileSegmentEntity s WHERE s.profile.dive.id = :diveId")
+    void deleteAllByDiveId(long diveId);
 
     @Query(
             value =

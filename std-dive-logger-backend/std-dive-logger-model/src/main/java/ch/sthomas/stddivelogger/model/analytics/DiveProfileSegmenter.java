@@ -35,6 +35,16 @@ public final class DiveProfileSegmenter {
         return groupByType(measurements, types);
     }
 
+    /**
+     * The same smoothed rate (m/min, positive while descending) that segment classification
+     * itself is based on, exposed so consumers needing the continuous signal (e.g. an ascent/
+     * descent rate graph) can use exactly the numbers segmentation used rather than recomputing
+     * their own from scratch.
+     */
+    public static double[] smoothedRates(final List<DiveMeasurementWithId> measurements) {
+        return DiveProfileRateCalculator.smoothedRatesInMetersPerMinute(measurements, RATE_WINDOW_HALF);
+    }
+
     private static DiveProfileSegmentType[] classifyWithDebounce(
             final List<DiveMeasurementWithId> measurements) {
         final var rates =
