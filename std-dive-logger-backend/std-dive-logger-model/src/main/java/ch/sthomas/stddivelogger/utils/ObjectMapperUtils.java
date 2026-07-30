@@ -20,9 +20,9 @@ public class ObjectMapperUtils {
             final Consumer<JsonMapper.Builder> customizer) {
         final var jsonMapperBuilder =
                 JsonMapper.builder()
-                        // support for LocalDate to String conversion in ISO yyyy-MM-dd format
                         .addModule(localDateModule())
                         .addMixIn(ProblemDetail.class, ProblemDetailJacksonMixin.class)
+                        .enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
                         .disable(DateTimeFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS)
                         .disable(DateTimeFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
                         .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
