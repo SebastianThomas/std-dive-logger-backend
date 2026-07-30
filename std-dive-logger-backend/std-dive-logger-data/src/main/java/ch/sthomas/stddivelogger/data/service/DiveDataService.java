@@ -729,6 +729,40 @@ public class DiveDataService {
         return toRecord(diveRepository.findById(baseDiveId).orElseThrow());
     }
 
+    /**
+     * Removes a single profile (and its measurements, segments, history) from a dive without
+     * touching the rest of the dive - the recovery path for a profile attached to the wrong dive
+     * by mistake (e.g. via import) rather than a genuine duplicate-computer merge.
+     */
+    @Transactional
+    public Dive deleteProfile(final long diveId, final long profileId) {
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        if (dive.getProfiles().size() <= 1) {
+            throw new IllegalArgumentException(
+                    "Cannot delete the only profile on a dive - delete the whole dive instead.");
+        }
+        final var profile =
+                dive.getProfiles().stream()
+                        .filter(p -> p.getId() == profileId)
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Profile "
+                                                        + profileId
+                                                        + " not found on dive "
+                                                        + diveId));
+        // The dive entity is still managed and still references this profile in its own
+        // in-memory collection - without removing it there too, cascade=ALL on that mapping
+        // re-asserts the association on flush (no-op delete) since nothing told Hibernate the
+        // parent's view of its children changed, only that this one row should be removed.
+        dive.getProfiles().remove(profile);
+        diveProfileRepository.delete(profile);
+        entityManager.flush();
+        entityManager.clear();
+        return toRecord(diveRepository.findById(diveId).orElseThrow());
+    }
+
     @Transactional
     public void deleteDiveById(final long diveId) {
         diveRepository.deleteById(diveId);

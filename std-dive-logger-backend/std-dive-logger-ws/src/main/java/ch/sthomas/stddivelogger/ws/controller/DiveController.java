@@ -572,6 +572,23 @@ public class DiveController {
 
     @Operation(
             summary =
+                    "Delete a single profile from a dive (measurements, segments, history included)"
+                            + " without deleting the dive itself - recovery path for a profile"
+                            + " attached/merged to the wrong dive by mistake. Refuses to delete a"
+                            + " dive's only remaining profile; delete the dive instead in that case.")
+    @DeleteMapping(path = "/{id}/profiles/{profileId}")
+    public Dive deleteProfile(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @PathVariable("profileId") @Positive final long profileId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to delete a profile.");
+        }
+        return diveService.deleteProfile(user, diveId, profileId);
+    }
+
+    @Operation(
+            summary =
                     "Reimport a profile's raw measurements from its original source file, leaving every"
                             + " other dive property (suit, gas consumption, weight, visibility, notes, tags,"
                             + " buddies, ...) untouched. Recovery tool for fixing importer bugs after the fact;"

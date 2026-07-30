@@ -312,6 +312,19 @@ public class DiveService {
         return result;
     }
 
+    /**
+     * Removes a single profile from a dive without deleting the dive itself - the recovery path
+     * for a profile attached/merged to the wrong dive by mistake (e.g. via import).
+     */
+    public Dive deleteProfile(final User user, final long diveId, final long profileId) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        final var result = diveDataService.deleteProfile(diveId, profileId);
+        createSaveDivePreview(result);
+        return result;
+    }
+
     public Dive moveProfiles(final User user, final Long diveId, final List<Long> profileIds) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);
