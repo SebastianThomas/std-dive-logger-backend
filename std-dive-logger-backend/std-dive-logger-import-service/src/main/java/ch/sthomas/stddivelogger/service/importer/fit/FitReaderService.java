@@ -2,10 +2,10 @@ package ch.sthomas.stddivelogger.service.importer.fit;
 
 import static java.time.Duration.*;
 
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -16,12 +16,10 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
-import ch.sthomas.stddivelogger.model.exception.MissingValueException;
-import ch.sthomas.stddivelogger.model.exception.MissingValueField;
-import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
+import ch.sthomas.stddivelogger.service.importer.ParsedImport;
 
 import com.garmin.fit.*;
 import com.google.common.base.CaseFormat;
@@ -42,7 +40,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Service
 public class FitReaderService extends BaseReaderService {
@@ -54,11 +51,12 @@ public class FitReaderService extends BaseReaderService {
         this.diveService = diveService;
     }
 
-    public UploadDiveResultStreaming readFitAndSaveDive(
-            final User user,
-            final String filename,
-            final UploadDiveBody body,
-            final InputStream inputStream) {
+    /**
+     * Parses a single-session FIT file. Doesn't touch the dive/site tables - only the dive
+     * computer(s) are resolved eagerly (get-or-create by serial number is idempotent, so doing it
+     * now rather than at commit is harmless even if the staged import is later discarded).
+     */
+    public ParsedImport parse(final User user, final String filename, final InputStream inputStream) {
         final var messages = new FitDecoder().decode(inputStream);
         if (messages.getSessionMesgs().size() != 1) {
             throw new IllegalArgumentException("Only one-session dive logs supported.");
@@ -73,7 +71,6 @@ public class FitReaderService extends BaseReaderService {
         final var summary = getSummary(summaryMessages);
 
         final var session = messages.getSessionMesgs().getFirst();
-        final var diveSite = getOrSaveLocation(body, session);
         final var gases = getGases(messages);
 
         final var computer = getComputer(messages, computers);
@@ -84,25 +81,37 @@ public class FitReaderService extends BaseReaderService {
                         gases,
                         computer,
                         summary);
-        final var buddies = List.<String>of();
-        final var diveName = getDiveName(body, filename);
-        final var result =
-                diveService.saveDive(
-                        user,
-                        diveNumber,
-                        diveName,
+
+        final var payload =
+                new PendingImportPayload(
+                        List.of(profile),
                         "",
                         Visibility.EMPTY,
                         DiveGasConsumption.EMPTY,
                         DiveConfiguration.createEmpty(user),
-                        diveSite.id(),
-                        List.of(profile),
-                        buddies);
-        if (result.isException()) {
-            return new UploadDiveResultStreaming(
-                    Stream.of(), Stream.of(result.dbException().externalMessage()));
-        }
-        return new UploadDiveResultStreaming(Stream.of(result.value()), Stream.of());
+                        List.of(),
+                        diveNumber.map(DiveNumber::new).orElse(null));
+
+        final var hasCoordinates =
+                session.getStartPositionLong() != null && session.getStartPositionLat() != null;
+        final var lat =
+                hasCoordinates ? semicirclesToDegrees(session.getStartPositionLat()) : null;
+        final var lon =
+                hasCoordinates ? semicirclesToDegrees(session.getStartPositionLong()) : null;
+
+        return new ParsedImport(
+                PendingImportSource.FIT_GARMIN,
+                null,
+                filename,
+                getDiveName(filename),
+                hasCoordinates ? MessageFormat.format("unnamed-{0}-{1}", lat, lon) : null,
+                lat,
+                lon,
+                computer.serialNumber(),
+                summary.map(DiveProfileSummary::start).orElse(null),
+                summary.map(s -> Duration.between(s.start(), s.end()).toSeconds()).orElse(null),
+                null,
+                payload);
     }
 
     private static DiveComputer getComputer(
@@ -135,20 +144,6 @@ public class FitReaderService extends BaseReaderService {
                                         gasMsg.getOxygenContent() / 100.0,
                                         gasMsg.getHeliumContent() / 100.0))
                 .toList();
-    }
-
-    private DiveSite getOrSaveLocation(final UploadDiveBody body, final SessionMesg session) {
-        if (body.diveSiteId() != null) {
-            return diveService.getSiteById(body.diveSiteId()).orElseThrow();
-        }
-        if (session.getStartPositionLong() == null || session.getStartPositionLat() == null) {
-            throw new MissingValueException(MissingValueField.DIVE_SITE);
-        }
-        final var startCoordinateLon = semicirclesToDegrees(session.getStartPositionLong());
-        final var startCoordinateLat = semicirclesToDegrees(session.getStartPositionLat());
-        return diveService.getOrCreateDiveSite(
-                MessageFormat.format("unnamed-{0}-{1}", startCoordinateLat, startCoordinateLon),
-                new Location(startCoordinateLat, startCoordinateLon));
     }
 
     private DiveProfileUpload getDiveProfile(
@@ -349,19 +344,6 @@ public class FitReaderService extends BaseReaderService {
         return List.of();
     }
 
-    private Optional<Long> getDiveNumber(final DiveSummaryMesg summary) {
-        return Optional.ofNullable(summary.getDiveNumber());
-    }
-
-    private Optional<Field> findMessageByName(final List<Field> fields, final String name) {
-        return fields.stream().filter(f -> name.equals(f.getName())).findFirst();
-    }
-
-    private Optional<FileIdMesg> findMessagesByName(
-            final List<FileIdMesg> fields, final String name) {
-        return fields.stream().filter(f -> name.equals(f.getName())).findFirst();
-    }
-
     static Instant toInstant(final DateTime garminTime) {
         final var base = garminEpochOffset.plusSeconds(garminTime.getTimestamp());
         return base.plusMillis((long) (garminTime.getFractionalTimestamp() * 1000));
@@ -371,9 +353,5 @@ public class FitReaderService extends BaseReaderService {
 
     static double semicirclesToDegrees(final int semicircles) {
         return precisionModel.makePrecise(semicircles * (180.0 / Math.pow(2, 31)));
-    }
-
-    static List<String> getMessageNames(final List<FieldBase> fields) {
-        return fields.stream().map(FieldBase::getName).toList();
     }
 }

@@ -2,7 +2,10 @@ package ch.sthomas.stddivelogger.importws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResult;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
+import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
+import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -31,8 +34,9 @@ import javax.crypto.SecretKey;
 /**
  * A real end-to-end test of the Divesoft import HTTP path against a throwaway Testcontainers
  * Postgres instance: confirms the new endpoints are actually reachable and covered by the existing
- * security filter chain (rather than silently falling outside its securityMatcher), and that a
- * posted dive JSON really gets persisted through the full stack.
+ * security filter chain (rather than silently falling outside its securityMatcher), and that
+ * staging a dive and then committing it (with and without a site override) really persists it
+ * through the full stack.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -74,28 +78,14 @@ class DivesoftImportIntegrationTest {
         return headers;
     }
 
-    @Test
-    void divesoftImportEndpointRejectsUnauthenticatedRequests() {
-        final var headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        final var response =
-                restTemplate.postForEntity(
-                        "/v1/import/divesoft",
-                        new HttpEntity<>("{\"dives\":[]}", headers),
-                        String.class);
-        assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
-    }
-
-    @Test
-    void importDivesoftPersistsAMinimalSyntheticDiveEndToEnd() {
-        final var requestBody =
-                """
+    private static String syntheticDiveRequestBody(final String id) {
+        return """
                 {
                   "dives": [
                     {
                       "diveAndMixes": {
                         "dive": {
-                          "id": "it-test-dive",
+                          "id": "%s",
                           "deviceSerial": "IT-SERIAL",
                           "description": "",
                           "site": "Integration Test Lake",
@@ -123,20 +113,91 @@ class DivesoftImportIntegrationTest {
                         }
                       }
                     }
-                  ],
-                  "body": null
+                  ]
                 }
-                """;
+                """
+                .formatted(id);
+    }
 
+    @Test
+    void divesoftImportEndpointRejectsUnauthenticatedRequests() {
+        final var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
         final var response =
                 restTemplate.postForEntity(
                         "/v1/import/divesoft",
-                        new HttpEntity<>(requestBody, authorizedJsonHeaders()),
-                        UploadDiveResult.class);
+                        new HttpEntity<>("{\"dives\":[]}", headers),
+                        String.class);
+        assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
+    }
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().errors()).isEmpty();
-        assertThat(response.getBody().dives()).hasSize(1);
+    @Test
+    void stagingThenCommittingWithoutOverridesPersistsUsingTheGuessedSite() {
+        final var stageResponse =
+                restTemplate.postForEntity(
+                        "/v1/import/divesoft",
+                        new HttpEntity<>(
+                                syntheticDiveRequestBody("it-test-dive-1"), authorizedJsonHeaders()),
+                        StageImportResult.class);
+
+        assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(stageResponse.getBody()).isNotNull();
+        assertThat(stageResponse.getBody().errors()).isEmpty();
+        assertThat(stageResponse.getBody().staged()).hasSize(1);
+        final var staged = stageResponse.getBody().staged().getFirst();
+        assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Lake");
+
+        final var commitRequest =
+                new PendingImportCommitRequest(null, null, null, null, null, null, null, null, null);
+        final var commitResponse =
+                restTemplate.postForEntity(
+                        "/v1/import/pending/" + staged.id() + "/commit",
+                        new HttpEntity<>(commitRequest, authorizedJsonHeaders()),
+                        SimplifiedDive.class);
+
+        assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(commitResponse.getBody()).isNotNull();
+
+        // The pending import is consumed by commit - listing pending imports afterwards is empty.
+        final var pendingAfterCommit =
+                restTemplate.exchange(
+                        "/v1/import/pending",
+                        org.springframework.http.HttpMethod.GET,
+                        new HttpEntity<>(authorizedJsonHeaders()),
+                        StageImportResult[].class);
+        assertThat(pendingAfterCommit.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void committingWithASiteOverrideUsesTheOverrideInsteadOfTheGuess() {
+        final var stageResponse =
+                restTemplate.postForEntity(
+                        "/v1/import/divesoft",
+                        new HttpEntity<>(
+                                syntheticDiveRequestBody("it-test-dive-2"), authorizedJsonHeaders()),
+                        StageImportResult.class);
+        assertThat(stageResponse.getBody()).isNotNull();
+        final var staged = stageResponse.getBody().staged().getFirst();
+
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        "Overridden Name",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "A Brand New Site",
+                        new Location(1.0, 2.0),
+                        null);
+        final var commitResponse =
+                restTemplate.postForEntity(
+                        "/v1/import/pending/" + staged.id() + "/commit",
+                        new HttpEntity<>(commitRequest, authorizedJsonHeaders()),
+                        SimplifiedDive.class);
+
+        assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(commitResponse.getBody()).isNotNull();
+        assertThat(commitResponse.getBody().customIdentifier()).isEqualTo("Overridden Name");
     }
 }

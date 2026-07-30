@@ -1,10 +1,9 @@
 package ch.sthomas.stddivelogger.service.importer.divesoft;
 
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -14,8 +13,6 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
-import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
-import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftCeilingSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDepthSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDive;
@@ -25,6 +22,8 @@ import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftTemperatureSampl
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
+import ch.sthomas.stddivelogger.service.importer.ParsedImport;
+import ch.sthomas.stddivelogger.service.importer.ParsedImportResultStreaming;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -47,8 +46,6 @@ import java.util.stream.Stream;
 @Service
 public class DivesoftReaderService extends BaseReaderService {
     private static final Logger logger = LoggerFactory.getLogger(DivesoftReaderService.class);
-    private static final UploadDiveBody EMPTY_BODY =
-            new UploadDiveBody(null, null, null, null, null);
     private static final DateTimeFormatter START_DATE_FORMAT =
             DateTimeFormatter.ofPattern("EEE MMM d yyyy HH:mm:ss 'GMT'Z", Locale.ENGLISH);
 
@@ -58,29 +55,25 @@ public class DivesoftReaderService extends BaseReaderService {
         this.diveService = diveService;
     }
 
-    public Stream<UploadDiveResultStreaming> importDivesoft(
-            final User user, final DivesoftImportRequest request) {
-        final var body = Optional.ofNullable(request.body()).orElse(EMPTY_BODY);
+    /**
+     * Parses every dive in the request. Doesn't touch the dive/site tables - only the dive
+     * computer is resolved eagerly (get-or-create by serial number is idempotent, so doing it now
+     * rather than at commit is harmless even if the staged import is later discarded).
+     */
+    public ParsedImportResultStreaming parse(final User user, final DivesoftImportRequest request) {
         final var dives = request.dives().stream().map(d -> d.diveAndMixes().dive()).toList();
-        // Only let a missing-dive-site error propagate as-is when importing a single dive: the
-        // frontend's existing retry flow re-submits with body.diveSiteId() set, which is only
-        // correct when there is exactly one dive in the request.
-        final var isSingleDive = dives.size() == 1;
         return dives.stream()
-                .map(
-                        dive ->
-                                isSingleDive
-                                        ? importOne(user, dive, body)
-                                        : importOneSafe(user, dive, body));
+                .map(dive -> parseOneSafe(user, dive))
+                .reduce(ParsedImportResultStreaming::concat)
+                .orElse(new ParsedImportResultStreaming(Stream.empty(), Stream.empty()));
     }
 
-    private UploadDiveResultStreaming importOneSafe(
-            final User user, final DivesoftDive dive, final UploadDiveBody body) {
+    private ParsedImportResultStreaming parseOneSafe(final User user, final DivesoftDive dive) {
         try {
-            return importOne(user, dive, body);
+            return new ParsedImportResultStreaming(Stream.of(parseOne(user, dive)), Stream.empty());
         } catch (final Exception e) {
-            logger.info("Could not import Divesoft dive {}", dive.id(), e);
-            return new UploadDiveResultStreaming(
+            logger.info("Could not parse Divesoft dive {}", dive.id(), e);
+            return new ParsedImportResultStreaming(
                     Stream.empty(),
                     Stream.of(
                             MessageFormat.format(
@@ -89,36 +82,56 @@ public class DivesoftReaderService extends BaseReaderService {
         }
     }
 
-    private UploadDiveResultStreaming importOne(
-            final User user, final DivesoftDive dive, final UploadDiveBody body) {
+    private ParsedImport parseOne(final User user, final DivesoftDive dive) {
         final var computer = getOrCreateComputer(user, dive);
-        final var site = resolveSite(body, dive);
         final var profile = getDiveProfile(computer, dive);
-        final var diveName =
-                Optional.ofNullable(body.diveIdentifier())
-                        .or(() -> Optional.ofNullable(dive.description()).filter(s -> !s.isBlank()))
+        final var diveIdentifierGuess =
+                Optional.ofNullable(dive.description())
+                        .filter(s -> !s.isBlank())
                         .orElse("Divesoft dive " + dive.id());
         final var visibility =
                 dive.visibility() != null
                         ? new Visibility(dive.visibility(), "", null)
                         : Visibility.EMPTY;
-        final var result =
-                diveService.saveDive(
-                        user,
-                        Optional.ofNullable(body.diveNumber()),
-                        diveName,
+        final var hasCoordinates = dive.latitude() != null && dive.longitude() != null;
+        final var siteNameGuess =
+                hasCoordinates
+                        ? Optional.ofNullable(dive.site())
+                                .filter(s -> !s.isBlank())
+                                .orElseGet(
+                                        () ->
+                                                MessageFormat.format(
+                                                        "unnamed-{0}-{1}",
+                                                        dive.latitude(), dive.longitude()))
+                        : null;
+        final var start =
+                parseStartDate(
+                        Objects.requireNonNull(
+                                dive.startDate(),
+                                "Divesoft dive " + dive.id() + " has no startDate"));
+        final var duration = parseDuration(dive.duration());
+        final var payload =
+                new PendingImportPayload(
+                        List.of(profile),
                         "",
                         visibility,
                         DiveGasConsumption.EMPTY,
                         DiveConfiguration.createEmpty(user),
-                        site.id(),
-                        List.of(profile),
-                        List.of());
-        if (result.isException()) {
-            return new UploadDiveResultStreaming(
-                    Stream.of(), Stream.of(result.dbException().externalMessage()));
-        }
-        return new UploadDiveResultStreaming(Stream.of(result.value()), Stream.of());
+                        List.of(),
+                        null);
+        return new ParsedImport(
+                PendingImportSource.DIVESOFT,
+                dive.id(),
+                null,
+                diveIdentifierGuess,
+                siteNameGuess,
+                hasCoordinates ? dive.latitude() : null,
+                hasCoordinates ? dive.longitude() : null,
+                dive.deviceSerial(),
+                start,
+                duration != null ? duration.toSeconds() : null,
+                dive.maxDepth(),
+                payload);
     }
 
     private DiveComputer getOrCreateComputer(final User user, final DivesoftDive dive) {
@@ -128,25 +141,6 @@ public class DivesoftReaderService extends BaseReaderService {
                     "Divesoft dive " + dive.id() + " has no device serial number");
         }
         return diveService.getOrCreateDiveComputer(user, "Divesoft", serial, serial);
-    }
-
-    private DiveSite resolveSite(final UploadDiveBody body, final DivesoftDive dive) {
-        if (body.diveSiteId() != null) {
-            return diveService.getSiteById(body.diveSiteId()).orElseThrow();
-        }
-        if (dive.latitude() == null || dive.longitude() == null) {
-            throw new MissingDiveSiteValueException(Optional.ofNullable(dive.site()).orElse(""));
-        }
-        final var name =
-                Optional.ofNullable(dive.site())
-                        .filter(s -> !s.isBlank())
-                        .orElseGet(
-                                () ->
-                                        MessageFormat.format(
-                                                "unnamed-{0}-{1}",
-                                                dive.latitude(), dive.longitude()));
-        return diveService.getOrCreateDiveSite(
-                name, new Location(dive.latitude(), dive.longitude()));
     }
 
     DiveProfileUpload getDiveProfile(final DiveComputer computer, final DivesoftDive dive) {

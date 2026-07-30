@@ -3,24 +3,26 @@ package ch.sthomas.stddivelogger.service.importer.subsurface;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.getUntilSeparator;
 import static ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile.parseUntilSpace;
 
-import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
-import ch.sthomas.stddivelogger.model.exception.DBResult;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
+import ch.sthomas.stddivelogger.service.importer.ParsedImport;
+import ch.sthomas.stddivelogger.service.importer.ParsedImportResultStreaming;
 import ch.sthomas.stddivelogger.utils.MoreGatherers;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,7 +33,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -41,91 +47,80 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
     private static final Logger logger = LoggerFactory.getLogger(SubsurfaceXmlReaderService.class);
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
-    private final DiveSiteRepository diveSiteRepository;
 
-    public SubsurfaceXmlReaderService(
-            final XmlMapper xmlMapper,
-            final DiveService diveService,
-            final DiveSiteRepository diveSiteRepository) {
+    public SubsurfaceXmlReaderService(final XmlMapper xmlMapper, final DiveService diveService) {
         this.xmlMapper = xmlMapper;
         this.diveService = diveService;
-        this.diveSiteRepository = diveSiteRepository;
     }
 
-    public Stream<UploadDiveResultStreaming> importSubsurfaceXml(
-            final User user,
-            final String filename,
-            final UploadDiveBody body,
-            final InputStream inputStream)
+    private record SiteGuess(String name, Location location) {}
+
+    /**
+     * Parses every dive in the file. Doesn't touch the dive/site tables - only the dive
+     * computer(s) are resolved eagerly (get-or-create by serial number is idempotent, so doing it
+     * now rather than at commit is harmless even if the staged import is later discarded); dive
+     * sites are only ever captured as a name+location guess here.
+     */
+    public Stream<ParsedImportResultStreaming> parse(
+            final User user, final String filename, final InputStream inputStream)
             throws IOException {
         try (inputStream) {
             final var subsurfaceFile = xmlMapper.readValue(inputStream, SubsurfaceXmlFile.class);
             final var sites =
                     subsurfaceFile.diveSites().stream()
-                            .map(site -> Map.entry(site.uuid(), findOrCreateDiveSite(site)))
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                            .collect(
+                                    Collectors.toMap(
+                                            SubsurfaceXmlFile.SubsurfaceDiveSite::uuid,
+                                            site -> new SiteGuess(site.name(), site.location())));
             final var computers =
                     subsurfaceFile.dives().stream()
                             .map(SubsurfaceXmlFile.SubsurfaceDive::diveComputers)
                             .flatMap(List::stream)
-                            .gather(MoreGatherers.distinctBy(this::computerId))
-                            .map(
-                                    c ->
-                                            Map.entry(
-                                                    c.deviceid(),
+                            .collect(
+                                    Collectors.toMap(
+                                            SubsurfaceXmlFile.SubsurfaceDiveComputer::deviceid,
+                                            c ->
                                                     diveService.getOrCreateDiveComputer(
                                                             user,
                                                             getUntilSeparator(c.model(), ' '),
                                                             c.deviceid(),
-                                                            c.model())))
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                                                            c.model()),
+                                            (a, b) -> a));
             return IntStream.range(0, subsurfaceFile.dives().size())
                     .mapToObj(i -> Pair.of(i, subsurfaceFile.dives().get(i)))
-                    .map(dive -> saveDiveSafe(user, filename, body, dive, computers, sites));
+                    .map(dive -> parseOneSafe(user, filename, dive, computers, sites));
         }
     }
 
-    private @NonNull UploadDiveResultStreaming saveDiveSafe(
+    private ParsedImportResultStreaming parseOneSafe(
             final User user,
             final String filename,
-            final UploadDiveBody body,
             final Pair<Integer, SubsurfaceXmlFile.SubsurfaceDive> dive,
             final Map<String, DiveComputer> computers,
-            final Map<String, DiveSite> sites) {
+            final Map<String, SiteGuess> sites) {
         try {
-            final var result =
-                    importSubsurfaceXmlDive(
+            final var parsed =
+                    parseOne(
                             user,
-                            body,
                             dive.getValue(),
                             computers,
                             sites,
-                            getDiveName(body, filename) + "-" + dive.getKey());
-            if (result.isException()) {
-                return new UploadDiveResultStreaming(
-                        Stream.of(), Stream.of(result.dbException().externalMessage()));
-            }
-            return new UploadDiveResultStreaming(Stream.of(result.value()), Stream.of());
+                            getDiveName(filename) + "-" + dive.getKey());
+            return new ParsedImportResultStreaming(Stream.of(parsed), Stream.empty());
         } catch (final Exception e) {
-            logger.info("Could not import subsurface XML file dive #{}", dive.getLeft(), e);
-            return new UploadDiveResultStreaming(
+            logger.info("Could not parse subsurface XML file dive #{}", dive.getLeft(), e);
+            return new ParsedImportResultStreaming(
                     Stream.empty(),
                     Stream.of("Could not import Subsurface XML file dive #" + dive.getLeft()));
         }
     }
 
-    private Pair<String, String> computerId(
-            final SubsurfaceXmlFile.SubsurfaceDiveComputer computer) {
-        return Pair.of(computer.model(), computer.deviceid());
-    }
-
-    private DBResult<SimplifiedDive> importSubsurfaceXmlDive(
+    private ParsedImport parseOne(
             final User user,
-            final UploadDiveBody body,
             final SubsurfaceXmlFile.SubsurfaceDive dive,
             final Map<String, DiveComputer> computers,
-            final Map<String, DiveSite> sites,
-            final String diveName) {
+            final Map<String, SiteGuess> sites,
+            final String diveIdentifierGuess) {
         final var site =
                 Objects.requireNonNullElseGet(
                         sites.get(dive.divesiteid()),
@@ -134,20 +129,35 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                     "DiveSite does not exist in given XML file: "
                                             + dive.divesiteid());
                         });
-        final var profile = getProfiles(computers, dive);
+        final var profiles = getProfiles(computers, dive);
         final var buddies =
                 dive.buddy().stream().flatMap(s -> Arrays.stream(s.split(","))).toList();
-        return diveService.saveDive(
-                user,
-                Optional.ofNullable(body.diveNumber()),
-                diveName,
-                "",
+        final var payload =
+                new PendingImportPayload(
+                        profiles,
+                        "",
+                        Visibility.EMPTY,
+                        DiveGasConsumption.EMPTY,
+                        DiveConfiguration.createEmpty(user),
+                        buddies,
+                        null);
+        final var start = profiles.stream().map(DiveProfileUpload::start).min(Instant::compareTo);
+        final var end = profiles.stream().map(DiveProfileUpload::end).max(Instant::compareTo);
+        return new ParsedImport(
+                PendingImportSource.XML_SUBSURFACE,
                 null,
                 null,
+                diveIdentifierGuess,
+                site.name(),
+                site.location().lat(),
+                site.location().lon(),
                 null,
-                site.id(),
-                profile,
-                buddies);
+                start.orElse(null),
+                start.isPresent() && end.isPresent()
+                        ? Duration.between(start.get(), end.get()).toSeconds()
+                        : null,
+                null,
+                payload);
     }
 
     public List<DiveProfileUpload> getProfiles(
@@ -229,9 +239,5 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 null,
                 null,
                 null);
-    }
-
-    private DiveSite findOrCreateDiveSite(final SubsurfaceXmlFile.SubsurfaceDiveSite site) {
-        return diveService.getOrCreateDiveSite(site.name(), site.location());
     }
 }

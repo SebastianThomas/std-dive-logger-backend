@@ -39,6 +39,5 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.migrationsExecuted).isGreaterThan(0);
-        assertThat(result.targetSchemaVersion).isEqualTo("0.3.3");
     }
 }

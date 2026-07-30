@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
@@ -34,10 +33,9 @@ public class FitReaderServiceTest {
         final var service = new FitReaderService(mock(DiveService.class));
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(filename)) {
             final var result =
-                    service.readFitAndSaveDive(
+                    service.parse(
                             new User(0, "", "", "", true, Instant.now(), Instant.now(), null, null),
                             filename,
-                            new UploadDiveBody(1, "TestID", null, null, null),
                             inputStream);
             assertNotNull(result);
         }

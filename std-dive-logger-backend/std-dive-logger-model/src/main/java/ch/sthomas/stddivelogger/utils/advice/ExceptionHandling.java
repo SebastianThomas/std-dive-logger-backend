@@ -9,4 +9,5 @@ public class ExceptionHandling extends ResponseEntityExceptionHandler
                 NoSuchElementAdviceTrait,
                 IllegalArgumentAdviceTrait,
                 ConstraintViolationAdviceTrait,
+                DiveDBConstraintAdviceTrait,
                 SecurityAdviceTrait {}

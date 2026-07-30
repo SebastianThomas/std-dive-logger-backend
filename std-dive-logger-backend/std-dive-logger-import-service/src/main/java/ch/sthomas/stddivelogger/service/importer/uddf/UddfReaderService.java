@@ -1,22 +1,18 @@
 package ch.sthomas.stddivelogger.service.importer.uddf;
 
-import ch.sthomas.stddivelogger.data.service.DiveDataService;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveResultStreaming;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
-import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
-import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
-import ch.sthomas.stddivelogger.model.exception.DBResult;
-import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
-import ch.sthomas.stddivelogger.model.exception.MissingValueException;
-import ch.sthomas.stddivelogger.model.exception.MissingValueField;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
+import ch.sthomas.stddivelogger.service.importer.ParsedImport;
+import ch.sthomas.stddivelogger.service.importer.ParsedImportResultStreaming;
 
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,7 +21,10 @@ import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Gatherer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -35,36 +34,32 @@ public class UddfReaderService extends BaseReaderService {
     private static final Logger logger = LoggerFactory.getLogger(UddfReaderService.class);
     private final XmlMapper xmlMapper;
     private final DiveService diveService;
-    private final DiveDataService diveDataService;
 
-    public UddfReaderService(
-            final XmlMapper xmlMapper,
-            final DiveService diveService,
-            final DiveDataService diveDataService) {
+    public UddfReaderService(final XmlMapper xmlMapper, final DiveService diveService) {
         this.xmlMapper = xmlMapper;
         this.diveService = diveService;
-        this.diveDataService = diveDataService;
     }
 
-    // @Transactional
-    public Stream<UploadDiveResultStreaming> importUddf(
-            final User user,
-            final String filename,
-            final UploadDiveBody body,
-            final InputStream inputStream)
+    /**
+     * Parses every (unique) entry of the UDDF file. Doesn't touch the dive/site tables - only the
+     * dive computer is resolved eagerly (get-or-create by serial number is idempotent, so doing it
+     * now rather than at commit is harmless even if the staged import is later discarded).
+     */
+    public Stream<ParsedImportResultStreaming> parse(
+            final User user, final String filename, final InputStream inputStream)
             throws IOException {
         final var file = xmlMapper.readValue(inputStream, UddfFile.class);
         final var entries = file.getEntries();
         return IntStream.range(0, entries)
                 .boxed()
                 .gather(uniqueProfileGatherer(entries, file))
-                .map(i -> importUddfSafe(user, filename, body, i, file));
+                .map(i -> parseOneSafe(user, filename, i, file));
     }
 
     // Pre-existing behavior: a well-formed UDDF file always has a <profiledata> element, so this
     // assumes Jackson populated it; a genuinely malformed file surfaces as an NPE bubbling out of
-    // importUddf(...) rather than a clean validation error (this predates the NullAway rollout,
-    // not addressed here).
+    // parse(...) rather than a clean validation error (this predates the NullAway rollout, not
+    // addressed here).
     @SuppressWarnings("NullAway")
     private static Gatherer<Integer, HashMap<UddfFile.UddfProfileRepetitionGroup, Integer>, Integer>
             uniqueProfileGatherer(final int entries, final UddfFile file) {
@@ -83,14 +78,10 @@ public class UddfReaderService extends BaseReaderService {
     }
 
     @SuppressWarnings("NullAway")
-    private UploadDiveResultStreaming importUddfSafe(
-            final User user,
-            final String filename,
-            final UploadDiveBody body,
-            final int i,
-            final UddfFile file) {
+    private ParsedImportResultStreaming parseOneSafe(
+            final User user, final String filename, final int i, final UddfFile file) {
         try {
-            // A null profileData here would NPE and get caught below as a per-entry import
+            // A null profileData here would NPE and get caught below as a per-entry parse
             // failure, same as any other malformed-file error.
             final var data = file.profileData().getData(i);
             if (!data.timeIsValid()) {
@@ -102,20 +93,12 @@ public class UddfReaderService extends BaseReaderService {
                                 + " in file) is invalid. "
                                 + "If you want to import it, please update the start time.");
             }
-            final var result = importUddf(user, filename, body, i, file);
-            if (result.isException()) {
-                return new UploadDiveResultStreaming(
-                        Stream.of(), Stream.of(result.dbException().externalMessage()));
-            }
-            return new UploadDiveResultStreaming(
-                    Optional.ofNullable(result.value()).stream(), Stream.of());
+            final var parsed = parseOne(user, filename, i, file);
+            return new ParsedImportResultStreaming(parsed.stream(), Stream.empty());
         } catch (final Exception e) {
-            if (e instanceof final MissingValueException mve) {
-                throw mve;
-            }
-            logger.info("Could not import entry {} of UDDF File", i, e);
-            return new UploadDiveResultStreaming(
-                    Stream.of(),
+            logger.info("Could not parse entry {} of UDDF File", i, e);
+            return new ParsedImportResultStreaming(
+                    Stream.empty(),
                     Stream.of(
                             "Could not import entry "
                                     + i
@@ -124,63 +107,40 @@ public class UddfReaderService extends BaseReaderService {
         }
     }
 
-    private DBResult<SimplifiedDive> importUddf(
-            final User user,
-            final String filename,
-            final UploadDiveBody body,
-            final int entry,
-            final UddfFile uddfFile) {
+    private Optional<ParsedImport> parseOne(
+            final User user, final String filename, final int entry, final UddfFile uddfFile) {
         if (!UddfFile.validate(uddfFile, entry)) {
-            // Explicitly the 2-arg (value, exception) constructor, both null: this represents
-            // "nothing to import" rather than the 1-arg @NotNull-value success constructor.
-            return new DBResult<>(null, null);
+            return Optional.empty();
         }
-        final var diveNumber =
-                Optional.ofNullable(body.diveNumber())
-                        .map(DiveNumber::new)
-                        .or(() -> uddfFile.exportDiveNumber(entry));
+        final var diveNumberGuess = uddfFile.exportDiveNumber(entry).orElse(null);
         final var notes = uddfFile.exportNotes(entry);
         final var profile = getProfile(user, uddfFile, entry);
-        if (diveNumber.isPresent() && diveNumber.map(DiveNumber::isFractional).orElse(false)) {
-            return new DBResult<>(diveService.addProfile(user, diveNumber.get(), notes, profile));
-        }
-
-        final var site = getDiveSiteIdForImport(body.diveSiteId(), uddfFile.exportSite());
-        final var visibility = uddfFile.exportVisibility(entry).orElse(null);
-        final var diveName = getDiveName(body, filename);
-        return diveService.saveDive(
-                user,
-                diveNumber.map(DiveNumber::number),
-                diveName,
-                notes,
-                visibility,
-                uddfFile.exportGasConsumption(entry),
-                uddfFile.getConfiguration(user),
-                site,
-                List.of(profile),
-                uddfFile.getBuddies());
-    }
-
-    private long getDiveSiteIdForImport(
-            @Nullable final Long siteId, @Nullable final String diveSite) {
-        if (siteId == null && diveSite == null) {
-            throw new MissingValueException(MissingValueField.DIVE_SITE);
-        }
-        final var site =
-                siteId != null
-                        ? diveDataService
-                                .findDiveSiteById(siteId)
-                                .orElseThrow(
-                                        () ->
-                                                new NoSuchElementException(
-                                                        "Could not find DiveSite by ID " + siteId))
-                        : diveDataService
-                                .findDiveSiteByName(Objects.requireNonNull(diveSite))
-                                .orElseThrow(
-                                        () ->
-                                                new MissingDiveSiteValueException(
-                                                        Objects.requireNonNull(diveSite)));
-        return site.id();
+        final var visibility = uddfFile.exportVisibility(entry).orElse(Visibility.EMPTY);
+        final var payload =
+                new PendingImportPayload(
+                        List.of(profile),
+                        notes,
+                        visibility,
+                        uddfFile.exportGasConsumption(entry),
+                        uddfFile.getConfiguration(user),
+                        uddfFile.getBuddies(),
+                        diveNumberGuess);
+        final var start = uddfFile.exportStart(entry);
+        final var end = uddfFile.exportEnd(entry);
+        return Optional.of(
+                new ParsedImport(
+                        PendingImportSource.UDDF_SHEARWATER,
+                        null,
+                        filename,
+                        getDiveName(filename),
+                        uddfFile.exportSite(),
+                        null,
+                        null,
+                        uddfFile.exportDiveComputerSerialNumber(),
+                        start,
+                        Duration.between(start, end).toSeconds(),
+                        null,
+                        payload));
     }
 
     private DiveProfileUpload getProfile(
@@ -190,11 +150,7 @@ public class UddfReaderService extends BaseReaderService {
                 diveComputer.id(),
                 uddfFile.exportStart(entry),
                 uddfFile.exportEnd(entry),
-                getMeasurements(uddfFile, entry));
-    }
-
-    private List<DiveMeasurement> getMeasurements(final UddfFile uddfFile, final int entry) {
-        return uddfFile.exportMeasurements(entry);
+                uddfFile.exportMeasurements(entry));
     }
 
     /**

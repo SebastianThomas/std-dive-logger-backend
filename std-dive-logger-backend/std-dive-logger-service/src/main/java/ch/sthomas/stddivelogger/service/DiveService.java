@@ -383,6 +383,10 @@ public class DiveService {
         return diveDataService.findDiveSiteById(id);
     }
 
+    public Optional<DiveSite> getSiteByName(final String name) {
+        return diveDataService.findDiveSiteByName(name);
+    }
+
     public List<DiveSite> getSitesByLocation(final Location coordinate) {
         return diveDataService.findDiveSitesByLocation(coordinate);
     }

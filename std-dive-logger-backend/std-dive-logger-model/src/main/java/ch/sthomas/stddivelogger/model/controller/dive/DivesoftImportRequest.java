@@ -4,10 +4,7 @@ import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDiveDetailRespon
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import org.jspecify.annotations.Nullable;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record DivesoftImportRequest(
-        List<DivesoftDiveDetailResponse> dives, @Nullable UploadDiveBody body) {}
+public record DivesoftImportRequest(List<DivesoftDiveDetailResponse> dives) {}
