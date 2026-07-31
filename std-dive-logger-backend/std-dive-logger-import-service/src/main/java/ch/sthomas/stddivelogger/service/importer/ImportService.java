@@ -154,9 +154,14 @@ public class ImportService {
     @Transactional
     public SimplifiedDive commit(
             final User user, final long pendingImportId, final PendingImportCommitRequest overrides) {
+        // Row-locked: without this, a double-click (or a frontend retry racing its own earlier
+        // request) can have two concurrent commits of the same pending import both see it still
+        // present and both create a dive from it. The lock makes the second commit wait for the
+        // first to finish; by then the row is already deleted, so it correctly 404s here instead
+        // of silently creating a duplicate.
         final var entity =
                 pendingImportDataService
-                        .findByIdAndUser(pendingImportId, user)
+                        .findByIdAndUserForCommit(pendingImportId, user)
                         .orElseThrow(
                                 () ->
                                         new NoSuchElementException(

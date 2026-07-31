@@ -280,7 +280,20 @@ public class DiveDataService {
         final var existing =
                 suitRepository.findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
                         user.getId(), suit.type(), suit.thickness(), suit.notes());
-        return existing.orElseGet(() -> suitRepository.save(new SuitEntity(user, suit)));
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return suitRepository.save(new SuitEntity(user, suit));
+        } catch (final DataIntegrityViolationException e) {
+            // Lost a race with a concurrent request for the same suit - the DB's unique
+            // constraint (see V0_3_5__suit_ccr_unit_unique_constraints.sql) rejected our insert
+            // rather than silently creating a second, indistinguishable row. Use the winner's row.
+            return suitRepository
+                    .findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
+                            user.getId(), suit.type(), suit.thickness(), suit.notes())
+                    .orElseThrow(() -> e);
+        }
     }
 
     @Transactional
@@ -296,7 +309,18 @@ public class DiveDataService {
         final var existing =
                 ccrUnitRepository.findByUser_IdAndNameAndAdditionalNotes(
                         user.getId(), ccrUnit.name(), ccrUnit.notes());
-        return existing.orElseGet(() -> ccrUnitRepository.save(new CcrUnitEntity(user, ccrUnit)));
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return ccrUnitRepository.save(new CcrUnitEntity(user, ccrUnit));
+        } catch (final DataIntegrityViolationException e) {
+            // Same race as findOrCreateSuit above.
+            return ccrUnitRepository
+                    .findByUser_IdAndNameAndAdditionalNotes(
+                            user.getId(), ccrUnit.name(), ccrUnit.notes())
+                    .orElseThrow(() -> e);
+        }
     }
 
     /**
@@ -649,6 +673,14 @@ public class DiveDataService {
         diveTagRepository.flush();
         diveTagRepository.saveAll(newTags);
 
+        // Clear the 1st-level cache so the reload below fetches fresh rows from DB rather than
+        // returning the same still-managed `dive` instance from above - which still holds
+        // whatever tags collection it had before deleteAllByDiveId/saveAll ran, since those went
+        // straight through the repository and never touched `dive`'s own in-memory collection.
+        // Without this, the response returned to the caller shows the pre-update tags even though
+        // the DB itself was updated correctly (see refreshAutoTags() just above, which already
+        // does this for the identical reason).
+        entityManager.clear();
         return toRecord(diveRepository.findByIdAndUser_Id(diveId, userId).orElseThrow());
     }
 

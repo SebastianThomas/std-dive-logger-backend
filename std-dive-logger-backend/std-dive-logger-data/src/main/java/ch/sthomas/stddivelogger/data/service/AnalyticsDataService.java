@@ -215,9 +215,15 @@ public class AnalyticsDataService {
                 diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId).stream()
                         .map(DiveMeasurementEntity::toRecordWithId)
                         .toList();
+        // smoothedRates() itself is now robust to a corrupted depth in the input (see
+        // DiveProfileRateCalculator) and always returns finite values - this is a second,
+        // independent check at the API boundary so a bad *source* measurement (e.g. a NaN depth
+        // already sitting in the DB from an old buggy import) is dropped from the response
+        // outright rather than handed to the client as a data point with a garbage depth.
         final var rates = DiveProfileSegmenter.smoothedRates(measurements);
         final var ratePoints =
                 IntStream.range(0, measurements.size())
+                        .filter(i -> Double.isFinite(measurements.get(i).measurement().depth()))
                         .mapToObj(
                                 i ->
                                         new DiveProfileRatesResponse.RatePoint(

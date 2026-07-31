@@ -136,17 +136,21 @@ public class FitReaderService extends BaseReaderService {
         return computers.getFirst();
     }
 
-    private static @NonNull List<Gas> getGases(final FitMessages messages) {
+    static @NonNull List<Gas> getGases(final FitMessages messages) {
         return messages.getDiveGasMesgs().stream()
                 .map(
                         gasMsg ->
                                 new Gas(
-                                        gasMsg.getOxygenContent() / 100.0,
-                                        gasMsg.getHeliumContent() / 100.0))
+                                        Objects.requireNonNullElse(
+                                                        gasMsg.getOxygenContent(), (short) 21)
+                                                / 100.0,
+                                        Objects.requireNonNullElse(
+                                                        gasMsg.getHeliumContent(), (short) 0)
+                                                / 100.0))
                 .toList();
     }
 
-    private DiveProfileUpload getDiveProfile(
+    DiveProfileUpload getDiveProfile(
             final List<RecordMesg> records,
             final List<EventMesg> events,
             final List<Gas> gases,
@@ -175,13 +179,17 @@ public class FitReaderService extends BaseReaderService {
                 nextEvent = events.size() > eventIndex + 1 ? events.get(eventIndex + 1) : null;
             }
             final var deco = getDeco(record);
-            final var gas = gases.get(currentGasIndex);
+            final var gas =
+                    currentGasIndex >= 0 && currentGasIndex < gases.size()
+                            ? gases.get(currentGasIndex)
+                            : null;
+            final var depthField = record.getField(RecordMesg.DepthFieldNum);
             measurements.add(
                     new DiveMeasurement(
                             time,
                             new Temperature(
                                     record.getTemperature(), Temperature.TemperatureUnit.CELSIUS),
-                            record.getField(RecordMesg.DepthFieldNum).getDoubleValue(),
+                            depthField != null ? depthField.getDoubleValue() : 0.0,
                             Optional.ofNullable(record.getNdlTime())
                                     .map(Duration::ofSeconds)
                                     .orElse(null),
@@ -208,13 +216,14 @@ public class FitReaderService extends BaseReaderService {
     }
 
     @Nullable
-    private static Double getRMV(final RecordMesg record, final Gas gas) {
+    private static Double getRMV(final RecordMesg record, final @Nullable Gas gas) {
         return Optional.ofNullable(record.getVolumeSac())
                 .or(() -> Optional.ofNullable(record.getRmv()))
                 .map(Float::doubleValue)
                 .or(
                         () ->
-                                Optional.ofNullable(gas.size())
+                                Optional.ofNullable(gas)
+                                        .map(Gas::size)
                                         .map(CylinderSize::liters)
                                         .flatMap(
                                                 l ->

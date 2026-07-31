@@ -2,13 +2,15 @@ package ch.sthomas.stddivelogger.model.importer.divesoft;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.validation.constraints.NotBlank;
+
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record DivesoftDive(
-        String id,
+        @NotBlank String id,
         @Nullable String deviceSerial,
         @Nullable String description,
         @Nullable String site,

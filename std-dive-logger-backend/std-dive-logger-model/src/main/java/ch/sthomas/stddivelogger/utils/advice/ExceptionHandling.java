@@ -8,6 +8,8 @@ public class ExceptionHandling extends ResponseEntityExceptionHandler
         implements ThrowableProblemAdviceTrait,
                 NoSuchElementAdviceTrait,
                 IllegalArgumentAdviceTrait,
+                IllegalStateAdviceTrait,
+                UncheckedIOAdviceTrait,
                 ConstraintViolationAdviceTrait,
                 DiveDBConstraintAdviceTrait,
                 SecurityAdviceTrait {}

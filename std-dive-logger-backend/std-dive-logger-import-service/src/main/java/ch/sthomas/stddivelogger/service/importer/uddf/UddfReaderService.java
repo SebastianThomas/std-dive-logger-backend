@@ -49,6 +49,20 @@ public class UddfReaderService extends BaseReaderService {
             final User user, final String filename, final InputStream inputStream)
             throws IOException {
         final var file = xmlMapper.readValue(inputStream, UddfFile.class);
+        // file.profileData() is @Nullable to model exactly this case: a file with no
+        // <profiledata> section at all (missing/malformed, not just empty). getEntries() assumes
+        // it's present and would NPE immediately, before any per-entry error handling below even
+        // starts - catch it here instead so a bad file reports cleanly rather than 500ing the
+        // whole upload.
+        if (file.profileData() == null) {
+            return Stream.of(
+                    new ParsedImportResultStreaming(
+                            Stream.empty(),
+                            Stream.of(
+                                    "Could not import "
+                                            + filename
+                                            + ": the UDDF file has no <profiledata> section.")));
+        }
         final var entries = file.getEntries();
         return IntStream.range(0, entries)
                 .boxed()

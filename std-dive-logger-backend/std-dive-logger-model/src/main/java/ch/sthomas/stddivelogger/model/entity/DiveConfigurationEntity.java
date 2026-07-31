@@ -48,7 +48,16 @@ public class DiveConfigurationEntity {
     @Column(name = "weight_feeling")
     private @Nullable WeightFeeling weightFeeling;
 
-    @OneToMany(mappedBy = "configuration", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    // orphanRemoval matters here specifically because update() below replaces this whole list with
+    // a fresh one of brand-new entities on every edit rather than mutating it in place - without
+    // it, the old rows are simply abandoned (never deleted), still pointing at this same
+    // configuration, so every edit to a dive's cylinders left the previous set behind as
+    // duplicated, orphaned rows.
+    @OneToMany(
+            mappedBy = "configuration",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.EAGER,
+            orphanRemoval = true)
     private List<DiveConfigurationCylinderEntity> cylinders;
 
     public DiveConfigurationEntity() {}

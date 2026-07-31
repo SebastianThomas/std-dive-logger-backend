@@ -37,6 +37,7 @@ import org.hibernate.query.SortDirection;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -122,7 +123,15 @@ public class DiveService {
                 DiveSort.ofNullable(DiveSortColumn.ID, SortDirection.ASCENDING));
     }
 
-    @Transactional
+    // Deliberately NOT @Transactional: diveDataService.saveDive() below is @Transactional on its
+    // own bean, so it already commits (and releases its DB connection) as soon as it returns -
+    // wrapping this whole method in a transaction too would join that same transaction and keep
+    // it (and its connection) open for the full duration of createSaveDivePreview()'s call into
+    // external storage (with its own 15s timeouts and up to 5 retries), which under load or a
+    // slow/degraded storage backend can tie up a pooled connection for well over a minute per
+    // request. createSaveDivePreview() already treats a failed upload as best-effort (catches and
+    // logs rather than throwing), so the dive itself is never at risk of being rolled back by a
+    // preview-image problem even without a shared transaction.
     public DBResult<SimplifiedDive> saveDive(
             final User user,
             final Optional<Integer> diveNumberOptional,
@@ -229,11 +238,19 @@ public class DiveService {
             final String manufacturer,
             final String serialNumber,
             final String customName) {
-        return getDiveComputerBySerialNumber(user, manufacturer, serialNumber)
-                .orElseGet(
-                        () ->
-                                createDiveComputer(
-                                        serialNumber, customName, manufacturer, user.id()));
+        final var existing = getDiveComputerBySerialNumber(user, manufacturer, serialNumber);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return createDiveComputer(serialNumber, customName, manufacturer, user.id());
+        } catch (final DataIntegrityViolationException e) {
+            // Lost a race with a concurrent request for the same computer (e.g. two imports for
+            // the same user/serial number running at once) - t_dive_computer's own unique
+            // constraint rejected our insert rather than creating a duplicate. Use the winner's
+            // row instead of failing the request with a raw 500.
+            return getDiveComputerBySerialNumber(user, manufacturer, serialNumber).orElseThrow(() -> e);
+        }
     }
 
     public Optional<DiveComputer> getDiveComputerBySerialNumber(

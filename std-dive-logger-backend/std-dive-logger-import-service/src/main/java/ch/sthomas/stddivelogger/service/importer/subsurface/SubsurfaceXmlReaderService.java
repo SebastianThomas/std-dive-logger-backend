@@ -71,7 +71,8 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                             .collect(
                                     Collectors.toMap(
                                             SubsurfaceXmlFile.SubsurfaceDiveSite::uuid,
-                                            site -> new SiteGuess(site.name(), site.location())));
+                                            site -> new SiteGuess(site.name(), site.location()),
+                                            (a, b) -> a));
             final var computers =
                     subsurfaceFile.dives().stream()
                             .map(SubsurfaceXmlFile.SubsurfaceDive::diveComputers)
