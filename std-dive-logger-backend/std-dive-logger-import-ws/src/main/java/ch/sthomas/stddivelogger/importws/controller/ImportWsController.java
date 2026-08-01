@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.importer.ImportService;
 
@@ -71,6 +72,17 @@ public class ImportWsController {
     @GetMapping(path = "/pending")
     public List<PendingImportSummary> listPending(@AuthenticationPrincipal final User user) {
         return importService.listPending(user);
+    }
+
+    @Operation(
+            summary =
+                    "Full profile data (including measurements) for a pending import, for"
+                            + " previewing/trimming before commit - not returned at stage time"
+                            + " itself to avoid round-tripping full data unless actually needed.")
+    @GetMapping(path = "/pending/{id}/preview")
+    public List<DiveProfile> previewPending(
+            @AuthenticationPrincipal final User user, @PathVariable("id") @Positive final long id) {
+        return importService.previewPending(user, id);
     }
 
     @Operation(

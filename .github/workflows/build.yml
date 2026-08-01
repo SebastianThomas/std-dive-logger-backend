@@ -27,5 +27,12 @@ jobs:
             -   name: Create maven central settings.xml
                 uses: whelk-io/maven-settings-xml-action@9dc09b23833fa9aa7f27b63db287951856f3433d
 
+            -   name: Enable Testcontainers reuse
+                # Several modules' integration tests each start their own Testcontainers Postgres
+                # (data/analytics/import-ws). Reuse keeps a container alive (keyed by its config)
+                # across those separate test JVMs within this one job/Docker daemon instead of
+                # tearing down and re-starting an equivalent container per module.
+                run: echo "testcontainers.reuse.enable=true" > ~/.testcontainers.properties
+
             -   name: Build with Maven
                 run: mvn --batch-mode --update-snapshots install -DskipTests=false -f std-dive-logger-backend/pom.xml

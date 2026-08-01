@@ -342,6 +342,26 @@ public class DiveService {
         return result;
     }
 
+    /**
+     * Permanently deletes every measurement of a profile outside {@code [trimStart, trimEnd]} -
+     * e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting to have its
+     * dive ended manually on the computer. Either bound may be {@code null} to only trim the
+     * other end.
+     */
+    public Dive trimProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final @Nullable Instant trimStart,
+            final @Nullable Instant trimEnd) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        final var result = diveDataService.trimProfile(diveId, profileId, trimStart, trimEnd);
+        createSaveDivePreview(result);
+        return result;
+    }
+
     public Dive moveProfiles(final User user, final Long diveId, final List<Long> profileIds) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);

@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.controller.TrimProfileBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateTagsBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
@@ -585,6 +586,24 @@ public class DiveController {
             throw new UnauthorizedException("Log in to delete a profile.");
         }
         return diveService.deleteProfile(user, diveId, profileId);
+    }
+
+    @Operation(
+            summary =
+                    "Permanently deletes every measurement of a profile outside [trimStart, trimEnd] -"
+                            + " e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while"
+                            + " waiting to have its dive ended manually on the computer. Either bound may"
+                            + " be omitted to only trim the other end.")
+    @PostMapping(path = "/{id}/profiles/{profileId}/trim", consumes = APPLICATION_JSON_VALUE)
+    public Dive trimProfile(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @PathVariable("profileId") @Positive final long profileId,
+            @NotNull @Valid @RequestBody final TrimProfileBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to trim a profile.");
+        }
+        return diveService.trimProfile(user, diveId, profileId, body.trimStart(), body.trimEnd());
     }
 
     @Operation(

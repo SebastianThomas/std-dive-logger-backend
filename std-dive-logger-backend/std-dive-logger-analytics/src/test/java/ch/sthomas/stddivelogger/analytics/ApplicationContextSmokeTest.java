@@ -25,8 +25,9 @@ class ApplicationContextSmokeTest {
     @Container @ServiceConnection
     static final PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>(
-                    DockerImageName.parse("postgis/postgis:18-3.6")
-                            .asCompatibleSubstituteFor("postgres"));
+                            DockerImageName.parse("postgis/postgis:18-3.6")
+                                    .asCompatibleSubstituteFor("postgres"))
+                    .withReuse(true);
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {

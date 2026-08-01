@@ -10,6 +10,8 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayloa
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
 import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -35,6 +37,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Service
@@ -166,7 +171,7 @@ public class ImportService {
                                 () ->
                                         new NoSuchElementException(
                                                 "No pending import " + pendingImportId));
-        final var payload = entity.getPayload();
+        final var payload = applyProfileTrims(entity.getPayload(), overrides.profileTrims());
 
         final var attachToNumber = resolveAttachTarget(user, overrides, payload);
         final SimplifiedDive result;
@@ -177,6 +182,90 @@ public class ImportService {
         }
         pendingImportDataService.deleteById(pendingImportId);
         return result;
+    }
+
+    /**
+     * Applies each requested trim (by profile index) to the staged payload's profiles before
+     * they're used to create/attach a dive - the pre-commit counterpart of trimming an
+     * already-saved profile. A no-op copy of the payload when there's nothing to trim.
+     */
+    private PendingImportPayload applyProfileTrims(
+            final PendingImportPayload payload,
+            final @Nullable List<PendingImportCommitRequest.ProfileTrim> trims) {
+        if (trims == null || trims.isEmpty()) {
+            return payload;
+        }
+        final var trimByIndex =
+                trims.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        PendingImportCommitRequest.ProfileTrim::profileIndex,
+                                        Function.identity()));
+        final var profiles = payload.profiles();
+        final var trimmedProfiles =
+                IntStream.range(0, profiles.size())
+                        .mapToObj(
+                                i -> {
+                                    final var trim = trimByIndex.get(i);
+                                    return trim == null
+                                            ? profiles.get(i)
+                                            : profiles.get(i).trimmed(trim.trimStart(), trim.trimEnd());
+                                })
+                        .toList();
+        return new PendingImportPayload(
+                trimmedProfiles,
+                payload.notes(),
+                payload.visibility(),
+                payload.gasConsumption(),
+                payload.configuration(),
+                payload.namedBuddies(),
+                payload.diveNumberGuess());
+    }
+
+    /**
+     * Full profile data (including measurements) for a staged-but-not-yet-committed import - the
+     * pre-commit counterpart of fetching an already-saved dive, so the frontend can render the
+     * same chart/trim UI against a pending import as it does for a real one. Deliberately not
+     * returned at stage time itself (only the lightweight {@code PendingImportSummary} guess
+     * fields are) - this is fetched separately, on demand, only when the user actually opens a
+     * preview.
+     */
+    @Transactional(readOnly = true)
+    public List<DiveProfile> previewPending(final User user, final long pendingImportId) {
+        final var entity =
+                pendingImportDataService
+                        .findByIdAndUser(pendingImportId, user)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "No pending import " + pendingImportId));
+        final var profiles = entity.getPayload().profiles();
+        return IntStream.range(0, profiles.size())
+                .mapToObj(
+                        i -> {
+                            final var upload = profiles.get(i);
+                            final var computer =
+                                    diveService
+                                            .getDiveComputerById(user, upload.diveComputerId())
+                                            .orElseThrow(
+                                                    () ->
+                                                            new NoSuchElementException(
+                                                                    "Dive computer "
+                                                                            + upload
+                                                                                    .diveComputerId()
+                                                                            + " not found"));
+                            final var measurements = upload.measurements();
+                            final var measurementsWithIds =
+                                    IntStream.range(0, measurements.size())
+                                            .mapToObj(
+                                                    j ->
+                                                            new DiveMeasurementWithId(
+                                                                    measurements.get(j), j))
+                                            .toList();
+                            return new DiveProfile(
+                                    i, computer, upload.start(), upload.end(), measurementsWithIds, true);
+                        })
+                .toList();
     }
 
     /**

@@ -5,10 +5,13 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Positive;
 
 import org.jspecify.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -26,7 +29,14 @@ public record PendingImportCommitRequest(
         @Nullable @Positive Long diveSiteId,
         @Nullable String newSiteName,
         @Nullable Location newSiteLocation,
-        @Nullable @Positive Long linkToExistingDiveId) {
+        @Nullable @Positive Long linkToExistingDiveId,
+        /**
+         * Applies a trim to one or more profiles (by their index in {@code
+         * PendingImportPayload#profiles()}, the same index the preview endpoint reports each
+         * profile under) before the dive is created/attached - the pre-commit equivalent of {@code
+         * POST /dives/{id}/profiles/{profileId}/trim} for an already-saved dive.
+         */
+        @Nullable @Valid List<ProfileTrim> profileTrims) {
 
     public PendingImportCommitRequest {
         if (linkToExistingDiveId != null
@@ -35,4 +45,9 @@ public record PendingImportCommitRequest(
                     "linkToExistingDiveId cannot be combined with a dive site override");
         }
     }
+
+    public record ProfileTrim(
+            @PositiveOrZero int profileIndex,
+            @Nullable Instant trimStart,
+            @Nullable Instant trimEnd) {}
 }

@@ -148,6 +148,18 @@ public class DiveProfileEntity {
     }
 
     /**
+     * Updates just the profile's own start/end bounds, without touching its measurements
+     * collection at all - for callers that changed which rows exist via a separate repository
+     * call (e.g. trimming) rather than by replacing the whole list, where reassigning every
+     * surviving measurement through {@link #replaceMeasurements} would be pure overhead (a
+     * redundant merge of every unchanged row) just to update two fields.
+     */
+    public void updateBounds(final Instant start, final Instant end) {
+        this.profileStart = start.atOffset(UTC);
+        this.profileEnd = end.atOffset(UTC);
+    }
+
+    /**
      * Replaces the raw measurement data for this profile only. Callers are responsible for deleting
      * the previous measurement rows first (no {@code orphanRemoval} on this collection), so
      * reassigning the list here does not by itself clean up the old rows.

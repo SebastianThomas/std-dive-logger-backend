@@ -84,6 +84,7 @@ public class DiveDataService {
     private final TagDataService tagDataService;
     private final DiveTagRepository diveTagRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
+    private final AnalyticsDataService analyticsDataService;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -106,7 +107,8 @@ public class DiveDataService {
             final CcrUnitRepository ccrUnitRepository,
             final TagDataService tagDataService,
             final DiveTagRepository diveTagRepository,
-            final DiveMeasurementRepository diveMeasurementRepository) {
+            final DiveMeasurementRepository diveMeasurementRepository,
+            final AnalyticsDataService analyticsDataService) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -128,6 +130,7 @@ public class DiveDataService {
         this.tagDataService = tagDataService;
         this.diveTagRepository = diveTagRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
+        this.analyticsDataService = analyticsDataService;
     }
 
     @Transactional(readOnly = true)
@@ -203,6 +206,19 @@ public class DiveDataService {
                 .findById(diveId)
                 .orElseThrow(
                         () -> new NoSuchElementException("Could not find dive by id " + diveId));
+    }
+
+    /** Shared by every profile-mutating method below (reimport/delete/trim) - each needs to
+     * locate one specific profile on an already-loaded dive and fail the same way if it's not
+     * actually there. */
+    private DiveProfileEntity findProfileOnDive(final DiveEntity dive, final long profileId) {
+        return dive.getProfiles().stream()
+                .filter(p -> p.getId() == profileId)
+                .findFirst()
+                .orElseThrow(
+                        () ->
+                                new NoSuchElementException(
+                                        "Profile " + profileId + " not found on dive " + dive.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -393,17 +409,7 @@ public class DiveDataService {
             final Instant start,
             final Instant end) {
         final var dive = findDiveEntityById(diveId);
-        final var profile =
-                dive.getProfiles().stream()
-                        .filter(p -> p.getId() == profileId)
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find profile "
-                                                        + profileId
-                                                        + " on dive "
-                                                        + diveId));
+        final var profile = findProfileOnDive(dive, profileId);
         // Replace all existing rows atomically: delete then insert via repository,
         // completely bypassing the entity's managed measurements collection (no orphanRemoval).
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
@@ -768,22 +774,12 @@ public class DiveDataService {
      */
     @Transactional
     public Dive deleteProfile(final long diveId, final long profileId) {
-        final var dive = diveRepository.findById(diveId).orElseThrow();
+        final var dive = findDiveEntityById(diveId);
         if (dive.getProfiles().size() <= 1) {
             throw new IllegalArgumentException(
                     "Cannot delete the only profile on a dive - delete the whole dive instead.");
         }
-        final var profile =
-                dive.getProfiles().stream()
-                        .filter(p -> p.getId() == profileId)
-                        .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Profile "
-                                                        + profileId
-                                                        + " not found on dive "
-                                                        + diveId));
+        final var profile = findProfileOnDive(dive, profileId);
         // The dive entity is still managed and still references this profile in its own
         // in-memory collection - without removing it there too, cascade=ALL on that mapping
         // re-asserts the association on flush (no-op delete) since nothing told Hibernate the
@@ -792,7 +788,69 @@ public class DiveDataService {
         diveProfileRepository.delete(profile);
         entityManager.flush();
         entityManager.clear();
-        return toRecord(diveRepository.findById(diveId).orElseThrow());
+        return toRecord(findDiveEntityById(diveId));
+    }
+
+    /**
+     * Permanently deletes every measurement of a profile falling outside {@code [trimStart,
+     * trimEnd]} - e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting
+     * to have its dive ended manually on the computer. Either bound may be omitted to only trim
+     * the other end. Leaves at least 2 measurements; refuses a range that would leave fewer.
+     */
+    @Transactional
+    public Dive trimProfile(
+            final long diveId,
+            final long profileId,
+            final @Nullable Instant trimStart,
+            final @Nullable Instant trimEnd) {
+        final var dive = findDiveEntityById(diveId);
+        findProfileOnDive(dive, profileId);
+
+        final var measurements = diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId);
+        if (measurements.isEmpty()) {
+            throw new IllegalStateException("Profile " + profileId + " has no measurements to trim.");
+        }
+        final var effectiveStart =
+                trimStart != null ? trimStart : measurements.getFirst().getTime().toInstant();
+        final var effectiveEnd = trimEnd != null ? trimEnd : measurements.getLast().getTime().toInstant();
+        if (!effectiveStart.isBefore(effectiveEnd)) {
+            throw new IllegalArgumentException("Trim start must be before trim end.");
+        }
+
+        final var survivors = new ArrayList<DiveMeasurementEntity>();
+        final var toDelete = new ArrayList<DiveMeasurementEntity>();
+        for (final var m : measurements) {
+            final var t = m.getTime().toInstant();
+            (t.isBefore(effectiveStart) || t.isAfter(effectiveEnd) ? toDelete : survivors).add(m);
+        }
+        if (survivors.size() < 2) {
+            throw new IllegalArgumentException(
+                    "Trimming this range would leave fewer than 2 measurements on the profile.");
+        }
+        if (toDelete.isEmpty()) {
+            // The requested range already covers every measurement - nothing to actually trim.
+            return toRecord(dive);
+        }
+
+        final var newStart = survivors.getFirst().getTime().toInstant();
+        final var newEnd = survivors.getLast().getTime().toInstant();
+
+        diveMeasurementRepository.deleteAll(toDelete);
+        diveMeasurementRepository.flush();
+
+        // dive's own in-memory profile/measurements collections are stale now (deleted straight
+        // through the repository, bypassing them) - clear and reload fresh rather than risk
+        // re-persisting or returning the deleted rows, same as deleteProfile() above.
+        entityManager.clear();
+        final var freshDive = findDiveEntityById(diveId);
+        final var freshProfile = findProfileOnDive(freshDive, profileId);
+        // Only the two bounds need updating - the surviving measurement rows themselves are
+        // already correct and untouched in the DB, so there's nothing to reassign on the entity.
+        freshProfile.updateBounds(newStart, newEnd);
+        freshDive.updateDiveSummary();
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
+
+        return toRecord(diveRepository.save(freshDive));
     }
 
     @Transactional
@@ -1133,9 +1191,29 @@ public class DiveDataService {
         final var size = Optional.ofNullable(gas.size()).map(this::toEntity);
         final var mix = toEntity(gas.o2(), gas.n2(), gas.he());
         final var entity = new GasEntity(gas, mix, size.orElse(null));
-        return gasRepository.findAll(Example.of(entity)).stream()
-                .collect(MoreCollectors.toOptional())
-                .orElseGet(() -> gasRepository.save(entity));
+        final var existing = findLowestIdMatch(entity);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return gasRepository.save(entity);
+        } catch (final DataIntegrityViolationException e) {
+            // Lost a race with a concurrent request resolving the same gas composition - the DB's
+            // unique constraint (see V0_3_6__gas_unique_constraint.sql) rejected our insert rather
+            // than silently creating a second, indistinguishable row. Use the winner's row.
+            return findLowestIdMatch(entity).orElseThrow(() -> e);
+        }
+    }
+
+    /**
+     * t_gas has no unique constraint prior to V0_3_6, so historical duplicates may still match the
+     * same example (and even after the constraint, all-NULL optional columns aren't deduplicated
+     * by Postgres). Pick the lowest id deterministically instead of failing on more than one
+     * match.
+     */
+    private Optional<GasEntity> findLowestIdMatch(final GasEntity example) {
+        return gasRepository.findAll(Example.of(example)).stream()
+                .min(Comparator.comparing(g -> g.id));
     }
 
     @Transactional

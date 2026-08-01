@@ -27,7 +27,6 @@ import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -58,20 +57,14 @@ import java.util.stream.Collectors;
 @SpringBootTest
 @Testcontainers
 @Transactional
-@Disabled(
-        "Requires a local Docker daemon reachable by Testcontainers - run manually. Currently"
-                + " also blocked by a pre-existing classpath conflict shared with"
-                + " DivesoftImportIntegrationTest: org.n52.jackson:jackson-datatype-jts pulls in"
-                + " an old transitive com.fasterxml.jackson.core:jackson-databind (2.12.7.1) that"
-                + " clashes with jackson-datatype-jsr310 (2.21.4) pulled in elsewhere, breaking"
-                + " Hibernate's JacksonJsonFormatMapper auto-detection at context startup.")
 class AnalyticsRecomputeIntegrationTest {
 
     @Container @ServiceConnection
     static final PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>(
-                    DockerImageName.parse("postgis/postgis:18-3.6")
-                            .asCompatibleSubstituteFor("postgres"));
+                            DockerImageName.parse("postgis/postgis:18-3.6")
+                                    .asCompatibleSubstituteFor("postgres"))
+                    .withReuse(true);
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {

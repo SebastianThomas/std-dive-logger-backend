@@ -114,6 +114,19 @@ public class AnalyticsDataService {
         diveProfileSegmentRepository.flush();
     }
 
+    /**
+     * Marks a dive as needing a full analytics recompute - for use whenever something *other*
+     * than the scheduled recompute job itself changes a dive's measurements after the fact (e.g.
+     * trimming a profile). Clearing the stored job-state rows makes {@link
+     * #findDivesNeedingRecompute} pick this dive back up on its next sweep (it runs every minute),
+     * the same as a version bump does for every dive at once.
+     */
+    @Transactional
+    public void invalidateAnalyticsForDive(final long diveId) {
+        deleteExistingSegmentsAndAnalytics(diveId);
+        analyticsJobStateRepository.deleteByDive_Id(diveId);
+    }
+
     @Transactional
     public void recordJobState(
             final long diveId,

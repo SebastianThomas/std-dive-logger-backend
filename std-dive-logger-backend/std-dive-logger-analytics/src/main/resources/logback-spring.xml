@@ -21,6 +21,11 @@
     <logger name="ch.sthomas.stddivelogger" level="DEBUG"/>
     <logger name="org.springframework.web" level="DEBUG"/>
     <logger name="org.springframework.security" level="DEBUG"/>
+    <!-- Malformed/non-HTTP bytes hitting the port (mass internet scanning/probing, not a real
+         request - Tomcat already rejects the connection outright) log an INFO-level stack trace
+         per occurrence otherwise; this is background noise on any exposed port, not something
+         actionable, so it's quieted below the level it's actually logged at. -->
+    <logger name="org.apache.coyote.http11.Http11Processor" level="ERROR"/>
 
     <root level="INFO">
         <appender-ref ref="console"/>
