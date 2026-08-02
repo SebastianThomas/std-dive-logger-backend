@@ -24,4 +24,10 @@ public record PendingImportSummary(
         @Nullable Instant startDate,
         @Nullable Long durationSeconds,
         @Nullable Double maxDepth,
-        Instant createdAt) {}
+        Instant createdAt,
+        // The dive number guessed from the source file (e.g. UDDF's <divenumber>), and whether it
+        // was fractional (a "+"/"-"-prefixed Shearwater bailout/CC companion marker) - both drive
+        // the frontend's "attach to existing dive" preselection, since a fractional guess means
+        // commit() will silently attach to that number regardless of whichever mode the UI shows.
+        @Nullable Integer diveNumberGuess,
+        boolean diveNumberFractional) {}

@@ -19,7 +19,8 @@ class DiveProfileSegmenterTest {
 
     private static final Instant START = Instant.parse("2026-01-01T10:00:00Z");
 
-    private static DiveMeasurementWithId sample(final int id, final int offsetSeconds, final double depth) {
+    private static DiveMeasurementWithId sample(
+            final int id, final int offsetSeconds, final double depth) {
         return new DiveMeasurementWithId(
                 new DiveMeasurement(
                         START.plusSeconds(offsetSeconds),
@@ -27,6 +28,7 @@ class DiveProfileSegmenterTest {
                         depth,
                         null,
                         List.of(),
+                        null,
                         null,
                         null,
                         null,
@@ -48,7 +50,8 @@ class DiveProfileSegmenterTest {
         final var descentSegments =
                 segments.stream().filter(s -> s.type() == DiveProfileSegmentType.DESCENT).toList();
 
-        assertEquals(1, descentSegments.size(), "descent should not be broken into multiple segments");
+        assertEquals(
+                1, descentSegments.size(), "descent should not be broken into multiple segments");
         assertTrue(descentSegments.getFirst().measurements().size() >= 15);
     }
 
@@ -105,7 +108,8 @@ class DiveProfileSegmenterTest {
         final var ascentSegments =
                 segments.stream().filter(s -> s.type() == DiveProfileSegmentType.ASCENT).toList();
 
-        assertEquals(1, ascentSegments.size(), "the short quick ascent should not be smoothed away");
+        assertEquals(
+                1, ascentSegments.size(), "the short quick ascent should not be smoothed away");
         final var ascent = ascentSegments.getFirst();
         final var duration =
                 Duration.between(
@@ -165,7 +169,9 @@ class DiveProfileSegmenterTest {
 
         final var midDescent = rates[60];
         final var midAscent = rates[180];
-        assertTrue(midDescent > 8 && midDescent < 12, "expected ~10 m/min descent, got " + midDescent);
-        assertTrue(midAscent < -8 && midAscent > -12, "expected ~-10 m/min ascent, got " + midAscent);
+        assertTrue(
+                midDescent > 8 && midDescent < 12, "expected ~10 m/min descent, got " + midDescent);
+        assertTrue(
+                midAscent < -8 && midAscent > -12, "expected ~-10 m/min ascent, got " + midAscent);
     }
 }

@@ -35,8 +35,8 @@ import java.util.Optional;
 /**
  * findOrCreateSuit/findOrCreateCcrUnit each do a SELECT-then-INSERT with no lock between them - a
  * concurrent identical request can slip in between and insert first, so the DB's own unique
- * constraint (see V0_3_5__suit_ccr_unit_unique_constraints.sql) is the actual backstop. These
- * tests simulate losing that race (save() throwing DataIntegrityViolationException, as Spring Data
+ * constraint (see V0_3_5__suit_ccr_unit_unique_constraints.sql) is the actual backstop. These tests
+ * simulate losing that race (save() throwing DataIntegrityViolationException, as Spring Data
  * translates the DB's constraint violation) and confirm the loser recovers by re-reading the
  * winner's row instead of propagating the exception as a request failure.
  */
@@ -68,7 +68,8 @@ class DiveDataServiceFindOrCreateRaceTest {
                 .thenReturn(Optional.empty())
                 // Second call (after losing the race): the concurrent request's row is now there.
                 .thenReturn(Optional.of(winnersRow));
-        when(suitRepository.save(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
+        when(suitRepository.save(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
 
         final var result = diveDataService.findOrCreateSuit(user, suit);
 
@@ -134,7 +135,8 @@ class DiveDataServiceFindOrCreateRaceTest {
         // Order deliberately doesn't match id order - findAll on a table with no ORDER BY offers
         // no ordering guarantee, and this used to throw via MoreCollectors.toOptional() as soon as
         // a second row came back.
-        when(gasRepository.findAll(any(Example.class))).thenReturn(List.of(higherIdMatch, lowerIdMatch));
+        when(gasRepository.findAll(any(Example.class)))
+                .thenReturn(List.of(higherIdMatch, lowerIdMatch));
 
         final var result = diveDataService.toEntity(gas);
 

@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
@@ -128,19 +129,34 @@ public record UddfFile(
         if (number == null || number.isBlank()) {
             return Optional.empty();
         }
-        if (number.startsWith("+")) {
-            final var anyNonZeroFraction = 1;
-            return Optional.of(
-                    new DiveNumber(Integer.parseInt(number.substring(1)), anyNonZeroFraction));
-        }
+        // Every branch below is best-effort: a divenumber this method can't confidently parse
+        // (garbage text, an out-of-range/zero/negative value the DiveNumber record itself
+        // rejects, an unexpected dotted shape) should fall back to "no guess" rather than let
+        // NumberFormatException/IllegalArgumentException escape and fail the whole dive entry -
+        // NumberFormatException is itself an IllegalArgumentException, so catching the latter
+        // covers both the parse failures and DiveNumber's own validation in one place.
         try {
-            return Optional.of(new DiveNumber(Integer.parseInt(number)));
-        } catch (final NumberFormatException e) {
-            if (number.contains(".")) {
+            if (number.startsWith("+") || number.startsWith("-")) {
+                // Shearwater's UDDF export marks a dive's paired OC-bailout/CC companion profile
+                // with a "+"- or "-"-prefixed divenumber referencing the same base number -
+                // either sign means "attach to that dive" here, so both take the same fractional
+                // path (the sign itself carries no extra meaning we act on).
+                final var anyNonZeroFraction = 1;
                 return Optional.of(
                         new DiveNumber(
-                                Integer.parseInt(number.substring(0, number.indexOf('.'))),
-                                Integer.parseInt(number.substring(number.indexOf('.') + 2))));
+                                Integer.parseInt(number.substring(1)), anyNonZeroFraction));
+            }
+            return Optional.of(new DiveNumber(Integer.parseInt(number)));
+        } catch (final IllegalArgumentException e) {
+            if (number.contains(".")) {
+                try {
+                    return Optional.of(
+                            new DiveNumber(
+                                    Integer.parseInt(number.substring(0, number.indexOf('.'))),
+                                    Integer.parseInt(number.substring(number.indexOf('.') + 2))));
+                } catch (final IllegalArgumentException | StringIndexOutOfBoundsException e2) {
+                    return Optional.empty();
+                }
             }
             return Optional.empty();
         }
@@ -457,7 +473,7 @@ public record UddfFile(
             @JacksonXmlProperty(localName = "gradientfactor") int gf,
             @JacksonXmlProperty(localName = "heading") double compassHeading,
             @JacksonXmlProperty(localName = "measuredpo2") @Nullable Double measuredPO2,
-            @JacksonXmlProperty(localName = "divemode") UddfDiveMode diveMode,
+            @JacksonXmlProperty(localName = "divemode") @Nullable UddfDiveMode diveMode,
             @JacksonXmlProperty(localName = "nodecotime") int ndl,
             @JacksonXmlProperty(localName = "otu") double otu,
             @JacksonXmlProperty(localName = "setpo2") @Nullable Double setPO2,
@@ -499,8 +515,20 @@ public record UddfFile(
                             null,
                             (double) gf,
                             null,
-                            (double) cns),
+                            (double) cns,
+                            toMode(diveMode)),
                     gas);
+        }
+
+        private static @Nullable DiveMode toMode(final @Nullable UddfDiveMode diveMode) {
+            if (diveMode == null || diveMode.type() == null) {
+                return null;
+            }
+            return switch (diveMode.type()) {
+                case "closedcircuit" -> DiveMode.CC;
+                case "opencircuit" -> DiveMode.OC;
+                default -> null;
+            };
         }
 
         private Optional<Temperature> importTemperature(final double temp) {

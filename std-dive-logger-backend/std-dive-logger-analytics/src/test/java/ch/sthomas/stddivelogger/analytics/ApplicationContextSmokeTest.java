@@ -12,9 +12,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Boots the real application context against a real Postgres - if this fails, the app won't
- * start in any real environment either. Exists specifically to catch classpath conflicts (e.g.
- * the classic-Jackson-2 version skew that used to break Hibernate's JacksonJsonFormatMapper and
+ * Boots the real application context against a real Postgres - if this fails, the app won't start
+ * in any real environment either. Exists specifically to catch classpath conflicts (e.g. the
+ * classic-Jackson-2 version skew that used to break Hibernate's JacksonJsonFormatMapper and
  * Spring's YAML message converter autoconfiguration at startup) that a narrower test wouldn't.
  */
 @SpringBootTest

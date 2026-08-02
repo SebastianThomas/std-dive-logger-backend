@@ -18,8 +18,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(
         name = "t_analytics_job_state",
-        uniqueConstraints =
-                @UniqueConstraint(columnNames = {"fk_dive_id", "module", "job_name"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"fk_dive_id", "module", "job_name"}))
 @SuppressWarnings("NullAway.Init")
 public class AnalyticsJobStateEntity {
     @Id

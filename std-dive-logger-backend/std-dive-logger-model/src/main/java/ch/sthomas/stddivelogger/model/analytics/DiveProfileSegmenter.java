@@ -10,13 +10,13 @@ import java.util.List;
 /**
  * Splits a dive profile into contiguous SURFACE / DESCENT / HOLD_LEVEL / ASCENT segments.
  *
- * <p>Each measurement is first classified from its {@link DiveProfileRateCalculator smoothed
- * rate}. A raw, per-sample classification still flickers on brief noise (e.g. a diver briefly
- * drifting up half a meter while holding a stop), so a type change is only committed once it has
- * persisted for at least {@link #MIN_SEGMENT_DURATION}. Once committed, the whole span back to
- * where the change actually started is relabelled, so segment boundaries land on the real
- * transition rather than lagging by a debounce delay. Genuine short ascents/descents (as brief as
- * ~10-20s) comfortably clear that duration and are kept; sub-second-to-few-second wobble does not.
+ * <p>Each measurement is first classified from its {@link DiveProfileRateCalculator smoothed rate}.
+ * A raw, per-sample classification still flickers on brief noise (e.g. a diver briefly drifting up
+ * half a meter while holding a stop), so a type change is only committed once it has persisted for
+ * at least {@link #MIN_SEGMENT_DURATION}. Once committed, the whole span back to where the change
+ * actually started is relabelled, so segment boundaries land on the real transition rather than
+ * lagging by a debounce delay. Genuine short ascents/descents (as brief as ~10-20s) comfortably
+ * clear that duration and are kept; sub-second-to-few-second wobble does not.
  */
 public final class DiveProfileSegmenter {
 
@@ -27,7 +27,8 @@ public final class DiveProfileSegmenter {
 
     private DiveProfileSegmenter() {}
 
-    public static List<MeasurementsWithType> segment(final List<DiveMeasurementWithId> measurements) {
+    public static List<MeasurementsWithType> segment(
+            final List<DiveMeasurementWithId> measurements) {
         if (measurements.isEmpty()) {
             return List.of();
         }
@@ -36,13 +37,14 @@ public final class DiveProfileSegmenter {
     }
 
     /**
-     * The same smoothed rate (m/min, positive while descending) that segment classification
-     * itself is based on, exposed so consumers needing the continuous signal (e.g. an ascent/
-     * descent rate graph) can use exactly the numbers segmentation used rather than recomputing
-     * their own from scratch.
+     * The same smoothed rate (m/min, positive while descending) that segment classification itself
+     * is based on, exposed so consumers needing the continuous signal (e.g. an ascent/ descent rate
+     * graph) can use exactly the numbers segmentation used rather than recomputing their own from
+     * scratch.
      */
     public static double[] smoothedRates(final List<DiveMeasurementWithId> measurements) {
-        return DiveProfileRateCalculator.smoothedRatesInMetersPerMinute(measurements, RATE_WINDOW_HALF);
+        return DiveProfileRateCalculator.smoothedRatesInMetersPerMinute(
+                measurements, RATE_WINDOW_HALF);
     }
 
     private static DiveProfileSegmentType[] classifyWithDebounce(
@@ -98,7 +100,9 @@ public final class DiveProfileSegmenter {
         if (Math.abs(rateMetersPerMinute) < RATE_THRESHOLD_METERS_PER_MINUTE) {
             return DiveProfileSegmentType.HOLD_LEVEL;
         }
-        return rateMetersPerMinute > 0 ? DiveProfileSegmentType.DESCENT : DiveProfileSegmentType.ASCENT;
+        return rateMetersPerMinute > 0
+                ? DiveProfileSegmentType.DESCENT
+                : DiveProfileSegmentType.ASCENT;
     }
 
     private static List<MeasurementsWithType> groupByType(
@@ -109,7 +113,8 @@ public final class DiveProfileSegmenter {
         var currentStart = 0;
         for (var i = 0; i < measurements.size(); i++) {
             if (types[i] != currentType) {
-                result.add(new MeasurementsWithType(currentStart, currentMeasurements, currentType));
+                result.add(
+                        new MeasurementsWithType(currentStart, currentMeasurements, currentType));
                 currentMeasurements = new ArrayList<>();
                 currentType = types[i];
                 currentStart = i;

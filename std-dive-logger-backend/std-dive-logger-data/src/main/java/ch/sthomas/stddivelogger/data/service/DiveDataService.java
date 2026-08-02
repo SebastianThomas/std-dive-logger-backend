@@ -208,9 +208,11 @@ public class DiveDataService {
                         () -> new NoSuchElementException("Could not find dive by id " + diveId));
     }
 
-    /** Shared by every profile-mutating method below (reimport/delete/trim) - each needs to
-     * locate one specific profile on an already-loaded dive and fail the same way if it's not
-     * actually there. */
+    /**
+     * Shared by every profile-mutating method below (reimport/delete/trim) - each needs to locate
+     * one specific profile on an already-loaded dive and fail the same way if it's not actually
+     * there.
+     */
     private DiveProfileEntity findProfileOnDive(final DiveEntity dive, final long profileId) {
         return dive.getProfiles().stream()
                 .filter(p -> p.getId() == profileId)
@@ -218,7 +220,10 @@ public class DiveDataService {
                 .orElseThrow(
                         () ->
                                 new NoSuchElementException(
-                                        "Profile " + profileId + " not found on dive " + dive.getId()));
+                                        "Profile "
+                                                + profileId
+                                                + " not found on dive "
+                                                + dive.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -769,8 +774,8 @@ public class DiveDataService {
 
     /**
      * Removes a single profile (and its measurements, segments, history) from a dive without
-     * touching the rest of the dive - the recovery path for a profile attached to the wrong dive
-     * by mistake (e.g. via import) rather than a genuine duplicate-computer merge.
+     * touching the rest of the dive - the recovery path for a profile attached to the wrong dive by
+     * mistake (e.g. via import) rather than a genuine duplicate-computer merge.
      */
     @Transactional
     public Dive deleteProfile(final long diveId, final long profileId) {
@@ -794,8 +799,8 @@ public class DiveDataService {
     /**
      * Permanently deletes every measurement of a profile falling outside {@code [trimStart,
      * trimEnd]} - e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting
-     * to have its dive ended manually on the computer. Either bound may be omitted to only trim
-     * the other end. Leaves at least 2 measurements; refuses a range that would leave fewer.
+     * to have its dive ended manually on the computer. Either bound may be omitted to only trim the
+     * other end. Leaves at least 2 measurements; refuses a range that would leave fewer.
      */
     @Transactional
     public Dive trimProfile(
@@ -806,13 +811,16 @@ public class DiveDataService {
         final var dive = findDiveEntityById(diveId);
         findProfileOnDive(dive, profileId);
 
-        final var measurements = diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId);
+        final var measurements =
+                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId);
         if (measurements.isEmpty()) {
-            throw new IllegalStateException("Profile " + profileId + " has no measurements to trim.");
+            throw new IllegalStateException(
+                    "Profile " + profileId + " has no measurements to trim.");
         }
         final var effectiveStart =
                 trimStart != null ? trimStart : measurements.getFirst().getTime().toInstant();
-        final var effectiveEnd = trimEnd != null ? trimEnd : measurements.getLast().getTime().toInstant();
+        final var effectiveEnd =
+                trimEnd != null ? trimEnd : measurements.getLast().getTime().toInstant();
         if (!effectiveStart.isBefore(effectiveEnd)) {
             throw new IllegalArgumentException("Trim start must be before trim end.");
         }
@@ -1207,9 +1215,8 @@ public class DiveDataService {
 
     /**
      * t_gas has no unique constraint prior to V0_3_6, so historical duplicates may still match the
-     * same example (and even after the constraint, all-NULL optional columns aren't deduplicated
-     * by Postgres). Pick the lowest id deterministically instead of failing on more than one
-     * match.
+     * same example (and even after the constraint, all-NULL optional columns aren't deduplicated by
+     * Postgres). Pick the lowest id deterministically instead of failing on more than one match.
      */
     private Optional<GasEntity> findLowestIdMatch(final GasEntity example) {
         return gasRepository.findAll(Example.of(example)).stream()

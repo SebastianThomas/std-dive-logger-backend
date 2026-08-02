@@ -18,8 +18,8 @@ import java.util.List;
  * Confirms that malformed Divesoft import requests (e.g. {@code {"dives":[{}]}}) are rejected by
  * bean validation at the controller boundary - which the existing {@code
  * ConstraintViolationAdviceTrait}/{@code ResponseEntityExceptionHandler} map to a 400 - instead of
- * reaching {@code DivesoftReaderService.parse}, where dereferencing the missing nested fields
- * would otherwise NPE unguarded.
+ * reaching {@code DivesoftReaderService.parse}, where dereferencing the missing nested fields would
+ * otherwise NPE unguarded.
  */
 class DivesoftImportRequestTest {
     private static final Validator validator =
@@ -59,13 +59,11 @@ class DivesoftImportRequestTest {
     void wellFormedRequestPassesValidation() {
         final var dive =
                 new DivesoftDive(
-                        "dive-1", null, null, null, null, null, null, null, null, null, null,
-                        null, null, null, null);
+                        "dive-1", null, null, null, null, null, null, null, null, null, null, null,
+                        null, null, null);
         final var request =
                 new DivesoftImportRequest(
-                        List.of(
-                                new DivesoftDiveDetailResponse(
-                                        new DivesoftDiveAndMixes(dive))));
+                        List.of(new DivesoftDiveDetailResponse(new DivesoftDiveAndMixes(dive))));
 
         final var violations = validator.validate(request);
 

@@ -11,10 +11,10 @@ import java.io.UncheckedIOException;
 
 /**
  * An I/O failure (e.g. a client disconnect or truncated upload mid-request, or a genuine
- * server-side storage problem) still isn't something the client can retry their way out of, so
- * this stays a 500 rather than a 4xx - but without this handler it was an *uncontrolled* 500,
- * leaking the exception's message and stack trace straight to the client instead of a clean,
- * generic problem response (with the actual detail still logged server-side).
+ * server-side storage problem) still isn't something the client can retry their way out of, so this
+ * stays a 500 rather than a 4xx - but without this handler it was an *uncontrolled* 500, leaking
+ * the exception's message and stack trace straight to the client instead of a clean, generic
+ * problem response (with the actual detail still logged server-side).
  */
 public interface UncheckedIOAdviceTrait {
     Logger logger = LoggerFactory.getLogger(UncheckedIOAdviceTrait.class);
@@ -27,6 +27,7 @@ public interface UncheckedIOAdviceTrait {
                 request.getDescription(false),
                 exception);
         return ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR, "Could not process the request due to an I/O error.");
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Could not process the request due to an I/O error.");
     }
 }

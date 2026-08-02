@@ -102,9 +102,9 @@ public final class DiveProfileRateCalculator {
     }
 
     /**
-     * At least two samples on each side of a window's center (so a regression can be fit through
-     * a handful of real points, not just clear the bare {@code count >= 2} minimum) - derived
-     * from the profile's own median inter-sample gap, robust to a single dropped/duplicate sample
+     * At least two samples on each side of a window's center (so a regression can be fit through a
+     * handful of real points, not just clear the bare {@code count >= 2} minimum) - derived from
+     * the profile's own median inter-sample gap, robust to a single dropped/duplicate sample
      * skewing a mean. Zero for a profile too short to have a gap at all.
      */
     private static double minHalfWindowSecondsFor(final double[] seconds) {

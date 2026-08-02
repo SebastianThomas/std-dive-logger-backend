@@ -5,6 +5,7 @@ import static java.time.ZoneOffset.UTC;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoStopsToStringConverter;
 import ch.sthomas.stddivelogger.model.entity.gas.GasEntity;
@@ -59,6 +60,10 @@ public class DiveMeasurementEntity {
     @Column(name = "cns", nullable = true)
     private @Nullable Double cns;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mode", nullable = true)
+    private @Nullable DiveMode mode;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Convert(converter = DecoStopsToStringConverter.class)
     @Column(name = "deco_stops")
@@ -95,7 +100,8 @@ public class DiveMeasurementEntity {
         this.n2 = diveMeasurement.n2();
         this.o2Tox = diveMeasurement.o2Tox();
         this.cns = diveMeasurement.cns();
-        this.decoStops = diveMeasurement.deco();
+        this.mode = diveMeasurement.mode();
+        this.decoStops = Optional.ofNullable(diveMeasurement.deco()).orElse(List.of());
         this.po2 =
                 Optional.ofNullable(diveMeasurement.po2())
                         .map(p -> new PO2Entity(p, this))
@@ -122,7 +128,8 @@ public class DiveMeasurementEntity {
                 rmv,
                 n2,
                 o2Tox,
-                cns);
+                cns,
+                mode);
     }
 
     public DiveMeasurementWithId toRecordWithId() {

@@ -58,7 +58,7 @@ public class GraphImageCreatorTest {
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
                                         start, fifteenC, 1, ndl, null, Gas.AIR, null, null, null,
-                                        null, null),
+                                        null, null, null),
                                 0),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
@@ -68,6 +68,7 @@ public class GraphImageCreatorTest {
                                         ndl,
                                         null,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -86,6 +87,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 2),
                         new DiveMeasurementWithId(
@@ -96,6 +98,7 @@ public class GraphImageCreatorTest {
                                         ndl,
                                         null,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -114,6 +117,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 4),
                         new DiveMeasurementWithId(
@@ -124,6 +128,7 @@ public class GraphImageCreatorTest {
                                         ndl,
                                         null,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -142,6 +147,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 6),
                         new DiveMeasurementWithId(
@@ -152,6 +158,7 @@ public class GraphImageCreatorTest {
                                         ndl,
                                         null,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -170,6 +177,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 8),
                         new DiveMeasurementWithId(
@@ -180,6 +188,7 @@ public class GraphImageCreatorTest {
                                         ndl,
                                         null,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -198,6 +207,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 10),
                         new DiveMeasurementWithId(
@@ -212,12 +222,13 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 11),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
                                         end, fifteenC, 0, ndl, null, Gas.AIR, null, null, null,
-                                        null, null),
+                                        null, null, null),
                                 12));
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
@@ -276,7 +287,7 @@ public class GraphImageCreatorTest {
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
                                         start, fifteenC, 1, null, noDeco, Gas.AIR, null, null, null,
-                                        null, null),
+                                        null, null, null),
                                 0),
                         new DiveMeasurementWithId(
                                 new DiveMeasurement(
@@ -286,6 +297,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         withDeco,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -304,6 +316,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         null,
                                         null,
+                                        null,
                                         null),
                                 2),
                         new DiveMeasurementWithId(
@@ -314,6 +327,7 @@ public class GraphImageCreatorTest {
                                         null,
                                         noDeco,
                                         Gas.AIR,
+                                        null,
                                         null,
                                         null,
                                         null,
@@ -366,6 +380,7 @@ public class GraphImageCreatorTest {
                                                         null,
                                                         noDeco,
                                                         Gas.AIR,
+                                                        null,
                                                         null,
                                                         null,
                                                         null,

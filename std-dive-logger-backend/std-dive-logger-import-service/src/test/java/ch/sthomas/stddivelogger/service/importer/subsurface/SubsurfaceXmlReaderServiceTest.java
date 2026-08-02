@@ -65,10 +65,10 @@ class SubsurfaceXmlReaderServiceTest {
 
     @Test
     void duplicateDiveSiteUuidDoesNotAbortTheWholeFileImport() throws IOException {
-        final var service = new SubsurfaceXmlReaderService(xmlMapper, diveServiceReturningComputer());
+        final var service =
+                new SubsurfaceXmlReaderService(xmlMapper, diveServiceReturningComputer());
         try (final var inputStream =
-                new ByteArrayInputStream(
-                        duplicateSiteUuidXml().getBytes(StandardCharsets.UTF_8))) {
+                new ByteArrayInputStream(duplicateSiteUuidXml().getBytes(StandardCharsets.UTF_8))) {
             final var result =
                     assertDoesNotThrow(
                             () ->

@@ -166,6 +166,7 @@ public class PendingImportEntity {
     }
 
     public PendingImportSummary toSummary() {
+        final var diveNumberGuess = payload.diveNumberGuess();
         return new PendingImportSummary(
                 id,
                 source,
@@ -179,6 +180,8 @@ public class PendingImportEntity {
                 startDate,
                 durationSeconds,
                 maxDepth,
-                createdAt);
+                createdAt,
+                diveNumberGuess != null ? diveNumberGuess.number() : null,
+                diveNumberGuess != null && diveNumberGuess.isFractional());
     }
 }

@@ -35,13 +35,13 @@ import java.util.Date;
 import javax.crypto.SecretKey;
 
 /**
- * A real end-to-end test of both primary import HTTP paths - JSON-staging a Divesoft/wetnotes
- * dive and multipart-uploading a real UDDF file - against a single shared, throwaway
- * Testcontainers Postgres instance: confirms the endpoints are actually reachable and covered by
- * the existing security filter chain (rather than silently falling outside its securityMatcher),
- * and that staging a dive and then committing it (with and without a site override) really
- * persists it through the full stack. Kept as one test class (one container startup) rather than
- * split by import source, since spinning up Postgres is the expensive part of this test.
+ * A real end-to-end test of both primary import HTTP paths - JSON-staging a Divesoft/wetnotes dive
+ * and multipart-uploading a real UDDF file - against a single shared, throwaway Testcontainers
+ * Postgres instance: confirms the endpoints are actually reachable and covered by the existing
+ * security filter chain (rather than silently falling outside its securityMatcher), and that
+ * staging a dive and then committing it (with and without a site override) really persists it
+ * through the full stack. Kept as one test class (one container startup) rather than split by
+ * import source, since spinning up Postgres is the expensive part of this test.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -149,7 +149,8 @@ class ImportIntegrationTest {
                 restTemplate.postForEntity(
                         "/v1/import/divesoft",
                         new HttpEntity<>(
-                                syntheticDiveRequestBody("it-test-dive-1"), authorizedJsonHeaders()),
+                                syntheticDiveRequestBody("it-test-dive-1"),
+                                authorizedJsonHeaders()),
                         StageImportResult.class);
 
         assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -187,7 +188,8 @@ class ImportIntegrationTest {
                 restTemplate.postForEntity(
                         "/v1/import/divesoft",
                         new HttpEntity<>(
-                                syntheticDiveRequestBody("it-test-dive-2"), authorizedJsonHeaders()),
+                                syntheticDiveRequestBody("it-test-dive-2"),
+                                authorizedJsonHeaders()),
                         StageImportResult.class);
         assertThat(stageResponse.getBody()).isNotNull();
         final var staged = stageResponse.getBody().staged().getFirst();

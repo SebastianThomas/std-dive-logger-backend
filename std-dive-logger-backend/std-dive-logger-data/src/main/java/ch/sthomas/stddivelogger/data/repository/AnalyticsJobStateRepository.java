@@ -16,8 +16,10 @@ public interface AnalyticsJobStateRepository extends JpaRepository<AnalyticsJobS
     Optional<AnalyticsJobStateEntity> findByDive_IdAndModuleAndJobName(
             long diveId, String module, String jobName);
 
-    /** Clears every recorded job-state row for a dive, so the next scheduled sweep treats it as
-     * needing recompute again - see {@link #findDiveIdsNeedingRecompute} above. */
+    /**
+     * Clears every recorded job-state row for a dive, so the next scheduled sweep treats it as
+     * needing recompute again - see {@link #findDiveIdsNeedingRecompute} above.
+     */
     void deleteByDive_Id(long diveId);
 
     @Query(

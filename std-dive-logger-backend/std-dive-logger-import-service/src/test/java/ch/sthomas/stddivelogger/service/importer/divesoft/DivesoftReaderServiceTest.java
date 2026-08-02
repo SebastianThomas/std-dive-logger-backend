@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service.importer.divesoft;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,12 +9,14 @@ import static org.mockito.Mockito.mock;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftCeilingSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDepthSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDive;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDiveDetailResponse;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftGraphData;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftGraphMix;
+import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftModeSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftPressureSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftTemperatureSample;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -89,6 +92,18 @@ class DivesoftReaderServiceTest {
     }
 
     @Test
+    void tracksCcrOcModeTransitions() throws IOException {
+        // Same fixture's graphData.modes is [ccr@0, oc@1754, ccr@1982] - a genuine CCR dive with a
+        // bailout-and-back-on-loop segment in the middle.
+        final var dive = loadFixture("divesoft-dive-2-hyperoxic.json");
+        final var profile = service.getDiveProfile(computer, dive);
+
+        assertEquals(DiveMode.CC, profile.measurements().getFirst().mode());
+        assertTrue(profile.measurements().stream().anyMatch(m -> m.mode() == DiveMode.OC));
+        assertEquals(DiveMode.CC, profile.measurements().getLast().mode());
+    }
+
+    @Test
     void ceilingAboveZeroBecomesADecoStop() {
         final var graphData =
                 new DivesoftGraphData(
@@ -130,6 +145,46 @@ class DivesoftReaderServiceTest {
         assertTrue(profile.measurements().get(0).deco().isEmpty());
         assertEquals(
                 List.of(new DecoStop("ceiling", 3.0, 0)), profile.measurements().get(1).deco());
+    }
+
+    @Test
+    void nullOrUnrecognizedModeValueDoesNotThrow() {
+        // graphData.modes' "mode" field isn't annotated @Nullable, but Jackson won't enforce that
+        // against a real (possibly malformed) API response - a null or unrecognized value here
+        // should degrade to "unknown mode" rather than blow up the whole import.
+        final var graphData =
+                new DivesoftGraphData(
+                        List.of(new DivesoftDepthSample(0, 10.0), new DivesoftDepthSample(60, 9.0)),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(
+                                new DivesoftModeSample(0, null),
+                                new DivesoftModeSample(60, "unrecognized")),
+                        List.of(new DivesoftGraphMix(0, "21", "0", "air")));
+        final var dive =
+                new DivesoftDive(
+                        "synthetic",
+                        "serial",
+                        "",
+                        "",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "00:01:00",
+                        "Mon Jan 1 2024 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        graphData);
+
+        final var profile = assertDoesNotThrow(() -> service.getDiveProfile(computer, dive));
+
+        assertNull(profile.measurements().get(0).mode());
+        assertNull(profile.measurements().get(1).mode());
     }
 
     @Test

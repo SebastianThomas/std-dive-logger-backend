@@ -56,7 +56,8 @@ public class FitReaderService extends BaseReaderService {
      * computer(s) are resolved eagerly (get-or-create by serial number is idempotent, so doing it
      * now rather than at commit is harmless even if the staged import is later discarded).
      */
-    public ParsedImport parse(final User user, final String filename, final InputStream inputStream) {
+    public ParsedImport parse(
+            final User user, final String filename, final InputStream inputStream) {
         final var messages = new FitDecoder().decode(inputStream);
         if (messages.getSessionMesgs().size() != 1) {
             throw new IllegalArgumentException("Only one-session dive logs supported.");
@@ -94,8 +95,7 @@ public class FitReaderService extends BaseReaderService {
 
         final var hasCoordinates =
                 session.getStartPositionLong() != null && session.getStartPositionLat() != null;
-        final var lat =
-                hasCoordinates ? semicirclesToDegrees(session.getStartPositionLat()) : null;
+        final var lat = hasCoordinates ? semicirclesToDegrees(session.getStartPositionLat()) : null;
         final var lon =
                 hasCoordinates ? semicirclesToDegrees(session.getStartPositionLong()) : null;
 
@@ -205,7 +205,8 @@ public class FitReaderService extends BaseReaderService {
                                     : null,
                             Optional.ofNullable(record.getCnsLoad())
                                     .map(Short::doubleValue)
-                                    .orElse(null)));
+                                    .orElse(null),
+                            null)); // Garmin does not report CCR mode
             i++;
         }
         return new DiveProfileUpload(

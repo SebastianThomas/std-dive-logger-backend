@@ -56,10 +56,10 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
     private record SiteGuess(String name, Location location) {}
 
     /**
-     * Parses every dive in the file. Doesn't touch the dive/site tables - only the dive
-     * computer(s) are resolved eagerly (get-or-create by serial number is idempotent, so doing it
-     * now rather than at commit is harmless even if the staged import is later discarded); dive
-     * sites are only ever captured as a name+location guess here.
+     * Parses every dive in the file. Doesn't touch the dive/site tables - only the dive computer(s)
+     * are resolved eagerly (get-or-create by serial number is idempotent, so doing it now rather
+     * than at commit is harmless even if the staged import is later discarded); dive sites are only
+     * ever captured as a name+location guess here.
      */
     public Stream<ParsedImportResultStreaming> parse(
             final User user, final String filename, final InputStream inputStream)
@@ -235,6 +235,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 sample.ndlToDuration(),
                 sample.toDeco(),
                 switchTimeGas.map(Pair::getValue).orElse(null),
+                null,
                 null,
                 null,
                 null,

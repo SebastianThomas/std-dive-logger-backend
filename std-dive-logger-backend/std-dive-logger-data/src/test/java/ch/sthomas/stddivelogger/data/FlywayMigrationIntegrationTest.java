@@ -10,11 +10,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Confirms every migration under db/migration/postgresql applies cleanly, in order, to a fresh
- * real Postgres instance - the exact same thing a real deployment does on boot.
+ * Confirms every migration under db/migration/postgresql applies cleanly, in order, to a fresh real
+ * Postgres instance - the exact same thing a real deployment does on boot.
  *
- * <p>Deliberately uses Flyway's plain Java API directly against Testcontainers rather than a
- * full {@code @SpringBootTest}, so this is unaffected by unrelated application-context wiring
+ * <p>Deliberately uses Flyway's plain Java API directly against Testcontainers rather than a full
+ * {@code @SpringBootTest}, so this is unaffected by unrelated application-context wiring
  * (JPA/Hibernate, security, etc.) - it only proves the migration set itself is valid.
  */
 @Testcontainers
@@ -32,7 +32,9 @@ class FlywayMigrationIntegrationTest {
         final var flyway =
                 Flyway.configure()
                         .dataSource(
-                                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                                postgres.getJdbcUrl(),
+                                postgres.getUsername(),
+                                postgres.getPassword())
                         .locations("classpath:db/migration/postgresql")
                         .load();
 

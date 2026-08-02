@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.PO2;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
@@ -17,6 +18,7 @@ import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftCeilingSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDepthSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDive;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftGraphMix;
+import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftModeSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftPressureSample;
 import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftTemperatureSample;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -56,9 +58,9 @@ public class DivesoftReaderService extends BaseReaderService {
     }
 
     /**
-     * Parses every dive in the request. Doesn't touch the dive/site tables - only the dive
-     * computer is resolved eagerly (get-or-create by serial number is idempotent, so doing it now
-     * rather than at commit is harmless even if the staged import is later discarded).
+     * Parses every dive in the request. Doesn't touch the dive/site tables - only the dive computer
+     * is resolved eagerly (get-or-create by serial number is idempotent, so doing it now rather
+     * than at commit is harmless even if the staged import is later discarded).
      */
     public ParsedImportResultStreaming parse(final User user, final DivesoftImportRequest request) {
         final var dives = request.dives().stream().map(d -> d.diveAndMixes().dive()).toList();
@@ -173,6 +175,15 @@ public class DivesoftReaderService extends BaseReaderService {
                                 : Stream.<DivesoftGraphMix>empty())
                         .sorted(Comparator.comparingLong(DivesoftGraphMix::timestamp))
                         .toList();
+        // Same "sparse timeline of changes, hold the last value forward" shape as mixes above -
+        // only present at all on CCR-capable dives, and only carries entries where the mode
+        // actually changed.
+        final var modes =
+                (graph != null && graph.modes() != null
+                                ? graph.modes().stream()
+                                : Stream.<DivesoftModeSample>empty())
+                        .sorted(Comparator.comparingLong(DivesoftModeSample::timestamp))
+                        .toList();
 
         final var start =
                 parseStartDate(
@@ -185,6 +196,8 @@ public class DivesoftReaderService extends BaseReaderService {
         final var measurements = new ArrayList<DiveMeasurement>(depthSamples.size());
         var mixIndex = 0;
         Gas currentGas = mixes.isEmpty() ? null : toGas(mixes.getFirst());
+        var modeIndex = 0;
+        DiveMode currentMode = modes.isEmpty() ? null : toMode(modes.getFirst());
         for (var i = 0; i < depthSamples.size(); i++) {
             final var depthSample = depthSamples.get(i);
             final var timestamp = depthSample.timestamp();
@@ -192,6 +205,11 @@ public class DivesoftReaderService extends BaseReaderService {
                     && mixes.get(mixIndex + 1).timestamp() <= timestamp) {
                 mixIndex++;
                 currentGas = toGas(mixes.get(mixIndex));
+            }
+            while (modeIndex + 1 < modes.size()
+                    && modes.get(modeIndex + 1).timestamp() <= timestamp) {
+                modeIndex++;
+                currentMode = toMode(modes.get(modeIndex));
             }
             final var temperature = getSampleAt(temperatureSamples, i);
             final var ceiling = getSampleAt(ceilingSamples, i);
@@ -221,13 +239,28 @@ public class DivesoftReaderService extends BaseReaderService {
                             null,
                             null,
                             null,
-                            isLast ? dive.cns() : null));
+                            isLast ? dive.cns() : null,
+                            currentMode));
         }
         return new DiveProfileUpload(computer.id(), start, end, measurements);
     }
 
     private static <T> @Nullable T getSampleAt(final List<T> samples, final int index) {
         return index < samples.size() ? samples.get(index) : null;
+    }
+
+    private static @Nullable DiveMode toMode(final DivesoftModeSample sample) {
+        // sample.mode() isn't annotated @Nullable, but Jackson doesn't enforce that at
+        // deserialization time - a malformed/absent value in the source JSON would otherwise throw
+        // from the switch below instead of just leaving the mode unknown.
+        if (sample.mode() == null) {
+            return null;
+        }
+        return switch (sample.mode()) {
+            case "ccr" -> DiveMode.CC;
+            case "oc" -> DiveMode.OC;
+            default -> null;
+        };
     }
 
     private static @Nullable Gas toGas(final DivesoftGraphMix mix) {

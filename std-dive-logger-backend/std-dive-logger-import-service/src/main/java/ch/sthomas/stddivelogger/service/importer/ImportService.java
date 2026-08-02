@@ -76,13 +76,17 @@ public class ImportService {
         return stage(user, files.stream().flatMap(file -> parseFile(user, file)));
     }
 
-    private StageImportResult stage(final User user, final Stream<ParsedImportResultStreaming> parsed) {
+    private StageImportResult stage(
+            final User user, final Stream<ParsedImportResultStreaming> parsed) {
         final var result =
                 parsed.reduce(ParsedImportResultStreaming::concat)
                         .map(ParsedImportResultStreaming::toResult)
                         .orElse(new ParsedImportResultStreaming.Result(List.of(), List.of()));
         final var summaries =
-                result.parsed().stream().map(p -> stageOne(user, p)).map(PendingImportEntity::toSummary).toList();
+                result.parsed().stream()
+                        .map(p -> stageOne(user, p))
+                        .map(PendingImportEntity::toSummary)
+                        .toList();
         return new StageImportResult(summaries, result.errors());
     }
 
@@ -103,7 +107,8 @@ public class ImportService {
                 parsed.payload());
     }
 
-    private Stream<ParsedImportResultStreaming> parseFile(final User user, final MultipartFile file) {
+    private Stream<ParsedImportResultStreaming> parseFile(
+            final User user, final MultipartFile file) {
         try {
             return parseFile(user, file.getOriginalFilename(), file.getInputStream());
         } catch (final IOException e) {
@@ -158,7 +163,9 @@ public class ImportService {
 
     @Transactional
     public SimplifiedDive commit(
-            final User user, final long pendingImportId, final PendingImportCommitRequest overrides) {
+            final User user,
+            final long pendingImportId,
+            final PendingImportCommitRequest overrides) {
         // Row-locked: without this, a double-click (or a frontend retry racing its own earlier
         // request) can have two concurrent commits of the same pending import both see it still
         // present and both create a dive from it. The lock makes the second commit wait for the
@@ -209,7 +216,8 @@ public class ImportService {
                                     final var trim = trimByIndex.get(i);
                                     return trim == null
                                             ? profiles.get(i)
-                                            : profiles.get(i).trimmed(trim.trimStart(), trim.trimEnd());
+                                            : profiles.get(i)
+                                                    .trimmed(trim.trimStart(), trim.trimEnd());
                                 })
                         .toList();
         return new PendingImportPayload(
@@ -224,11 +232,10 @@ public class ImportService {
 
     /**
      * Full profile data (including measurements) for a staged-but-not-yet-committed import - the
-     * pre-commit counterpart of fetching an already-saved dive, so the frontend can render the
-     * same chart/trim UI against a pending import as it does for a real one. Deliberately not
-     * returned at stage time itself (only the lightweight {@code PendingImportSummary} guess
-     * fields are) - this is fetched separately, on demand, only when the user actually opens a
-     * preview.
+     * pre-commit counterpart of fetching an already-saved dive, so the frontend can render the same
+     * chart/trim UI against a pending import as it does for a real one. Deliberately not returned
+     * at stage time itself (only the lightweight {@code PendingImportSummary} guess fields are) -
+     * this is fetched separately, on demand, only when the user actually opens a preview.
      */
     @Transactional(readOnly = true)
     public List<DiveProfile> previewPending(final User user, final long pendingImportId) {
@@ -263,17 +270,21 @@ public class ImportService {
                                                                     measurements.get(j), j))
                                             .toList();
                             return new DiveProfile(
-                                    i, computer, upload.start(), upload.end(), measurementsWithIds, true);
+                                    i,
+                                    computer,
+                                    upload.start(),
+                                    upload.end(),
+                                    measurementsWithIds,
+                                    true);
                         })
                 .toList();
     }
 
     /**
-     * Non-null when the import should be attached to an already-existing dive instead of creating
-     * a new one - either because the frontend explicitly asked for it ({@code
-     * linkToExistingDiveId}), or because the source file itself encoded a "+"-prefixed fractional
-     * dive number (UDDF/Shearwater's auto-merge convention) and the frontend didn't override the
-     * dive number.
+     * Non-null when the import should be attached to an already-existing dive instead of creating a
+     * new one - either because the frontend explicitly asked for it ({@code linkToExistingDiveId}),
+     * or because the source file itself encoded a "+"-prefixed fractional dive number
+     * (UDDF/Shearwater's auto-merge convention) and the frontend didn't override the dive number.
      */
     private @Nullable DiveNumber resolveAttachTarget(
             final User user,
@@ -350,10 +361,11 @@ public class ImportService {
 
     /**
      * Site override precedence: explicit existing-site id, explicit new name+location, then the
-     * guess captured at stage time (get-or-create when the guess has coordinates, exact-name
-     * lookup when it doesn't - matching each reader's original per-source resolution rule).
+     * guess captured at stage time (get-or-create when the guess has coordinates, exact-name lookup
+     * when it doesn't - matching each reader's original per-source resolution rule).
      */
-    private long resolveSite(final PendingImportEntity entity, final PendingImportCommitRequest overrides) {
+    private long resolveSite(
+            final PendingImportEntity entity, final PendingImportCommitRequest overrides) {
         if (overrides.diveSiteId() != null) {
             return diveService.getSiteById(overrides.diveSiteId()).orElseThrow().id();
         }

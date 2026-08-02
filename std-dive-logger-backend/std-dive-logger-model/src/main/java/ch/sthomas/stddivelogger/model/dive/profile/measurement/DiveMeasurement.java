@@ -16,13 +16,14 @@ public record DiveMeasurement(
         @Nullable Temperature temperature,
         double depth,
         @Nullable Duration ndl,
-        List<DecoStop> deco,
+        @Nullable List<DecoStop> deco,
         @Nullable Gas gas,
         @Nullable PO2 po2,
         @Nullable Double rmvLiters,
         @Nullable Double n2,
         @Nullable Double o2Tox,
-        @Nullable Double cns) {
+        @Nullable Double cns,
+        @Nullable DiveMode mode) {
     public enum DiveMeasurementProperty {
         TEMPERATURE,
         DEPTH,

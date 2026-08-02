@@ -6,8 +6,8 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import org.jspecify.annotations.Nullable;
 
@@ -15,8 +15,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Overrides applied when committing a staged import. When {@code linkToExistingDiveId} is set,
- * the parsed profile(s) are attached to that existing dive instead of creating a new one, and the
+ * Overrides applied when committing a staged import. When {@code linkToExistingDiveId} is set, the
+ * parsed profile(s) are attached to that existing dive instead of creating a new one, and the
  * site/identity fields below are ignored.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)

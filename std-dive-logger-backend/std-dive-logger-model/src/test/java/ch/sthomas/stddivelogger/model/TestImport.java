@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.model;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.importer.SubsurfaceXmlFile;
 import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
@@ -45,6 +46,13 @@ public class TestImport {
                                 .flatMap(Optional::stream)
                                 .findFirst()
                                 .isEmpty());
+                // This fixture's <divemode> is "closedcircuit" throughout.
+                assertEquals(
+                        DiveMode.CC, content.exportMeasurements(0).getFirst().mode());
+            } else {
+                // This fixture's <divemode> is "opencircuit" throughout.
+                assertEquals(
+                        DiveMode.OC, content.exportMeasurements(0).getFirst().mode());
             }
         }
     }

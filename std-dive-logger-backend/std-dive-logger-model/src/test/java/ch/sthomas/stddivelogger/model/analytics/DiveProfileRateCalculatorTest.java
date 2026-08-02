@@ -18,7 +18,8 @@ class DiveProfileRateCalculatorTest {
     private static final Instant START = Instant.parse("2026-01-01T10:00:00Z");
     private static final Duration DEFAULT_HALF_WINDOW = Duration.ofSeconds(3);
 
-    private static DiveMeasurementWithId sample(final int id, final int offsetSeconds, final double depth) {
+    private static DiveMeasurementWithId sample(
+            final int id, final int offsetSeconds, final double depth) {
         return new DiveMeasurementWithId(
                 new DiveMeasurement(
                         START.plusSeconds(offsetSeconds),
@@ -26,6 +27,7 @@ class DiveProfileRateCalculatorTest {
                         depth,
                         null,
                         List.of(),
+                        null,
                         null,
                         null,
                         null,
@@ -105,6 +107,7 @@ class DiveProfileRateCalculatorTest {
                                 null,
                                 null,
                                 null,
+                                null,
                                 null),
                         corrupted.id()));
 
@@ -113,7 +116,9 @@ class DiveProfileRateCalculatorTest {
                         measurements, DEFAULT_HALF_WINDOW);
 
         for (var i = 0; i < rates.length; i++) {
-            assertTrue(Double.isFinite(rates[i]), "rate at index " + i + " was not finite: " + rates[i]);
+            assertTrue(
+                    Double.isFinite(rates[i]),
+                    "rate at index " + i + " was not finite: " + rates[i]);
         }
         // Far past the corrupted sample and its window, the descent rate should read normally
         // again rather than staying wrecked for the rest of the profile.

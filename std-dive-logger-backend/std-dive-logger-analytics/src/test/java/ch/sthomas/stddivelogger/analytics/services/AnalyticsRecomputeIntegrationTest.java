@@ -48,11 +48,11 @@ import java.util.stream.Collectors;
 /**
  * A real end-to-end test of the analytics recompute pipeline against a throwaway Testcontainers
  * Postgres instance: boots the app for real (so Flyway actually runs every migration, confirming
- * they apply cleanly against a real database), then drives {@link AnalyticsService#computeAnalytics()}
- * against a hand-built dive to confirm the job-state-driven recompute logic (new dive gets
- * computed, unchanged dive is skipped on the next run, a version bump flags it again) and that
- * the exact data-service methods behind the `/segments` and `/rates` HTTP endpoints return
- * sane results afterward.
+ * they apply cleanly against a real database), then drives {@link
+ * AnalyticsService#computeAnalytics()} against a hand-built dive to confirm the job-state-driven
+ * recompute logic (new dive gets computed, unchanged dive is skipped on the next run, a version
+ * bump flags it again) and that the exact data-service methods behind the `/segments` and `/rates`
+ * HTTP endpoints return sane results afterward.
  */
 @SpringBootTest
 @Testcontainers
@@ -97,7 +97,8 @@ class AnalyticsRecomputeIntegrationTest {
                         new DiveComputerEntity(null, "IT-TEST-COMPUTER", manufacturer, userEntity));
         final var diveSite =
                 diveSiteRepository.save(
-                        new DiveSiteEntity("Integration Test Site", new Location(47.0, 8.0).toPoint()));
+                        new DiveSiteEntity(
+                                "Integration Test Site", new Location(47.0, 8.0).toPoint()));
 
         final var start = Instant.parse("2026-01-01T10:00:00Z");
         final var measurements = new ArrayList<DiveMeasurementEntity>();
@@ -116,12 +117,12 @@ class AnalyticsRecomputeIntegrationTest {
                                     null,
                                     null,
                                     null,
+                                    null,
                                     null),
                             null));
         }
         final var profile =
-                new DiveProfileEntity(
-                        computer, start, start.plusSeconds(130), measurements);
+                new DiveProfileEntity(computer, start, start.plusSeconds(130), measurements);
 
         final var userRecord = userEntity.toRecord();
         final var suit = new SuitEntity(userEntity, Suit.createUnknown(userRecord));
@@ -155,7 +156,8 @@ class AnalyticsRecomputeIntegrationTest {
         final var segments =
                 analyticsDataService.findSegmentsByDiveId(userEntity.toRecord(), diveId, false);
         assertThat(segments).isNotEmpty();
-        final var types = segments.stream().map(s -> s.segment().type()).collect(Collectors.toSet());
+        final var types =
+                segments.stream().map(s -> s.segment().type()).collect(Collectors.toSet());
         assertThat(types)
                 .containsAnyOf(DiveProfileSegmentType.DESCENT, DiveProfileSegmentType.HOLD_LEVEL);
 
@@ -164,9 +166,7 @@ class AnalyticsRecomputeIntegrationTest {
         assertThat(jobState).hasSize(1);
         assertThat(jobState.getFirst().rates()).isNotEmpty();
         // Positive rate (descending) should show up during the first 60s of the profile.
-        assertThat(
-                        jobState.getFirst().rates().stream()
-                                .anyMatch(r -> r.rateMetersPerMinute() > 5))
+        assertThat(jobState.getFirst().rates().stream().anyMatch(r -> r.rateMetersPerMinute() > 5))
                 .isTrue();
     }
 

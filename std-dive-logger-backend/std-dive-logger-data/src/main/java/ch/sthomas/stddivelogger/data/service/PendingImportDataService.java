@@ -70,8 +70,9 @@ public class PendingImportDataService {
 
     /**
      * Same lookup as {@link #findByIdAndUser}, but row-locked for use immediately before
-     * committing/deleting a pending import - see {@link PendingImportRepository#findByIdAndUser_IdForUpdate}
-     * for why this matters. Must be called from within an active transaction.
+     * committing/deleting a pending import - see {@link
+     * PendingImportRepository#findByIdAndUser_IdForUpdate} for why this matters. Must be called
+     * from within an active transaction.
      */
     public Optional<PendingImportEntity> findByIdAndUserForCommit(final long id, final User user) {
         return pendingImportRepository.findByIdAndUser_IdForUpdate(id, user.id());

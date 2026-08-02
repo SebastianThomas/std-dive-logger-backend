@@ -18,8 +18,18 @@ class DiveProfileUploadTest {
 
     private static DiveMeasurement measurement(final int offsetSeconds, final double depth) {
         return new DiveMeasurement(
-                START.plusSeconds(offsetSeconds), null, depth, null, List.of(), null, null, null, null,
-                null, null);
+                START.plusSeconds(offsetSeconds),
+                null,
+                depth,
+                null,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     private static DiveProfileUpload steadyDescentUpload() {

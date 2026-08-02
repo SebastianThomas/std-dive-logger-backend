@@ -41,7 +41,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.*;
 import java.io.*;
@@ -249,7 +248,8 @@ public class DiveService {
             // the same user/serial number running at once) - t_dive_computer's own unique
             // constraint rejected our insert rather than creating a duplicate. Use the winner's
             // row instead of failing the request with a raw 500.
-            return getDiveComputerBySerialNumber(user, manufacturer, serialNumber).orElseThrow(() -> e);
+            return getDiveComputerBySerialNumber(user, manufacturer, serialNumber)
+                    .orElseThrow(() -> e);
         }
     }
 
@@ -330,8 +330,8 @@ public class DiveService {
     }
 
     /**
-     * Removes a single profile from a dive without deleting the dive itself - the recovery path
-     * for a profile attached/merged to the wrong dive by mistake (e.g. via import).
+     * Removes a single profile from a dive without deleting the dive itself - the recovery path for
+     * a profile attached/merged to the wrong dive by mistake (e.g. via import).
      */
     public Dive deleteProfile(final User user, final long diveId, final long profileId) {
         if (!hasWriteAccess(user, diveId)) {
@@ -345,8 +345,8 @@ public class DiveService {
     /**
      * Permanently deletes every measurement of a profile outside {@code [trimStart, trimEnd]} -
      * e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting to have its
-     * dive ended manually on the computer. Either bound may be {@code null} to only trim the
-     * other end.
+     * dive ended manually on the computer. Either bound may be {@code null} to only trim the other
+     * end.
      */
     public Dive trimProfile(
             final User user,

@@ -12,12 +12,13 @@ public record DiveProfileUpload(
 
     /**
      * Returns a copy with only the measurements inside {@code [trimStart, trimEnd]} (either bound
-     * optional - {@code null} leaves that end untouched), with {@code start}/{@code end} updated
-     * to match the surviving measurements. Mirrors the equivalent trim applied to an
-     * already-persisted profile via {@code DiveDataService.trimProfile} - this is the pre-commit
-     * counterpart, applied to a staged import that hasn't been saved as a dive yet.
+     * optional - {@code null} leaves that end untouched), with {@code start}/{@code end} updated to
+     * match the surviving measurements. Mirrors the equivalent trim applied to an already-persisted
+     * profile via {@code DiveDataService.trimProfile} - this is the pre-commit counterpart, applied
+     * to a staged import that hasn't been saved as a dive yet.
      */
-    public DiveProfileUpload trimmed(final @Nullable Instant trimStart, final @Nullable Instant trimEnd) {
+    public DiveProfileUpload trimmed(
+            final @Nullable Instant trimStart, final @Nullable Instant trimEnd) {
         if (trimStart == null && trimEnd == null) {
             return this;
         }
@@ -37,6 +38,7 @@ public record DiveProfileUpload(
             throw new IllegalArgumentException(
                     "Trimming this range would leave fewer than 2 measurements on the profile.");
         }
-        return new DiveProfileUpload(diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept);
+        return new DiveProfileUpload(
+                diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept);
     }
 }
