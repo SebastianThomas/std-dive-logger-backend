@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -11,12 +12,33 @@ import java.util.List;
 
 class UddfFileTest {
 
-    private static UddfFile.UddfProfileDataDive diveWithNumber(final String divenumber) {
+    private static UddfFile.UddfProfileDataDive diveWithNumber(final @Nullable String divenumber) {
         final var infoBeforeDive =
                 new UddfFile.UddfInfoBeforeDive(
-                        List.of(), divenumber, Instant.EPOCH, 0, null, null, 0);
+                        List.of(),
+                        divenumber,
+                        Instant.EPOCH,
+                        0,
+                        new UddfFile.SurfaceIntervalBeforeDive(0),
+                        new UddfFile.EquipmentUsed(List.of()),
+                        0);
+        final var notes = new UddfFile.UddfNotes(List.of());
+        final var infoAfterDive =
+                new UddfFile.UddfInfoAfterDive(
+                        0,
+                        "",
+                        null,
+                        new UddfFile.NotesContainer(notes),
+                        0,
+                        new UddfFile.NotesContainer(notes),
+                        0);
         return new UddfFile.UddfProfileDataDive(
-                "dive-1", null, infoBeforeDive, null, new UddfFile.UddfSamples(List.of()), null);
+                "dive-1",
+                new Object(),
+                infoBeforeDive,
+                null,
+                new UddfFile.UddfSamples(List.of()),
+                infoAfterDive);
     }
 
     @Test

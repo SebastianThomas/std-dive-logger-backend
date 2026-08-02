@@ -31,6 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.Date;
+import java.util.Objects;
 
 import javax.crypto.SecretKey;
 
@@ -154,10 +155,10 @@ class ImportIntegrationTest {
                         StageImportResult.class);
 
         assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(stageResponse.getBody()).isNotNull();
-        assertThat(stageResponse.getBody().errors()).isEmpty();
-        assertThat(stageResponse.getBody().staged()).hasSize(1);
-        final var staged = stageResponse.getBody().staged().getFirst();
+        final var stageBody = Objects.requireNonNull(stageResponse.getBody());
+        assertThat(stageBody.errors()).isEmpty();
+        assertThat(stageBody.staged()).hasSize(1);
+        final var staged = stageBody.staged().getFirst();
         assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Lake");
 
         final var commitRequest =
@@ -191,8 +192,7 @@ class ImportIntegrationTest {
                                 syntheticDiveRequestBody("it-test-dive-2"),
                                 authorizedJsonHeaders()),
                         StageImportResult.class);
-        assertThat(stageResponse.getBody()).isNotNull();
-        final var staged = stageResponse.getBody().staged().getFirst();
+        final var staged = Objects.requireNonNull(stageResponse.getBody()).staged().getFirst();
 
         final var commitRequest =
                 new PendingImportCommitRequest(
@@ -213,8 +213,8 @@ class ImportIntegrationTest {
                         SimplifiedDive.class);
 
         assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(commitResponse.getBody()).isNotNull();
-        assertThat(commitResponse.getBody().customIdentifier()).isEqualTo("Overridden Name");
+        assertThat(Objects.requireNonNull(commitResponse.getBody()).customIdentifier())
+                .isEqualTo("Overridden Name");
     }
 
     @Test
@@ -230,10 +230,10 @@ class ImportIntegrationTest {
                         "/v1/import", new HttpEntity<>(body, headers), StageImportResult.class);
 
         assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(stageResponse.getBody()).isNotNull();
-        assertThat(stageResponse.getBody().errors()).isEmpty();
-        assertThat(stageResponse.getBody().staged()).hasSize(1);
-        final var staged = stageResponse.getBody().staged().getFirst();
+        final var stageBody = Objects.requireNonNull(stageResponse.getBody());
+        assertThat(stageBody.errors()).isEmpty();
+        assertThat(stageBody.staged()).hasSize(1);
+        final var staged = stageBody.staged().getFirst();
         // Real duration parsed from the UDDF profile timestamps, not a synthetic placeholder.
         // (Unlike the Divesoft path, the UDDF reader doesn't populate the cheap maxDepth guess on
         // PendingImportSummary - the real per-measurement depth data only surfaces once
@@ -271,8 +271,9 @@ class ImportIntegrationTest {
         // raw UDDF start/end span used for the staged duration guess, so the two aren't expected
         // to match exactly - both being independently positive is what confirms real per-source
         // data flowed through both times.)
-        assertThat(commitResponse.getBody().summary().maxDepth()).isGreaterThan(0.0);
-        assertThat(commitResponse.getBody().summary().bottomTime().toSeconds()).isGreaterThan(0L);
+        final var commitBody = Objects.requireNonNull(commitResponse.getBody());
+        assertThat(commitBody.summary().maxDepth()).isGreaterThan(0.0);
+        assertThat(commitBody.summary().bottomTime().toSeconds()).isGreaterThan(0L);
 
         // The pending import is consumed by commit - it's gone from the pending list afterwards.
         final var pendingAfterCommit =

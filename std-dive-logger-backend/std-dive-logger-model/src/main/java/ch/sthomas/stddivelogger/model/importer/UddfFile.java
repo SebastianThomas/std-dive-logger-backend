@@ -143,8 +143,7 @@ public record UddfFile(
                 // path (the sign itself carries no extra meaning we act on).
                 final var anyNonZeroFraction = 1;
                 return Optional.of(
-                        new DiveNumber(
-                                Integer.parseInt(number.substring(1)), anyNonZeroFraction));
+                        new DiveNumber(Integer.parseInt(number.substring(1)), anyNonZeroFraction));
             }
             return Optional.of(new DiveNumber(Integer.parseInt(number)));
         } catch (final IllegalArgumentException e) {

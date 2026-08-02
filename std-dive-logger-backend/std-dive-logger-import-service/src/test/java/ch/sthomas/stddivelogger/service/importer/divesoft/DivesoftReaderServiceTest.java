@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 class DivesoftReaderServiceTest {
     private static final JsonMapper objectMapper = new JsonMapper();
@@ -44,7 +45,7 @@ class DivesoftReaderServiceTest {
                 DivesoftReaderServiceTest.class.getClassLoader().getResourceAsStream(filename)) {
             final var response =
                     objectMapper.readValue(inputStream, DivesoftDiveDetailResponse.class);
-            return response.diveAndMixes().dive();
+            return Objects.requireNonNull(Objects.requireNonNull(response.diveAndMixes()).dive());
         }
     }
 
@@ -61,12 +62,18 @@ class DivesoftReaderServiceTest {
 
         final var first = profile.measurements().getFirst();
         assertEquals(1.59, first.depth());
-        assertEquals(25.3, first.temperature().celsius(), 0.001);
-        assertEquals(0.6636, first.po2().measured(), 0.0001);
-        assertEquals(0.7, first.po2().maxSetPoint(), 0.0001);
-        assertEquals(0.21, first.gas().o2(), 0.0001);
-        assertEquals(0.79, first.gas().n2(), 0.0001);
-        assertTrue(first.deco().isEmpty());
+        assertEquals(25.3, Objects.requireNonNull(first.temperature()).celsius(), 0.001);
+        assertEquals(
+                0.6636,
+                Objects.requireNonNull(Objects.requireNonNull(first.po2()).measured()),
+                0.0001);
+        assertEquals(
+                0.7,
+                Objects.requireNonNull(Objects.requireNonNull(first.po2()).maxSetPoint()),
+                0.0001);
+        assertEquals(0.21, Objects.requireNonNull(first.gas()).o2(), 0.0001);
+        assertEquals(0.79, Objects.requireNonNull(first.gas()).n2(), 0.0001);
+        assertTrue(Objects.requireNonNull(first.deco()).isEmpty());
         assertNull(first.cns());
 
         final var last = profile.measurements().getLast();
@@ -83,12 +90,19 @@ class DivesoftReaderServiceTest {
         // graphData.mixes arrives out of timestamp order (the initial air mix at timestamp=0 is
         // listed *last*) - these indices pin down that the switches still land in the right place
         // once sorted.
-        assertEquals(0.21, profile.measurements().get(0).gas().o2(), 0.0001);
-        assertEquals(0.29, profile.measurements().get(699).gas().o2(), 0.0001);
-        assertEquals(0.21, profile.measurements().get(729).gas().o2(), 0.0001);
+        assertEquals(
+                0.21, Objects.requireNonNull(profile.measurements().get(0).gas()).o2(), 0.0001);
+        assertEquals(
+                0.29, Objects.requireNonNull(profile.measurements().get(699).gas()).o2(), 0.0001);
+        assertEquals(
+                0.21, Objects.requireNonNull(profile.measurements().get(729).gas()).o2(), 0.0001);
 
         // A recorded hyperoxic ppO2 spike (~1.83 bar) should come through untouched.
-        assertEquals(1.8289, profile.measurements().get(657).po2().measured(), 0.0001);
+        assertEquals(
+                1.8289,
+                Objects.requireNonNull(
+                        Objects.requireNonNull(profile.measurements().get(657).po2()).measured()),
+                0.0001);
     }
 
     @Test
@@ -142,7 +156,7 @@ class DivesoftReaderServiceTest {
 
         final var profile = service.getDiveProfile(computer, dive);
 
-        assertTrue(profile.measurements().get(0).deco().isEmpty());
+        assertTrue(Objects.requireNonNull(profile.measurements().get(0).deco()).isEmpty());
         assertEquals(
                 List.of(new DecoStop("ceiling", 3.0, 0)), profile.measurements().get(1).deco());
     }

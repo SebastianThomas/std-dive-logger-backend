@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -32,6 +33,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.ZoneOffset;
@@ -44,13 +46,19 @@ public class GraphImageCreatorTest {
     private static final XmlMapper xmlMapper = xmlMapper();
     private static final Logger logger = LoggerFactory.getLogger(GraphImageCreatorTest.class);
 
+    private static DiveSummary testSummary(final Instant start, final Instant end) {
+        return new DiveSummary(start, end, 0, 0, null, Duration.ZERO);
+    }
+
     @Test
     @Disabled("MD5 not the same on Mac as on Github Runner")
     public void createGraphImage() throws IOException {
         final var start =
                 LocalDateTime.of(2025, Month.NOVEMBER, 17, 15, 25, 0).toInstant(ZoneOffset.UTC);
         final var end = start.plus(1, ChronoUnit.MINUTES);
-        final var computer = new DiveComputer(0, null, "SN", "Computer");
+        final var computer =
+                new DiveComputer(
+                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer");
         final var ndl = Duration.ofMinutes(99);
         final var fifteenC = new Temperature(15, Temperature.TemperatureUnit.CELSIUS);
         final var measurements =
@@ -237,7 +245,7 @@ public class GraphImageCreatorTest {
                         new FrontendUser(1, "TestName", null, null),
                         1,
                         "Some Dive",
-                        null,
+                        "test-dive",
                         null,
                         null,
                         null,
@@ -246,7 +254,7 @@ public class GraphImageCreatorTest {
                         profiles,
                         List.of(),
                         List.of("Buddy1"),
-                        null,
+                        testSummary(start, end),
                         List.of());
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();
         try (final var outWriter = new FileWriter(tempFile)) {
@@ -256,7 +264,9 @@ public class GraphImageCreatorTest {
                     Map.ofEntries(
                             Map.entry(
                                     DiveMeasurement.DiveMeasurementProperty.TEMPERATURE,
-                                    Pair.of(m -> m.temperature().celsius(), LegendType.RIGHT)),
+                                    Pair.of(
+                                            m -> Objects.requireNonNull(m.temperature()).celsius(),
+                                            LegendType.RIGHT)),
                             Map.entry(
                                     DiveMeasurement.DiveMeasurementProperty.DEPTH,
                                     Pair.of(DiveMeasurement::depth, LegendType.LEFT))),
@@ -334,7 +344,9 @@ public class GraphImageCreatorTest {
                                         null,
                                         null),
                                 3));
-        final var computer = new DiveComputer(0, null, "SN", "Computer");
+        final var computer =
+                new DiveComputer(
+                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer");
         final var end = start.plusSeconds(15);
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =
@@ -343,7 +355,7 @@ public class GraphImageCreatorTest {
                         new FrontendUser(1, "TestName", null, null),
                         1,
                         "Some Dive",
-                        null,
+                        "test-dive",
                         null,
                         null,
                         null,
@@ -352,7 +364,7 @@ public class GraphImageCreatorTest {
                         profiles,
                         List.of(),
                         List.of(),
-                        null,
+                        testSummary(start, end),
                         List.of());
 
         final var withDecoWriter = new StringWriter();
@@ -394,7 +406,7 @@ public class GraphImageCreatorTest {
                         testDive.user(),
                         testDive.number(),
                         testDive.notes(),
-                        null,
+                        testDive.customIdentifier(),
                         null,
                         null,
                         null,
@@ -403,7 +415,7 @@ public class GraphImageCreatorTest {
                         List.of(new DiveProfile(0, computer, start, end, noDecoMeasurements, null)),
                         List.of(),
                         List.of(),
-                        null,
+                        testDive.summary(),
                         List.of());
         final var noDecoWriter = new StringWriter();
         GraphImageCreator.fromDive(

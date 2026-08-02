@@ -550,6 +550,14 @@ public class DiveDataService {
                                 this::toEntity));
             }
             logger.info("Set new configuration with suit: {}, {}", suit, suit.getType());
+            // Flush the cylinders orphanRemoval mutation to completion here, before anything else
+            // in this method (namedBuddies below, then the final repository.save()) adds more
+            // dirty state to the same session. Leaving it pending let a later, unrelated
+            // auto-flush (triggered by some other query further down the call chain) catch this
+            // collection mid-flight and throw "A collection with orphan deletion was no longer
+            // referenced by the owning entity instance" - reproduced by
+            // DiveConfigurationUpdateIntegrationTest editing an already-persisted cylinder set.
+            entityManager.flush();
         }
         // Mutate gasConsumption in-place (same @MapsId constraint as configuration).
         if (updateBody.gasConsumption() != null) {

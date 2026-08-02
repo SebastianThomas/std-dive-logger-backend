@@ -142,7 +142,11 @@ class AnalyticsRecomputeIntegrationTest {
                         diveSite,
                         List.of(profile),
                         List.of(),
-                        cs -> null);
+                        // Never actually invoked - this fixture's configuration has no cylinders.
+                        cs -> {
+                            throw new UnsupportedOperationException(
+                                    "no cylinders in this test fixture");
+                        });
         return diveRepository.save(dive).getId();
     }
 

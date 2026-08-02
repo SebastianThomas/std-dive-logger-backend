@@ -48,11 +48,12 @@ public class DiveConfigurationEntity {
     @Column(name = "weight_feeling")
     private @Nullable WeightFeeling weightFeeling;
 
-    // orphanRemoval matters here specifically because update() below replaces this whole list with
-    // a fresh one of brand-new entities on every edit rather than mutating it in place - without
-    // it, the old rows are simply abandoned (never deleted), still pointing at this same
-    // configuration, so every edit to a dive's cylinders left the previous set behind as
-    // duplicated, orphaned rows.
+    // orphanRemoval so a cylinder dropped by update() below is actually deleted rather than left
+    // behind as a duplicated, orphaned row pointing at this same configuration. This only works
+    // because update() mutates this exact managed collection in place (clear() + addAll()) -
+    // replacing the field with a brand-new List instance instead would detach Hibernate's
+    // persistent collection wrapper from the entity, and orphanRemoval would fail at flush with
+    // "A collection with orphan deletion was no longer referenced by the owning entity instance".
     @OneToMany(
             mappedBy = "configuration",
             cascade = CascadeType.ALL,
@@ -112,7 +113,13 @@ public class DiveConfigurationEntity {
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
-        this.cylinders =
+        // Resolve every CylinderSizeEntity (a find-or-create that can itself flush) *before*
+        // touching this.cylinders - clear()ing the managed collection and only then hitting a
+        // flush-triggering lookup mid-stream leaves Hibernate mid-mutation on this exact
+        // orphanRemoval collection, which fails the same way replacing the field outright would
+        // (see the field's comment above). Building the full replacement list first means clear()
+        // and addAll() below run back-to-back with nothing in between that could flush.
+        final var newCylinders =
                 configuration.cylinders().stream()
                         .map(
                                 c ->
@@ -122,7 +129,9 @@ public class DiveConfigurationEntity {
                                                 c.startBar(),
                                                 c.endBar(),
                                                 c.notes()))
-                        .collect(Collectors.toCollection(ArrayList::new));
+                        .toList();
+        this.cylinders.clear();
+        this.cylinders.addAll(newCylinders);
     }
 
     public SuitEntity getSuitEntity() {

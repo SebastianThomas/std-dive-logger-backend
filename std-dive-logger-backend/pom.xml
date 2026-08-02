@@ -370,7 +370,7 @@
                                 -Xep:NullAway:ERROR \
                                 -Xep:RequireExplicitNullMarking:${explicit-null-marking-level} \
                                 -XepDisableWarningsInGeneratedCode \
-                                -XepExcludedPaths:.*/src/test/java/.*|.*/target/generated-sources/.* \
+                                -XepExcludedPaths:.*/target/generated-sources/.* \
                                 -XepOpt:NullAway:TreatGeneratedAsUnannotated=true \
                                 -XepOpt:NullAway:GeneratedCodeAnnotations=com.google.protobuf.Generated,jakarta.annotation.Generated,javax.annotation.Generated \
                                 -XepOpt:NullAway:JSpecifyMode=true \

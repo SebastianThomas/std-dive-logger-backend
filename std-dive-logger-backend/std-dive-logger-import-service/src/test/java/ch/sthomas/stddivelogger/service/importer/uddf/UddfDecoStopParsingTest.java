@@ -15,6 +15,7 @@ import tools.jackson.dataformat.xml.XmlMapper;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 class UddfDecoStopParsingTest {
     private static final String FILE = "Discover Greece - Tsolis Wall.uddf";
@@ -31,11 +32,14 @@ class UddfDecoStopParsingTest {
         }
 
         final List<DiveMeasurement> measurements = file.exportMeasurements(0);
-        final var withDeco = measurements.stream().filter(m -> !m.deco().isEmpty()).toList();
+        final var withDeco =
+                measurements.stream()
+                        .filter(m -> !Objects.requireNonNull(m.deco()).isEmpty())
+                        .toList();
 
         assertFalse(withDeco.isEmpty(), "Expected at least one measurement with deco stops");
 
-        final DecoStop firstStop = withDeco.getFirst().deco().getFirst();
+        final DecoStop firstStop = Objects.requireNonNull(withDeco.getFirst().deco()).getFirst();
         assertEquals("mandatory", firstStop.type());
         assertEquals(6, firstStop.depth());
         assertTrue(firstStop.seconds() > 0);

@@ -33,7 +33,11 @@ class DiveProfileEntityTest {
 
     @Test
     void replaceMeasurementsUpdatesStartEndAndProfileBackref() {
-        final var profile = new DiveProfileEntity(null, Instant.EPOCH, Instant.EPOCH, List.of());
+        final var manufacturer = new DiveComputerManufacturerEntity("Test Manufacturer");
+        final var user = new UserEntity("it-test@test.ch", "hash", "IT Test");
+        final var computer = new DiveComputerEntity("SN", "Computer", manufacturer, user);
+        final var profile =
+                new DiveProfileEntity(computer, Instant.EPOCH, Instant.EPOCH, List.of());
 
         final var newStart = Instant.parse("2026-01-01T10:00:00Z");
         final var newEnd = Instant.parse("2026-01-01T11:00:00Z");

@@ -47,12 +47,10 @@ public class TestImport {
                                 .findFirst()
                                 .isEmpty());
                 // This fixture's <divemode> is "closedcircuit" throughout.
-                assertEquals(
-                        DiveMode.CC, content.exportMeasurements(0).getFirst().mode());
+                assertEquals(DiveMode.CC, content.exportMeasurements(0).getFirst().mode());
             } else {
                 // This fixture's <divemode> is "opencircuit" throughout.
-                assertEquals(
-                        DiveMode.OC, content.exportMeasurements(0).getFirst().mode());
+                assertEquals(DiveMode.OC, content.exportMeasurements(0).getFirst().mode());
             }
         }
     }

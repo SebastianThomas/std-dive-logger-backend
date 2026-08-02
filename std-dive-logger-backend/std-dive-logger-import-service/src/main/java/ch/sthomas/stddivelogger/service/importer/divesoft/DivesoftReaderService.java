@@ -63,7 +63,16 @@ public class DivesoftReaderService extends BaseReaderService {
      * than at commit is harmless even if the staged import is later discarded).
      */
     public ParsedImportResultStreaming parse(final User user, final DivesoftImportRequest request) {
-        final var dives = request.dives().stream().map(d -> d.diveAndMixes().dive()).toList();
+        // diveAndMixes/dive are only @Nullable to admit a malformed request at the type level -
+        // @NotNull @Valid bean validation at the controller boundary already rejects a request
+        // with either missing before this method ever runs (see DivesoftImportRequestTest).
+        final var dives =
+                request.dives().stream()
+                        .map(
+                                d ->
+                                        Objects.requireNonNull(
+                                                Objects.requireNonNull(d.diveAndMixes()).dive()))
+                        .toList();
         return dives.stream()
                 .map(dive -> parseOneSafe(user, dive))
                 .reduce(ParsedImportResultStreaming::concat)
