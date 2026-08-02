@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileRateCalculator;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileRatesResponse;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmenter;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
@@ -233,7 +234,9 @@ public class AnalyticsDataService {
         // independent check at the API boundary so a bad *source* measurement (e.g. a NaN depth
         // already sitting in the DB from an old buggy import) is dropped from the response
         // outright rather than handed to the client as a data point with a garbage depth.
-        final var rates = DiveProfileSegmenter.smoothedRates(measurements);
+        final var rates =
+                DiveProfileRateCalculator.smoothedForDisplay(
+                        DiveProfileSegmenter.smoothedRates(measurements));
         final var ratePoints =
                 IntStream.range(0, measurements.size())
                         .filter(i -> Double.isFinite(measurements.get(i).measurement().depth()))

@@ -102,6 +102,36 @@ public final class DiveProfileRateCalculator {
     }
 
     /**
+     * Lightly smooths an already-computed rate series for *display* (e.g. the ascent/descent rate
+     * chart), separately from whatever window produced it.
+     *
+     * <p>{@link DiveProfileSegmenter#smoothedRates} deliberately uses a narrow regression window so
+     * a brief real ascent/descent (as short as ~10-20s) isn't diluted away before it can be
+     * classified. That narrowness can leave a single sample reading noticeably higher than its
+     * immediate neighbors - segmentation handles this fine (it only cares that the sample clears a
+     * low threshold), but it reads as an odd spike on a rate chart: hovering a pixel either side of
+     * that one sample lands on a much lower value than the reported peak. This 3-tap moving average
+     * widens that neighborhood just enough that a chart's peak stays representative of what's
+     * actually visible when scrubbing it, without touching the values segmentation classifies from.
+     */
+    public static double[] smoothedForDisplay(final double[] rates) {
+        final var n = rates.length;
+        final var smoothed = new double[n];
+        for (var i = 0; i < n; i++) {
+            var sum = 0.0;
+            var count = 0;
+            for (var j = Math.max(0, i - 1); j <= Math.min(n - 1, i + 1); j++) {
+                if (Double.isFinite(rates[j])) {
+                    sum += rates[j];
+                    count++;
+                }
+            }
+            smoothed[i] = count > 0 ? sum / count : 0.0;
+        }
+        return smoothed;
+    }
+
+    /**
      * At least two samples on each side of a window's center (so a regression can be fit through a
      * handful of real points, not just clear the bare {@code count >= 2} minimum) - derived from
      * the profile's own median inter-sample gap, robust to a single dropped/duplicate sample

@@ -127,6 +127,42 @@ class DiveProfileRateCalculatorTest {
     }
 
     @Test
+    void smoothedForDisplayReducesAnIsolatedSpikeTowardsItsNeighbors() {
+        final var rates = new double[] {5.0, 5.0, 5.0, 9.0, 5.0, 5.0, 5.0};
+        final var smoothed = DiveProfileRateCalculator.smoothedForDisplay(rates);
+
+        // The spike is pulled down towards its neighbors...
+        assertTrue(
+                smoothed[3] < 9.0 && smoothed[3] > 5.0,
+                "expected the spike to be pulled towards its neighbors, got " + smoothed[3]);
+        // ...and its immediate neighbors now read a bit closer to the peak than before, so a
+        // near-miss hover next to the peak sample sees a more representative value.
+        assertTrue(
+                smoothed[2] > 5.0 && smoothed[4] > 5.0,
+                "expected the spike's neighbors to be pulled up, got "
+                        + smoothed[2]
+                        + " / "
+                        + smoothed[4]);
+        // Untouched flat regions well away from the spike stay flat.
+        assertEquals(5.0, smoothed[0], 0.001);
+        assertEquals(5.0, smoothed[6], 0.001);
+    }
+
+    @Test
+    void smoothedForDisplayPreservesArrayLengthAndHandlesEdgesAndNonFiniteValues() {
+        final var rates = new double[] {Double.NaN, 4.0, 6.0};
+        final var smoothed = DiveProfileRateCalculator.smoothedForDisplay(rates);
+
+        assertEquals(3, smoothed.length);
+        for (final var v : smoothed) {
+            assertTrue(Double.isFinite(v), "expected every smoothed value to be finite, got " + v);
+        }
+        // First index: window is [NaN, 4.0] (clamped at the left edge) - NaN is skipped, so it's
+        // just the finite neighbor.
+        assertEquals(4.0, smoothed[0], 0.001);
+    }
+
+    @Test
     void steadyHoldStaysNearZeroRegardlessOfSampleInterval() {
         final var measurements = new ArrayList<DiveMeasurementWithId>();
         var id = 0;
