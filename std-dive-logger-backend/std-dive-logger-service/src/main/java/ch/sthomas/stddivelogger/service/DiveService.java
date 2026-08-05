@@ -170,20 +170,21 @@ public class DiveService {
     }
 
     /**
-     * Auto-fills the CCR unit (and, via that unit's own default base configuration, the dive
-     * mode) from whichever computer recorded this dive's first profile - an import reader has no
-     * way to know the diver's own CCR units, but if that computer/handset was already linked to
-     * one (see DiveComputer.ccrUnitId, set via ComputerController#updateDiveComputer), this
-     * reproduces what a diver picking that unit manually would get, automatically.
+     * Auto-fills the CCR unit (and, via that unit's own default base configuration, the dive mode)
+     * from whichever computer recorded this dive's first profile - an import reader has no way to
+     * know the diver's own CCR units, but if that computer/handset was already linked to one (see
+     * DiveComputer.ccrUnitId, set via ComputerController#updateDiveComputer), this reproduces what
+     * a diver picking that unit manually would get, automatically.
      *
      * <p>A no-op whenever there's nothing to infer from: no profiles, an explicit CCR unit already
-     * on the configuration (never overridden - the caller's own choice always wins), the
-     * computer isn't linked to a unit, or that unit has no default base configuration set yet
-     * (the diver hasn't confirmed one, so there's nothing safe to guess). The link itself is only
-     * evaluated at import time - relinking a computer later doesn't retroactively change dives
-     * already saved.
+     * on the configuration (never overridden - the caller's own choice always wins), the computer
+     * isn't linked to a unit, or that unit has no default base configuration set yet (the diver
+     * hasn't confirmed one, so there's nothing safe to guess). The link itself is only evaluated at
+     * import time - relinking a computer later doesn't retroactively change dives already saved.
      */
-    private DiveConfiguration inferConfigurationFromComputer(
+    // Package-private rather than private so DiveServiceTest can exercise it directly instead of
+    // needing to mock the whole saveDive()/createSaveDivePreview() pipeline just to reach it.
+    DiveConfiguration inferConfigurationFromComputer(
             final User user,
             final DiveConfiguration configuration,
             final List<DiveProfileUpload> profiles) {

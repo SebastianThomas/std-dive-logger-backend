@@ -771,12 +771,18 @@ public class DiveDataService {
                         .collect(MoreCollectors.onlyElement());
         final var historyEntity = new DiveProfileHistoryEntity(savedDiveProfile);
         diveProfileHistoryRepository.save(historyEntity);
+        // A newly-added profile can change segment/rate/PO2-FO2 analytics for the whole dive (a
+        // bailout computer's mode data now affects every other profile's calculated values, for
+        // instance) - without this, the dive keeps whatever analytics it had before this profile
+        // existed until something else happens to invalidate it.
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
         return toSimplifiedRecord(savedDive);
     }
 
     @Transactional
     public Dive addProfilesToDive(final long baseDiveId, final long toAddDiveId) {
         diveProfileRepository.setDiveWhereDiveIs(baseDiveId, toAddDiveId);
+        analyticsDataService.invalidateAnalyticsForDive(baseDiveId);
         return toRecord(diveRepository.findById(baseDiveId).orElseThrow());
     }
 
@@ -801,6 +807,7 @@ public class DiveDataService {
         diveProfileRepository.delete(profile);
         entityManager.flush();
         entityManager.clear();
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
         return toRecord(findDiveEntityById(diveId));
     }
 
@@ -1595,15 +1602,14 @@ public class DiveDataService {
                             .orElseThrow(
                                     () ->
                                             new NoSuchElementException(
-                                                    "Could not find CCR unit by id "
-                                                            + ccrUnitId)));
+                                                    "Could not find CCR unit by id " + ccrUnitId)));
         }
         return diveComputerRepository.save(computer).toRecord();
     }
 
     /**
-     * The CCR unit this computer is permanently linked to, if any - used to infer a new dive's
-     * CCR unit (and, via the unit's own default base configuration, its dive mode) from whichever
+     * The CCR unit this computer is permanently linked to, if any - used to infer a new dive's CCR
+     * unit (and, via the unit's own default base configuration, its dive mode) from whichever
      * computer recorded it. See DiveService#inferConfigurationFromComputer.
      */
     @Transactional(readOnly = true)

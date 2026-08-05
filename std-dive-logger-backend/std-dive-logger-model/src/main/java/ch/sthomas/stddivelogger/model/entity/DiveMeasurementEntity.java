@@ -141,6 +141,10 @@ public class DiveMeasurementEntity {
         return this;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public List<DecoStop> getDecoStops() {
         return decoStops;
     }

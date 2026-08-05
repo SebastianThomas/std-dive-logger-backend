@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileGasResponse;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileRatesResponse;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -57,5 +58,15 @@ public class AnalyticsController {
             throw new UnauthorizedException("Login to find analytics for dive " + diveId);
         }
         return analyticsDataService.findRatesByDiveId(user, diveId);
+    }
+
+    @GetMapping("/gas")
+    public List<DiveProfileGasResponse> gas(
+            @AuthenticationPrincipal final @Nullable User user,
+            @RequestParam(name = "id") @Positive final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Login to find analytics for dive " + diveId);
+        }
+        return analyticsDataService.findGasByDiveId(user, diveId);
     }
 }

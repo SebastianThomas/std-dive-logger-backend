@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
+import ch.sthomas.stddivelogger.model.analytics.DiveGasCalculator;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
@@ -25,7 +26,9 @@ import java.util.stream.DoubleStream;
 
 @Service
 public class AnalyticsService {
-    public static final long ANALYTICS_VERSION = 1;
+    // Bumped to 2 to pick up backend-computed PO2/FO2 (DiveGasCalculator) for every already
+    // existing dive, not just newly-imported ones.
+    public static final long ANALYTICS_VERSION = 2;
     // Identifies this recomputation job's state in AnalyticsJobState, per dive, so a bumped
     // ANALYTICS_VERSION tells us exactly which dives are stale instead of reprocessing
     // everything (or, worse, silently reprocessing nothing).
@@ -77,10 +80,20 @@ public class AnalyticsService {
         final var splits = createSegments(dive);
         final var analytics = splits.stream().map(this::createAnalytics).toList();
         final var savedAnalytics = analyticsDataService.saveAll(analytics);
+        // Computed from the dive's own profiles (each with measurements) rather than from the
+        // just-created segments, since it needs to reason across every profile together - see
+        // DiveGasCalculator's own docs for why (a bailout on one profile affects every profile's
+        // calculated values, not just the one that logged it).
+        final var gasResults = DiveGasCalculator.calculate(dive.profiles());
+        analyticsDataService.saveGasResults(gasResults);
         analyticsDataService.recordJobState(
                 dive.id(), JOB_MODULE, JOB_NAME, ANALYTICS_VERSION, Instant.now());
         return new AnalyticsResult(
-                true, List.of(MessageFormat.format("Saved {0} analytics", savedAnalytics.size())));
+                true,
+                List.of(
+                        MessageFormat.format(
+                                "Saved {0} analytics, {1} gas points",
+                                savedAnalytics.size(), gasResults.size())));
     }
 
     private List<DiveProfileSegmentWithId> createSegments(final Dive dive) {

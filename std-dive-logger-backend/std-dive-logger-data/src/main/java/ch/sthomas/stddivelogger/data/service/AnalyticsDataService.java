@@ -5,6 +5,8 @@ import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceResponse;
+import ch.sthomas.stddivelogger.model.analytics.DiveGasCalculator;
+import ch.sthomas.stddivelogger.model.analytics.DiveProfileGasResponse;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileRateCalculator;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileRatesResponse;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmenter;
@@ -14,6 +16,7 @@ import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsJobStateEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
+import ch.sthomas.stddivelogger.model.entity.gas.DiveMeasurementGasEntity;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.springframework.data.domain.PageRequest;
@@ -42,6 +45,7 @@ public class AnalyticsDataService {
     private final DiveProfileRepository diveProfileRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
     private final DiveProfileSegmentRepository diveProfileSegmentRepository;
+    private final DiveMeasurementGasRepository diveMeasurementGasRepository;
 
     public AnalyticsDataService(
             final AnalyticsDepthVarianceRepository analyticsDepthVarianceEntityRepository,
@@ -50,7 +54,8 @@ public class AnalyticsDataService {
             final StorageService storageService,
             final DiveProfileRepository diveProfileRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
-            final DiveProfileSegmentRepository diveProfileSegmentRepository) {
+            final DiveProfileSegmentRepository diveProfileSegmentRepository,
+            final DiveMeasurementGasRepository diveMeasurementGasRepository) {
         this.analyticsDepthVarianceEntityRepository = analyticsDepthVarianceEntityRepository;
         this.analyticsJobStateRepository = analyticsJobStateRepository;
         this.diveRepository = diveRepository;
@@ -58,6 +63,7 @@ public class AnalyticsDataService {
         this.diveProfileRepository = diveProfileRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
         this.diveProfileSegmentRepository = diveProfileSegmentRepository;
+        this.diveMeasurementGasRepository = diveMeasurementGasRepository;
     }
 
     @Transactional
@@ -113,6 +119,8 @@ public class AnalyticsDataService {
         // Depth-variance rows for these segments cascade-delete at the DB level.
         diveProfileSegmentRepository.deleteAllByDiveId(diveId);
         diveProfileSegmentRepository.flush();
+        diveMeasurementGasRepository.deleteAllByDiveId(diveId);
+        diveMeasurementGasRepository.flush();
     }
 
     /**
@@ -248,5 +256,67 @@ public class AnalyticsDataService {
                                                 rates[i]))
                         .toList();
         return new DiveProfileRatesResponse(profileId, ratePoints);
+    }
+
+    /**
+     * Persists the backend's own computed PO2/FO2 (see {@link
+     * ch.sthomas.stddivelogger.model.analytics.DiveGasCalculator}) for a dive - called once per
+     * recompute pass, after any stale rows for the dive have already been cleared by {@link
+     * #deleteExistingSegmentsAndAnalytics}.
+     */
+    @Transactional
+    public void saveGasResults(final List<DiveGasCalculator.GasResult> results) {
+        if (results.isEmpty()) {
+            return;
+        }
+        final var measurementIds = results.stream().map(r -> r.measurementId()).toList();
+        final var measurementsById =
+                diveMeasurementRepository.findAllById(measurementIds).stream()
+                        .collect(
+                                Collectors.toMap(
+                                        DiveMeasurementEntity::getId, Function.identity()));
+        final var entities =
+                results.stream()
+                        .map(
+                                r -> {
+                                    final var measurement = measurementsById.get(r.measurementId());
+                                    if (measurement == null) {
+                                        return null;
+                                    }
+                                    return new DiveMeasurementGasEntity(
+                                            measurement, r.po2(), r.fo2());
+                                })
+                        .filter(Objects::nonNull)
+                        .toList();
+        diveMeasurementGasRepository.saveAll(entities);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DiveProfileGasResponse> findGasByDiveId(final User user, final long diveId) {
+        final var segments = diveProfileSegmentRepository.findByReaderAndDiveId(user.id(), diveId);
+        if (segments.isEmpty()) {
+            throw new NoSuchElementException(
+                    "There are no segments computed for dive "
+                            + diveId
+                            + ", maybe check again later if this dive is new.");
+        }
+        final var profileIds =
+                segments.stream().map(s -> s.getProfile().getId()).distinct().toList();
+        return profileIds.stream().map(this::gasForProfile).toList();
+    }
+
+    private DiveProfileGasResponse gasForProfile(final long profileId) {
+        final var points =
+                diveMeasurementGasRepository
+                        .findAllByMeasurement_Profile_IdOrderByMeasurement_TimeAsc(profileId)
+                        .stream()
+                        .map(
+                                g ->
+                                        new DiveProfileGasResponse.GasPoint(
+                                                g.getMeasurement().getTime().toInstant(),
+                                                g.getCalculatedPo2(),
+                                                g.getCalculatedFo2()))
+                        .toList();
+        return new DiveProfileGasResponse(profileId, points);
     }
 }
