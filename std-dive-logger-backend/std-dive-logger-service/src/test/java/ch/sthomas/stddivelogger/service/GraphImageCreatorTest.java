@@ -58,7 +58,7 @@ public class GraphImageCreatorTest {
         final var end = start.plus(1, ChronoUnit.MINUTES);
         final var computer =
                 new DiveComputer(
-                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer");
+                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer", null);
         final var ndl = Duration.ofMinutes(99);
         final var fifteenC = new Temperature(15, Temperature.TemperatureUnit.CELSIUS);
         final var measurements =
@@ -346,7 +346,7 @@ public class GraphImageCreatorTest {
                                 3));
         final var computer =
                 new DiveComputer(
-                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer");
+                        0, new DiveComputerManufacturer(1, "Manufacturer"), "SN", "Computer", null);
         final var end = start.plusSeconds(15);
         final var profiles = List.of(new DiveProfile(0, computer, start, end, measurements, null));
         final var testDive =

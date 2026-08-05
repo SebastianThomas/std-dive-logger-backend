@@ -59,7 +59,11 @@ class SubsurfaceXmlReaderServiceTest {
                                 Mockito.anyString()))
                 .thenReturn(
                         new DiveComputer(
-                                1L, new DiveComputerManufacturer(1L, "Test"), "1", "Test 123"));
+                                1L,
+                                new DiveComputerManufacturer(1L, "Test"),
+                                "1",
+                                "Test 123",
+                                null));
         return diveService;
     }
 

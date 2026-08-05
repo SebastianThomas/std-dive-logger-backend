@@ -41,7 +41,8 @@ public class FitReaderServiceTest {
     private static final Random random = new Random();
     private static final Logger logger = LoggerFactory.getLogger(FitReaderServiceTest.class);
     private static final DiveComputer computer =
-            new DiveComputer(1L, new DiveComputerManufacturer(1L, "Garmin"), "serial", "serial");
+            new DiveComputer(
+                    1L, new DiveComputerManufacturer(1L, "Garmin"), "serial", "serial", null);
     private final FitReaderService service = new FitReaderService(mock(DiveService.class));
 
     private static RecordMesg recordAt(final Instant time) {

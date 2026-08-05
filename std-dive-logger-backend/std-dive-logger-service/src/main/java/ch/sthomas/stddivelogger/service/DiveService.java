@@ -143,6 +143,12 @@ public class DiveService {
             final List<DiveProfileUpload> profiles,
             final List<String> namedBuddies) {
         final var diveNumber = diveNumberOptional.orElseGet(() -> getNextDiveNumber(user));
+        final var effectiveConfiguration =
+                inferConfigurationFromComputer(
+                        user,
+                        Optional.ofNullable(configuration)
+                                .orElseGet(() -> DiveConfiguration.createEmpty(user)),
+                        profiles);
         final var diveResult =
                 diveDataService.saveDive(
                         user,
@@ -151,8 +157,7 @@ public class DiveService {
                         notes,
                         visibility,
                         Optional.ofNullable(gasConsumption).orElse(DiveGasConsumption.EMPTY),
-                        Optional.ofNullable(configuration)
-                                .orElseGet(() -> DiveConfiguration.createEmpty(user)),
+                        effectiveConfiguration,
                         diveSiteId,
                         profiles,
                         namedBuddies);
@@ -162,6 +167,49 @@ public class DiveService {
         createSaveDivePreview(diveResult.value());
         return new DBResult<>(
                 diveDataService.findSimplifiedDiveById(diveResult.value().id()).orElseThrow());
+    }
+
+    /**
+     * Auto-fills the CCR unit (and, via that unit's own default base configuration, the dive
+     * mode) from whichever computer recorded this dive's first profile - an import reader has no
+     * way to know the diver's own CCR units, but if that computer/handset was already linked to
+     * one (see DiveComputer.ccrUnitId, set via ComputerController#updateDiveComputer), this
+     * reproduces what a diver picking that unit manually would get, automatically.
+     *
+     * <p>A no-op whenever there's nothing to infer from: no profiles, an explicit CCR unit already
+     * on the configuration (never overridden - the caller's own choice always wins), the
+     * computer isn't linked to a unit, or that unit has no default base configuration set yet
+     * (the diver hasn't confirmed one, so there's nothing safe to guess). The link itself is only
+     * evaluated at import time - relinking a computer later doesn't retroactively change dives
+     * already saved.
+     */
+    private DiveConfiguration inferConfigurationFromComputer(
+            final User user,
+            final DiveConfiguration configuration,
+            final List<DiveProfileUpload> profiles) {
+        if (configuration.ccrUnit() != null || profiles.isEmpty()) {
+            return configuration;
+        }
+        final var linkedCcrUnit =
+                diveDataService
+                        .findCcrUnitLinkedToComputer(profiles.getFirst().diveComputerId())
+                        .orElse(null);
+        if (linkedCcrUnit == null || linkedCcrUnit.defaultBaseConfiguration() == null) {
+            return configuration;
+        }
+        logger.info(
+                "Inferred CCR unit {} (base {}) for user {} from dive computer {}",
+                linkedCcrUnit.id(),
+                linkedCcrUnit.defaultBaseConfiguration(),
+                user.id(),
+                profiles.getFirst().diveComputerId());
+        return new DiveConfiguration(
+                configuration.suit(),
+                linkedCcrUnit.defaultBaseConfiguration(),
+                configuration.weight(),
+                configuration.weightFeeling(),
+                configuration.cylinders(),
+                linkedCcrUnit);
     }
 
     public SimplifiedDive addProfile(
@@ -741,7 +789,12 @@ public class DiveService {
         return diveDataService.saveCcrUnit(
                 user.id(),
                 new CcrUnit(
-                        null, user.id(), name, Objects.requireNonNullElse(notes, ""), isPublic));
+                        null,
+                        user.id(),
+                        name,
+                        Objects.requireNonNullElse(notes, ""),
+                        isPublic,
+                        null));
     }
 
     public PagedResponse<CcrUnit> getCcrUnits(final User user, final int page) {
@@ -776,8 +829,11 @@ public class DiveService {
     }
 
     public DiveComputer updateDiveComputer(
-            final User user, final long computerId, final @NotBlank String customIdentifier) {
-        return diveDataService.updateDiveComputer(user, computerId, customIdentifier);
+            final User user,
+            final long computerId,
+            final @NotBlank String customIdentifier,
+            final @Nullable Long ccrUnitId) {
+        return diveDataService.updateDiveComputer(user, computerId, customIdentifier, ccrUnitId);
     }
 
     public int deleteUnusedDiveComputers(final User user) {

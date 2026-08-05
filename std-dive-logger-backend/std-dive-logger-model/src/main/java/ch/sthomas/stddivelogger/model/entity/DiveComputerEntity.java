@@ -34,6 +34,12 @@ public class DiveComputerEntity {
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
 
+    // Set when this computer/handset is permanently paired with a specific CCR unit - see
+    // DiveComputer.ccrUnitId and DiveService#inferConfigurationFromComputer.
+    @ManyToOne
+    @JoinColumn(name = "fk_ccr_unit_id")
+    private @Nullable CcrUnitEntity ccrUnit;
+
     @OneToMany(mappedBy = "computer")
     private List<DiveProfileEntity> profiles;
 
@@ -67,10 +73,23 @@ public class DiveComputerEntity {
     }
 
     public DiveComputer toRecord() {
-        return new DiveComputer(id, manufacturer.toRecord(), serialNumber, customIdentifier);
+        return new DiveComputer(
+                id,
+                manufacturer.toRecord(),
+                serialNumber,
+                customIdentifier,
+                ccrUnit != null ? ccrUnit.getId() : null);
     }
 
     public void setIdentifier(final @NotBlank String customIdentifier) {
         this.customIdentifier = customIdentifier;
+    }
+
+    public @Nullable CcrUnitEntity getCcrUnit() {
+        return ccrUnit;
+    }
+
+    public void setCcrUnit(final @Nullable CcrUnitEntity ccrUnit) {
+        this.ccrUnit = ccrUnit;
     }
 }

@@ -17,4 +17,9 @@ public record CcrUnit(
         @Positive long userId,
         @NotBlank String name,
         @NotNull String notes,
-        boolean isPublic) {}
+        boolean isPublic,
+        // The base configuration (e.g. SIDEMOUNT_CCR) dives on this unit normally use. Once set,
+        // a dive imported from a computer linked to this unit (see DiveComputer.ccrUnitId) can
+        // infer both the unit and the dive mode automatically - see
+        // DiveService#inferConfigurationFromComputer.
+        @Nullable BaseConfiguration defaultBaseConfiguration) {}

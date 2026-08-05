@@ -1532,6 +1532,7 @@ public class DiveDataService {
         existing.setName(ccrUnit.name());
         existing.setAdditionalNotes(ccrUnit.notes());
         existing.setPublic(ccrUnit.isPublic());
+        existing.setDefaultBaseConfiguration(ccrUnit.defaultBaseConfiguration());
         return ccrUnitRepository.save(existing).toRecord();
     }
 
@@ -1576,13 +1577,41 @@ public class DiveDataService {
 
     @Transactional
     public DiveComputer updateDiveComputer(
-            final User user, final long computerId, final @NotBlank String customIdentifier) {
+            final User user,
+            final long computerId,
+            final @NotBlank String customIdentifier,
+            final @Nullable Long ccrUnitId) {
         final var computer =
                 diveComputerRepository
                         .findById(computerId)
                         .orElseThrow(() -> ForbiddenException.forDiveComputer(user, computerId));
         computer.setIdentifier(customIdentifier);
+        if (ccrUnitId == null) {
+            computer.setCcrUnit(null);
+        } else {
+            computer.setCcrUnit(
+                    ccrUnitRepository
+                            .findByIdAndUser_Id(ccrUnitId, user.id())
+                            .orElseThrow(
+                                    () ->
+                                            new NoSuchElementException(
+                                                    "Could not find CCR unit by id "
+                                                            + ccrUnitId)));
+        }
         return diveComputerRepository.save(computer).toRecord();
+    }
+
+    /**
+     * The CCR unit this computer is permanently linked to, if any - used to infer a new dive's
+     * CCR unit (and, via the unit's own default base configuration, its dive mode) from whichever
+     * computer recorded it. See DiveService#inferConfigurationFromComputer.
+     */
+    @Transactional(readOnly = true)
+    public Optional<CcrUnit> findCcrUnitLinkedToComputer(final long computerId) {
+        return diveComputerRepository
+                .findById(computerId)
+                .map(DiveComputerEntity::getCcrUnit)
+                .map(CcrUnitEntity::toRecord);
     }
 
     @Transactional

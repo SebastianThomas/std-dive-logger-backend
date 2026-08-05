@@ -44,15 +44,20 @@ public class ComputerController {
         return diveService.getDiveComputerManufacturers(page);
     }
 
-    public record UpdateDiveComputerBody(@NotBlank String customIdentifier) {}
+    public record UpdateDiveComputerBody(
+            @NotBlank String customIdentifier,
+            // Links this computer to a CCR unit the diver already owns (or clears the link when
+            // null) - see DiveService#inferConfigurationFromComputer for what this enables on
+            // import.
+            @Nullable Long ccrUnitId) {}
 
     @PutMapping("/{id}")
     public DiveComputer updateDiveComputer(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") @Positive final long computerId,
-            @Valid @NotNull @RequestBody final UpdateDiveComputerBody customIdentifier) {
+            @Valid @NotNull @RequestBody final UpdateDiveComputerBody body) {
         return diveService.updateDiveComputer(
-                user, computerId, customIdentifier.customIdentifier());
+                user, computerId, body.customIdentifier(), body.ccrUnitId());
     }
 
     @GetMapping("/search")

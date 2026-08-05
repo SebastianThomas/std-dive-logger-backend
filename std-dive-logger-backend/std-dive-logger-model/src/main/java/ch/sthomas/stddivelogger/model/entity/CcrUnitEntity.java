@@ -1,8 +1,11 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "t_ccr_units")
@@ -26,6 +29,10 @@ public class CcrUnitEntity {
     @Column(name = "is_public", nullable = false)
     private boolean isPublic;
 
+    @Column(name = "default_base_configuration")
+    @Enumerated(EnumType.STRING)
+    private @Nullable BaseConfiguration defaultBaseConfiguration;
+
     public CcrUnitEntity() {}
 
     public CcrUnitEntity(final UserEntity user, final CcrUnit ccrUnit) {
@@ -36,10 +43,21 @@ public class CcrUnitEntity {
         this.name = ccrUnit.name();
         this.additionalNotes = ccrUnit.notes();
         this.isPublic = ccrUnit.isPublic();
+        this.defaultBaseConfiguration = ccrUnit.defaultBaseConfiguration();
     }
 
     public CcrUnit toRecord() {
-        return new CcrUnit(id, user.getId(), name, additionalNotes, isPublic);
+        return new CcrUnit(
+                id, user.getId(), name, additionalNotes, isPublic, defaultBaseConfiguration);
+    }
+
+    public @Nullable BaseConfiguration getDefaultBaseConfiguration() {
+        return defaultBaseConfiguration;
+    }
+
+    public void setDefaultBaseConfiguration(
+            final @Nullable BaseConfiguration defaultBaseConfiguration) {
+        this.defaultBaseConfiguration = defaultBaseConfiguration;
     }
 
     public String getName() {
@@ -60,5 +78,9 @@ public class CcrUnitEntity {
 
     public UserEntity getUser() {
         return user;
+    }
+
+    public Long getId() {
+        return id;
     }
 }

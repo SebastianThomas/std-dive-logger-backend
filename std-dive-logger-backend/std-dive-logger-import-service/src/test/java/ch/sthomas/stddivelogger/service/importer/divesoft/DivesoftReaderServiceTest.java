@@ -35,7 +35,8 @@ import java.util.Objects;
 class DivesoftReaderServiceTest {
     private static final JsonMapper objectMapper = new JsonMapper();
     private static final DiveComputer computer =
-            new DiveComputer(1L, new DiveComputerManufacturer(1L, "Divesoft"), "serial", "serial");
+            new DiveComputer(
+                    1L, new DiveComputerManufacturer(1L, "Divesoft"), "serial", "serial", null);
 
     private final DivesoftReaderService service =
             new DivesoftReaderService(mock(DiveService.class));

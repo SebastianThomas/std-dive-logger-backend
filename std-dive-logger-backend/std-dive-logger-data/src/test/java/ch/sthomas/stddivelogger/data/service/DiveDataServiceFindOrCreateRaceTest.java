@@ -79,7 +79,7 @@ class DiveDataServiceFindOrCreateRaceTest {
     @Test
     void findOrCreateCcrUnitRecoversFromLostRaceByReReadingTheWinnersRow() {
         final var user = userWithId(10L);
-        final var ccrUnit = new CcrUnit(null, 10L, "JJ-CCR", "", false);
+        final var ccrUnit = new CcrUnit(null, 10L, "JJ-CCR", "", false, null);
         final var winnersRow = new CcrUnitEntity(user, ccrUnit);
 
         when(ccrUnitRepository.findByUser_IdAndNameAndAdditionalNotes(10L, "JJ-CCR", ""))
