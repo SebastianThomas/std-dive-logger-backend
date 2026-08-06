@@ -31,9 +31,22 @@ public class ResamplingUtils {
 
     public static List<ResampledDiveMeasurement> resampleMeasurements(
             final List<DiveMeasurementWithId> measurements, final ResamplingInfo info) {
+        // A non-finite depth (e.g. surviving from an old buggy import) would otherwise propagate
+        // NaN/Infinity through getResampledMeasurement's linear interpolation into every
+        // downstream consumer of the resampled series (buddy-dive alignment, graph generation) -
+        // same guard DiveGasCalculator.calculate and AnalyticsService.createAnalytics apply for
+        // the same reason. Only depth is filtered here - getResamplingInfo above doesn't read
+        // depth at all, so it needs no equivalent guard.
+        final var finiteMeasurements =
+                measurements.stream()
+                        .filter(m -> Double.isFinite(m.measurement().depth()))
+                        .toList();
+        if (finiteMeasurements.isEmpty()) {
+            return List.of();
+        }
         var start = info.baseTime();
-        final var firstOriginalMeasurementTime = measurements.getFirst().measurement().time();
-        final var lastOriginalMeasurementTime = measurements.getLast().measurement().time();
+        final var firstOriginalMeasurementTime = finiteMeasurements.getFirst().measurement().time();
+        final var lastOriginalMeasurementTime = finiteMeasurements.getLast().measurement().time();
         while (start.isAfter(firstOriginalMeasurementTime)) {
             start = start.minus(info.sampleRate());
         }
@@ -46,7 +59,7 @@ public class ResamplingUtils {
                         // Duration.ofMillis(startMs),
                         d -> !d.isAfter(lastOriginalMeasurementTime),
                         d -> d.plus(info.sampleRate()))
-                .map(d -> getResampledMeasurement(measurements, measurementIdx, d))
+                .map(d -> getResampledMeasurement(finiteMeasurements, measurementIdx, d))
                 .toList();
     }
 

@@ -359,25 +359,6 @@ public class DiveDataService {
     }
 
     @Transactional
-    public void saveBuddies(final long diveId, final List<String> buddies) {
-        entityManager.flush();
-
-        namedParameterJdbcTemplate.batchUpdate(
-                "INSERT INTO t_dive_buddy_name (fk_dive_id, name) VALUES (:diveId, :buddyName)",
-                buddies.stream()
-                        .distinct()
-                        .map(
-                                buddy ->
-                                        new MapSqlParameterSource()
-                                                .addValue("diveId", diveId)
-                                                .addValue("buddyName", buddy))
-                        .toArray(MapSqlParameterSource[]::new));
-
-        // TODO: Add clear here if dive is not reloaded with all buddies
-        // entityManager.clear();
-    }
-
-    @Transactional
     protected DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {
         final var computer =
                 diveComputerRepository.findById(diveProfileUpload.diveComputerId()).orElseThrow();
@@ -1133,9 +1114,6 @@ public class DiveDataService {
                                                 .addValue("diveId", diveId)
                                                 .addValue("userId", userId))
                         .toArray(MapSqlParameterSource[]::new));
-
-        // TODO: Add clear here if dive is not reloaded with privileges
-        // entityManager.clear();
     }
 
     @Transactional
@@ -1205,8 +1183,16 @@ public class DiveDataService {
     public List<DiveSiteWithDives<DiveSite>> findDiveSitesByUser(
             final long userId, final boolean onlyOwn) {
         return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()
-                .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveInfo()))
+                .map(d -> new DiveSiteWithDives<>(d.site().toRecord(), d.diveCount(), d.diveInfo()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BasicDiveInfo> findDivesAtSiteForUser(
+            final long userId, final long siteId, final boolean onlyOwn) {
+        return onlyOwn
+                ? diveRepository.findBasicDiveInfoByUserIdAndDiveSiteId(userId, siteId)
+                : readerViewRepository.findBasicDiveInfoByUserIdAndDiveSiteId(userId, siteId);
     }
 
     @Transactional
@@ -1590,7 +1576,7 @@ public class DiveDataService {
             final @Nullable Long ccrUnitId) {
         final var computer =
                 diveComputerRepository
-                        .findById(computerId)
+                        .findByIdAndUser_Id(computerId, user.id())
                         .orElseThrow(() -> ForbiddenException.forDiveComputer(user, computerId));
         computer.setIdentifier(customIdentifier);
         if (ccrUnitId == null) {

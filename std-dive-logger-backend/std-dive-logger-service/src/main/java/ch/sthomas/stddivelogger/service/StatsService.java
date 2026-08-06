@@ -13,7 +13,6 @@ import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.user.User;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
@@ -34,12 +33,7 @@ public class StatsService {
     }
 
     public UserDiveStats getStatsForUser(final User user) {
-        final var old = statsDataService.computeStatsForUser(user);
-        final var newCrit = statsDataService.computeStatsForUserCriteria(user);
-        if (old.equals(newCrit)) {
-            return newCrit;
-        }
-        throw new NotImplementedException("implementation is wrong");
+        return statsDataService.computeStatsForUser(user);
     }
 
     public Map<Integer, UserDiveStats> getStatsForUserByYear(final User user) {

@@ -23,6 +23,7 @@ import ch.sthomas.stddivelogger.service.importer.ParsedImportResultStreaming;
 import ch.sthomas.stddivelogger.utils.MoreGatherers;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +132,8 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                     "DiveSite does not exist in given XML file: "
                                             + dive.divesiteid());
                         });
-        final var profiles = getProfiles(computers, dive);
+        final var profiles =
+                getProfiles(computers, dive, parseCns(dive.cns()), parseOtu(dive.otu()));
         final var buddies =
                 dive.buddy().stream().flatMap(s -> Arrays.stream(s.split(","))).toList();
         final var payload =
@@ -161,9 +164,24 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 payload);
     }
 
+    /**
+     * Subsurface only ever reports one end-of-dive cns/otu value for the whole dive (an attribute
+     * on {@code <dive>}), not a per-sample reading - see {@link #applyEndOfDiveTotals} for where
+     * that single value ends up.
+     */
+    private static @Nullable Double parseCns(final @Nullable String cns) {
+        return cns == null ? null : Double.parseDouble(getUntilSeparator(cns, '%'));
+    }
+
+    private static @Nullable Double parseOtu(final @Nullable String otu) {
+        return otu == null ? null : Double.parseDouble(otu);
+    }
+
     public List<DiveProfileUpload> getProfiles(
             final Map<String, DiveComputer> computers,
-            final SubsurfaceXmlFile.SubsurfaceDive dive) {
+            final SubsurfaceXmlFile.SubsurfaceDive dive,
+            final @Nullable Double cns,
+            final @Nullable Double otu) {
         final var gases =
                 dive.cylinders().stream().map(SubsurfaceXmlFile.SubsurfaceCylinder::toGas).toList();
         return dive.diveComputers().stream()
@@ -174,14 +192,18 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                         // present by construction: computers is built from the
                                         // union of every dive's computers in the file.
                                         Objects.requireNonNull(computers.get(computer.deviceid())),
-                                        gases))
+                                        gases,
+                                        cns,
+                                        otu))
                 .toList();
     }
 
     public DiveProfileUpload getProfile(
             final SubsurfaceXmlFile.SubsurfaceDiveComputer log,
             final DiveComputer computer,
-            final List<Gas> gases) {
+            final List<Gas> gases,
+            final @Nullable Double cns,
+            final @Nullable Double otu) {
         final var gasChanges =
                 log.events().stream()
                         .filter(e -> "gaschange".equals(e.name()) && e.cylinder() != null)
@@ -193,7 +215,43 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                         .sorted(Map.Entry.comparingByKey())
                         .toList();
         return new DiveProfileUpload(
-                computer.id(), log.start(), log.end(), getMeasurements(gasChanges, log));
+                computer.id(),
+                log.start(),
+                log.end(),
+                applyEndOfDiveTotals(getMeasurements(gasChanges, log), cns, otu));
+    }
+
+    /**
+     * Stamps the dive-level cns/otu total (see {@link #parseCns}/{@link #parseOtu}) onto the last
+     * measurement, mirroring how every other importer's per-sample cns/o2Tox already flow into
+     * {@code DiveProfileSummary} from the profile's last sample - the only difference here is
+     * Subsurface only ever gives us that one final value, not a reading per sample.
+     */
+    private static List<DiveMeasurement> applyEndOfDiveTotals(
+            final List<DiveMeasurement> measurements,
+            final @Nullable Double cns,
+            final @Nullable Double otu) {
+        if (measurements.isEmpty() || (cns == null && otu == null)) {
+            return measurements;
+        }
+        final var last = measurements.getLast();
+        final var withTotals =
+                new DiveMeasurement(
+                        last.time(),
+                        last.temperature(),
+                        last.depth(),
+                        last.ndl(),
+                        last.deco(),
+                        last.gas(),
+                        last.po2(),
+                        last.rmvLiters(),
+                        last.n2(),
+                        otu != null ? otu : last.o2Tox(),
+                        cns != null ? cns : last.cns(),
+                        last.mode());
+        final var result = new ArrayList<>(measurements.subList(0, measurements.size() - 1));
+        result.add(withTotals);
+        return result;
     }
 
     private List<DiveMeasurement> getMeasurements(
@@ -227,7 +285,11 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                                 parseUntilSpace(t),
                                                 Temperature.TemperatureUnit.CELSIUS))
                         .orElse(null);
-        // TODO: Add other properties (PO2 (Measured?), RMV, N2, O2Tox, CNS)
+        // Subsurface's <sample> elements carry no per-sample PO2/RMV/N2/O2Tox/CNS - only depth,
+        // temperature, NDL, deco and gas switches are logged per sample; cns/otu exist only as a
+        // single end-of-dive total on <dive> (see applyEndOfDiveTotals) and sac only as a
+        // whole-dive average (not wired here - converting it to DiveGasConsumption.sacBar needs
+        // cylinder volume and isn't a safe one-line guess).
         return new DiveMeasurement(
                 start.plus(sample.timeToDuration()),
                 temperature,

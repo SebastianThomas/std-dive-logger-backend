@@ -219,6 +219,22 @@ class DiveGasCalculatorTest {
     }
 
     @Test
+    void skipsAMeasurementWithANonFiniteDepthRatherThanThrowing() {
+        final var air = new Gas(0.21);
+        final var good0 = sample(0, 0, air, null, null);
+        final var badNaN = sample(30, Double.NaN, air, null, null);
+        final var good1 = sample(60, 10, air, null, null);
+        final var profile = profile(1, "Computer", List.of(good0, badNaN, good1));
+
+        final var results = byMeasurementId(DiveGasCalculator.calculate(List.of(profile)));
+
+        assertEquals(2, results.size());
+        assertTrue(results.containsKey(good0.id()));
+        assertTrue(results.containsKey(good1.id()));
+        assertFalse(results.containsKey(badNaN.id()));
+    }
+
+    @Test
     void producesOneResultPerMeasurementWhenDataIsAvailableThroughout() {
         final var air = new Gas(0.21);
         final var measurements =

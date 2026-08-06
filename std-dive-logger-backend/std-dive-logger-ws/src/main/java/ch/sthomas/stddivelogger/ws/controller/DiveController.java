@@ -262,16 +262,20 @@ public class DiveController {
                 user, ccrUnitId, DiveSort.ofNullable(sortColumn, sortDirection), page);
     }
 
-    @Operation(summary = "Get dives by custom identifier")
+    @Operation(
+            summary = "Get dives by custom identifier",
+            description =
+                    "includeReader is currently a no-op: the underlying search already includes"
+                            + " every dive the user can read (owned, buddy, explicitly-shared, and"
+                            + " group-shared), regardless of this flag - see"
+                            + " DiveService#searchDives.")
     @GetMapping(path = "/search")
     public PagedResponse<SimplifiedDive> searchDives(
             @AuthenticationPrincipal final @Nullable User user,
             @RequestParam("query") @NotBlank final String query,
             @RequestParam(name = "page", required = false, defaultValue = "0") @PositiveOrZero
                     final int page,
-            @RequestParam(
-                            name = "includeReader",
-                            defaultValue = "false") // TODO: Does this even work?
+            @RequestParam(name = "includeReader", defaultValue = "false")
                     final boolean includeReader) {
         if (user == null) {
             throw new UnauthorizedException("Log in to view your dives.");

@@ -82,6 +82,9 @@ public final class DiveGasCalculator {
             }
             final var ownGas = gasTimeline(profile);
             for (final var m : measurements) {
+                if (!Double.isFinite(m.measurement().depth())) {
+                    continue;
+                }
                 final var time = m.measurement().time();
                 final var ambient = ambientPressure(m.measurement().depth());
                 final var mode =

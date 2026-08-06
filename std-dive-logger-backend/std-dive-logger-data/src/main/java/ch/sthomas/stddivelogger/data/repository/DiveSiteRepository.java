@@ -76,10 +76,4 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
                             """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
     List<Object[]> findSitesByDiveWithReaderUserId(long userId);
-
-    @Query(
-            """
-                    SELECT COUNT(DISTINCT s.id) FROM DiveSiteEntity s JOIN DiveEntity d ON s.id = d.diveSite.id AND d.user.id = :userId
-                    """)
-    long countUniqueForUserId(long userId);
 }

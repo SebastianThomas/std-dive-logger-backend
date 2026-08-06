@@ -495,7 +495,12 @@ public record UddfFile(
                                                     .collect(MoreCollectors.toOptional()))
                             .map(mix -> new Gas(mix.o2, mix.he))
                             .orElse(previousGas);
-            // TODO: RMV
+            // RMV isn't in the UDDF waypoint schema - it only has a per-tank aggregate
+            // (breathingconsumptionvolume, one figure for the whole dive), not a per-sample
+            // reading. Deriving a true per-sample SAC/RMV would need the per-waypoint
+            // tankPressure below plus the matching tank's volume from UddfTankData, tracked
+            // across consecutive samples - a real feature, not a one-line fix, so left
+            // unpopulated here rather than guessed at.
             final var po2 = PO2.fromOrNull(setPO2, measuredPO2, calcPO2);
             final var time = getDurationFromSeconds(seconds);
             final var temperature = importTemperature(kelvin);
@@ -512,7 +517,10 @@ public record UddfFile(
                             gas,
                             po2,
                             null,
-                            (double) gf,
+                            // gf (gradient factor) has no matching field on DiveMeasurement - it
+                            // was previously mis-stored here as n2, which is nitrogen loading, a
+                            // completely different value. Left null until a real gf field exists.
+                            null,
                             null,
                             (double) cns,
                             toMode(diveMode)),

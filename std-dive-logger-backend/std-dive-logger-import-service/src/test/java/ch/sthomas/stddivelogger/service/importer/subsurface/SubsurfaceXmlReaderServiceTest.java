@@ -87,4 +87,55 @@ class SubsurfaceXmlReaderServiceTest {
             assertEquals(0, result.errors().size());
         }
     }
+
+    private static String withEndOfDiveTotalsXml() {
+        // otu/cns are attributes on <dive>, not child elements - the whole point of this test.
+        return """
+                <divelog>
+                  <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
+                  <dives>
+                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:20 min" \
+                rating="0" divesiteid="site-1" visibility="0" current="0" otu="12" cns="11%">
+                      <buddy>Test Buddy</buddy>
+                      <cylinder description="AL80" o2="21%"/>
+                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+                time="10:00:00" duration="0:20 min">
+                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                        <sample time="0:00 min" depth="0.0 m"/>
+                        <sample time="0:10 min" depth="10.0 m"/>
+                        <sample time="0:20 min" depth="0.0 m"/>
+                      </divecomputer>
+                    </dive>
+                  </dives>
+                </divelog>
+                """;
+    }
+
+    @Test
+    void endOfDiveOtuAndCnsAreStampedOntoTheLastMeasurementOnly() throws IOException {
+        final var service =
+                new SubsurfaceXmlReaderService(xmlMapper, diveServiceReturningComputer());
+        try (final var inputStream =
+                new ByteArrayInputStream(
+                        withEndOfDiveTotalsXml().getBytes(StandardCharsets.UTF_8))) {
+            final var result =
+                    service.parse(user, "end-of-dive-totals.xml", inputStream)
+                            .reduce(ParsedImportResultStreaming::concat)
+                            .orElseThrow()
+                            .toResult();
+
+            assertEquals(1, result.parsed().size());
+            final var measurements =
+                    result.parsed().getFirst().payload().profiles().getFirst().measurements();
+            assertEquals(3, measurements.size());
+            // Every sample before the last one is untouched - no per-sample cns/otu in Subsurface.
+            assertEquals(null, measurements.get(0).o2Tox());
+            assertEquals(null, measurements.get(0).cns());
+            assertEquals(null, measurements.get(1).o2Tox());
+            assertEquals(null, measurements.get(1).cns());
+            // The dive-level total lands on the last sample only.
+            assertEquals(12.0, measurements.getLast().o2Tox());
+            assertEquals(11.0, measurements.getLast().cns());
+        }
+    }
 }

@@ -119,8 +119,11 @@ public record SubsurfaceXmlFile(
             @JacksonXmlProperty(isAttribute = true) String current,
             @JacksonXmlProperty String notes,
             @JacksonXmlProperty String suit,
-            @JacksonXmlProperty String otu,
-            @JacksonXmlProperty String cns,
+            // otu/cns are XML attributes on <dive> (e.g. otu='12' cns='11%'), not child elements -
+            // isAttribute was previously missing here, so these never actually parsed (silently
+            // stayed null via Jackson's default-missing-value behavior rather than failing loudly).
+            @JacksonXmlProperty(isAttribute = true) @Nullable String otu,
+            @JacksonXmlProperty(isAttribute = true) @Nullable String cns,
             @JacksonXmlProperty SubsurfaceTemperature divetemperature,
             @JacksonXmlElementWrapper(useWrapping = false)
                     @JacksonXmlProperty(localName = "weightsystem")

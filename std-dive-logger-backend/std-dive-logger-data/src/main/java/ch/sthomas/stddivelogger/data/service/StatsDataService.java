@@ -2,9 +2,6 @@ package ch.sthomas.stddivelogger.data.service;
 
 import static ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature.TemperatureUnit.CELSIUS;
 
-import ch.sthomas.stddivelogger.data.repository.DiveMeasurementRepository;
-import ch.sthomas.stddivelogger.data.repository.DiveRepository;
-import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.TagDefinitionRepository;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
@@ -16,12 +13,7 @@ import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeries;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsTimeSeriesPoint;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
 import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
-import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.user.User;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.criteria.*;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
@@ -33,394 +25,316 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Every method here does its full aggregation - counts, durations, depths, unique-site counts,
+ * buddy counts, temperature min/max - in a single grouped SQL query per call, rather than one query
+ * for the group list plus N more queries per group (the previous design). Three CTEs are shared
+ * across almost every method:
+ *
+ * <ul>
+ *   <li>{@code dives} - one row per dive with its number/site/duration/depth/year, already scoped
+ *       to the user.
+ *   <li>{@code buddies} - one row per (dive, buddy name) pair, deduplicating named buddies and
+ *       linked-user buddies from both link directions (mirrors the UNION this codebase has always
+ *       used for a user-wide buddy count, just scoped down to a specific dive set via a join
+ *       instead of via {@code IN (:diveIds)}).
+ *   <li>{@code temps} - per-dive max/min measured temperature.
+ * </ul>
+ *
+ * A breakdown (by year/site/buddy/configuration/tag) then joins its own grouping table (or column
+ * already on {@code dives}) against these three CTEs and aggregates with one {@code GROUP BY}.
+ */
 @Service
 public class StatsDataService {
 
-    @PersistenceContext private EntityManager entityManager;
-
-    private final DiveRepository diveRepository;
-    private final DiveMeasurementRepository diveMeasurementRepository;
-    private final DiveSiteRepository diveSiteRepository;
     private final TagDefinitionRepository tagDefinitionRepository;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    // entityManager is populated by Spring's @PersistenceContext field injection, not by this
-    // constructor.
-    @SuppressWarnings("NullAway.Init")
     public StatsDataService(
-            final DiveRepository diveRepository,
-            final DiveMeasurementRepository diveMeasurementRepository,
-            final DiveSiteRepository diveSiteRepository,
             final TagDefinitionRepository tagDefinitionRepository,
             final NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
-        this.diveRepository = diveRepository;
-        this.diveMeasurementRepository = diveMeasurementRepository;
-        this.diveSiteRepository = diveSiteRepository;
         this.tagDefinitionRepository = tagDefinitionRepository;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
-    public record RawMainStats(
-            long totalDives,
-            @Nullable Integer maxDiveNumber,
-            @Nullable Double maxDepth,
-            long uniqueSites) {}
+    /**
+     * One row per dive of the user, with everything a breakdown needs except buddy/temperature
+     * (those come from the {@link #BUDDIES_CTE}/{@link #TEMPS_CTE} below - a dive can have many
+     * buddies/measurements, so they can't live on this 1-row-per-dive CTE without duplicating every
+     * other column per buddy/measurement).
+     */
+    private static final String DIVES_CTE =
+            """
+            dives AS (
+                SELECT d.pk_dive_id AS dive_id, d.dive_number, d.dive_site AS site_id,
+                       ds.duration_seconds, ds.max_depth, ds.dive_start,
+                       dc.base_configuration
+                FROM t_dives d
+                JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                WHERE d.fk_diver_id = :userId
+            )
+            """;
 
-    private record TemperatureStats(@Nullable Double maxC, @Nullable Double minC) {
-        public @Nullable Temperature maxTemp() {
-            return maxC == null ? null : new Temperature(maxC, CELSIUS);
-        }
+    /**
+     * One row per (dive id, buddy name), deduplicated by name per dive via the outer query's {@code
+     * COUNT(DISTINCT b.name)} - not here, since a dive could otherwise list the same person twice
+     * (e.g. a named buddy who's also a linked user).
+     */
+    private static final String BUDDIES_CTE =
+            """
+            buddies AS (
+                SELECT b.fk_dive_id AS dive_id, b.name AS name
+                FROM t_dive_buddy_name b
+                JOIN t_dives d ON d.pk_dive_id = b.fk_dive_id AND d.fk_diver_id = :userId
+                UNION
+                SELECT d_this.pk_dive_id AS dive_id, u.name AS name
+                FROM t_dives d_this
+                JOIN t_dive_buddy tb ON tb.fk_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
+                JOIN t_dives d_other ON d_other.pk_dive_id = tb.fk_buddy_dive_id
+                JOIN t_users u ON u.pk_user_id = d_other.fk_diver_id
+                UNION
+                SELECT d_this.pk_dive_id AS dive_id, u.name AS name
+                FROM t_dives d_this
+                JOIN t_dive_buddy tb ON tb.fk_buddy_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
+                JOIN t_dives d_other ON d_other.pk_dive_id = tb.fk_dive_id
+                JOIN t_users u ON u.pk_user_id = d_other.fk_diver_id
+            )
+            """;
 
-        public @Nullable Temperature minTemp() {
-            return minC == null ? null : new Temperature(minC, CELSIUS);
-        }
+    private static final String TEMPS_CTE =
+            """
+            temps AS (
+                SELECT dp.fk_dive_id AS dive_id,
+                       MAX(dm.temperature_celsius) AS max_temp,
+                       MIN(dm.temperature_celsius) AS min_temp
+                FROM t_dive_measurements dm
+                JOIN t_dive_profiles dp ON dp.pk_dive_profile_id = dm.fk_dive_profile_id
+                JOIN t_dives d ON d.pk_dive_id = dp.fk_dive_id AND d.fk_diver_id = :userId
+                GROUP BY dp.fk_dive_id
+            )
+            """;
+
+    /**
+     * Every metric except the group key and buddy count - those two differ per query (the group key
+     * obviously; buddy count either comes from a {@code buddies} join, or is meaningless and
+     * omitted, as for the by-buddy breakdown itself).
+     */
+    private static final String AGGREGATE_SELECT_LIST =
+            """
+            COUNT(DISTINCT dv.dive_id) AS dive_count,
+            MAX(dv.dive_number) AS max_number,
+            MAX(dv.max_depth) AS max_depth,
+            COUNT(DISTINCT dv.site_id) AS unique_sites,
+            MAX(dv.duration_seconds) AS max_duration,
+            COALESCE(SUM(dv.duration_seconds), 0) AS total_duration
+            """;
+
+    private static @Nullable Double nullableDouble(final ResultSet rs, final String column)
+            throws SQLException {
+        final var value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
     }
 
-    public interface RawGroupCounts<T> {
-        T key();
-
-        long totalDives();
-
-        @Nullable Integer maxNumber();
-
-        @Nullable Double maxDepth();
-
-        long uniqueSites();
+    private static @Nullable Long nullableLong(final ResultSet rs, final String column)
+            throws SQLException {
+        final var value = rs.getLong(column);
+        return rs.wasNull() ? null : value;
     }
 
-    public record LongGroupCounts(
-            Long key,
-            long totalDives,
-            @Nullable Integer maxNumber,
-            @Nullable Double maxDepth,
-            long uniqueSites)
-            implements RawGroupCounts<Long> {}
+    private static @Nullable Temperature temperatureOrNull(final ResultSet rs, final String column)
+            throws SQLException {
+        final var value = nullableDouble(rs, column);
+        return value == null ? null : new Temperature(value, CELSIUS);
+    }
 
-    public record IntegerGroupCounts(
-            Integer key,
-            long totalDives,
-            @Nullable Integer maxNumber,
-            @Nullable Double maxDepth,
-            long uniqueSites)
-            implements RawGroupCounts<Integer> {}
-
-    public record StringGroupCounts(
-            String key,
-            long totalDives,
-            @Nullable Integer maxNumber,
-            @Nullable Double maxDepth,
-            long uniqueSites)
-            implements RawGroupCounts<String> {}
-
-    public record BaseConfigurationGroupCounts(
-            BaseConfiguration key,
-            long totalDives,
-            @Nullable Integer maxNumber,
-            @Nullable Double maxDepth,
-            long uniqueSites)
-            implements RawGroupCounts<BaseConfiguration> {}
-
-    public enum StatsType {
-        BUDDY_NAME,
-        DIVE_SITE,
-        YEAR,
-        CONFIGURATION,
-        ;
+    /**
+     * Maps every column {@link #AGGREGATE_SELECT_LIST} plus a {@code buddy_count} and {@code
+     * max_temp}/{@code min_temp} pair into a {@link UserDiveStats}. Used by every method below -
+     * grouped or not, since a single-row (ungrouped) aggregate query uses exactly the same column
+     * set as one row of a grouped one.
+     */
+    private static UserDiveStats mapAggregateRow(final ResultSet rs) throws SQLException {
+        final var maxNumber = nullableLong(rs, "max_number");
+        final var maxDuration = nullableLong(rs, "max_duration");
+        return new UserDiveStats(
+                rs.getLong("dive_count"),
+                maxNumber != null ? maxNumber : -1,
+                Duration.ofSeconds(maxDuration != null ? maxDuration : 0),
+                nullableDouble(rs, "max_depth") != null ? rs.getDouble("max_depth") : 0.0,
+                Duration.ofSeconds(rs.getLong("total_duration")),
+                rs.getLong("buddy_count"),
+                rs.getLong("unique_sites"),
+                temperatureOrNull(rs, "max_temp"),
+                temperatureOrNull(rs, "min_temp"));
     }
 
     @Transactional(readOnly = true)
     public Map<Integer, UserDiveStats> getStatsByYear(final User user) {
-        final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(IntegerGroupCounts.class);
-        final var dive = query.from(DiveEntity.class);
-        final var profile = dive.join("profiles");
-
-        final var yearExpr =
-                cb.function(
-                        "date_part", Double.class, cb.literal("year"), profile.get("profileStart"));
-
-        final var yearIntExpr = cb.toInteger(yearExpr);
-
-        return fetchAndMap(user, query, dive, StatsType.YEAR, yearIntExpr, Integer.class);
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT EXTRACT(YEAR FROM dv.dive_start)::int AS grp,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM dives dv
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        GROUP BY EXTRACT(YEAR FROM dv.dive_start)
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        final var result = new LinkedHashMap<Integer, UserDiveStats>();
+        namedParameterJdbcTemplate
+                .query(sql, params, (rs, rowNum) -> Pair.of(rs.getInt("grp"), mapAggregateRow(rs)))
+                .forEach(p -> result.put(p.getKey(), p.getValue()));
+        return result;
     }
 
     @Transactional(readOnly = true)
     public Map<Long, UserDiveStats> getStatsByDiveSite(final User user) {
-        final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(LongGroupCounts.class);
-        final var dive = query.from(DiveEntity.class);
-
-        // Join to DiveSite to get the name
-        final Join<DiveEntity, DiveSiteEntity> site = dive.join("diveSite", JoinType.INNER);
-
-        return fetchAndMap(user, query, dive, StatsType.DIVE_SITE, site.get("id"), Long.class);
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT dv.site_id AS grp,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM dives dv
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        GROUP BY dv.site_id
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        final var result = new LinkedHashMap<Long, UserDiveStats>();
+        namedParameterJdbcTemplate
+                .query(sql, params, (rs, rowNum) -> Pair.of(rs.getLong("grp"), mapAggregateRow(rs)))
+                .forEach(p -> result.put(p.getKey(), p.getValue()));
+        return result;
     }
 
+    /**
+     * Named buddies only (matches this breakdown's long-standing scope - the caller, {@code
+     * StatsService.getStatsForUserByBuddy}, already discards {@code nrOfBuddies} on the result, so
+     * a "how many *other* buddies did I have on dives with this buddy" figure was never meaningful
+     * here - the {@link #BUDDIES_CTE} union-with-linked-users is deliberately not used as the
+     * grouping source, only named buddies are, unlike every other breakdown's buddy *count*).
+     */
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<String>> getStatsByBuddy(final User user) {
-        final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(StringGroupCounts.class);
-        final var dive = query.from(DiveEntity.class);
-
-        // TODO: At the moment, only named buddies
-        final var buddy = dive.join("namedBuddies", JoinType.INNER);
-
-        return fetchAndMap(user, query, dive, StatsType.BUDDY_NAME, buddy.get("name"), String.class)
-                .entrySet()
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT bn.name AS grp,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM t_dive_buddy_name bn
+                        JOIN dives dv ON dv.dive_id = bn.fk_dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        GROUP BY bn.name
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        return namedParameterJdbcTemplate
+                .query(
+                        sql,
+                        params,
+                        (rs, rowNum) ->
+                                new UserDiveStatsBy<>(
+                                        rs.getString("grp"), mapAggregateRowNoBuddyCount(rs)))
                 .stream()
-                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
                 .sorted(Comparator.reverseOrder())
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<BaseConfiguration>> getStatsByBaseConfiguration(final User user) {
-        final var cb = entityManager.getCriteriaBuilder();
-        final var query = cb.createQuery(BaseConfigurationGroupCounts.class);
-        final var dive = query.from(DiveEntity.class);
-        final var configuration =
-                dive.<DiveEntity, DiveConfigurationEntity>join("configuration", JoinType.INNER);
-
-        return fetchAndMap(
-                        user,
-                        query,
-                        dive,
-                        StatsType.CONFIGURATION,
-                        configuration.get("baseConfiguration"),
-                        BaseConfiguration.class)
-                .entrySet()
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT dv.base_configuration AS grp,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM dives dv
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        GROUP BY dv.base_configuration
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        return namedParameterJdbcTemplate
+                .query(
+                        sql,
+                        params,
+                        (rs, rowNum) ->
+                                new UserDiveStatsBy<>(
+                                        BaseConfiguration.valueOf(rs.getString("grp")),
+                                        mapAggregateRow(rs)))
                 .stream()
-                .map(e -> new UserDiveStatsBy<>(e.getKey(), e.getValue()))
                 .sorted(Comparator.reverseOrder())
                 .toList();
     }
 
-    private <T, C extends RawGroupCounts<T>> Map<T, UserDiveStats> fetchAndMap(
-            final User user,
-            final CriteriaQuery<C> query,
-            final Root<DiveEntity> dive,
-            final StatsType statsType,
-            final Expression<T> selection,
-            final Class<T> typeToken) {
-        final var cb = entityManager.getCriteriaBuilder();
-        final var profile = dive.join("profiles", JoinType.LEFT);
-        final var measurement = profile.join("measurements", JoinType.LEFT);
-
-        final var diveIdCount = cb.countDistinct(dive.get("id"));
-        query.multiselect(
-                selection,
-                diveIdCount,
-                cb.max(dive.get("number")),
-                cb.max(measurement.get("depth")),
-                cb.countDistinct(dive.get("diveSite").get("id")));
-
-        query.where(cb.equal(dive.get("user").get("id"), user.id()));
-        query.groupBy(selection);
-        query.orderBy(cb.desc(diveIdCount));
-
-        return entityManager.createQuery(query).getResultList().stream()
-                .map(
-                        raw ->
-                                Pair.of(
-                                        typeToken.cast(raw.key()),
-                                        assembleFullStats(user, statsType, raw)))
-                .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
-    }
-
-    private <T> UserDiveStats assembleFullStats(
-            final User user, final StatsType type, final RawGroupCounts<T> raw) {
-        // TODO: Use group by instead and don't assume the key by type
-        final var maxAndTotalDuration =
-                switch (type) {
-                    case YEAR -> {
-                        final var year = (Integer) raw.key();
-                        yield Pair.of(
-                                diveRepository
-                                        .findMaxDurationByUserIdAndYear(user.id(), year)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO),
-                                diveRepository
-                                        .findTotalDurationByUserIdAndYear(user.id(), year)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO));
-                    }
-                    case DIVE_SITE -> {
-                        final var siteId = (Long) raw.key();
-                        yield Pair.of(
-                                diveRepository
-                                        .findMaxDurationByUserIdAndDiveSiteId(user.id(), siteId)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO),
-                                diveRepository
-                                        .findTotalDurationByUserIdAndDiveSiteId(user.id(), siteId)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO));
-                    }
-                    case BUDDY_NAME -> {
-                        final var buddyName = (String) raw.key();
-                        // TODO: Fix Named buddies only
-                        yield Pair.of(
-                                diveRepository
-                                        .findMaxDurationByUserIdAndBuddy(user.id(), buddyName)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO),
-                                diveRepository
-                                        .findTotalDurationByUserIdAndBuddy(user.id(), buddyName)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO));
-                    }
-                    case CONFIGURATION -> {
-                        final var configuration = (BaseConfiguration) raw.key();
-                        yield Pair.of(
-                                diveRepository
-                                        .findMaxDurationByUserIdAndConfiguration_BaseConfiguration(
-                                                user.id(), configuration)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO),
-                                diveRepository
-                                        .findTotalDurationByUserIdAndConfiguration_BaseConfiguration(
-                                                user.id(), configuration)
-                                        .map(Duration::ofSeconds)
-                                        .orElse(Duration.ZERO));
-                    }
-                    case null ->
-                            Pair.of(
-                                    diveRepository
-                                            .findMaxDurationByUserId(user.id())
-                                            .map(Duration::ofSeconds)
-                                            .orElse(Duration.ZERO),
-                                    diveRepository
-                                            .findTotalDurationByUserId(user.id())
-                                            .map(Duration::ofSeconds)
-                                            .orElse(Duration.ZERO));
-                };
-
+    /**
+     * Same as {@link #mapAggregateRow} but for the by-buddy breakdown's query, which has no {@code
+     * buddy_count} column (see {@link #getStatsByBuddy}'s doc) - 0 there simply matches what {@link
+     * #mapAggregateRow} would have produced anyway once the caller discards it.
+     */
+    private static UserDiveStats mapAggregateRowNoBuddyCount(final ResultSet rs)
+            throws SQLException {
+        final var maxNumber = nullableLong(rs, "max_number");
+        final var maxDuration = nullableLong(rs, "max_duration");
         return new UserDiveStats(
-                raw.totalDives(),
-                raw.maxNumber() != null ? raw.maxNumber() : -1,
-                maxAndTotalDuration.getLeft(),
-                raw.maxDepth() != null ? raw.maxDepth() : 0.0,
-                maxAndTotalDuration.getRight(),
-                0L, // TODO: Buddy count is complex for groups, keeping at 0 or specialized repo
-                raw.uniqueSites(),
-                null, // TODO: Temperature logic
-                null);
-    }
-
-    @Transactional(readOnly = true)
-    public UserDiveStats computeStatsForUserCriteria(final User user) {
-        final var cb = entityManager.getCriteriaBuilder();
-
-        final var main = fetchMainStats(user, cb);
-        final var temps = fetchTemperatureStats(user, cb);
-        final var buddyCount = countUniqueBuddies(user.id());
-        final var maxDuration =
-                diveRepository
-                        .findMaxDurationByUserId(user.id())
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO);
-        final var totalDuration =
-                diveRepository
-                        .findTotalDurationByUserId(user.id())
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO);
-
-        return new UserDiveStats(
-                main.totalDives(),
-                main.maxDiveNumber() != null ? main.maxDiveNumber() : -1,
-                maxDuration,
-                main.maxDepth() != null ? main.maxDepth() : 0.0,
-                totalDuration,
-                buddyCount,
-                main.uniqueSites(),
-                temps.maxTemp(),
-                temps.minTemp());
-    }
-
-    private RawMainStats fetchMainStats(final User user, final CriteriaBuilder cb) {
-        final var query = cb.createQuery(RawMainStats.class);
-        final var dive = query.from(DiveEntity.class);
-
-        // We join profiles here to get depth/duration
-        final Join<DiveEntity, DiveProfileEntity> profile = dive.join("profiles", JoinType.LEFT);
-        final Join<DiveProfileEntity, DiveMeasurementEntity> measurement =
-                profile.join("measurements", JoinType.LEFT);
-
-        query.multiselect(
-                cb.countDistinct(dive.get("id")),
-                cb.max(dive.get("number")),
-                cb.max(measurement.get("depth")),
-                cb.countDistinct(dive.get("diveSite").get("id")));
-
-        query.where(buildPredicates(cb, dive, user));
-        return entityManager.createQuery(query).getSingleResult();
-    }
-
-    private TemperatureStats fetchTemperatureStats(final User user, final CriteriaBuilder cb) {
-        final var query = cb.createQuery(TemperatureStats.class);
-        final var measurement = query.from(DiveMeasurementEntity.class);
-
-        final Join<DiveMeasurementEntity, DiveProfileEntity> profile = measurement.join("profile");
-        final Join<DiveProfileEntity, DiveEntity> dive = profile.join("dive");
-
-        query.multiselect(
-                cb.max(measurement.get("temperatureCelsius")),
-                cb.min(measurement.get("temperatureCelsius")));
-
-        query.where(buildPredicates(cb, dive, user));
-
-        // TODO: Empty for now
-        return entityManager
-                .createQuery(query)
-                .getResultStream()
-                .findFirst()
-                .orElse(new TemperatureStats(null, null));
-    }
-
-    private Predicate[] buildPredicates(
-            final CriteriaBuilder cb, final From<?, DiveEntity> dive, final User user) {
-        final var predicates = new ArrayList<Predicate>();
-        predicates.add(cb.equal(dive.get("user").get("id"), user.id()));
-
-        return predicates.toArray(new Predicate[0]);
-    }
-
-    private long countUniqueBuddies(final long userId) {
-        return diveRepository.countUniqueBuddiesByUserId(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public UserDiveStats computeStatsForUser(final User user) {
-        return new UserDiveStats(
-                diveRepository.countByUser_Id(user.id()),
-                diveRepository.findMaxDiveNumberByUserId(user.id()).orElse(-1),
-                diveRepository
-                        .findMaxDurationByUserId(user.id())
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO),
-                diveMeasurementRepository.findMaxDepthByUserId(user.id()).orElse(0.0),
-                diveRepository
-                        .findTotalDurationByUserId(user.id())
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO),
-                diveRepository.countUniqueBuddiesByUserId(user.id()),
-                diveSiteRepository.countUniqueForUserId(user.id()),
-                diveMeasurementRepository
-                        .findMaxTemperatureCelsiusByUserId(user.id())
-                        .map(d -> new Temperature(d, CELSIUS))
-                        .orElse(null),
-                diveMeasurementRepository
-                        .findMinTemperatureCelsiusByUserId(user.id())
-                        .map(d -> new Temperature(d, CELSIUS))
-                        .orElse(null));
+                rs.getLong("dive_count"),
+                maxNumber != null ? maxNumber : -1,
+                Duration.ofSeconds(maxDuration != null ? maxDuration : 0),
+                nullableDouble(rs, "max_depth") != null ? rs.getDouble("max_depth") : 0.0,
+                Duration.ofSeconds(rs.getLong("total_duration")),
+                0L,
+                rs.getLong("unique_sites"),
+                temperatureOrNull(rs, "max_temp"),
+                temperatureOrNull(rs, "min_temp"));
     }
 
     /**
@@ -429,29 +343,40 @@ public class StatsDataService {
      */
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<TagDefinition>> getStatsByTag(final User user) {
-        // Aggregate: [tagId, diveCount, maxDiveNumber, uniqueSites] per tag
-        final List<Object[]> rows =
-                entityManager
-                        .createQuery(
-                                """
-                        SELECT dt.tag.id, COUNT(DISTINCT d.id), MAX(d.number),
-                               COUNT(DISTINCT d.diveSite.id)
-                        FROM DiveEntity d
-                        JOIN d.tags dt
-                        WHERE d.user.id = :userId AND dt.dismissed = false
-                        GROUP BY dt.tag.id
-                        ORDER BY COUNT(DISTINCT d.id) DESC
-                        """,
-                                Object[].class)
-                        .setParameter("userId", user.id())
-                        .getResultList();
-
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT dt.fk_tag_id AS tag_id,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM t_dive_tags dt
+                        JOIN dives dv ON dv.dive_id = dt.fk_dive_id
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        WHERE dt.dismissed = false
+                        GROUP BY dt.fk_tag_id
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        final var rows =
+                namedParameterJdbcTemplate.query(
+                        sql,
+                        params,
+                        (rs, rowNum) -> Pair.of(rs.getLong("tag_id"), mapAggregateRow(rs)));
         if (rows.isEmpty()) {
             return List.of();
         }
 
-        // Look up TagDefinition records (with diveCount) for all returned tag IDs
-        final var tagIds = rows.stream().map(r -> (Long) r[0]).toList();
+        final var tagIds = rows.stream().map(Pair::getKey).toList();
         final var tagMap =
                 tagDefinitionRepository.findAllById(tagIds).stream()
                         .collect(Collectors.toMap(e -> e.getId(), e -> e));
@@ -459,54 +384,29 @@ public class StatsDataService {
         return rows.stream()
                 .map(
                         row -> {
-                            final long tagId = (Long) row[0];
-                            final long diveCount = (Long) row[1];
-                            final int maxNumber =
-                                    row[2] != null ? ((Number) row[2]).intValue() : -1;
-                            final long uniqueSites = (Long) row[3];
-
-                            final var maxDuration =
-                                    diveRepository
-                                            .findMaxDurationByUserIdAndTagId(user.id(), tagId)
-                                            .map(Duration::ofSeconds)
-                                            .orElse(Duration.ZERO);
-                            final var totalDuration =
-                                    diveRepository
-                                            .findTotalDurationByUserIdAndTagId(user.id(), tagId)
-                                            .map(Duration::ofSeconds)
-                                            .orElse(Duration.ZERO);
-                            final var maxDepth =
-                                    diveMeasurementRepository
-                                            .findMaxDepthByUserIdAndTagId(user.id(), tagId)
-                                            .orElse(0.0);
-
-                            final var stats =
-                                    new UserDiveStats(
-                                            diveCount,
-                                            maxNumber,
-                                            maxDuration,
-                                            maxDepth,
-                                            totalDuration,
-                                            0L,
-                                            uniqueSites,
-                                            null,
-                                            null);
-
+                            final var tagId = row.getKey();
+                            final var stats = row.getValue();
                             final var tagEntity = tagMap.get(tagId);
                             final var tagDef =
                                     tagEntity != null
-                                            ? tagEntity.toRecord(diveCount)
+                                            ? tagEntity.toRecord(stats.diveCount())
                                             : new TagDefinition(
-                                                    tagId, "Unknown", null, null, diveCount);
-
+                                                    tagId,
+                                                    "Unknown",
+                                                    null,
+                                                    null,
+                                                    stats.diveCount());
                             return new UserDiveStatsBy<>(tagDef, stats);
                         })
+                .sorted(Comparator.reverseOrder())
                 .toList();
     }
 
     /**
      * Computes stats for dives matching ALL of the specified tag IDs (AND semantics). Returns null
-     * if the tag list is empty or no dives match.
+     * if the tag list is empty. If no dives match, a single row still comes back from the query
+     * (aggregates over an empty joined set), producing the correct all-zero/all-null {@link
+     * UserDiveStats} without any special-casing here.
      */
     @Transactional(readOnly = true)
     public @Nullable UserDiveStats computeStatsForTagFilter(
@@ -514,51 +414,66 @@ public class StatsDataService {
         if (tagIds == null || tagIds.isEmpty()) {
             return null;
         }
-        final var diveIds =
-                diveRepository.findDiveIdsByTagsAndUserId(user.id(), tagIds, tagIds.size());
-        if (diveIds.isEmpty()) {
-            return new UserDiveStats(0, -1, Duration.ZERO, 0.0, Duration.ZERO, 0L, 0L, null, null);
-        }
+        final var sql =
+                """
+                WITH matched AS (
+                    SELECT dt.fk_dive_id AS dive_id
+                    FROM t_dive_tags dt
+                    WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
+                    GROUP BY dt.fk_dive_id
+                    HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
+                ), """
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM matched m
+                        JOIN dives dv ON dv.dive_id = m.dive_id
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        """;
+        final var params =
+                new MapSqlParameterSource("userId", user.id())
+                        .addValue("tagIds", tagIds)
+                        .addValue("tagCount", (long) tagIds.size());
+        return namedParameterJdbcTemplate.queryForObject(
+                sql, params, (rs, rowNum) -> mapAggregateRow(rs));
+    }
 
-        // Aggregate main counts from the matched dive set directly via JPQL
-        final Object[] main =
-                (Object[])
-                        entityManager
-                                .createQuery(
-                                        """
-                        SELECT COUNT(DISTINCT d.id), MAX(d.number), COUNT(DISTINCT d.diveSite.id)
-                        FROM DiveEntity d
-                        WHERE d.id IN :diveIds
-                        """)
-                                .setParameter("diveIds", diveIds)
-                                .getSingleResult();
-
-        final long diveCount = (Long) main[0];
-        final int maxNumber = main[1] != null ? ((Number) main[1]).intValue() : -1;
-        final long uniqueSites = (Long) main[2];
-
-        final var maxDuration =
-                diveRepository
-                        .findMaxDurationByDiveIds(diveIds)
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO);
-        final var totalDuration =
-                diveRepository
-                        .findTotalDurationByDiveIds(diveIds)
-                        .map(Duration::ofSeconds)
-                        .orElse(Duration.ZERO);
-        final var maxDepth = diveMeasurementRepository.findMaxDepthByDiveIds(diveIds).orElse(0.0);
-
-        return new UserDiveStats(
-                diveCount,
-                maxNumber,
-                maxDuration,
-                maxDepth,
-                totalDuration,
-                0L,
-                uniqueSites,
-                null,
-                null);
+    /** Overall stats across every dive of the user - one query, no grouping. */
+    @Transactional(readOnly = true)
+    public UserDiveStats computeStatsForUser(final User user) {
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM dives dv
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        return namedParameterJdbcTemplate.queryForObject(
+                sql, params, (rs, rowNum) -> mapAggregateRow(rs));
     }
 
     private record BucketSql(String selectExpr, String groupByExpr, String diveIdExpr) {}
@@ -665,18 +580,6 @@ public class StatsDataService {
                         + "\n)\n";
 
         return Pair.of(cte, params);
-    }
-
-    private static @Nullable Double nullableDouble(final ResultSet rs, final String column)
-            throws SQLException {
-        final var value = rs.getDouble(column);
-        return rs.wasNull() ? null : value;
-    }
-
-    private static @Nullable Long nullableLong(final ResultSet rs, final String column)
-            throws SQLException {
-        final var value = rs.getLong(column);
-        return rs.wasNull() ? null : value;
     }
 
     /**

@@ -74,6 +74,7 @@ public class DiveEntity {
     private DiveSiteEntity diveSite;
 
     @OneToMany(mappedBy = "dive", cascade = CascadeType.ALL)
+    @OrderBy("id ASC")
     private List<DiveProfileEntity> profiles;
 
     @ManyToMany(fetch = FetchType.EAGER)

@@ -103,7 +103,9 @@ public class AnalyticsService {
                 .toList();
     }
 
-    private AnalyticsDepthVariance createAnalytics(final DiveProfileSegmentWithId segmentWithId) {
+    // Package-private (not private) so AnalyticsServiceTest can exercise it directly without a
+    // full Dive/segment-service fixture for every case.
+    AnalyticsDepthVariance createAnalytics(final DiveProfileSegmentWithId segmentWithId) {
         final var segment = segmentWithId.segment();
         Objects.requireNonNull(segment, "Segment must not be null");
         Objects.requireNonNull(segment.measurements(), "Segment Measurements must not be null");
@@ -114,16 +116,29 @@ public class AnalyticsService {
                     segment.firstMeasurementIdx());
             throw new IllegalArgumentException("Empty segment");
         }
-        if (segment.measurements().size() == 1) {
+        // A NaN/Infinity depth (e.g. surviving from an old buggy import) would otherwise poison
+        // every stat computed below - summaryStatistics(), the deviation math, all of it - for
+        // the whole segment. Same guard DiveGasCalculator.calculate applies for the same reason.
+        final var finiteMeasurements =
+                segment.measurements().stream()
+                        .map(DiveMeasurementWithId::measurement)
+                        .filter(m -> Double.isFinite(m.depth()))
+                        .toList();
+        if (finiteMeasurements.isEmpty()) {
+            logger.info(
+                    "No finite-depth measurements in segment for profile: {} with start index {}",
+                    segment.profile().id(),
+                    segment.firstMeasurementIdx());
+            throw new IllegalArgumentException("No finite-depth measurements in segment");
+        }
+        if (finiteMeasurements.size() == 1) {
             return new AnalyticsDepthVariance(
                     segmentWithId,
                     new AnalyticsDepthVarianceStats(
-                            ANALYTICS_VERSION,
-                            segment.measurements().getFirst().measurement().depth()));
+                            ANALYTICS_VERSION, finiteMeasurements.getFirst().depth()));
         }
         final var depthByTime =
-                segment.measurements().stream()
-                        .map(DiveMeasurementWithId::measurement)
+                finiteMeasurements.stream()
                         .map(m -> Pair.of(m.time().toEpochMilli(), m.depth()))
                         .sorted(Comparator.comparing(Pair::getLeft))
                         .toList();

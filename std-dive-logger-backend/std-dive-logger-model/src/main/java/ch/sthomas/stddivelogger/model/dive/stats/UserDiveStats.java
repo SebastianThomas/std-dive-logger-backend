@@ -30,7 +30,7 @@ public record UserDiveStats(
                 l,
                 nrOfSites,
                 maxTemp,
-                maxTemp);
+                minTemp);
     }
 
     public UserDiveStats withSites(@Nullable final Long l) {
@@ -43,7 +43,7 @@ public record UserDiveStats(
                 nrOfBuddies,
                 l,
                 maxTemp,
-                maxTemp);
+                minTemp);
     }
 
     @Override

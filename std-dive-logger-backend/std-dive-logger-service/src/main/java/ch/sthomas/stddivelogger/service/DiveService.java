@@ -30,7 +30,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.hibernate.query.SortDirection;
@@ -64,6 +63,16 @@ public class DiveService {
     public static final int SUIT_PAGE_SIZE = 20;
     public static final int CCR_UNIT_PAGE_SIZE = 20;
 
+    /**
+     * Above this many sites, {@link #getSitesByUser} stops inlining each site's full dive list
+     * (id/number/identifier per dive) and returns only its count instead - the map view only needs
+     * coordinates + a count to render markers, and fetches a site's actual dive list lazily via
+     * {@code GET /v1/dives/sites/{id}/dives} only once its popup is opened. Below this, every site
+     * keeps its full dive list inline, matching what most users have (a few dozen to a few hundred
+     * sites) with no extra round trip.
+     */
+    public static final int SITE_LIST_LIGHTWEIGHT_THRESHOLD = 300;
+
     private final DiveDataService diveDataService;
     private final StorageService storageService;
     private final UserDataService userDataService;
@@ -89,13 +98,16 @@ public class DiveService {
         return diveDataService.findDivesByUserIsReader(user, sort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
+    // includeReader is accepted but doesn't change anything: the underlying
+    // fuzzy_search_dives_for_user() Postgres function (see V0_2_5__text.sql/V0_2_9__dive_tags.sql)
+    // already scopes its candidate set to v_readers, which itself already includes the diver
+    // (owner), buddies, explicit readers, and group readers - there's no "owned dives only" mode
+    // to opt out into. Previously, includeReader=true threw NotImplementedException instead of
+    // just returning the same (already reader-inclusive) results the false branch always gave.
     public PagedResponse<SimplifiedDive> searchDives(
             final User user, final String query, final boolean includeReader, final int page) {
-        if (!includeReader) {
-            return diveDataService.searchDives(
-                    user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
-        }
-        throw new NotImplementedException();
+        return diveDataService.searchDives(
+                user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {
@@ -196,6 +208,13 @@ public class DiveService {
                         .findCcrUnitLinkedToComputer(profiles.getFirst().diveComputerId())
                         .orElse(null);
         if (linkedCcrUnit == null || linkedCcrUnit.defaultBaseConfiguration() == null) {
+            return configuration;
+        }
+        // Defense in depth: the computer<->CCR-unit link is set via ComputerController, which
+        // already scopes both the computer and the unit to the caller - this should be
+        // unreachable in practice, but a link is only ever meaningful for the user who set it, so
+        // never adopt one belonging to someone else regardless of how it got here.
+        if (linkedCcrUnit.userId() != user.id()) {
             return configuration;
         }
         logger.info(
@@ -656,10 +675,23 @@ public class DiveService {
                 user.id(), filters, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
 
-    // TODO: Pagination
     public List<DiveSiteWithDives<DiveSite>> getSitesByUser(
             final User user, final boolean onlyOwn) {
-        return diveDataService.findDiveSitesByUser(user.id(), onlyOwn);
+        final var sites = diveDataService.findDiveSitesByUser(user.id(), onlyOwn);
+        if (sites.size() <= SITE_LIST_LIGHTWEIGHT_THRESHOLD) {
+            return sites;
+        }
+        return sites.stream().map(DiveSiteWithDives::withoutDiveInfo).toList();
+    }
+
+    /**
+     * The lazily-fetched counterpart to a {@link DiveSiteWithDives} whose {@code diveInfo} was
+     * stripped by {@link #getSitesByUser} for having too many sites - fetches just this one site's
+     * dive list on demand (e.g. when the map's marker popup for it is opened).
+     */
+    public List<BasicDiveInfo> getDivesAtSiteForUser(
+            final User user, final long siteId, final boolean onlyOwn) {
+        return diveDataService.findDivesAtSiteForUser(user.id(), siteId, onlyOwn);
     }
 
     private boolean isSimilarName(final CharSequence a, final CharSequence b) {

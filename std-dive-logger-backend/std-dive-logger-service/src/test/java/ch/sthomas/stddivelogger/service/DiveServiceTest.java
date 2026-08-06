@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -11,7 +12,10 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
+import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
+import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -121,6 +125,24 @@ public class DiveServiceTest {
     }
 
     @Test
+    void inferConfigurationFromComputerIgnoresAUnitBelongingToAnotherUser() {
+        // Defense in depth against the computer<->CCR-unit link somehow pointing at a unit that
+        // isn't the caller's own - see the IDOR this was added alongside (updateDiveComputer
+        // previously let anyone re-link *any* user's computer to a unit they own themselves).
+        final var otherUsersUnit =
+                new CcrUnit(
+                        5L, 2L, "Someone else's rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
+        final var service = serviceWithLinkedCcrUnit(Optional.of(otherUsersUnit));
+
+        final var result =
+                service.inferConfigurationFromComputer(
+                        USER, DiveConfiguration.createEmpty(USER), List.of(profileOnComputer(42)));
+
+        assertEquals(BaseConfiguration.OTHER, result.base());
+        assertNull(result.ccrUnit());
+    }
+
+    @Test
     void inferConfigurationFromComputerLeavesConfigurationUntouchedWithNoProfiles() {
         final var linkedUnit =
                 new CcrUnit(5L, 1L, "rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
@@ -132,5 +154,77 @@ public class DiveServiceTest {
 
         assertEquals(BaseConfiguration.OTHER, result.base());
         assertNull(result.ccrUnit());
+    }
+
+    private static DiveSiteWithDives<DiveSite> siteWithDives(final long id, final int diveCount) {
+        final var site = new DiveSite(id, "Site " + id, 0.0, 0.0);
+        final var diveInfo =
+                java.util.stream.IntStream.range(0, diveCount)
+                        .mapToObj(i -> new BasicDiveInfo(i, i, "Dive " + i))
+                        .toList();
+        return new DiveSiteWithDives<>(site, diveInfo.size(), diveInfo);
+    }
+
+    private static DiveService serviceWithSites(final List<DiveSiteWithDives<DiveSite>> sites) {
+        final var diveDataService = mock(DiveDataService.class);
+        when(diveDataService.findDiveSitesByUser(
+                        anyLong(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(sites);
+        return new DiveService(
+                diveDataService, mock(StorageService.class), mock(UserDataService.class));
+    }
+
+    @Test
+    void getSitesByUserKeepsFullDiveInfoAtOrBelowTheLightweightThreshold() {
+        final var sites =
+                java.util.stream.LongStream.range(0, DiveService.SITE_LIST_LIGHTWEIGHT_THRESHOLD)
+                        .mapToObj(id -> siteWithDives(id, 2))
+                        .toList();
+        final var service = serviceWithSites(sites);
+
+        final var result = service.getSitesByUser(USER, true);
+
+        assertEquals(DiveService.SITE_LIST_LIGHTWEIGHT_THRESHOLD, result.size());
+        assertNotNull(result.getFirst().diveInfo());
+        assertEquals(2, result.getFirst().diveInfo().size());
+        assertEquals(2, result.getFirst().diveCount());
+    }
+
+    @Test
+    void getSitesByUserStripsDiveInfoButKeepsCountAboveTheLightweightThreshold() {
+        final var sites =
+                java.util.stream.LongStream.range(
+                                0, DiveService.SITE_LIST_LIGHTWEIGHT_THRESHOLD + 1)
+                        .mapToObj(id -> siteWithDives(id, 3))
+                        .toList();
+        final var service = serviceWithSites(sites);
+
+        final var result = service.getSitesByUser(USER, true);
+
+        assertEquals(DiveService.SITE_LIST_LIGHTWEIGHT_THRESHOLD + 1, result.size());
+        assertNull(result.getFirst().diveInfo());
+        // The site itself (with its coordinates) and the count are always present, even stripped.
+        assertNotNull(result.getFirst().site());
+        assertEquals(3, result.getFirst().diveCount());
+    }
+
+    @Test
+    void searchDivesWithIncludeReaderTrueDoesNotThrowAndDelegatesToTheSameSearch() {
+        final var diveDataService = mock(DiveDataService.class);
+        final var expected =
+                new PagedResponse<ch.sthomas.stddivelogger.model.dive.SimplifiedDive>(
+                        0, 0, 0, List.of());
+        when(diveDataService.searchDives(
+                        org.mockito.ArgumentMatchers.eq(1L),
+                        org.mockito.ArgumentMatchers.eq("wreck"),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenReturn(expected);
+        final var service =
+                new DiveService(
+                        diveDataService, mock(StorageService.class), mock(UserDataService.class));
+
+        final var result = service.searchDives(USER, "wreck", true, 0);
+
+        assertSame(expected, result);
     }
 }

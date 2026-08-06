@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
+import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.entity.CcrUnitEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
@@ -37,6 +38,15 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "SELECT d FROM DiveEntity d JOIN DiveProfileEntity p ON p.dive = d WHERE p.id IN :profileIds")
     List<DiveEntity> findByProfileIds(List<Long> profileIds);
 
+    /**
+     * On-demand per-site dive list for the map popup - see {@code DiveSiteWithDives}'s class doc
+     * for why this is fetched lazily rather than always inlined into the site list.
+     */
+    @Query(
+            "SELECT new ch.sthomas.stddivelogger.model.dive.BasicDiveInfo(d.id, d.number, d.diveIdentifier)"
+                    + " FROM DiveEntity d WHERE d.user.id = :userId AND d.diveSite.id = :siteId")
+    List<BasicDiveInfo> findBasicDiveInfoByUserIdAndDiveSiteId(long userId, long siteId);
+
     @Query(
             value =
                     """
@@ -69,106 +79,6 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     @Query("SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :userId")
     Optional<Integer> findMaxDiveNumberByUserId(long userId);
-
-    @Query(
-            """
-                    SELECT MAX(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId
-                    """)
-    Optional<Long> findMaxDurationByUserId(long userId);
-
-    @Query(
-            """
-                    SELECT SUM(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId
-                    """)
-    Optional<Long> findTotalDurationByUserId(long userId);
-
-    @Query(
-            """
-                    SELECT MAX(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id
-                        AND d.user.id = :userId
-                        AND YEAR(s.start) = :year
-                    """)
-    Optional<Long> findMaxDurationByUserIdAndYear(long userId, Integer year);
-
-    @Query(
-            """
-                    SELECT SUM(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id
-                        AND d.user.id = :userId
-                        AND YEAR(s.start) = :year
-                    """)
-    Optional<Long> findTotalDurationByUserIdAndYear(long userId, Integer year);
-
-    @Query(
-            """
-                    SELECT MAX(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId
-                    JOIN DiveBuddyNameEntity b
-                    ON d.id = b.dive.id AND b.name = :buddy
-                    """)
-    Optional<Long> findMaxDurationByUserIdAndBuddy(long userId, String buddy);
-
-    @Query(
-            """
-                    SELECT SUM(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId
-                    JOIN DiveBuddyNameEntity b
-                    ON d.id = b.dive.id AND b.name = :buddy
-                    """)
-    Optional<Long> findTotalDurationByUserIdAndBuddy(long userId, String buddy);
-
-    @Query(
-            """
-                    SELECT MAX(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId AND d.diveSite.id = :diveSiteId
-                    """)
-    Optional<Long> findMaxDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
-
-    @Query(
-            """
-                    SELECT SUM(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId AND d.diveSite.id = :diveSiteId
-                    """)
-    Optional<Long> findTotalDurationByUserIdAndDiveSiteId(long userId, long diveSiteId);
-
-    @Query(
-            """
-                    SELECT MAX(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId AND d.configuration.baseConfiguration = :baseConfiguration
-                    """)
-    Optional<Long> findMaxDurationByUserIdAndConfiguration_BaseConfiguration(
-            long userId, BaseConfiguration baseConfiguration);
-
-    @Query(
-            """
-                    SELECT SUM(s.durationSeconds)
-                    FROM DiveSummaryEntity s
-                    JOIN DiveEntity d
-                    ON s.dive.id = d.id AND d.user.id = :userId AND d.configuration.baseConfiguration = :baseConfiguration
-                    """)
-    Optional<Long> findTotalDurationByUserIdAndConfiguration_BaseConfiguration(
-            long userId, BaseConfiguration baseConfiguration);
 
     @Query(
             value =
@@ -208,30 +118,6 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     List<DiveEntity> findAllByIdAndIsReader(long userId, List<Long> ids);
 
     long countByUser_Id(Long userId);
-
-    @Query(
-            value =
-                    """
-        SELECT COUNT(DISTINCT ns.n) FROM (
-            SELECT b.name AS n
-            FROM t_dives d
-                     INNER JOIN t_dive_buddy_name b ON d.pk_dive_id = b.fk_dive_id
-            UNION
-            SELECT u.name AS n
-            FROM t_users u
-                     INNER JOIN t_dives d_other ON d_other.fk_diver_id = u.pk_user_id
-                     INNER JOIN t_dive_buddy b ON b.fk_buddy_dive_id = d_other.pk_dive_id
-                     INNER JOIN t_dives d_this ON b.fk_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
-            UNION
-            SELECT u.name AS n
-            FROM t_dives d_this
-                     INNER JOIN t_dive_buddy b ON b.fk_buddy_dive_id = d_this.pk_dive_id AND d_this.fk_diver_id = :userId
-                     INNER JOIN t_dives d_other ON d_other.fk_diver_id = b.fk_dive_id
-                     INNER JOIN t_users u ON d_other.fk_diver_id = u.pk_user_id
-        ) ns
-        """,
-            nativeQuery = true)
-    long countUniqueBuddiesByUserId(long userId);
 
     Optional<DiveEntity> findByUser_IdAndNumber(Long userId, int number);
 
@@ -290,59 +176,4 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")
     @Modifying
     void setWeight(double newValue, Collection<Long> idsList);
-
-    // ── Tag-filtered stats queries ─────────────────────────────────────────────
-
-    /**
-     * Returns IDs of dives owned by the user that carry ALL of the specified tags (non-dismissed).
-     * Uses a HAVING COUNT = tagCount to enforce AND semantics.
-     */
-    @Query(
-            """
-            SELECT d.id
-            FROM DiveEntity d
-            JOIN d.tags dt
-            WHERE d.user.id = :userId
-              AND dt.dismissed = false
-              AND dt.tag.id IN :tagIds
-            GROUP BY d.id
-            HAVING COUNT(DISTINCT dt.tag.id) = :tagCount
-            """)
-    List<Long> findDiveIdsByTagsAndUserId(long userId, Collection<Long> tagIds, long tagCount);
-
-    /** Duration stats for a specific tag (dives carrying that tag, non-dismissed). */
-    @Query(
-            """
-            SELECT MAX(s.durationSeconds)
-            FROM DiveSummaryEntity s
-            JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
-            JOIN d.tags dt ON dt.tag.id = :tagId AND dt.dismissed = false
-            """)
-    Optional<Long> findMaxDurationByUserIdAndTagId(long userId, long tagId);
-
-    @Query(
-            """
-            SELECT SUM(s.durationSeconds)
-            FROM DiveSummaryEntity s
-            JOIN DiveEntity d ON s.dive.id = d.id AND d.user.id = :userId
-            JOIN d.tags dt ON dt.tag.id = :tagId AND dt.dismissed = false
-            """)
-    Optional<Long> findTotalDurationByUserIdAndTagId(long userId, long tagId);
-
-    /** Duration stats for a set of dive IDs (used for tag-combination stats). */
-    @Query(
-            """
-            SELECT MAX(s.durationSeconds)
-            FROM DiveSummaryEntity s
-            WHERE s.dive.id IN :diveIds
-            """)
-    Optional<Long> findMaxDurationByDiveIds(Collection<Long> diveIds);
-
-    @Query(
-            """
-            SELECT SUM(s.durationSeconds)
-            FROM DiveSummaryEntity s
-            WHERE s.dive.id IN :diveIds
-            """)
-    Optional<Long> findTotalDurationByDiveIds(Collection<Long> diveIds);
 }

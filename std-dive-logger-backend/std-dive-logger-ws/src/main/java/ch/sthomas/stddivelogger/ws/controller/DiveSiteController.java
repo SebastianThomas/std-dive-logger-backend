@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
+import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -42,7 +43,13 @@ public class DiveSiteController {
 
     @Operation(
             summary = "Get all DiveSites for this user",
-            description = "May need to be paginated for too many dive sites",
+            description =
+                    "Never paginated - every site the user has (coordinates always included) comes"
+                            + " back in one response. Above DiveService.SITE_LIST_LIGHTWEIGHT_THRESHOLD"
+                            + " sites, each site's diveInfo is omitted (null) to keep the payload"
+                            + " small; fetch it lazily per site via GET /v1/dives/sites/{id}/dives"
+                            + " when needed (e.g. a map marker's popup opening). diveCount is always"
+                            + " present either way.",
             parameters = {
                 @Parameter(
                         name = "includeReader",
@@ -62,6 +69,28 @@ public class DiveSiteController {
     @GetMapping(path = "/{id}")
     public DiveSite getSite(@PathVariable @Positive final long id) {
         return diveService.getSiteById(id).orElseThrow();
+    }
+
+    @Operation(
+            summary = "Get the current user's dives at a specific site",
+            description =
+                    "Lazily fetches what getAllDiveSites' diveInfo omits once a user has too many"
+                            + " sites for it to inline every dive at every site - see that"
+                            + " endpoint's response shape.",
+            parameters = {
+                @Parameter(
+                        name = "includeReader",
+                        description =
+                                "`false`, to only get own logged dives, "
+                                        + "`true`, to include dives where the user only has reader privileges")
+            })
+    @GetMapping(path = "/{id}/dives")
+    public List<BasicDiveInfo> getDivesAtSite(
+            @AuthenticationPrincipal final User user,
+            @PathVariable("id") @Positive final long siteId,
+            @RequestParam(value = "includeReader", defaultValue = "false")
+                    final boolean includeReader) {
+        return diveService.getDivesAtSiteForUser(user, siteId, !includeReader);
     }
 
     @Operation(summary = "Find DiveSite by location")
