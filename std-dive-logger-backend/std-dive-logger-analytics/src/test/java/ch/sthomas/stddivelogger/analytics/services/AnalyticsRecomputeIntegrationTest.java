@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
  * bump flags it again) and that the exact data-service methods behind the `/segments` and `/rates`
  * HTTP endpoints return sane results afterward.
  */
-@SpringBootTest
+@SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional
 class AnalyticsRecomputeIntegrationTest {

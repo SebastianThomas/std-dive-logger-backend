@@ -17,7 +17,7 @@ import org.testcontainers.utility.DockerImageName;
  * classic-Jackson-2 version skew that used to break Hibernate's JacksonJsonFormatMapper and
  * Spring's YAML message converter autoconfiguration at startup) that a narrower test wouldn't.
  */
-@SpringBootTest
+@SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @ActiveProfiles("local-output")
 class ApplicationContextSmokeTest {

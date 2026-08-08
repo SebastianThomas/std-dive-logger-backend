@@ -44,7 +44,9 @@ import javax.crypto.SecretKey;
  * through the full stack. Kept as one test class (one container startup) rather than split by
  * import source, since spinning up Postgres is the expensive part of this test.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "scheduling.enabled=false")
 @AutoConfigureTestRestTemplate
 @Testcontainers
 class ImportIntegrationTest {

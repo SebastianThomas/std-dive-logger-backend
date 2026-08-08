@@ -50,7 +50,7 @@ import java.util.Objects;
  * as a single grouped SQL query per call instead of one query per group, so this also doubles as
  * correctness coverage for that consolidation (identical results, far fewer round trips).
  */
-@SpringBootTest
+@SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional
 class StatsDataServiceIntegrationTest {
