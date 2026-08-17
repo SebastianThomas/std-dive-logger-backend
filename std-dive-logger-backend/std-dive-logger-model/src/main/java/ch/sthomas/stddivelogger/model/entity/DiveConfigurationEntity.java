@@ -85,7 +85,11 @@ public class DiveConfigurationEntity {
                                                 getCylinderSizeEntity.apply(c.size()),
                                                 c.startBar(),
                                                 c.endBar(),
-                                                c.notes()))
+                                                c.notes(),
+                                                c.gas(),
+                                                c.role(),
+                                                c.usageStart(),
+                                                c.usageEnd()))
                         .collect(Collectors.toCollection(ArrayList::new));
     }
 
@@ -128,7 +132,11 @@ public class DiveConfigurationEntity {
                                                 getCylinderSizeEntity.apply(c.size()),
                                                 c.startBar(),
                                                 c.endBar(),
-                                                c.notes()))
+                                                c.notes(),
+                                                c.gas(),
+                                                c.role(),
+                                                c.usageStart(),
+                                                c.usageEnd()))
                         .toList();
         this.cylinders.clear();
         this.cylinders.addAll(newCylinders);

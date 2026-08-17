@@ -30,6 +30,11 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     Page<DiveEntity> findByUser_IdAndConfiguration_CcrUnit_Id(
             long userId, long configurationCcrUnitId, Pageable pageable);
 
+    // Unpaginated variant used only for the "delete every dive using this CCR unit" bulk
+    // operation, which needs every matching id up front rather than one page at a time.
+    List<DiveEntity> findAllByUser_IdAndConfiguration_CcrUnit_Id(
+            long userId, long configurationCcrUnitId);
+
     Page<DiveEntity> findByUser_Id(long id, Pageable pageable);
 
     Page<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
@@ -43,8 +48,10 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
      * for why this is fetched lazily rather than always inlined into the site list.
      */
     @Query(
-            "SELECT new ch.sthomas.stddivelogger.model.dive.BasicDiveInfo(d.id, d.number, d.diveIdentifier)"
-                    + " FROM DiveEntity d WHERE d.user.id = :userId AND d.diveSite.id = :siteId")
+            """
+            SELECT new ch.sthomas.stddivelogger.model.dive.BasicDiveInfo(d.id, d.number, d.diveIdentifier)
+            FROM DiveEntity d WHERE d.user.id = :userId AND d.diveSite.id = :siteId
+            """)
     List<BasicDiveInfo> findBasicDiveInfoByUserIdAndDiveSiteId(long userId, long siteId);
 
     @Query(
@@ -164,8 +171,10 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
      * is silently left alone rather than failing the whole batch.
      */
     @Query(
-            "UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity"
-                    + " WHERE c.diveId IN (:idsList) AND c.baseConfiguration IN (:ccrBaseConfigs)")
+            """
+            UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity
+            WHERE c.diveId IN (:idsList) AND c.baseConfiguration IN (:ccrBaseConfigs)
+            """)
     @Modifying
     void setCcrUnit(
             CcrUnitEntity ccrUnitEntity,
@@ -176,4 +185,11 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")
     @Modifying
     void setWeight(double newValue, Collection<Long> idsList);
+
+    // Used when deleting a CCR unit - the unit itself is never allowed to cascade-delete a dive,
+    // only unlink from it (no FK in the schema cascades this, so the DB would otherwise reject
+    // the unit's own delete while any configuration still references it).
+    @Query("UPDATE DiveConfigurationEntity c SET c.ccrUnit = NULL WHERE c.ccrUnit.id = :ccrUnitId")
+    @Modifying(clearAutomatically = true)
+    void clearCcrUnitFromConfigurations(long ccrUnitId);
 }

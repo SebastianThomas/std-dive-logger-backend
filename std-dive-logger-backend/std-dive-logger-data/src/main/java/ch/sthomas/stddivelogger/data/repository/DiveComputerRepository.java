@@ -37,4 +37,10 @@ public interface DiveComputerRepository extends JpaRepository<DiveComputerEntity
     @Query("DELETE FROM DiveComputerEntity c WHERE c.user.id = :userId AND SIZE(c.profiles) = 0")
     @Modifying
     int deleteAllByUser_IdAndProfilesIsEmpty(Long userId);
+
+    // Used when deleting a CCR unit - unlinks any computer permanently paired with it (see
+    // DiveComputerEntity.ccrUnit) rather than blocking or cascading the unit's own delete.
+    @Query("UPDATE DiveComputerEntity d SET d.ccrUnit = NULL WHERE d.ccrUnit.id = :ccrUnitId")
+    @Modifying(clearAutomatically = true)
+    void clearCcrUnitFromComputers(long ccrUnitId);
 }

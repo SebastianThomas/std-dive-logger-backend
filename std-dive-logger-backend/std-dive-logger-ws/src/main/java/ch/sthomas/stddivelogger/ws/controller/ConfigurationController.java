@@ -9,6 +9,8 @@ import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
+import io.swagger.v3.oas.annotations.Operation;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -93,6 +95,34 @@ public class ConfigurationController {
             @PathVariable @Positive final long id,
             @RequestBody @Valid final CcrUnit ccrUnit) {
         return diveService.updateCcrUnit(user, id, ccrUnit);
+    }
+
+    @Operation(
+            summary = "Delete a CCR unit",
+            description =
+                    "Unlinks the unit from every dive configuration and dive computer that"
+                            + " references it, then deletes the unit itself. Never deletes a"
+                            + " dive, profile, or computer.")
+    @DeleteMapping("/ccrUnit/{id}")
+    public void deleteCcrUnit(
+            @AuthenticationPrincipal @NotNull final User user,
+            @PathVariable @Positive final long id) {
+        diveService.deleteCcrUnit(user, id);
+    }
+
+    public record DeletedDivesResult(int deletedDives) {}
+
+    @Operation(
+            summary = "Delete a CCR unit and every dive that uses it",
+            description =
+                    "Permanently deletes every dive linked to this CCR unit, then the unit"
+                            + " itself. Irreversible - intended only for an explicit,"
+                            + " heavily-confirmed frontend action, never a casual click.")
+    @DeleteMapping("/ccrUnit/{id}/dives")
+    public DeletedDivesResult deleteCcrUnitAndAllDives(
+            @AuthenticationPrincipal @NotNull final User user,
+            @PathVariable @Positive final long id) {
+        return new DeletedDivesResult(diveService.deleteCcrUnitAndAllDives(user, id));
     }
 
     @GetMapping("/ccrUnit/autocomplete")

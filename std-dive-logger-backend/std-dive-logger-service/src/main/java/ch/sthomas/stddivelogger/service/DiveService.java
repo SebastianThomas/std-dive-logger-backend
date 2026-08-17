@@ -40,6 +40,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.awt.*;
 import java.io.*;
@@ -844,6 +845,46 @@ public class DiveService {
     public CcrUnit updateCcrUnit(
             final @NotNull User user, final long id, @Valid final CcrUnit ccrUnit) {
         return diveDataService.updateCcrUnitById(user.id(), id, ccrUnit);
+    }
+
+    /**
+     * Deletes a CCR unit only - unlinks it from every dive configuration and dive computer that
+     * currently references it, never touches the dives/profiles/computers themselves. See {@link
+     * ch.sthomas.stddivelogger.data.service.DiveDataService#deleteCcrUnitById}.
+     */
+    public void deleteCcrUnit(final @NotNull User user, final long id) {
+        diveDataService.deleteCcrUnitById(user.id(), id);
+    }
+
+    /**
+     * Deletes every dive that uses this CCR unit, then the unit itself (unlinking anything left,
+     * e.g. a computer with no dives). Ownership-checked per dive the same way a normal single-dive
+     * delete is - a dive whose id turns up under this CCR unit but that the user no longer has
+     * write access to is simply skipped rather than failing the whole batch. Intentionally
+     * destructive and only ever reached via an explicit, heavily-confirmed frontend action - not a
+     * side effect of the plain {@link #deleteCcrUnit} above.
+     *
+     * <p>Wrapped in a single transaction (unlike most orchestration in this class - see the {@code
+     * saveDive} comment above for why that's usually deliberately avoided) because every step here
+     * is a plain DB delete with no slow external I/O to hold a connection open across - so there's
+     * no downside to atomicity, and every upside: a failure partway through a multi-dive batch must
+     * not leave some dives permanently deleted while others (and the CCR unit itself) survive.
+     */
+    @Transactional
+    public int deleteCcrUnitAndAllDives(final @NotNull User user, final long id) {
+        // Ownership-checked first so a unit id belonging to someone else 404s here rather than
+        // silently returning zero deleted dives.
+        getCcrUnitById(user, id);
+        final var diveIds = diveDataService.findDiveIdsByUserAndCcrUnit(user.id(), id);
+        var deleted = 0;
+        for (final var diveId : diveIds) {
+            if (hasWriteAccess(user, diveId)) {
+                diveDataService.deleteDiveById(diveId);
+                deleted++;
+            }
+        }
+        deleteCcrUnit(user, id);
+        return deleted;
     }
 
     public List<String> getCcrUnitNameSuggestions(final String query) {

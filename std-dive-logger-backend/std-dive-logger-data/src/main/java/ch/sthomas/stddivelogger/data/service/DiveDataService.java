@@ -196,6 +196,15 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public List<Long> findDiveIdsByUserAndCcrUnit(final long userId, final long ccrUnitId) {
+        return diveRepository
+                .findAllByUser_IdAndConfiguration_CcrUnit_Id(userId, ccrUnitId)
+                .stream()
+                .map(DiveEntity::getId)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Dive> findDiveById(final long id) {
         return diveRepository.findById(id).map(this::toRecord);
     }
@@ -356,6 +365,58 @@ public class DiveDataService {
             return null;
         }
         return findOrCreateCcrUnit(user, configuration.ccrUnit());
+    }
+
+    /**
+     * Same best-guess as {@code DiveService#inferConfigurationFromComputer} - auto-fills the CCR
+     * unit (and its default base configuration) from whichever computer recorded this profile - but
+     * applied when a companion profile is attached to an *already existing* dive, which previously
+     * skipped this entirely (only a brand-new dive via {@code saveDive} got it). A no-op whenever
+     * there's nothing to infer from: no configuration on the dive yet (shouldn't happen - every
+     * dive gets one at creation), an explicit CCR unit already set (never overridden), the computer
+     * isn't linked to a unit, that unit has no default base configuration, or it belongs to a
+     * different user.
+     */
+    // Package-private rather than private so it can be exercised directly by a focused unit test
+    // instead of needing a full addProfileToDiveWithDiveId() integration fixture just to reach it
+    // - same rationale as DiveService#inferConfigurationFromComputer.
+    void inferConfigurationFromComputerIfMissing(
+            final User user,
+            final @Nullable DiveConfigurationEntity configuration,
+            final DiveProfileUpload profile) {
+        if (configuration == null || configuration.toRecord().ccrUnit() != null) {
+            return;
+        }
+        final var linkedCcrUnit =
+                diveComputerRepository
+                        .findById(profile.diveComputerId())
+                        .map(DiveComputerEntity::getCcrUnit)
+                        .orElse(null);
+        final var defaultBaseConfiguration =
+                linkedCcrUnit == null ? null : linkedCcrUnit.getDefaultBaseConfiguration();
+        if (linkedCcrUnit == null
+                || defaultBaseConfiguration == null
+                || linkedCcrUnit.getUser().getId() != user.id()) {
+            return;
+        }
+        final var current = configuration.toRecord();
+        final var inferred =
+                new DiveConfiguration(
+                        current.suit(),
+                        defaultBaseConfiguration,
+                        current.weight(),
+                        current.weightFeeling(),
+                        current.cylinders(),
+                        linkedCcrUnit.toRecord());
+        configuration.update(
+                configuration.getSuitEntity(), linkedCcrUnit, inferred, this::toEntity);
+        logger.info(
+                "Inferred CCR unit {} (base {}) for user {} from dive computer {} while attaching a"
+                        + " companion profile",
+                linkedCcrUnit.getId(),
+                defaultBaseConfiguration,
+                user.id(),
+                profile.diveComputerId());
     }
 
     @Transactional
@@ -719,6 +780,7 @@ public class DiveDataService {
         }
         final var diveEntity = diveEntityOpt.get();
         final long diveId = diveEntity.getId();
+        inferConfigurationFromComputerIfMissing(user, diveEntity.getConfiguration(), profile);
         final var profileEntity = createDiveProfileEntity(profile);
         diveEntity.addProfiles(List.of(profileEntity));
         final var savedProfile = diveProfileRepository.save(profileEntity);
@@ -1527,6 +1589,26 @@ public class DiveDataService {
         existing.setPublic(ccrUnit.isPublic());
         existing.setDefaultBaseConfiguration(ccrUnit.defaultBaseConfiguration());
         return ccrUnitRepository.save(existing).toRecord();
+    }
+
+    /**
+     * Deletes a CCR unit and nothing else - every dive configuration and dive computer currently
+     * linked to it is unlinked first (set to no unit), never deleted. No FK in the schema cascades
+     * from a CCR unit to a configuration/computer, so skipping the unlink would simply make the
+     * delete itself fail with a foreign-key violation once anything still references the unit.
+     */
+    @Transactional
+    public void deleteCcrUnitById(final long userId, final long id) {
+        final var existing =
+                ccrUnitRepository
+                        .findByIdAndUser_Id(id, userId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find CCR unit by id " + id));
+        diveRepository.clearCcrUnitFromConfigurations(id);
+        diveComputerRepository.clearCcrUnitFromComputers(id);
+        ccrUnitRepository.delete(existing);
     }
 
     @Transactional(readOnly = true)

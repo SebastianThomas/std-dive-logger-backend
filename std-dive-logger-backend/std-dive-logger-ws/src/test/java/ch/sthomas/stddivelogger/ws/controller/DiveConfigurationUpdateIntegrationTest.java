@@ -12,12 +12,14 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSizeUnit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerManufacturerEntity;
@@ -171,7 +173,15 @@ class DiveConfigurationUpdateIntegrationTest {
 
     private static DiveConfigurationCylinder cylinder(final double liters, final String notes) {
         return new DiveConfigurationCylinder(
-                0, new CylinderSize(CylinderSizeUnit.LITER, liters), 200.0, 50.0, notes);
+                0,
+                new CylinderSize(CylinderSizeUnit.LITER, liters),
+                200.0,
+                50.0,
+                notes,
+                Gas.AIR,
+                CylinderRole.OC,
+                null,
+                null);
     }
 
     @Test

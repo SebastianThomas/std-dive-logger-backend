@@ -25,8 +25,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     @Query(
             value =
-                    "SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END "
-                            + "FROM v_readers r WHERE r.dive_id = :diveId AND r.pk_user_id = :userId",
+                    """
+                    SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
+                    FROM v_readers r WHERE r.dive_id = :diveId AND r.pk_user_id = :userId
+                    """,
             nativeQuery = true)
     boolean isReader(long diveId, long userId);
 

@@ -38,14 +38,14 @@ public record SubsurfaceXmlFile(
         return ofHours(hours).plusMinutes(minutes);
     }
 
-    static double parsePercent(final @Nullable String percent) {
+    public static double parsePercent(final @Nullable String percent) {
         if (percent == null) {
             return 0;
         }
         return Double.parseDouble(percent.replace("%", "").trim());
     }
 
-    static @Nullable CylinderSize parseCylinderSize(final @Nullable String cylinderSize) {
+    public static @Nullable CylinderSize parseCylinderSize(final @Nullable String cylinderSize) {
         if (cylinderSize == null) {
             return null;
         }
@@ -57,7 +57,7 @@ public record SubsurfaceXmlFile(
         return new CylinderSize(CylinderSizeUnit.CUFT, value);
     }
 
-    static @Nullable GasContent parseGasContent(final @Nullable String gasContent) {
+    public static @Nullable GasContent parseGasContent(final @Nullable String gasContent) {
         if (gasContent == null) {
             return null;
         }

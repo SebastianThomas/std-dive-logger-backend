@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -159,6 +160,12 @@ public class DiveEntity {
 
     public Dive toRecord(final String baseUrl, final boolean includeBuddyDives) {
         Objects.requireNonNull(baseUrl, "baseUrl must not be null, check injected services");
+        final var profileRecords = profiles.stream().map(DiveProfileEntity::toRecord).toList();
+        final var cylinders =
+                Optional.ofNullable(configuration)
+                        .map(DiveConfigurationEntity::toRecord)
+                        .map(DiveConfiguration::cylinders)
+                        .orElse(List.of());
         return new Dive(
                 id,
                 user.toRecord().toFrontendModel(),
@@ -170,11 +177,14 @@ public class DiveEntity {
                 Optional.ofNullable(gasConsumption)
                         .map(DiveGasConsumptionEntity::toRecord)
                         .orElse(null),
+                cylinders.isEmpty()
+                        ? null
+                        : CylinderConsumptionCalculator.calculate(profileRecords, cylinders),
                 Optional.ofNullable(configuration)
                         .map(DiveConfigurationEntity::toRecord)
                         .orElse(null),
                 diveSite.toRecord(),
-                profiles.stream().map(DiveProfileEntity::toRecord).toList(),
+                profileRecords,
                 getBuddyDives(includeBuddyDives)
                         .map(d -> new BuddyDive(d.user.toRecord().toFrontendModel(), d.id))
                         .toList(),

@@ -7,10 +7,14 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContent;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContentUnit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -136,13 +140,20 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 getProfiles(computers, dive, parseCns(dive.cns()), parseOtu(dive.otu()));
         final var buddies =
                 dive.buddy().stream().flatMap(s -> Arrays.stream(s.split(","))).toList();
+        final var configuration = DiveConfiguration.createEmpty(user);
         final var payload =
                 new PendingImportPayload(
                         profiles,
                         "",
                         Visibility.EMPTY,
                         DiveGasConsumption.EMPTY,
-                        DiveConfiguration.createEmpty(user),
+                        new DiveConfiguration(
+                                configuration.suit(),
+                                configuration.base(),
+                                configuration.weight(),
+                                configuration.weightFeeling(),
+                                toCylinders(dive),
+                                configuration.ccrUnit()),
                         buddies,
                         null);
         final var start = profiles.stream().map(DiveProfileUpload::start).min(Instant::compareTo);
@@ -162,6 +173,57 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                         : null,
                 null,
                 payload);
+    }
+
+    private static final double PSI_PER_BAR = 14.5038;
+
+    private static @Nullable Double barValue(final @Nullable GasContent content) {
+        if (content == null) {
+            return null;
+        }
+        return content.unit() == GasContentUnit.PSI
+                ? content.value() / PSI_PER_BAR
+                : content.value();
+    }
+
+    /**
+     * Subsurface's {@code <cylinder>} elements already carry everything {@code
+     * DiveConfigurationCylinder} needs (size, start/end pressure, O2/He fraction) - {@code
+     * start}/{@code workpressure} were already used elsewhere for per-sample gas, but {@code end}
+     * (the actual end-of-dive tank pressure, needed for consumption) was previously parsed and then
+     * discarded entirely. Every cylinder is tagged {@link CylinderRole#OC} with no explicit usage
+     * window (the whole dive) - Subsurface doesn't mark which portion of the profile used which
+     * cylinder, or a CCR role (diluent/O2/bailout) for any of them, so a multi-cylinder CCR import
+     * still needs the diver to reclassify cylinders by hand afterwards; this only saves re-entering
+     * the size/pressures/mix that were already in the file.
+     */
+    private static List<DiveConfigurationCylinder> toCylinders(
+            final SubsurfaceXmlFile.SubsurfaceDive dive) {
+        final var cylinders = dive.cylinders();
+        if (cylinders == null) {
+            return List.of();
+        }
+        final var result = new ArrayList<DiveConfigurationCylinder>();
+        for (final var cylinder : cylinders) {
+            final var size = SubsurfaceXmlFile.parseCylinderSize(cylinder.size());
+            if (size == null) {
+                continue;
+            }
+            result.add(
+                    new DiveConfigurationCylinder(
+                            0,
+                            size,
+                            barValue(SubsurfaceXmlFile.parseGasContent(cylinder.start())),
+                            barValue(SubsurfaceXmlFile.parseGasContent(cylinder.end())),
+                            Objects.requireNonNullElse(cylinder.description(), ""),
+                            new Gas(
+                                    SubsurfaceXmlFile.parsePercent(cylinder.o2()) / 100,
+                                    SubsurfaceXmlFile.parsePercent(cylinder.he()) / 100),
+                            CylinderRole.OC,
+                            null,
+                            null));
+        }
+        return result;
     }
 
     /**

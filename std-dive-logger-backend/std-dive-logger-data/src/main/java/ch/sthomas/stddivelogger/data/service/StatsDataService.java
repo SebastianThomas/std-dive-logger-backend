@@ -563,7 +563,7 @@ public class StatsDataService {
                         ds.max_depth,
                         ds.avg_depth,
                         ds.duration_seconds,
-                        gc.rmv_liters,
+                        NULLIF(gc.rmv_liters, 0) AS rmv_liters,
                         v.visibility_meters,
                         dc.weight_kg,
                         dc.fk_suit_id,

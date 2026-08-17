@@ -13,8 +13,9 @@ public interface DiveMeasurementGasRepository
 
     @Modifying
     @Query(
-            "DELETE FROM DiveMeasurementGasEntity g WHERE g.measurement.profile.dive.id ="
-                    + " :diveId")
+            """
+            DELETE FROM DiveMeasurementGasEntity g WHERE g.measurement.profile.dive.id = :diveId
+            """)
     void deleteAllByDiveId(long diveId);
 
     List<DiveMeasurementGasEntity> findAllByMeasurement_Profile_IdOrderByMeasurement_TimeAsc(

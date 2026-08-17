@@ -19,7 +19,9 @@ public interface ReaderViewRepository extends JpaRepository<ReaderViewEntity, Re
      * - every dive at this site the user can at least read, not just the ones they own.
      */
     @Query(
-            "SELECT new ch.sthomas.stddivelogger.model.dive.BasicDiveInfo(r.dive.id, r.dive.number, r.dive.diveIdentifier)"
-                    + " FROM ReaderViewEntity r WHERE r.user.id = :userId AND r.dive.diveSite.id = :siteId")
+            """
+            SELECT new ch.sthomas.stddivelogger.model.dive.BasicDiveInfo(r.dive.id, r.dive.number, r.dive.diveIdentifier)
+            FROM ReaderViewEntity r WHERE r.user.id = :userId AND r.dive.diveSite.id = :siteId
+            """)
     List<BasicDiveInfo> findBasicDiveInfoByUserIdAndDiveSiteId(long userId, long siteId);
 }

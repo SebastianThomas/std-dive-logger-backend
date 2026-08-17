@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
@@ -22,6 +23,13 @@ public record Dive(
         @Nullable String previewImage,
         @Nullable Visibility visibility,
         @Nullable DiveGasConsumption gasConsumption,
+        /**
+         * Real gas consumption computed from tracked per-dive cylinders, not the (mostly
+         * unavailable/zero) whole-dive {@code gasConsumption} above - see {@link
+         * ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator}. Null only when
+         * this dive has no cylinders tracked at all, not when a figure happens to be zero.
+         */
+        @Nullable CylinderConsumptionResult cylinderConsumption,
         @Nullable DiveConfiguration configuration,
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,
