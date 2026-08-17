@@ -1242,6 +1242,35 @@ public class DiveDataService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<AdjacentDives> findAdjacentDives(final long userId, final long diveId) {
+        return diveRepository
+                .findByIdAndUser_Id(diveId, userId)
+                .map(DiveEntity::getNumber)
+                .map(
+                        number -> {
+                            final var previousId =
+                                    diveRepository
+                                            .findPreviousDiveNumber(userId, number)
+                                            .flatMap(
+                                                    n ->
+                                                            diveRepository.findByUser_IdAndNumber(
+                                                                    userId, n))
+                                            .map(DiveEntity::getId)
+                                            .orElse(null);
+                            final var nextId =
+                                    diveRepository
+                                            .findNextDiveNumber(userId, number)
+                                            .flatMap(
+                                                    n ->
+                                                            diveRepository.findByUser_IdAndNumber(
+                                                                    userId, n))
+                                            .map(DiveEntity::getId)
+                                            .orElse(null);
+                            return new AdjacentDives(previousId, nextId);
+                        });
+    }
+
+    @Transactional(readOnly = true)
     public List<DiveSiteWithDives<DiveSite>> findDiveSitesByUser(
             final long userId, final boolean onlyOwn) {
         return findDiveSiteEntitiesByUser(userId, onlyOwn).stream()

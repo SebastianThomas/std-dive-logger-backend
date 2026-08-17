@@ -88,6 +88,14 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     Optional<Integer> findMaxDiveNumberByUserId(long userId);
 
     @Query(
+            "SELECT MIN(d.number) FROM DiveEntity d WHERE d.user.id = :userId AND d.number > :number")
+    Optional<Integer> findNextDiveNumber(long userId, int number);
+
+    @Query(
+            "SELECT MAX(d.number) FROM DiveEntity d WHERE d.user.id = :userId AND d.number < :number")
+    Optional<Integer> findPreviousDiveNumber(long userId, int number);
+
+    @Query(
             value =
                     """
                             SELECT (f.dive).*

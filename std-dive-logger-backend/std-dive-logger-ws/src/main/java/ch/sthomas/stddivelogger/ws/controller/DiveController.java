@@ -684,6 +684,22 @@ public class DiveController {
     }
 
     @Operation(
+            summary = "Get the previous/next dive by number in the authenticated user's own log",
+            description =
+                    "Scoped to the caller's own dives only - not meaningful for a shared/reader"
+                            + " view of someone else's dive, since dive numbers are only unique"
+                            + " per user.")
+    @GetMapping(path = "/{id}/adjacent")
+    public AdjacentDives getAdjacentDives(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to access dives.");
+        }
+        return diveService.getAdjacentDives(user, diveId).orElseThrow();
+    }
+
+    @Operation(
             summary =
                     "Delete a dive, including all associated processed items (e.g., analytics, images)")
     @DeleteMapping(path = "/{id}")

@@ -623,6 +623,15 @@ public class DiveService {
         return diveDataService.findMaxDiveNumber(user).orElse(0) + 1;
     }
 
+    /**
+     * The dive immediately before/after the given dive in the authenticated user's own number
+     * sequence - deliberately scoped to that user's own dives (see {@link AdjacentDives}'s own doc
+     * comment for why), so this only ever returns something for a dive the caller owns.
+     */
+    public Optional<AdjacentDives> getAdjacentDives(final User user, final long diveId) {
+        return diveDataService.findAdjacentDives(user.id(), diveId);
+    }
+
     public PagedResponse<SimplifiedDive> getDiveByCustomIdentifier(
             final User user, final String query, final int page) {
         return diveDataService.findByIdentifierContains(

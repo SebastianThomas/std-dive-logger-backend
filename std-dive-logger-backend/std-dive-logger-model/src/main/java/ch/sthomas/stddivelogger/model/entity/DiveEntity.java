@@ -380,6 +380,10 @@ public class DiveEntity {
         return id;
     }
 
+    public int getNumber() {
+        return number;
+    }
+
     public List<DiveBuddyNameEntity> getNamedBuddies() {
         return namedBuddies;
     }
