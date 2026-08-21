@@ -1,7 +1,7 @@
 package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.data.service.DivePhotoDataService;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivePhotoUploadUrlBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DivePhotoUploadUrlResponse;
 import ch.sthomas.stddivelogger.model.dive.photo.DivePhoto;
@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.user.User;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,12 +76,12 @@ public class DivePhotoService {
 
     private final DivePhotoDataService divePhotoDataService;
     private final DiveService diveService;
-    private final StorageService storageService;
+    private final ObjectStorageService storageService;
 
     public DivePhotoService(
             final DivePhotoDataService divePhotoDataService,
             final DiveService diveService,
-            final StorageService storageService) {
+            @Lazy final ObjectStorageService storageService) {
         this.divePhotoDataService = divePhotoDataService;
         this.diveService = diveService;
         this.storageService = storageService;

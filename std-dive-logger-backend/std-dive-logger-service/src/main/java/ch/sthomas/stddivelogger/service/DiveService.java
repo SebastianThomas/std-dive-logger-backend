@@ -3,7 +3,7 @@ package ch.sthomas.stddivelogger.service;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
@@ -36,6 +36,7 @@ import org.hibernate.query.SortDirection;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,13 +76,13 @@ public class DiveService {
     public static final int SITE_LIST_LIGHTWEIGHT_THRESHOLD = 300;
 
     private final DiveDataService diveDataService;
-    private final StorageService storageService;
+    private final ObjectStorageService storageService;
     private final UserDataService userDataService;
     private final LevenshteinDistance levenshteinDistance = new LevenshteinDistance(100);
 
     public DiveService(
             final DiveDataService diveDataService,
-            final StorageService storageService,
+            @Lazy final ObjectStorageService storageService,
             final UserDataService userDataService) {
         this.diveDataService = diveDataService;
         this.storageService = storageService;

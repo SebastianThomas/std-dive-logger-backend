@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.sthomas.stddivelogger.data.repository.DivePhotoRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivePhotoUploadUrlBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
@@ -76,7 +76,7 @@ class DivePhotoIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private DiveSiteRepository diveSiteRepository;
     @Autowired private DivePhotoRepository divePhotoRepository;
-    @Autowired private StorageService storageService;
+    @Autowired private ObjectStorageService storageService;
 
     @Test
     void fullUploadConfirmListDownloadDeleteFlow() throws IOException {

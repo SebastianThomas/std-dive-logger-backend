@@ -1,6 +1,6 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.User;
 
@@ -33,9 +33,9 @@ import java.io.UncheckedIOException;
 @Validated
 public class LocalStorageUploadController {
 
-    private final StorageService storageService;
+    private final ObjectStorageService storageService;
 
-    public LocalStorageUploadController(final StorageService storageService) {
+    public LocalStorageUploadController(final ObjectStorageService storageService) {
         this.storageService = storageService;
     }
 

@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
@@ -51,7 +51,7 @@ public class DiveServiceTest {
         final var diveDataService = mock(DiveDataService.class);
         when(diveDataService.findCcrUnitLinkedToComputer(anyLong())).thenReturn(linked);
         return new DiveService(
-                diveDataService, mock(StorageService.class), mock(UserDataService.class));
+                diveDataService, mock(ObjectStorageService.class), mock(UserDataService.class));
     }
 
     private static DiveProfileUpload profileOnComputer(final long computerId) {
@@ -171,7 +171,7 @@ public class DiveServiceTest {
                         anyLong(), org.mockito.ArgumentMatchers.anyBoolean()))
                 .thenReturn(sites);
         return new DiveService(
-                diveDataService, mock(StorageService.class), mock(UserDataService.class));
+                diveDataService, mock(ObjectStorageService.class), mock(UserDataService.class));
     }
 
     @Test
@@ -221,7 +221,7 @@ public class DiveServiceTest {
                 .thenReturn(expected);
         final var service =
                 new DiveService(
-                        diveDataService, mock(StorageService.class), mock(UserDataService.class));
+                        diveDataService, mock(ObjectStorageService.class), mock(UserDataService.class));
 
         final var result = service.searchDives(USER, "wreck", true, 0);
 

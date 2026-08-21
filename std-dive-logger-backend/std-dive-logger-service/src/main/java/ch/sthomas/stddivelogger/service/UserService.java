@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.repository.GroupMemberRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
+import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
 import ch.sthomas.stddivelogger.model.exception.InvalidPasswordException;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -22,6 +23,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import org.jspecify.annotations.Nullable;
 import org.passay.*;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -50,6 +52,7 @@ public class UserService {
     private final UserDataService userDataService;
     private final PasswordEncoder passwordEncoder;
     private final StorageService storageService;
+    private final ObjectStorageService objectStorageService;
 
     private final Pattern emailPattern = Pattern.compile("(?<name>.*)@(?<domain>.*)");
     private final PasswordValidator passwordValidator =
@@ -71,12 +74,14 @@ public class UserService {
             final PasswordEncoder passwordEncoder,
             final AccountRequestRepository accountRequestRepository,
             GroupMemberRepository groupMemberRepository,
-            final StorageService storageService) {
+            final StorageService storageService,
+            @Lazy final ObjectStorageService objectStorageService) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
         this.accountRequestRepository = accountRequestRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.storageService = storageService;
+        this.objectStorageService = objectStorageService;
     }
 
     public User getUserById(final long userId) {
@@ -326,7 +331,8 @@ public class UserService {
                 };
         final var path = String.format("%s/%d.%s", category, user.id(), extension);
         try {
-            storageService.upload(path, file.getInputStream(), contentType, (int) file.getSize());
+            objectStorageService.upload(
+                    path, file.getInputStream(), contentType, (int) file.getSize());
         } catch (final IOException e) {
             throw new UncheckedIOException("Could not read the uploaded file.", e);
         }

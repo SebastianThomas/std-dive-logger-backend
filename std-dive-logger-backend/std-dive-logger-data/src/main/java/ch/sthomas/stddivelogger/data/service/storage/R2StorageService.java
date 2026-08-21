@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.retry.annotation.Backoff;
@@ -34,16 +35,23 @@ import java.util.Objects;
  * copy - this is the one place {@code presignedUploadUrl}/{@code download}/{@code delete} are
  * actually implemented against real R2, so consolidating here means any app that needs them (only
  * {@code ws}'s dive-photo gallery does today) gets them for free without a fourth copy.
+ *
+ * <p>Only implements {@link ObjectStorageService}, not {@link StorageService} - actual object IO
+ * genuinely needs real R2 credentials, but a base URL doesn't (see {@link
+ * RemoteBaseUrlStorageService}). {@code @Lazy} so that apps which merely happen to scan this
+ * class (e.g. {@code autocomplete}, via a shared {@code service}-module class that injects {@link
+ * ObjectStorageService} but never calls it) don't force this credential-requiring client to be
+ * constructed at startup.
  */
 @Service
 @Primary
 @Profile("!local-output")
-public class R2StorageService implements StorageService {
+@Lazy
+public class R2StorageService implements ObjectStorageService {
 
     private static final Logger logger = LoggerFactory.getLogger(R2StorageService.class);
     private final String bucket;
     private final MinioClient client;
-    private final String baseUrl;
 
     public R2StorageService(
             @Value("${ch.sthomas.stddivelogger.storage.r2.bucket}") @NotNull final String bucket,
@@ -52,9 +60,7 @@ public class R2StorageService implements StorageService {
             @Value("${ch.sthomas.stddivelogger.storage.r2.access-key}") @NotNull
                     final String accessKey,
             @Value("${ch.sthomas.stddivelogger.storage.r2.secret-key}") @NotNull
-                    final String secretKey,
-            @Value("${ch.sthomas.stddivelogger.storage.r2.base-url}") @NotNull
-                    final String baseUrl) {
+                    final String secretKey) {
         if (bucket == null || accountId == null || accessKey == null || secretKey == null) {
             logger.info(
                     "One is invalid: Bucket, Account Id, Access Key, Secret Key: {}, {}, {}, {}",
@@ -66,7 +72,6 @@ public class R2StorageService implements StorageService {
                     "One of bucket, accountId, accessKey, secretKey is null.");
         }
         this.bucket = bucket;
-        this.baseUrl = baseUrl;
         final var timeout = Duration.ofSeconds(15);
         final var url = "https://" + accountId + ".r2.cloudflarestorage.com";
         this.client =
@@ -182,10 +187,5 @@ public class R2StorageService implements StorageService {
                 | IOException e) {
             throw new IOException(MessageFormat.format("failed to delete for path={0}", path), e);
         }
-    }
-
-    @Override
-    public String baseUrl() {
-        return baseUrl;
     }
 }

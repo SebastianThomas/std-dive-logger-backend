@@ -14,12 +14,14 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Shared by every app (ws/import-ws/analytics) rather than each carrying its own near-duplicate
- * copy - see {@link R2StorageService}'s own doc for why they live in this module.
+ * copy - see {@link R2StorageService}'s own doc for why they live in this module. Implements both
+ * {@link StorageService} (base URL) and {@link ObjectStorageService} (actual IO) since local disk
+ * never needs the credential-guarding {@code @Lazy} treatment {@link R2StorageService} does.
  */
 @Service
 @Primary
 @Profile("local-output")
-public class FileStorageService implements StorageService {
+public class FileStorageService implements StorageService, ObjectStorageService {
     private static final Path BASE_DIR =
             Path.of(System.getProperty("user.dir")).resolve("local-storage").toAbsolutePath();
 
