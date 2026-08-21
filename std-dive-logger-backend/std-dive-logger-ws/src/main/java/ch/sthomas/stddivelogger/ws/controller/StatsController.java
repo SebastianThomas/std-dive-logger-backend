@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.stats.BuddyRoleStats;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsBreakdownDimension;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
@@ -65,6 +66,12 @@ public class StatsController {
         return statsService.getStatsForUserByBaseConfiguration(user);
     }
 
+    @GetMapping(path = "/site-type")
+    public List<UserDiveStatsBy<String>> getStatsForUserBySiteType(
+            @AuthenticationPrincipal final User user) {
+        return statsService.getStatsForUserBySiteType(user);
+    }
+
     @GetMapping(path = "/by-tag")
     public List<UserDiveStatsBy<TagDefinition>> getStatsForUserByTag(
             @AuthenticationPrincipal final User user) {
@@ -76,6 +83,11 @@ public class StatsController {
             @AuthenticationPrincipal final User user,
             @RequestParam @NotEmpty final List<Long> tagIds) {
         return statsService.getStatsForUserByTagFilter(user, tagIds);
+    }
+
+    @GetMapping(path = "/buddy-roles")
+    public BuddyRoleStats getBuddyRoleStats(@AuthenticationPrincipal final User user) {
+        return statsService.getBuddyRoleStats(user);
     }
 
     @GetMapping(path = "/timeseries")

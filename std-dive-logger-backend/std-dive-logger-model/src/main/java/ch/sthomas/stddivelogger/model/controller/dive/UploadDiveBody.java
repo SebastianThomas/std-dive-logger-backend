@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.time.Instant;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record UploadDiveBody(
@@ -14,4 +15,5 @@ public record UploadDiveBody(
         @Nullable String diveIdentifier,
         @Nullable @Positive Long diveSiteId,
         @Nullable @Positive Double maxDepth,
-        @Nullable Duration duration) {}
+        @Nullable Duration duration,
+        @Nullable Instant startTime) {}

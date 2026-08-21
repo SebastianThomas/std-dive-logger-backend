@@ -1,6 +1,9 @@
 package ch.sthomas.stddivelogger.model.controller;
 
+import ch.sthomas.stddivelogger.model.dive.TeamTerminology;
+import ch.sthomas.stddivelogger.model.dive.conditions.Current;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 
@@ -23,7 +26,22 @@ public record UpdateDiveBody(
         @Nullable Visibility visibility,
         @Nullable String customIdentifier,
         @Nullable @Positive Long siteId,
-        @Nullable List<String> namedBuddies) {
+        @Nullable List<NamedBuddyInput> namedBuddies,
+        @Nullable WaterType waterType,
+        @Nullable Current current,
+        // At most one of these two may be set (checked below) - both null means the dive's own
+        // owner led. See DiveLeader's own doc comment for what each represents.
+        @Nullable @Positive Long leaderNamedBuddyId,
+        @Nullable @Positive Long leaderBuddyDiveId,
+        @Nullable TeamTerminology teamTerminology) {
+
+    public UpdateDiveBody {
+        if (leaderNamedBuddyId != null && leaderBuddyDiveId != null) {
+            throw new IllegalArgumentException(
+                    "A dive leader can be a named buddy or a linked buddy dive, not both.");
+        }
+    }
+
     @Override
     @NotNull
     public String toString() {

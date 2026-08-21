@@ -5,6 +5,7 @@ import static org.apache.commons.lang3.StringUtils.isNumeric;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.repository.*;
 import ch.sthomas.stddivelogger.data.service.storage.StorageService;
+import ch.sthomas.stddivelogger.model.controller.NamedBuddyInput;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
@@ -14,6 +15,9 @@ import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
+import ch.sthomas.stddivelogger.model.dive.stats.BuddyRoleBreakdown;
+import ch.sthomas.stddivelogger.model.dive.stats.BuddyRoleCount;
+import ch.sthomas.stddivelogger.model.dive.stats.BuddyRoleStats;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.*;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
@@ -50,9 +54,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Array;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -85,6 +93,8 @@ public class DiveDataService {
     private final DiveTagRepository diveTagRepository;
     private final DiveMeasurementRepository diveMeasurementRepository;
     private final AnalyticsDataService analyticsDataService;
+    private final DiveBuddyRepository diveBuddyRepository;
+    private final DiveSiteLinkRepository diveSiteLinkRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -108,7 +118,9 @@ public class DiveDataService {
             final TagDataService tagDataService,
             final DiveTagRepository diveTagRepository,
             final DiveMeasurementRepository diveMeasurementRepository,
-            final AnalyticsDataService analyticsDataService) {
+            final AnalyticsDataService analyticsDataService,
+            final DiveBuddyRepository diveBuddyRepository,
+            final DiveSiteLinkRepository diveSiteLinkRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -131,6 +143,8 @@ public class DiveDataService {
         this.diveTagRepository = diveTagRepository;
         this.diveMeasurementRepository = diveMeasurementRepository;
         this.analyticsDataService = analyticsDataService;
+        this.diveBuddyRepository = diveBuddyRepository;
+        this.diveSiteLinkRepository = diveSiteLinkRepository;
     }
 
     @Transactional(readOnly = true)
@@ -619,6 +633,20 @@ public class DiveDataService {
                         new VisibilityEntity(existingDive, updateBody.visibility()));
             }
         }
+        // Mutate conditions in-place (same @MapsId constraint as configuration). Unlike
+        // visibility/gasConsumption, a null waterType/current here is a legitimate "clear it"
+        // value (not "leave unchanged"), since the frontend's Water Type & Current fieldset is
+        // always rendered/submitted (not gated behind an existing-conditions check like those two
+        // are) - so always apply it, rather than skipping when both happen to be null, which
+        // would otherwise make clearing an already-set value to "Unspecified" a no-op.
+        if (existingDive.getConditions() != null) {
+            existingDive.getConditions().update(updateBody.waterType(), updateBody.current());
+        } else {
+            existingDive.setConditions(
+                    new DiveConditionsEntity(
+                            existingDive, updateBody.waterType(), updateBody.current()));
+        }
+        validateLeaderReference(updateBody, newBuddies, existingDive);
         // All @MapsId child entities already mutated above — pass null to avoid re-assignment.
         existingDive.update(
                 updateBody.number(),
@@ -628,7 +656,10 @@ public class DiveDataService {
                 newBuddies,
                 null, // configuration mutated in-place above
                 null, // gasConsumption mutated in-place above
-                null); // visibility mutated in-place above
+                null, // visibility mutated in-place above
+                updateBody.leaderNamedBuddyId(),
+                updateBody.leaderBuddyDiveId(),
+                updateBody.teamTerminology());
         return toRecord(diveRepository.save(existingDive));
     }
 
@@ -675,17 +706,53 @@ public class DiveDataService {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
+    /**
+     * A dive leader must actually be a buddy on this dive - the FK constraints alone only prove the
+     * referenced row exists somewhere, not that it belongs to this dive, so a client could
+     * otherwise point {@code leaderNamedBuddyId} at a name from a completely different dive.
+     * Checked against {@code newBuddies} (the just-resolved incoming set) rather than the dive's
+     * pre-update collection, so naming someone as leader in the same request that adds them still
+     * works.
+     */
+    private void validateLeaderReference(
+            final UpdateDiveBody updateBody,
+            final @Nullable List<DiveBuddyNameEntity> newBuddies,
+            final DiveEntity existingDive) {
+        final var leaderNamedBuddyId = updateBody.leaderNamedBuddyId();
+        if (leaderNamedBuddyId != null) {
+            final var candidates = newBuddies != null ? newBuddies : existingDive.getNamedBuddies();
+            final var isOwnBuddy =
+                    candidates.stream().anyMatch(b -> leaderNamedBuddyId.equals(b.getId()));
+            if (!isOwnBuddy) {
+                throw new IllegalArgumentException(
+                        "Named buddy " + leaderNamedBuddyId + " is not a buddy on this dive.");
+            }
+        }
+        final var leaderBuddyDiveId = updateBody.leaderBuddyDiveId();
+        if (leaderBuddyDiveId != null && !existingDive.hasBuddyDive(leaderBuddyDiveId)) {
+            throw new IllegalArgumentException(
+                    "Dive " + leaderBuddyDiveId + " is not a linked buddy dive on this dive.");
+        }
+    }
+
     private @NonNull DiveBuddyNameEntity getOldOrNewBuddy(
             final UpdateDiveBody dive,
             final Map<String, DiveBuddyNameEntity> namedBuddies,
             final DiveEntity existingDive,
-            final String n) {
-        return Optional.ofNullable(namedBuddies.get(n))
-                .or(() -> diveBuddyNameRepository.findByDive_IdAndName(dive.id(), n))
-                .orElseGet(
-                        () ->
-                                diveBuddyNameRepository.save(
-                                        new DiveBuddyNameEntity(existingDive, n)));
+            final NamedBuddyInput input) {
+        final var entity =
+                Optional.ofNullable(namedBuddies.get(input.name()))
+                        .or(
+                                () ->
+                                        diveBuddyNameRepository.findByDive_IdAndName(
+                                                dive.id(), input.name()))
+                        .orElseGet(
+                                () ->
+                                        diveBuddyNameRepository.save(
+                                                new DiveBuddyNameEntity(
+                                                        existingDive, input.name())));
+        entity.setRole(input.role());
+        return entity;
     }
 
     @Transactional
@@ -1069,7 +1136,7 @@ public class DiveDataService {
                         .queryForList(
                                 "SELECT d.pk_dive_id "
                                         + fromClause
-                                        + " ORDER BY d."
+                                        + " ORDER BY "
                                         + sortColumn
                                         + " "
                                         + sortDir
@@ -1095,11 +1162,14 @@ public class DiveDataService {
         return new PagedResponse<>(pageSize, totalPages, total, ordered);
     }
 
+    // Alias-qualified (not bare column names) since findFiltered's query joins both d (t_dives)
+    // and ds (t_dive_summary) - DATE's column lives on the latter, everything else on the former.
     private static String sqlSortColumn(final DiveSortColumn column) {
         return switch (column) {
-            case ID -> "pk_dive_id";
-            case NUMBER -> "dive_number";
-            case CUSTOM_IDENTIFIER -> "dive_identifier";
+            case ID -> "d.pk_dive_id";
+            case NUMBER -> "d.dive_number";
+            case CUSTOM_IDENTIFIER -> "d.dive_identifier";
+            case DATE -> "ds.dive_start";
         };
     }
 
@@ -1146,6 +1216,63 @@ public class DiveDataService {
         } catch (final DataIntegrityViolationException e) {
             throw new IllegalArgumentException("Dive site with name " + name + " already exists.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<DiveSite> findDiveSiteByIdWithLinks(final long id, final long userId) {
+        return diveSiteRepository
+                .findById(id)
+                .map(e -> e.toRecordWithLinks(hasLoggedDiveAtSite(userId, id)));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasLoggedDiveAtSite(final long userId, final long siteId) {
+        return diveRepository.existsByUser_IdAndDiveSite_Id(userId, siteId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TeamTerminology> findMostRecentTeamTerminology(final long userId) {
+        return diveRepository
+                .findFirstByUser_IdAndTeamTerminologyIsNotNullOrderByIdDesc(userId)
+                .map(DiveEntity::getTeamTerminology);
+    }
+
+    @Transactional
+    public DiveSite updateDiveSite(
+            final long siteId,
+            @Nullable final String description,
+            @Nullable final String countryRegion,
+            @Nullable final Double maxDepth,
+            @Nullable final DiveSiteType type,
+            final List<DiveSiteLink> links) {
+        final var entity =
+                diveSiteRepository
+                        .findById(siteId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive site by id " + siteId));
+        entity.setDescription(description);
+        entity.setCountryRegion(countryRegion);
+        entity.setMaxDepth(maxDepth);
+        entity.setSiteType(type);
+        diveSiteRepository.save(entity);
+
+        diveSiteLinkRepository.deleteByDiveSite_Id(siteId);
+        diveSiteLinkRepository.flush();
+        for (final var link : links) {
+            diveSiteLinkRepository.save(new DiveSiteLinkEntity(entity, link.url(), link.label()));
+        }
+
+        // A plain field-assigned `links` (set on construction, not hydrated by Hibernate) never
+        // becomes a lazy-loadable PersistentCollection - without clearing the persistence context,
+        // a same-transaction re-fetch of `entity` below would return this very instance from the
+        // identity map with its stale in-memory `links` rather than re-querying the now-updated
+        // child rows.
+        entityManager.flush();
+        entityManager.clear();
+
+        return diveSiteRepository.findById(siteId).orElseThrow().toRecordWithLinks(true);
     }
 
     @Transactional(readOnly = true)
@@ -1428,6 +1555,9 @@ public class DiveDataService {
                                 () ->
                                         new NoSuchElementException(
                                                 "Could not find dive by id " + userDiveId));
+        if (userDive.hasBuddyDive(buddyDiveId)) {
+            return toRecord(userDive);
+        }
         final var buddyDive =
                 diveRepository
                         .findById(buddyDiveId)
@@ -1435,12 +1565,13 @@ public class DiveDataService {
                                 () ->
                                         new NoSuchElementException(
                                                 "Could not find dive by id " + buddyDiveId));
-        if (userDive.hasBuddyDive(buddyDiveId)) {
-            return toRecord(userDive);
-        }
-        userDive.addBuddyDive(buddyDive);
-        diveRepository.saveAll(List.of(userDive, buddyDive));
-        return toRecord(userDive);
+        // t_dive_buddy's CHECK constraint requires fk_dive_id < fk_buddy_dive_id - store
+        // consistently regardless of which id the caller passed as "the dive" vs "the buddy", so
+        // linking never fails just because the two ids were named in the "wrong" order.
+        final var lower = userDiveId < buddyDiveId ? userDive : buddyDive;
+        final var higher = userDiveId < buddyDiveId ? buddyDive : userDive;
+        diveBuddyRepository.save(new DiveBuddyEntity(lower, higher));
+        return reloadDive(userDiveId);
     }
 
     @Transactional
@@ -1452,19 +1583,46 @@ public class DiveDataService {
                                 () ->
                                         new NoSuchElementException(
                                                 "Could not find dive by id " + userDiveId));
-        final var buddyDive =
-                diveRepository
-                        .findById(buddyDiveId)
+        final var link = diveBuddyRepository.findLink(userDiveId, buddyDiveId);
+        if (link.isEmpty()) {
+            return toRecord(userDive);
+        }
+        diveBuddyRepository.delete(link.get());
+        return reloadDive(userDiveId);
+    }
+
+    /**
+     * Sets the role of {@code buddyDiveId}'s diver, as rated from {@code viewpointDiveId}'s side of
+     * an existing link - the two dives must already be linked via {@link #linkDive}.
+     */
+    @Transactional
+    public Dive setBuddyDiveRole(
+            final long viewpointDiveId, final long buddyDiveId, @Nullable final BuddyRole role) {
+        final var link =
+                diveBuddyRepository
+                        .findLink(viewpointDiveId, buddyDiveId)
                         .orElseThrow(
                                 () ->
                                         new NoSuchElementException(
-                                                "Could not find dive by id " + buddyDiveId));
-        if (!userDive.hasBuddyDive(buddyDiveId)) {
-            return toRecord(userDive);
-        }
-        userDive.removeBuddyDive(buddyDive);
-        diveRepository.saveAll(List.of(userDive, buddyDive));
-        return toRecord(userDive);
+                                                "Dives "
+                                                        + viewpointDiveId
+                                                        + " and "
+                                                        + buddyDiveId
+                                                        + " are not linked buddy dives."));
+        link.setRoleAsSeenFrom(viewpointDiveId, role);
+        diveBuddyRepository.save(link);
+        return reloadDive(viewpointDiveId);
+    }
+
+    /**
+     * Clears the 1st-level cache and re-fetches - needed after mutating a DiveBuddyEntity directly
+     * via the repository, since the dive's EAGER buddy-link collections were already loaded into
+     * this session before the write and won't otherwise reflect it.
+     */
+    private Dive reloadDive(final long diveId) {
+        entityManager.flush();
+        entityManager.clear();
+        return toRecord(diveRepository.findById(diveId).orElseThrow());
     }
 
     private Dive toRecord(final DiveEntity e) {
@@ -1497,10 +1655,19 @@ public class DiveDataService {
             final int page,
             final int simplifiedDivePageSize,
             final DiveSort sort) {
-        return PagedResponse.of(
-                diveRepository.findByGroupPrivilege(
-                        groupId, PageRequest.of(page, simplifiedDivePageSize, toSort(sort))),
-                this::toSimplifiedRecord);
+        // DATE needs its own query (see findByGroupPrivilegeOrderByDiveStart's own comment) -
+        // native-query sorting can't reach the joined t_dive_summary column the generic
+        // toSort()/Pageable-sort path relies on for every other column.
+        final var divesPage =
+                sort.column() == DiveSortColumn.DATE
+                        ? diveRepository.findByGroupPrivilegeOrderByDiveStart(
+                                groupId,
+                                sort.direction() == SortDirection.ASCENDING,
+                                PageRequest.of(page, simplifiedDivePageSize))
+                        : diveRepository.findByGroupPrivilege(
+                                groupId,
+                                PageRequest.of(page, simplifiedDivePageSize, toSort(sort)));
+        return PagedResponse.of(divesPage, this::toSimplifiedRecord);
     }
 
     @Transactional
@@ -1817,5 +1984,177 @@ public class DiveDataService {
             diveBuddyNameRepository.saveAll(toRename);
         }
         return oldMatches.size();
+    }
+
+    /**
+     * Sets the role for a named (free-text) buddy across every dive the user owns that lists them -
+     * "all dives with this buddy", not a single dive at a time.
+     *
+     * @return the number of dives updated
+     */
+    @Transactional
+    public int setNamedBuddyRole(
+            final long userId, final String name, @Nullable final BuddyRole role) {
+        final var matches =
+                diveBuddyNameRepository.findAllByDive_User_IdAndName(userId, name.trim());
+        matches.forEach(b -> b.setRole(role));
+        diveBuddyNameRepository.saveAll(matches);
+        return matches.size();
+    }
+
+    /**
+     * Sets the role of {@code buddyUserId}'s diver, as rated from {@code userId}'s side, across
+     * every linked dive pair between the two of them - "all dives with this buddy" for the
+     * linked-account case.
+     *
+     * @return the number of links updated
+     */
+    @Transactional
+    public int setLinkedBuddyRoleForUser(
+            final long userId, final long buddyUserId, @Nullable final BuddyRole role) {
+        final var links = diveBuddyRepository.findAllLinksBetweenUsers(userId, buddyUserId);
+        links.forEach(
+                l -> {
+                    // setRoleAsSeenFrom takes a *dive* id, not a user id - resolve which side of
+                    // this particular link row is the one userId actually owns.
+                    final var viewpointDiveId =
+                            l.getDive().getUserId() == userId
+                                    ? l.getDive().getId()
+                                    : l.getBuddyDive().getId();
+                    l.setRoleAsSeenFrom(viewpointDiveId, role);
+                });
+        diveBuddyRepository.saveAll(links);
+        return links.size();
+    }
+
+    /**
+     * Every distinct user linked as a buddy on at least one of {@code userId}'s dives - powers the
+     * "bulk-set this buddy's role everywhere" picker on the frontend.
+     */
+    @Transactional(readOnly = true)
+    public List<User> findLinkedBuddyUsersForUser(final long userId) {
+        final var fromLowerSide =
+                diveBuddyRepository.findByDive_User_Id(userId).stream()
+                        .map(l -> l.getBuddyDive().getUserEntity());
+        final var fromHigherSide =
+                diveBuddyRepository.findByBuddyDive_User_Id(userId).stream()
+                        .map(l -> l.getDive().getUserEntity());
+        return Stream.concat(fromLowerSide, fromHigherSide)
+                .distinct()
+                .map(UserEntity::toRecord)
+                .toList();
+    }
+
+    private record BuddyRoleAssignment(
+            BuddyRole role, String buddyLabel, String site, String year, String yearMonth) {}
+
+    private static final String NAMED_BUDDY_ROLE_ASSIGNMENTS_SQL =
+            """
+            SELECT ds.dive_start AS dive_start, site.name AS site_name,
+                   bn.role AS role, bn.name AS buddy_label
+            FROM t_dives d
+            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+            JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+            JOIN t_dive_buddy_name bn ON bn.fk_dive_id = d.pk_dive_id
+            WHERE d.fk_diver_id = :userId AND bn.role IS NOT NULL
+            """;
+
+    // Resolves each linked-buddy row's directional role exactly as DiveBuddyEntity.roleAsSeenFrom
+    // does (role_of_buddy_from_dive when userId's own dive is the "dive" side of the pair,
+    // role_of_dive_from_buddy when it's the "buddy_dive" side), plus the other diver's name, in
+    // one query instead of hydrating every dive's full entity graph to call that method in Java.
+    private static final String LINKED_BUDDY_ROLE_ASSIGNMENTS_SQL =
+            """
+            SELECT ds.dive_start AS dive_start, site.name AS site_name,
+                   CASE WHEN tb.fk_dive_id = d.pk_dive_id THEN tb.role_of_buddy_from_dive
+                        ELSE tb.role_of_dive_from_buddy END AS role,
+                   other_user.name AS buddy_label
+            FROM t_dives d
+            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+            JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+            JOIN t_dive_buddy tb ON tb.fk_dive_id = d.pk_dive_id OR tb.fk_buddy_dive_id = d.pk_dive_id
+            JOIN t_dives d_other
+                ON d_other.pk_dive_id =
+                   CASE WHEN tb.fk_dive_id = d.pk_dive_id THEN tb.fk_buddy_dive_id ELSE tb.fk_dive_id END
+            JOIN t_users other_user ON other_user.pk_user_id = d_other.fk_diver_id
+            WHERE d.fk_diver_id = :userId
+              AND ((tb.fk_dive_id = d.pk_dive_id AND tb.role_of_buddy_from_dive IS NOT NULL)
+                OR (tb.fk_buddy_dive_id = d.pk_dive_id AND tb.role_of_dive_from_buddy IS NOT NULL))
+            """;
+
+    private BuddyRoleAssignment mapBuddyRoleAssignmentRow(final ResultSet rs) throws SQLException {
+        final var start =
+                ZonedDateTime.ofInstant(rs.getTimestamp("dive_start").toInstant(), ZoneOffset.UTC);
+        return new BuddyRoleAssignment(
+                BuddyRole.valueOf(rs.getString("role")),
+                rs.getString("buddy_label"),
+                rs.getString("site_name"),
+                String.valueOf(start.getYear()),
+                YearMonth.from(start).toString());
+    }
+
+    /**
+     * How often each {@code BuddyRole} was assigned to a buddy (named or linked) across {@code
+     * userId}'s own dives, broken down by buddy, by site, by year, and by year-month. Computed via
+     * two grouped SQL queries (one per buddy kind) rather than hydrating every dive's full entity
+     * graph (profiles, measurements, gas consumption, etc.) just to read its buddy roles - see
+     * {@code DiveBuddyEntity.roleAsSeenFrom} for the directional-role logic mirrored in {@link
+     * #LINKED_BUDDY_ROLE_ASSIGNMENTS_SQL} above.
+     */
+    @Transactional(readOnly = true)
+    public BuddyRoleStats getBuddyRoleStats(final long userId) {
+        // These two queries go straight through namedParameterJdbcTemplate, bypassing Hibernate's
+        // own session - which normally auto-flushes pending writes before a *Hibernate* query but
+        // has no reason to before a raw JDBC one. Without this, any not-yet-flushed change earlier
+        // in the same transaction (e.g. a just-called DiveService.updateDive) would silently be
+        // invisible to the aggregation below.
+        entityManager.flush();
+        final var params = new MapSqlParameterSource("userId", userId);
+        final var assignments =
+                Stream.concat(
+                                namedParameterJdbcTemplate
+                                        .query(
+                                                NAMED_BUDDY_ROLE_ASSIGNMENTS_SQL,
+                                                params,
+                                                (rs, rowNum) -> mapBuddyRoleAssignmentRow(rs))
+                                        .stream(),
+                                namedParameterJdbcTemplate
+                                        .query(
+                                                LINKED_BUDDY_ROLE_ASSIGNMENTS_SQL,
+                                                params,
+                                                (rs, rowNum) -> mapBuddyRoleAssignmentRow(rs))
+                                        .stream())
+                        .toList();
+
+        return new BuddyRoleStats(
+                countByRole(assignments.stream()),
+                groupByRole(assignments, BuddyRoleAssignment::buddyLabel),
+                groupByRole(assignments, BuddyRoleAssignment::site),
+                groupByRole(assignments, BuddyRoleAssignment::year),
+                groupByRole(assignments, BuddyRoleAssignment::yearMonth));
+    }
+
+    private static List<BuddyRoleCount> countByRole(final Stream<BuddyRoleAssignment> stream) {
+        return stream
+                .collect(Collectors.groupingBy(BuddyRoleAssignment::role, Collectors.counting()))
+                .entrySet()
+                .stream()
+                .map(e -> new BuddyRoleCount(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparingLong(BuddyRoleCount::count).reversed())
+                .toList();
+    }
+
+    private static List<BuddyRoleBreakdown> groupByRole(
+            final List<BuddyRoleAssignment> assignments,
+            final Function<BuddyRoleAssignment, String> groupKey) {
+        return assignments.stream().collect(Collectors.groupingBy(groupKey)).entrySet().stream()
+                .map(
+                        e ->
+                                new BuddyRoleBreakdown(
+                                        e.getKey(),
+                                        countByRole(e.getValue().stream()),
+                                        e.getValue().size()))
+                .sorted(Comparator.comparingLong(BuddyRoleBreakdown::total).reversed())
+                .toList();
     }
 }

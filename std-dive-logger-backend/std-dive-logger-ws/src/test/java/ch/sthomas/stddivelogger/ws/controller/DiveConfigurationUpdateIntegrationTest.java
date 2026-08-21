@@ -203,6 +203,11 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
 
         assertThatCode(() -> diveService.updateDive(userEntity.toRecord(), body))
@@ -233,6 +238,11 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null);
         diveService.updateDive(userEntity.toRecord(), firstUpdate);
         // Flush + clear the persistence context so the second update reloads the dive fresh from
@@ -258,6 +268,11 @@ class DiveConfigurationUpdateIntegrationTest {
                                 null,
                                 List.of(cylinder(15.0, "single back gas")),
                                 null),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null,

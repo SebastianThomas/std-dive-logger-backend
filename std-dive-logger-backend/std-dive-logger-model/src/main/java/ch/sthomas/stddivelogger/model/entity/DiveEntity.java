@@ -12,6 +12,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.jspecify.annotations.Nullable;
@@ -50,6 +51,14 @@ public class DiveEntity {
     @Column(name = "notes", nullable = false)
     private String notes;
 
+    // @OneToOne(mappedBy = ...) has no FK column on this table to join on, so even EAGER here
+    // means a *separate* SELECT per dive - N extra round trips for a page of N dives. Tried
+    // LAZY + @BatchSize here first, but bidirectional mappedBy one-to-one can't be proxied the
+    // normal way (no FK to build a proxy from), and this Hibernate version rejects @BatchSize on
+    // an EAGER to-one outright ("Property may not be annotated '@BatchSize'") - fixing this
+    // properly needs bytecode enhancement (@LazyToOne(NO_PROXY) or Hibernate's enhance plugin),
+    // which is a bigger build-tooling change than this pass. Left EAGER/un-batched for now - see
+    // the collections below, which don't have this limitation and got the fix.
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
     private @Nullable DiveSummaryEntity diveSummary;
@@ -57,6 +66,10 @@ public class DiveEntity {
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
     private @Nullable VisibilityEntity visibility;
+
+    @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
+    @PrimaryKeyJoinColumn
+    private @Nullable DiveConditionsEntity conditions;
 
     @OneToOne(mappedBy = "dive", cascade = CascadeType.ALL)
     @PrimaryKeyJoinColumn
@@ -78,21 +91,33 @@ public class DiveEntity {
     @OrderBy("id ASC")
     private List<DiveProfileEntity> profiles;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "t_dive_buddy",
-            joinColumns = @JoinColumn(name = "fk_dive_id"),
-            inverseJoinColumns = @JoinColumn(name = "fk_buddy_dive_id"))
-    private List<DiveEntity> buddyDivesFrom;
+    // Read-only from this side - deliberately no cascade/orphanRemoval, since a single
+    // DiveBuddyEntity row is reachable from TWO different DiveEntity instances (this one and the
+    // other dive's mirrored collection) and dual ownership would make Hibernate's orphan-removal
+    // semantics ambiguous. All mutation goes through DiveBuddyRepository directly (see
+    // DiveDataService.linkDive/unlinkDive), then the caller's stale in-memory collections here are
+    // refreshed via entityManager.clear() + a fresh fetch, same pattern used elsewhere in this
+    // class for the named-buddy diffing.
+    //
+    // LAZY (not EAGER): most dive-list reads pass includeBuddyDives=false and never touch this at
+    // all - EAGER would fetch it unconditionally at load time regardless, so LAZY plus the
+    // explicit toRecord()-time include flag (see getBuddyLinks(boolean)) means it's only ever
+    // queried when actually needed. @BatchSize still collapses it into one IN-query per page on
+    // the paths that do need it, instead of one query per dive.
+    @OneToMany(mappedBy = "dive")
+    @BatchSize(size = 30)
+    private List<DiveBuddyEntity> buddyLinksFrom;
 
-    @ManyToMany(mappedBy = "buddyDivesFrom", fetch = FetchType.EAGER)
-    private List<DiveEntity> buddyDivesTo;
+    @OneToMany(mappedBy = "buddyDive")
+    @BatchSize(size = 30)
+    private List<DiveBuddyEntity> buddyLinksTo;
 
     @OneToMany(
             mappedBy = "dive",
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
             orphanRemoval = true)
+    @BatchSize(size = 30)
     private List<DiveBuddyNameEntity> namedBuddies;
 
     @OneToMany(
@@ -100,7 +125,18 @@ public class DiveEntity {
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
             orphanRemoval = true)
+    @BatchSize(size = 30)
     private @Nullable List<DiveTagEntity> tags;
+
+    @Column(name = "fk_leader_named_buddy_id")
+    private @Nullable Long leaderNamedBuddyId;
+
+    @Column(name = "fk_leader_buddy_dive_id")
+    private @Nullable Long leaderBuddyDiveId;
+
+    @Column(name = "team_terminology")
+    @Enumerated(EnumType.STRING)
+    private @Nullable TeamTerminology teamTerminology;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -141,8 +177,8 @@ public class DiveEntity {
                 profiles.stream()
                         .map(p -> p.setDive(this))
                         .collect(Collectors.toCollection(ArrayList::new));
-        this.buddyDivesFrom = new ArrayList<>();
-        this.buddyDivesTo = new ArrayList<>();
+        this.buddyLinksFrom = new ArrayList<>();
+        this.buddyLinksTo = new ArrayList<>();
         this.namedBuddies =
                 namedBuddies.stream()
                         .map(b -> new DiveBuddyNameEntity(this, b))
@@ -185,12 +221,28 @@ public class DiveEntity {
                         .orElse(null),
                 diveSite.toRecord(),
                 profileRecords,
-                getBuddyDives(includeBuddyDives)
-                        .map(d -> new BuddyDive(d.user.toRecord().toFrontendModel(), d.id))
-                        .toList(),
-                getNamedBuddiesModels(),
+                getBuddyLinks(includeBuddyDives).map(l -> toBuddyDive(l, this.id)).toList(),
+                getNamedBuddiesRecords(),
                 getSummary(),
-                getTags());
+                getTags(),
+                Optional.ofNullable(conditions)
+                        .map(DiveConditionsEntity::getWaterType)
+                        .orElse(null),
+                Optional.ofNullable(conditions)
+                        .map(DiveConditionsEntity::toCurrentRecord)
+                        .orElse(null),
+                getLeader(),
+                teamTerminology);
+    }
+
+    private DiveLeader getLeader() {
+        if (leaderNamedBuddyId != null) {
+            return new DiveLeader(DiveLeader.LeaderType.NAMED, leaderNamedBuddyId, null);
+        }
+        if (leaderBuddyDiveId != null) {
+            return new DiveLeader(DiveLeader.LeaderType.LINKED, null, leaderBuddyDiveId);
+        }
+        return DiveLeader.SELF;
     }
 
     public SimplifiedDive toSimplifiedRecord(
@@ -203,7 +255,7 @@ public class DiveEntity {
                 getPreviewImage(baseUrl),
                 Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null),
                 diveSite.toRecord(),
-                getBuddyDives(includeBuddyDives).map(DiveEntity::toBuddyDive).toList(),
+                getBuddyLinks(includeBuddyDives).map(l -> toBuddyDive(l, this.id)).toList(),
                 getNamedBuddiesModels(),
                 getSummary(),
                 getTags());
@@ -215,27 +267,59 @@ public class DiveEntity {
                 .toRecord();
     }
 
-    private Stream<DiveEntity> getBuddyDives(final boolean includeBuddyDives) {
+    private Stream<DiveBuddyEntity> getBuddyLinks(final boolean includeBuddyDives) {
         if (!includeBuddyDives) {
             return Stream.empty();
         }
-        return getBuddyDives();
+        return getBuddyLinks();
     }
 
-    private Stream<DiveEntity> getBuddyDives() {
-        return Stream.concat(buddyDivesFrom.stream(), buddyDivesTo.stream());
+    private Stream<DiveBuddyEntity> getBuddyLinks() {
+        return Stream.concat(buddyLinksFrom.stream(), buddyLinksTo.stream());
+    }
+
+    /**
+     * The other dive on the far side of a link row from this dive's point of view. May be a lazy
+     * Hibernate proxy - callers must only touch it via its public getters (never a private method
+     * or direct field access), since a proxy only intercepts non-private methods.
+     */
+    private DiveEntity otherSideOf(final DiveBuddyEntity link) {
+        // Long == Long is identity comparison - relies on this.id and link.getDive().getId()
+        // being the exact same boxed instance, which today only holds because of the persistence
+        // context's identity guarantee. Use .equals() so this stays correct even if that
+        // assumption ever breaks (detached/merged entities, 2nd-level cache, bytecode enhancement).
+        return link.getDive().getId().equals(this.id) ? link.getBuddyDive() : link.getDive();
+    }
+
+    private BuddyDive toBuddyDive(final DiveBuddyEntity link, final long viewpointDiveId) {
+        final var other = otherSideOf(link);
+        return new BuddyDive(
+                other.getUserEntity().toRecord().toFrontendModel(),
+                other.getId(),
+                link.roleAsSeenFrom(viewpointDiveId));
     }
 
     public boolean hasBuddyDive(final long otherId) {
-        return getBuddyDives(true).anyMatch(d -> d.id == otherId);
+        return getBuddyLinks(true).anyMatch(l -> otherSideOf(l).getId() == otherId);
     }
 
-    private BuddyDive toBuddyDive() {
-        return new BuddyDive(user.toRecord().toFrontendModel(), id);
+    /**
+     * The role of {@code otherId}'s diver, as seen from this dive - null if not actually linked.
+     */
+    public @Nullable BuddyRole getBuddyDiveRole(final long otherId) {
+        return getBuddyLinks(true)
+                .filter(l -> otherSideOf(l).getId() == otherId)
+                .findFirst()
+                .map(l -> l.roleAsSeenFrom(this.id))
+                .orElse(null);
     }
 
     private List<String> getNamedBuddiesModels() {
         return namedBuddies.stream().map(DiveBuddyNameEntity::getName).toList();
+    }
+
+    private List<NamedBuddy> getNamedBuddiesRecords() {
+        return namedBuddies.stream().map(DiveBuddyNameEntity::toRecord).toList();
     }
 
     public UserEntity getUserEntity() {
@@ -250,7 +334,13 @@ public class DiveEntity {
             @Nullable final ArrayList<DiveBuddyNameEntity> namedBuddies,
             @Nullable final DiveConfigurationEntity configuration,
             @Nullable final DiveGasConsumptionEntity gasConsumption,
-            @Nullable final VisibilityEntity visibility) {
+            @Nullable final VisibilityEntity visibility,
+            // Applied unconditionally (unlike the @Nullable params above, which mean "leave
+            // unchanged" when null) - both null is a legitimate target state ("I led"), not "not
+            // specified", so the caller's current selection is always written through.
+            @Nullable final Long leaderNamedBuddyId,
+            @Nullable final Long leaderBuddyDiveId,
+            @Nullable final TeamTerminology teamTerminology) {
         this.number = number;
         if (diveIdentifier != null) {
             this.diveIdentifier = diveIdentifier;
@@ -274,6 +364,9 @@ public class DiveEntity {
         if (visibility != null) {
             this.visibility = visibility;
         }
+        this.leaderNamedBuddyId = leaderNamedBuddyId;
+        this.leaderBuddyDiveId = leaderBuddyDiveId;
+        this.teamTerminology = teamTerminology;
         this.updateDiveSummary();
         return this;
     }
@@ -384,26 +477,16 @@ public class DiveEntity {
         return number;
     }
 
+    public String getDiveIdentifier() {
+        return diveIdentifier;
+    }
+
+    public @Nullable TeamTerminology getTeamTerminology() {
+        return teamTerminology;
+    }
+
     public List<DiveBuddyNameEntity> getNamedBuddies() {
         return namedBuddies;
-    }
-
-    public void addBuddyDive(final DiveEntity buddyDive) {
-        buddyDivesFrom = new ArrayList<>(buddyDivesFrom);
-        buddyDivesFrom.add(buddyDive);
-        buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
-        buddyDive.buddyDivesTo.add(this);
-    }
-
-    public void removeBuddyDive(final DiveEntity buddyDive) {
-        if (buddyDivesTo.contains(buddyDive)) {
-            buddyDive.removeBuddyDive(this);
-            return;
-        }
-        buddyDivesFrom = new ArrayList<>(buddyDivesFrom);
-        buddyDivesFrom.remove(buddyDive);
-        buddyDive.buddyDivesTo = new ArrayList<>(buddyDive.buddyDivesTo);
-        buddyDive.buddyDivesTo.remove(this);
     }
 
     public void appendNotes(final String newNotes) {
@@ -436,5 +519,13 @@ public class DiveEntity {
 
     public void setVisibility(final VisibilityEntity visibility) {
         this.visibility = visibility;
+    }
+
+    public @Nullable DiveConditionsEntity getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(final DiveConditionsEntity conditions) {
+        this.conditions = conditions;
     }
 }

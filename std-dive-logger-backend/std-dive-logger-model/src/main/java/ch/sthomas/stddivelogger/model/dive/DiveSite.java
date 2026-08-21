@@ -6,7 +6,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import org.jspecify.annotations.Nullable;
 import org.locationtech.jts.geom.Coordinate;
+
+import java.util.List;
 
 public record DiveSite(
         long id,
@@ -22,13 +25,42 @@ public record DiveSite(
                         maximum = "180",
                         example = "11.392",
                         description = "specifies the east–west position")
-                double longitude) {
+                double longitude,
+        @Nullable String description,
+        @Nullable String countryRegion,
+        @Nullable Double maxDepth,
+        @Nullable DiveSiteType type,
+        List<DiveSiteLink> links,
+        @Schema(
+                        description =
+                                "Whether the requesting user is allowed to edit this site's metadata"
+                                        + " - true once they've logged at least one dive here.")
+                boolean canEdit) {
     @JsonIgnore
     public Coordinate getCoordinate() {
         return new Coordinate(longitude, latitude);
     }
 
     public DiveSite(final long id, final String name, final Location location) {
-        this(id, name, location.lat(), location.lon());
+        this(id, name, location.lat(), location.lon(), null, null, null, null, List.of(), false);
+    }
+
+    public DiveSite(
+            final long id, final String name, final double latitude, final double longitude) {
+        this(id, name, latitude, longitude, null, null, null, null, List.of(), false);
+    }
+
+    public DiveSite withCanEdit(final boolean canEdit) {
+        return new DiveSite(
+                id,
+                name,
+                latitude,
+                longitude,
+                description,
+                countryRegion,
+                maxDepth,
+                type,
+                links,
+                canEdit);
     }
 }

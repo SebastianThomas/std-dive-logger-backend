@@ -46,6 +46,22 @@ public class ForbiddenException extends AbstractThrowableProblem {
                 user);
     }
 
+    public static ForbiddenException forDiveSiteId(final User user, final long siteId) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) has not logged a dive at {2} {3}.",
+                        user.id(), user.email(), "DiveSite", siteId),
+                user);
+    }
+
+    public static ForbiddenException forDiveTrip(final User user, final long tripId) {
+        return new ForbiddenException(
+                MessageFormat.format(
+                        "User {0} ({1}) is not the owner of {2} {3}.",
+                        user.id(), user.email(), "DiveTrip", tripId),
+                user);
+    }
+
     public static ForbiddenException forDiveComputer(final User user, final long computerId) {
         return new ForbiddenException(
                 MessageFormat.format(

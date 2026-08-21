@@ -76,10 +76,11 @@ public class StatsDataService {
             dives AS (
                 SELECT d.pk_dive_id AS dive_id, d.dive_number, d.dive_site AS site_id,
                        ds.duration_seconds, ds.max_depth, ds.dive_start,
-                       dc.base_configuration
+                       dc.base_configuration, COALESCE(site.site_type, 'UNSPECIFIED') AS site_type
                 FROM t_dives d
                 JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
                 JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
                 WHERE d.fk_diver_id = :userId
             )
             """;
@@ -311,6 +312,46 @@ public class StatsDataService {
                                 new UserDiveStatsBy<>(
                                         BaseConfiguration.valueOf(rs.getString("grp")),
                                         mapAggregateRow(rs)))
+                .stream()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+    }
+
+    /**
+     * Groups by {@code site.site_type} (see {@link #DIVES_CTE}, {@code UNSPECIFIED} when the site
+     * hasn't had a type set yet) - a string key rather than an enum, so an unset/unknown type never
+     * fails to deserialize even if the enum's members change later.
+     */
+    @Transactional(readOnly = true)
+    public List<UserDiveStatsBy<String>> getStatsBySiteType(final User user) {
+        final var sql =
+                "WITH "
+                        + DIVES_CTE
+                        + ", "
+                        + BUDDIES_CTE
+                        + ", "
+                        + TEMPS_CTE
+                        + """
+                        SELECT dv.site_type AS grp,
+                        """
+                        + AGGREGATE_SELECT_LIST
+                        + """
+                        , COUNT(DISTINCT b.name) AS buddy_count,
+                          MAX(t.max_temp) AS max_temp,
+                          MIN(t.min_temp) AS min_temp
+                        FROM dives dv
+                        LEFT JOIN buddies b ON b.dive_id = dv.dive_id
+                        LEFT JOIN temps t ON t.dive_id = dv.dive_id
+                        GROUP BY dv.site_type
+                        ORDER BY dive_count DESC
+                        """;
+        final var params = new MapSqlParameterSource("userId", user.id());
+        return namedParameterJdbcTemplate
+                .query(
+                        sql,
+                        params,
+                        (rs, rowNum) ->
+                                new UserDiveStatsBy<>(rs.getString("grp"), mapAggregateRow(rs)))
                 .stream()
                 .sorted(Comparator.reverseOrder())
                 .toList();

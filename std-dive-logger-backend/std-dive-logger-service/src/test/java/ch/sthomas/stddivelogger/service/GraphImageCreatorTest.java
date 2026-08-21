@@ -254,9 +254,13 @@ public class GraphImageCreatorTest {
                         null,
                         profiles,
                         List.of(),
-                        List.of("Buddy1"),
+                        List.of(new NamedBuddy(1, "Buddy1", null)),
                         testSummary(start, end),
-                        List.of());
+                        List.of(),
+                        null,
+                        null,
+                        DiveLeader.SELF,
+                        null);
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();
         try (final var outWriter = new FileWriter(tempFile)) {
             GraphImageCreator.fromDive(
@@ -367,7 +371,11 @@ public class GraphImageCreatorTest {
                         List.of(),
                         List.of(),
                         testSummary(start, end),
-                        List.of());
+                        List.of(),
+                        null,
+                        null,
+                        DiveLeader.SELF,
+                        null);
 
         final var withDecoWriter = new StringWriter();
         GraphImageCreator.fromDive(
@@ -419,7 +427,11 @@ public class GraphImageCreatorTest {
                         List.of(),
                         List.of(),
                         testDive.summary(),
-                        List.of());
+                        List.of(),
+                        null,
+                        null,
+                        DiveLeader.SELF,
+                        null);
         final var noDecoWriter = new StringWriter();
         GraphImageCreator.fromDive(
                 noDecoDive,

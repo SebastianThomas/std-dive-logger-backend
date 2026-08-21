@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.BatchSize;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -59,6 +60,7 @@ public class DiveConfigurationEntity {
             cascade = CascadeType.ALL,
             fetch = FetchType.EAGER,
             orphanRemoval = true)
+    @BatchSize(size = 30)
     private List<DiveConfigurationCylinderEntity> cylinders;
 
     public DiveConfigurationEntity() {}

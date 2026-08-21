@@ -4,6 +4,8 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
+import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
+import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -18,8 +20,10 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -65,10 +69,21 @@ public class DiveSiteController {
         return diveService.getSitesByUser(user, !includeReader);
     }
 
-    @Operation(summary = "Get DiveSite by id")
+    @Operation(
+            summary = "Get DiveSite by id",
+            description =
+                    "Includes the site's links and `canEdit` (true once the requesting user has"
+                            + " logged at least one dive here) - unlike getAllDiveSites, this fetches"
+                            + " the full detail for a single site and is fine to call eagerly, e.g."
+                            + " when opening a site detail view.")
     @GetMapping(path = "/{id}")
-    public DiveSite getSite(@PathVariable @Positive final long id) {
-        return diveService.getSiteById(id).orElseThrow();
+    public DiveSite getSite(
+            @PathVariable @Positive final long id,
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            return diveService.getSiteById(id).orElseThrow();
+        }
+        return diveService.getSiteByIdForUser(id, user).orElseThrow();
     }
 
     @Operation(
@@ -123,5 +138,40 @@ public class DiveSiteController {
             throw new UnauthorizedException("Log in to create a dive site");
         }
         return diveService.createDiveSite(body.name, new Location(body.lat, body.lon));
+    }
+
+    public record UpdateDiveSiteLinkBody(
+            @NotBlank @Pattern(regexp = "^https?://.+\\..+") String url,
+            @Size(max = 64) String label) {}
+
+    public record UpdateDiveSiteBody(
+            @Size(max = 2000) String description,
+            @Size(max = 128) String countryRegion,
+            Double maxDepth,
+            DiveSiteType type,
+            @Valid @NotNull List<UpdateDiveSiteLinkBody> links) {}
+
+    @Operation(
+            summary = "Update a DiveSite's community-editable metadata",
+            description =
+                    "Requires the requesting user to have logged at least one dive at this site -"
+                            + " site name/coordinates are not editable here, only"
+                            + " description/country/maxDepth/type/links.")
+    @PutMapping(path = "/{id}")
+    public DiveSite updateDiveSite(
+            @PathVariable @Positive final long id,
+            @Valid @NotNull @RequestBody final UpdateDiveSiteBody body,
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to edit a dive site");
+        }
+        return diveService.updateDiveSite(
+                user,
+                id,
+                body.description,
+                body.countryRegion,
+                body.maxDepth,
+                body.type,
+                body.links.stream().map(l -> new DiveSiteLink(0, l.url(), l.label())).toList());
     }
 }

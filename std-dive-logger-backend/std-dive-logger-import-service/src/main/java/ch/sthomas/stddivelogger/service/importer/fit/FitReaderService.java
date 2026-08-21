@@ -234,31 +234,48 @@ public class FitReaderService extends BaseReaderService {
                 .orElse(null);
     }
 
-    private Optional<DiveProfileSummary> getSummary(final List<DiveSummaryMesg> summaryMessages) {
+    // Package-private (not private) so it can be unit-tested directly with mocked DiveSummaryMesg
+    // values, same convention as getDiveProfile() above.
+    Optional<DiveProfileSummary> getSummary(final List<DiveSummaryMesg> summaryMessages) {
         if (summaryMessages.size() <= 1) {
             return Optional.empty();
         }
-        // TODO: Use field scale instead of magic constants
         final var first = summaryMessages.getFirst();
         final var last = summaryMessages.getLast();
+        // Every FIT SDK typed getter below (getAvgDepth(), getBottomTime(), ...) already applies
+        // that field's profile-declared scale/offset internally (confirmed via javap on
+        // com.garmin.fit.DiveSummaryMesg - e.g. avg_depth/max_depth/bottom_time/descent_time/
+        // ascent_time/avg_ascent_rate all have scale=1000 baked into FieldBase.getValueInternal(),
+        // same code path used by the generic getDoubleValue() call in getDiveProfile() above).
+        // Re-dividing those by 1000 here was double-scaling every one of them down to ~1/1000th of
+        // the real value, and ofMillis(x.longValue()) on an already-in-seconds Float additionally
+        // truncated the duration fields to a handful of milliseconds. Use the typed getters as-is,
+        // and Duration.ofMillis(Math.round(seconds * 1000)) to keep sub-second precision instead of
+        // truncating via longValue().
         return Optional.of(
                 new DiveProfileSummary(
                         toInstant(first.getTimestamp()),
                         toInstant(last.getTimestamp()),
-                        last.getAvgDepth() / 1000,
-                        last.getMaxDepth() / 1000,
+                        last.getAvgDepth(),
+                        last.getMaxDepth(),
                         ofSeconds(last.getSurfaceInterval()),
-                        ofMillis(last.getBottomTime().longValue()),
-                        ofMillis(last.getDescentTime().longValue()),
-                        ofMillis(last.getAscentTime().longValue()),
+                        ofMillis(Math.round(last.getBottomTime() * 1000)),
+                        ofMillis(Math.round(last.getDescentTime() * 1000)),
+                        ofMillis(Math.round(last.getAscentTime() * 1000)),
                         Optional.ofNullable(last.getAvgAscentRate())
-                                .map(f -> f / 1000.0)
+                                .map(Float::doubleValue)
                                 .orElse(null),
                         Optional.ofNullable(last.getStartN2())
                                 .map(Integer::doubleValue)
                                 .orElse(null),
                         Optional.ofNullable(last.getEndN2()).map(Integer::doubleValue).orElse(null),
-                        Optional.ofNullable(last.getO2Toxicity()).map(f -> f / 100.0).orElse(null),
+                        // o2Toxicity's FIT unit is OTUs (scale 1), not a percentage - dividing by
+                        // 100 had no unit justification and doesn't match how OTUs are stored from
+                        // other import sources (a plain OTU count - see e.g. UDDF's otu="12" ->
+                        // o2Tox()==12.0).
+                        Optional.ofNullable(last.getO2Toxicity())
+                                .map(Integer::doubleValue)
+                                .orElse(null),
                         Optional.ofNullable(last.getStartCns()).map(f -> f / 100.0).orElse(null),
                         Optional.ofNullable(last.getEndCns()).map(f -> f / 100.0).orElse(null)));
     }
@@ -342,13 +359,17 @@ public class FitReaderService extends BaseReaderService {
                 .map(Math::toIntExact);
     }
 
-    private List<DecoStop> getDeco(final RecordMesg record) {
+    // Package-private (not private) so it can be unit-tested directly, same convention as
+    // getSummary() above.
+    List<DecoStop> getDeco(final RecordMesg record) {
         if (Objects.requireNonNullElse(record.getNextStopDepth(), 0.0f) > 0
                 && Objects.requireNonNullElse(record.getNextStopTime(), 0L) > 0) {
+            // getNextStopDepth() already has its scale applied (same double-scaling bug as
+            // getSummary() above - see its comment) - don't divide again.
             return List.of(
                     new DecoStop(
                             "mandatory",
-                            record.getNextStopDepth() / 1000.0,
+                            record.getNextStopDepth().doubleValue(),
                             record.getNextStopTime()));
         }
         return List.of();

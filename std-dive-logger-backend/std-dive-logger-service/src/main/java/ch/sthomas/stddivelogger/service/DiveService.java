@@ -131,8 +131,7 @@ public class DiveService {
                 groupId,
                 page,
                 SIMPLIFIED_DIVE_PAGE_SIZE,
-                // TODO: Change to Date
-                DiveSort.ofNullable(DiveSortColumn.ID, SortDirection.ASCENDING));
+                DiveSort.ofNullable(DiveSortColumn.DATE, SortDirection.ASCENDING));
     }
 
     // Deliberately NOT @Transactional: diveDataService.saveDive() below is @Transactional on its
@@ -379,6 +378,22 @@ public class DiveService {
         return diveDataService.unlinkDive(userDive, buddyDive);
     }
 
+    /**
+     * Sets {@code buddyDive}'s role as rated from {@code userDive}'s side of an existing link -
+     * only the viewer's own side, matching how named-buddy roles are only ever set from the owning
+     * dive's perspective.
+     */
+    public Dive setBuddyDiveRole(
+            final User user,
+            final long userDive,
+            final long buddyDive,
+            final @Nullable BuddyRole role) {
+        if (!hasWriteAccess(user, userDive)) {
+            throw ForbiddenException.forDiveId(user, userDive);
+        }
+        return diveDataService.setBuddyDiveRole(userDive, buddyDive, role);
+    }
+
     public Dive mergeProfiles(
             final User user,
             final long baseDiveId,
@@ -482,7 +497,31 @@ public class DiveService {
                                 () ->
                                         new IllegalArgumentException(
                                                 "Dive Identifier is required to save dive manually."));
-        // TODO: Manual Dive Profile, with deepest depth, start and end time or dive time / duration
+        final var start = Optional.ofNullable(body.startTime()).orElseGet(Instant::now);
+        final var end = start.plus(duration);
+        final var mid = start.plus(duration.dividedBy(2));
+        // Manual dives have no real dive-computer profile - a synthetic 3-point profile
+        // (surface/max-depth/surface) is the minimum shape that carries a distinct max depth
+        // through
+        // the same saveDive/DiveSummaryEntity pipeline every importer uses, rather than needing a
+        // separate zero-profile code path.
+        final var manualComputer =
+                getOrCreateDiveComputer(user, "Manual", "manual-" + user.id(), "Manual Entry");
+        final var profile =
+                new DiveProfileUpload(
+                        manualComputer.id(),
+                        start,
+                        end,
+                        List.of(
+                                new DiveMeasurement(
+                                        start, null, 0.0, null, null, null, null, null, null, null,
+                                        null, null),
+                                new DiveMeasurement(
+                                        mid, null, maxDepth, null, null, null, null, null, null,
+                                        null, null, null),
+                                new DiveMeasurement(
+                                        end, null, 0.0, null, null, null, null, null, null, null,
+                                        null, null)));
         return diveDataService
                 .saveDive(
                         user,
@@ -493,7 +532,7 @@ public class DiveService {
                         DiveGasConsumption.EMPTY,
                         DiveConfiguration.createEmpty(user),
                         diveSiteId,
-                        List.of(),
+                        List.of(profile),
                         List.of())
                 .value();
     }
@@ -541,6 +580,34 @@ public class DiveService {
 
     public DiveSite createDiveSite(final String name, final Location location) {
         return diveDataService.saveDiveSite(name, location);
+    }
+
+    public Optional<DiveSite> getSiteByIdForUser(final long id, final User user) {
+        return diveDataService.findDiveSiteByIdWithLinks(id, user.id());
+    }
+
+    /**
+     * The user's own most recent explicit BUDDY/TEAM choice - used by the frontend to prefill a
+     * dive's terminology picker with something more useful than a blank "Default (Buddy)" when the
+     * dive itself has no override yet.
+     */
+    public Optional<TeamTerminology> getMostRecentTeamTerminology(final User user) {
+        return diveDataService.findMostRecentTeamTerminology(user.id());
+    }
+
+    public DiveSite updateDiveSite(
+            final User user,
+            final long siteId,
+            final @Nullable String description,
+            final @Nullable String countryRegion,
+            final @Nullable Double maxDepth,
+            final @Nullable DiveSiteType type,
+            final List<DiveSiteLink> links) {
+        if (!diveDataService.hasLoggedDiveAtSite(user.id(), siteId)) {
+            throw ForbiddenException.forDiveSiteId(user, siteId);
+        }
+        return diveDataService.updateDiveSite(
+                siteId, description, countryRegion, maxDepth, type, links);
     }
 
     public void deleteDiveById(final User user, final long diveId) {
@@ -979,5 +1046,31 @@ public class DiveService {
         }
         diveDataService.renameBuddyName(user.id(), oldName, newName);
         return diveDataService.findAllBuddyNames(user.id());
+    }
+
+    /**
+     * Sets the role for a named dive buddy across every dive the user owns that lists them. Scoped
+     * to {@code user.id()}, so there is no separate ownership check to perform here.
+     */
+    public int setNamedBuddyRole(
+            final User user, final String name, final @Nullable BuddyRole role) {
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Buddy name must not be blank");
+        }
+        return diveDataService.setNamedBuddyRole(user.id(), name, role);
+    }
+
+    /**
+     * Sets the role of a linked buddy user, as rated from {@code user}'s own side, across every
+     * dive pair linked between the two of them.
+     */
+    public int setLinkedBuddyRoleForUser(
+            final User user, final long buddyUserId, final @Nullable BuddyRole role) {
+        return diveDataService.setLinkedBuddyRoleForUser(user.id(), buddyUserId, role);
+    }
+
+    /** Every distinct user linked as a buddy on at least one of {@code user}'s own dives. */
+    public List<User> getLinkedBuddyUsers(final User user) {
+        return diveDataService.findLinkedBuddyUsersForUser(user.id());
     }
 }

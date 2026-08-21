@@ -1,7 +1,9 @@
 package ch.sthomas.stddivelogger.model.dive;
 
 import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
+import ch.sthomas.stddivelogger.model.dive.conditions.Current;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -34,9 +36,13 @@ public record Dive(
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,
         @NotNull List<BuddyDive> buddiesDives,
-        @NotNull List<String> namedBuddies,
+        @NotNull List<NamedBuddy> namedBuddies,
         @NotNull DiveSummary summary,
-        @NotNull List<TagDefinition> tags) {
+        @NotNull List<TagDefinition> tags,
+        @Nullable WaterType waterType,
+        @Nullable Current current,
+        @NotNull DiveLeader leader,
+        @Nullable TeamTerminology teamTerminology) {
     @Override
     @NotNull
     public String toString() {

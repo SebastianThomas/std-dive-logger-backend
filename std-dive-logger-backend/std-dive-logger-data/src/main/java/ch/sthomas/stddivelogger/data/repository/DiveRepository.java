@@ -37,6 +37,10 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
 
     Page<DiveEntity> findByUser_Id(long id, Pageable pageable);
 
+    // Unpaginated variant used only by buddy-role stats, which needs every dive up front to
+    // aggregate over rather than one page at a time.
+    List<DiveEntity> findByUser_Id(long id);
+
     Page<DiveEntity> findByUser_IdOrderByNumberDesc(Long userId, Pageable pageable);
 
     @Query(
@@ -54,6 +58,14 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             """)
     List<BasicDiveInfo> findBasicDiveInfoByUserIdAndDiveSiteId(long userId, long siteId);
 
+    // Used to gate community-editing of dive site metadata: only users who've actually logged a
+    // dive at a site may edit its description/links/type.
+    boolean existsByUser_IdAndDiveSite_Id(long userId, long diveSiteId);
+
+    // Powers the "smart default" terminology prefill: the user's own most recent explicit
+    // BUDDY/TEAM choice, used as the initial pick for a dive that doesn't have one of its own yet.
+    Optional<DiveEntity> findFirstByUser_IdAndTeamTerminologyIsNotNullOrderByIdDesc(long userId);
+
     @Query(
             value =
                     """
@@ -67,6 +79,33 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
                     "SELECT COUNT(*) FROM t_dive_privileges_groups WHERE fk_group_id = :groupId",
             nativeQuery = true)
     Page<DiveEntity> findByGroupPrivilege(long groupId, Pageable pageable);
+
+    // Spring Data's Pageable-driven sort on a native query only ever appends a raw ORDER BY on a
+    // column of the query's own base table - it can't reach a joined table's column, and
+    // DiveSortColumn.DATE's value lives on t_dive_summary, not t_dives. findByGroupPrivilege above
+    // stays as-is for ID/NUMBER/CUSTOM_IDENTIFIER (all real t_dives columns); this is a dedicated
+    // variant for DATE, with the join and ORDER BY spelled out explicitly instead of trying to
+    // coerce that into the generic Pageable-sort mechanism.
+    // Native-query ORDER BY can't be parametrized directly (Postgres prepared statements don't
+    // accept a bind param as ORDER BY direction), so direction is expressed as two CASE arms - only
+    // the one matching `ascending` ever produces a non-null value, so only it drives the sort.
+    @Query(
+            value =
+                    """
+                            SELECT t_dives.*
+                            FROM t_dive_privileges_groups
+                            INNER JOIN t_dives
+                                ON fk_dive_id = pk_dive_id
+                                AND fk_group_id = :groupId
+                            LEFT JOIN t_dive_summary ON t_dive_summary.fk_dive_id = pk_dive_id
+                            ORDER BY CASE WHEN :ascending THEN t_dive_summary.dive_start END ASC,
+                                     CASE WHEN NOT :ascending THEN t_dive_summary.dive_start END DESC
+                            """,
+            countQuery =
+                    "SELECT COUNT(*) FROM t_dive_privileges_groups WHERE fk_group_id = :groupId",
+            nativeQuery = true)
+    Page<DiveEntity> findByGroupPrivilegeOrderByDiveStart(
+            long groupId, boolean ascending, Pageable pageable);
 
     @Query(
             value =

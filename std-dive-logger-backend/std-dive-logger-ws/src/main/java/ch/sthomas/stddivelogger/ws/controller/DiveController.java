@@ -472,6 +472,23 @@ public class DiveController {
         return diveService.unlinkBuddyDive(user, diveId, buddyDiveId);
     }
 
+    public record BuddyRoleBody(@Nullable BuddyRole role) {}
+
+    @Operation(
+            summary =
+                    "Set a linked buddy dive's role, as rated from this dive's own side of the link")
+    @PutMapping(path = "/{id}/link/{buddyDiveId}/role")
+    public Dive setBuddyDiveRole(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @PathVariable("buddyDiveId") @Positive final long buddyDiveId,
+            @Valid @NotNull @RequestBody final BuddyRoleBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to set a buddy dive's role");
+        }
+        return diveService.setBuddyDiveRole(user, diveId, buddyDiveId, body.role());
+    }
+
     @Operation(
             summary =
                     "Autocomplete buddy names from the user's own dive history, ordered by frequency")
@@ -508,6 +525,65 @@ public class DiveController {
             throw new UnauthorizedException("Log in to rename a buddy.");
         }
         return diveService.renameBuddyName(user, body.oldName(), body.newName());
+    }
+
+    @Operation(
+            summary =
+                    "Set a named dive buddy's role — applies to every dive of the current user"
+                            + " that lists this buddy")
+    @PutMapping(path = "/buddies/{name}/role", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> setNamedBuddyRole(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("name") @NotBlank final String name,
+            @Valid @NotNull @RequestBody final BuddyRoleBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to set a buddy's role.");
+        }
+        diveService.setNamedBuddyRole(user, name, body.role());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary =
+                    "Set a linked buddy user's role, as rated from the current user's own side —"
+                            + " applies to every dive pair linked with this buddy")
+    @PutMapping(path = "/buddies/users/{buddyUserId}/role", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> setLinkedBuddyRoleForUser(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("buddyUserId") @Positive final long buddyUserId,
+            @Valid @NotNull @RequestBody final BuddyRoleBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to set a buddy's role.");
+        }
+        diveService.setLinkedBuddyRoleForUser(user, buddyUserId, body.role());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary =
+                    "List every user linked as a buddy on at least one of the current user's own"
+                            + " dives - powers the bulk role-set picker for linked buddies")
+    @GetMapping("/buddies/users")
+    public List<FrontendUser> getLinkedBuddyUsers(
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view linked buddies.");
+        }
+        return diveService.getLinkedBuddyUsers(user).stream().map(User::toFrontendModel).toList();
+    }
+
+    @Operation(
+            summary = "The user's most recent explicit buddy/team terminology choice",
+            description =
+                    "Powers the frontend's terminology-picker smart default - null if the user has"
+                            + " never explicitly set one on any dive.")
+    @GetMapping("/team-terminology/default")
+    public @Nullable TeamTerminology getMostRecentTeamTerminology(
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your terminology default.");
+        }
+        return diveService.getMostRecentTeamTerminology(user).orElse(null);
     }
 
     @Operation(summary = "Merge Dive Profiles")

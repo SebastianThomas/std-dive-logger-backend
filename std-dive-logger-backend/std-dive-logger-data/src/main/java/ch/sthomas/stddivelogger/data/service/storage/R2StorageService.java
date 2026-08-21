@@ -1,10 +1,12 @@
-package ch.sthomas.stddivelogger.importws.services.storage;
+package ch.sthomas.stddivelogger.data.service.storage;
 
-import ch.sthomas.stddivelogger.data.service.storage.StorageService;
-
+import io.minio.GetObjectArgs;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import io.minio.errors.*;
+import io.minio.http.Method;
 
 import jakarta.validation.constraints.NotNull;
 
@@ -27,6 +29,12 @@ import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.Objects;
 
+/**
+ * Shared by every app (ws/import-ws/analytics) rather than each carrying its own near-duplicate
+ * copy - this is the one place {@code presignedUploadUrl}/{@code download}/{@code delete} are
+ * actually implemented against real R2, so consolidating here means any app that needs them (only
+ * {@code ws}'s dive-photo gallery does today) gets them for free without a fourth copy.
+ */
 @Service
 @Primary
 @Profile("!local-output")
@@ -95,6 +103,7 @@ public class R2StorageService implements StorageService {
                             .bucket(bucket)
                             .object(path)
                             .contentType(contentType)
+                            // .headers(Map.of())
                             .stream(output, -1, fallbackPartSize) // contentLength, partSize)
                             .build();
             client.putObject(putObjectArgs);
@@ -108,6 +117,70 @@ public class R2StorageService implements StorageService {
                 | XmlParserException
                 | IOException e) {
             throw new IOException(MessageFormat.format("failed to write for path={0}", path), e);
+        }
+    }
+
+    @Override
+    public PresignedUpload presignedUploadUrl(
+            final String path, final String contentType, final int expirySeconds)
+            throws IOException {
+        try {
+            final var url =
+                    client.getPresignedObjectUrl(
+                            GetPresignedObjectUrlArgs.builder()
+                                    .method(Method.PUT)
+                                    .bucket(bucket)
+                                    .object(path)
+                                    .expiry(expirySeconds)
+                                    .build());
+            return new PresignedUpload(url);
+        } catch (final ErrorResponseException
+                | InsufficientDataException
+                | InternalException
+                | InvalidKeyException
+                | InvalidResponseException
+                | NoSuchAlgorithmException
+                | ServerException
+                | XmlParserException
+                | IOException e) {
+            throw new IOException(
+                    MessageFormat.format(
+                            "failed to create presigned upload url for path={0}", path),
+                    e);
+        }
+    }
+
+    @Override
+    public InputStream download(final String path) throws IOException {
+        try {
+            return client.getObject(GetObjectArgs.builder().bucket(bucket).object(path).build());
+        } catch (final ErrorResponseException
+                | InsufficientDataException
+                | InternalException
+                | InvalidKeyException
+                | InvalidResponseException
+                | NoSuchAlgorithmException
+                | ServerException
+                | XmlParserException
+                | IOException e) {
+            throw new IOException(MessageFormat.format("failed to read for path={0}", path), e);
+        }
+    }
+
+    @Override
+    public void delete(final String path) throws IOException {
+        try {
+            client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(path).build());
+        } catch (final ErrorResponseException
+                | InsufficientDataException
+                | InternalException
+                | InvalidKeyException
+                | InvalidResponseException
+                | NoSuchAlgorithmException
+                | ServerException
+                | XmlParserException
+                | IOException e) {
+            throw new IOException(MessageFormat.format("failed to delete for path={0}", path), e);
         }
     }
 

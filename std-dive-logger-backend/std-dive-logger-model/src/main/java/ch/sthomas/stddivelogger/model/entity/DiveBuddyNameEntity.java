@@ -1,6 +1,11 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.dive.BuddyRole;
+import ch.sthomas.stddivelogger.model.dive.NamedBuddy;
+
 import jakarta.persistence.*;
+
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "t_dive_buddy_name")
@@ -18,11 +23,25 @@ public class DiveBuddyNameEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "role")
+    @Enumerated(EnumType.STRING)
+    private @Nullable BuddyRole role;
+
     public DiveBuddyNameEntity() {}
 
     public DiveBuddyNameEntity(final DiveEntity dive, final String name) {
+        this(dive, name, null);
+    }
+
+    public DiveBuddyNameEntity(
+            final DiveEntity dive, final String name, @Nullable final BuddyRole role) {
         this.dive = dive;
         this.name = name;
+        this.role = role;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public DiveEntity getDive() {
@@ -35,5 +54,17 @@ public class DiveBuddyNameEntity {
 
     public void setName(final String name) {
         this.name = name;
+    }
+
+    public @Nullable BuddyRole getRole() {
+        return role;
+    }
+
+    public void setRole(@Nullable final BuddyRole role) {
+        this.role = role;
+    }
+
+    public NamedBuddy toRecord() {
+        return new NamedBuddy(id, name, role);
     }
 }
