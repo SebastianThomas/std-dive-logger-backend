@@ -136,6 +136,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 null,
                                 null,
+                                false,
                                 null));
 
         assertThat(updated.namedBuddies()).hasSize(1);
@@ -143,8 +144,8 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
         assertThat(namedBuddy.name()).isEqualTo("Alex");
         assertThat(namedBuddy.role()).isEqualTo(BuddyRole.INSTRUCTOR);
 
-        // No leader/terminology set yet - resolves to the owner leading, "Buddy" wording.
-        assertThat(updated.leader()).isEqualTo(DiveLeader.SELF);
+        // No leader/terminology set yet - unset, not resolved to the owner leading.
+        assertThat(updated.leader()).isEqualTo(DiveLeader.UNSET);
         assertThat(updated.teamTerminology()).isNull();
 
         final var namedBuddyId = namedBuddy.id();
@@ -166,6 +167,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 namedBuddyId,
                                 null,
+                                false,
                                 TeamTerminology.TEAM));
 
         assertThat(withLeaderAndTerminology.leader().type()).isEqualTo(DiveLeader.LeaderType.NAMED);
@@ -201,6 +203,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 null,
                                 buddyDiveId,
+                                false,
                                 null));
 
         assertThat(updated.leader().type()).isEqualTo(DiveLeader.LeaderType.LINKED);
@@ -214,7 +217,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                         () ->
                                 new UpdateDiveBody(
                                         diveId, 1, null, 0, null, null, null, null, null, null,
-                                        null, null, 1L, 2L, null))
+                                        null, null, 1L, 2L, false, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -240,6 +243,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 null,
                                 null,
+                                false,
                                 null));
         final var foreignBuddyId = otherDiveWithBuddy.namedBuddies().getFirst().id();
 
@@ -262,6 +266,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                                 null,
                                                 foreignBuddyId,
                                                 null,
+                                                false,
                                                 null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }

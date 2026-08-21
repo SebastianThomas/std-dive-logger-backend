@@ -659,6 +659,7 @@ public class DiveDataService {
                 null, // visibility mutated in-place above
                 updateBody.leaderNamedBuddyId(),
                 updateBody.leaderBuddyDiveId(),
+                updateBody.leaderSelfExplicit(),
                 updateBody.teamTerminology());
         return toRecord(diveRepository.save(existingDive));
     }
@@ -1235,6 +1236,28 @@ public class DiveDataService {
         return diveRepository
                 .findFirstByUser_IdAndTeamTerminologyIsNotNullOrderByIdDesc(userId)
                 .map(DiveEntity::getTeamTerminology);
+    }
+
+    /**
+     * Every dive of this user's that still has at least one backfill checklist item unfilled,
+     * ordered so the most incomplete/oldest dives come first - lets the frontend present a single
+     * "next dive to fill in" as well as a full browsable queue without a second query. Unpaginated
+     * like {@link #findByUser_Id} above (needs every dive up front to sort/filter over), but cheap
+     * per-dive since {@link DiveEntity#toBackfillStatus} deliberately skips the heavier
+     * cylinder-consumption/buddy-link/tag computation {@link DiveEntity#toRecord} does.
+     */
+    @Transactional(readOnly = true)
+    public List<DiveBackfillStatus> getBackfillQueue(final long userId) {
+        return diveRepository.findByUser_Id(userId).stream()
+                .map(DiveEntity::toBackfillStatus)
+                .filter(status -> status.missingCount() > 0)
+                .sorted(
+                        Comparator.comparingInt(DiveBackfillStatus::missingCount)
+                                .reversed()
+                                .thenComparing(
+                                        DiveBackfillStatus::diveStart,
+                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
     }
 
     @Transactional

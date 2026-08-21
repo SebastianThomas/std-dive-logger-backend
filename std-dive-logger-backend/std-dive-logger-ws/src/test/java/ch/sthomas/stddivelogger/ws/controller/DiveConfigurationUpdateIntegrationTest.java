@@ -208,6 +208,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null,
+                        false,
                         null);
 
         assertThatCode(() -> diveService.updateDive(userEntity.toRecord(), body))
@@ -243,6 +244,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null,
+                        false,
                         null);
         diveService.updateDive(userEntity.toRecord(), firstUpdate);
         // Flush + clear the persistence context so the second update reloads the dive fresh from
@@ -277,6 +279,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null,
+                        false,
                         null);
 
         assertThatCode(() -> diveService.updateDive(userEntity.toRecord(), secondUpdate))

@@ -586,6 +586,21 @@ public class DiveController {
         return diveService.getMostRecentTeamTerminology(user).orElse(null);
     }
 
+    @Operation(
+            summary = "The user's dive backfill queue",
+            description =
+                    "Every dive still missing at least one backfill checklist item (visibility,"
+                            + " gas consumption, water type, leader, notes), most"
+                            + " incomplete/oldest first - powers the guided backfill flow.")
+    @GetMapping("/backfill")
+    public List<DiveBackfillStatus> getBackfillQueue(
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your backfill queue.");
+        }
+        return diveService.getBackfillQueue(user);
+    }
+
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public Dive mergeDiveProfiles(

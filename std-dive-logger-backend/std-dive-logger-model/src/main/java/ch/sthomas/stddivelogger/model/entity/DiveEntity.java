@@ -134,6 +134,10 @@ public class DiveEntity {
     @Column(name = "fk_leader_buddy_dive_id")
     private @Nullable Long leaderBuddyDiveId;
 
+    /** True only when the owner explicitly picked "Me" as leader - see {@link DiveLeader}. */
+    @Column(name = "leader_self_explicit")
+    private boolean leaderSelfExplicit;
+
     @Column(name = "team_terminology")
     @Enumerated(EnumType.STRING)
     private @Nullable TeamTerminology teamTerminology;
@@ -242,7 +246,7 @@ public class DiveEntity {
         if (leaderBuddyDiveId != null) {
             return new DiveLeader(DiveLeader.LeaderType.LINKED, null, leaderBuddyDiveId);
         }
-        return DiveLeader.SELF;
+        return leaderSelfExplicit ? DiveLeader.SELF : DiveLeader.UNSET;
     }
 
     public SimplifiedDive toSimplifiedRecord(
@@ -259,6 +263,43 @@ public class DiveEntity {
                 getNamedBuddiesModels(),
                 getSummary(),
                 getTags());
+    }
+
+    /**
+     * The backfill checklist for this dive - see {@link DiveBackfillStatus}'s own doc for what
+     * each key means. Deliberately reads the raw entity graph rather than going through {@link
+     * #toRecord}, since that also computes cylinder consumption/buddy links/tags this check
+     * doesn't need.
+     */
+    public DiveBackfillStatus toBackfillStatus() {
+        final var missing = new ArrayList<String>();
+        final var visibilityRecord =
+                Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null);
+        if (visibilityRecord == null
+                || (visibilityRecord.meters() == null
+                        && (visibilityRecord.description() == null
+                                || visibilityRecord.description().isBlank())
+                        && visibilityRecord.feeling() == null)) {
+            missing.add("VISIBILITY");
+        }
+        final var gasRecord =
+                Optional.ofNullable(gasConsumption)
+                        .map(DiveGasConsumptionEntity::toRecord)
+                        .orElse(null);
+        if (gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY)) {
+            missing.add("GAS_CONSUMPTION");
+        }
+        if (Optional.ofNullable(conditions).map(DiveConditionsEntity::getWaterType).orElse(null)
+                == null) {
+            missing.add("WATER_TYPE");
+        }
+        if (getLeader().type() == DiveLeader.LeaderType.UNSET) {
+            missing.add("LEADER");
+        }
+        if (notes == null || notes.isBlank()) {
+            missing.add("NOTES");
+        }
+        return new DiveBackfillStatus(id, number, diveIdentifier, getSummary().start(), missing);
     }
 
     private DiveSummary getSummary() {
@@ -336,10 +377,13 @@ public class DiveEntity {
             @Nullable final DiveGasConsumptionEntity gasConsumption,
             @Nullable final VisibilityEntity visibility,
             // Applied unconditionally (unlike the @Nullable params above, which mean "leave
-            // unchanged" when null) - both null is a legitimate target state ("I led"), not "not
-            // specified", so the caller's current selection is always written through.
+            // unchanged" when null) - the caller's current leader selection is always written
+            // through, including "no explicit choice" (both ids null and leaderSelfExplicit
+            // false), which is a legitimate target state distinct from "I led" (both ids null and
+            // leaderSelfExplicit true). See DiveLeader's own doc comment.
             @Nullable final Long leaderNamedBuddyId,
             @Nullable final Long leaderBuddyDiveId,
+            final boolean leaderSelfExplicit,
             @Nullable final TeamTerminology teamTerminology) {
         this.number = number;
         if (diveIdentifier != null) {
@@ -366,6 +410,11 @@ public class DiveEntity {
         }
         this.leaderNamedBuddyId = leaderNamedBuddyId;
         this.leaderBuddyDiveId = leaderBuddyDiveId;
+        // Normalized defensively so an inconsistent caller can never persist "self-explicit" and a
+        // named/linked leader at the same time (UpdateDiveBody already rejects this combination,
+        // but this is the one place that actually writes the column).
+        this.leaderSelfExplicit =
+                leaderSelfExplicit && leaderNamedBuddyId == null && leaderBuddyDiveId == null;
         this.teamTerminology = teamTerminology;
         this.updateDiveSummary();
         return this;

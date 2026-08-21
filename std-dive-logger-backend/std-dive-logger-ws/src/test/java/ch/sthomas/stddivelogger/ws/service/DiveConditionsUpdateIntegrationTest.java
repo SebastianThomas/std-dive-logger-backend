@@ -106,6 +106,7 @@ class DiveConditionsUpdateIntegrationTest {
                         new Current(1.5, "Mild down-current", 2),
                         null,
                         null,
+                        false,
                         null));
 
         final var afterFirstUpdate = diveService.getDiveById(user, created.id()).orElseThrow();
@@ -133,6 +134,7 @@ class DiveConditionsUpdateIntegrationTest {
                         new Current(0.5, "Negligible", 0),
                         null,
                         null,
+                        false,
                         null));
 
         final var afterSecondUpdate = diveService.getDiveById(user, created.id()).orElseThrow();

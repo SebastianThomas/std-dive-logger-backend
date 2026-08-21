@@ -29,16 +29,24 @@ public record UpdateDiveBody(
         @Nullable List<NamedBuddyInput> namedBuddies,
         @Nullable WaterType waterType,
         @Nullable Current current,
-        // At most one of these two may be set (checked below) - both null means the dive's own
-        // owner led. See DiveLeader's own doc comment for what each represents.
+        // At most one of these two may be set (checked below). Both null does NOT by itself mean
+        // the owner led - see leaderSelfExplicit below and DiveLeader's own doc comment.
         @Nullable @Positive Long leaderNamedBuddyId,
         @Nullable @Positive Long leaderBuddyDiveId,
+        // True only when the owner explicitly picked "Me" in the leader picker - distinguishes
+        // that from "never touched the leader picker at all" (both this and the two ids above
+        // left at their defaults), which must resolve to DiveLeader.UNSET, not DiveLeader.SELF.
+        boolean leaderSelfExplicit,
         @Nullable TeamTerminology teamTerminology) {
 
     public UpdateDiveBody {
         if (leaderNamedBuddyId != null && leaderBuddyDiveId != null) {
             throw new IllegalArgumentException(
                     "A dive leader can be a named buddy or a linked buddy dive, not both.");
+        }
+        if (leaderSelfExplicit && (leaderNamedBuddyId != null || leaderBuddyDiveId != null)) {
+            throw new IllegalArgumentException(
+                    "leaderSelfExplicit cannot be set together with a named/linked dive leader.");
         }
     }
 

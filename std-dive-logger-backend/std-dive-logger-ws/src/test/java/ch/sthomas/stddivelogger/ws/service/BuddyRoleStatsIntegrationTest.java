@@ -138,6 +138,7 @@ class BuddyRoleStatsIntegrationTest {
                         null,
                         null,
                         null,
+                        false,
                         null));
     }
 

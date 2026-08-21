@@ -6,10 +6,15 @@ import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
-import ch.sthomas.stddivelogger.model.dive.TeamTerminology;
+import ch.sthomas.stddivelogger.model.dive.conditions.Current;
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
+import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 
 import org.junit.jupiter.api.Test;
@@ -28,13 +33,13 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * Coverage for WS9's "smart terminology default" - the user's own most recent explicit BUDDY/TEAM
- * choice, used to prefill a new/unset dive's terminology picker.
+ * Coverage for the "backfill" guide: the queue of dives still missing at least one checklist item
+ * (visibility, gas consumption, water type, leader, notes), ordered most-incomplete/oldest first.
  */
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional
-class TeamTerminologyDefaultIntegrationTest {
+class DiveBackfillIntegrationTest {
 
     @Container @ServiceConnection
     static final PostgreSQLContainer<?> postgres =
@@ -63,91 +68,69 @@ class TeamTerminologyDefaultIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private DiveSiteRepository diveSiteRepository;
 
-    private long createDive(
-            final ch.sthomas.stddivelogger.model.user.User user,
-            final long siteId,
-            final int number) {
+    private long createDive(final User user, final long siteId, final int number, final Instant start) {
         return diveService
                 .createEmptyDive(
                         user,
                         new UploadDiveBody(
                                 number,
-                                "terminology-default-it-" + number,
+                                "backfill-it-" + number,
                                 siteId,
                                 10.0,
                                 Duration.ofMinutes(10),
-                                Instant.now()))
+                                start))
                 .id();
     }
 
     @Test
-    void isEmptyForAUserWhoHasNeverSetOne() {
+    void queuesIncompleteDivesMostMissingAndOldestFirst() {
         final var user =
-                userRepository
-                        .save(new UserEntity("terminology-default-a@test.ch", "hash", "A"))
-                        .toRecord();
-        assertThat(diveService.getMostRecentTeamTerminology(user)).isEmpty();
-    }
-
-    @Test
-    void reflectsTheMostRecentlyCreatedDiveWithAnExplicitChoice() {
-        final var user =
-                userRepository
-                        .save(new UserEntity("terminology-default-b@test.ch", "hash", "B"))
-                        .toRecord();
+                userRepository.save(new UserEntity("backfill-it@test.ch", "hash", "A")).toRecord();
         final var siteId =
                 diveSiteRepository
-                        .save(
-                                new DiveSiteEntity(
-                                        "Terminology Default IT Site",
-                                        new Location(4.0, 4.0).toPoint()))
+                        .save(new DiveSiteEntity("Backfill IT Site", new Location(47.0, 8.0).toPoint()))
                         .toRecord()
                         .id();
 
-        final var dive1 = createDive(user, siteId, 1);
+        final var completeId = createDive(user, siteId, 1, Instant.parse("2026-01-01T09:00:00Z"));
+        final var partialId = createDive(user, siteId, 2, Instant.parse("2026-02-01T09:00:00Z"));
+        final var emptyId = createDive(user, siteId, 3, Instant.parse("2026-03-01T09:00:00Z"));
+
+        // Fully backfilled - fills in every checklist item in one go (conditions/waterType are
+        // always applied unconditionally by DiveDataService.updateDive, so a second partial call
+        // here would silently wipe them back to null).
         diveService.updateDive(
                 user,
                 new UpdateDiveBody(
-                        dive1,
+                        completeId,
                         1,
-                        null,
+                        "Great dive",
                         0,
                         null,
+                        new DiveGasConsumption(18.0, 12.0, 1800.0),
+                        new Visibility(15.0, "Clear", VisibilityFeeling.HIGH),
                         null,
                         null,
                         null,
+                        WaterType.SALT,
+                        new Current(0.5, "Mild", 1),
                         null,
                         null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        false,
-                        TeamTerminology.TEAM));
+                        true,
+                        null));
 
-        assertThat(diveService.getMostRecentTeamTerminology(user)).contains(TeamTerminology.TEAM);
-
-        final var dive2 = createDive(user, siteId, 2);
+        // Only notes filled in - still missing visibility/gas/waterType/leader.
         diveService.updateDive(
                 user,
                 new UpdateDiveBody(
-                        dive2,
-                        2,
-                        null,
-                        0,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        false,
-                        TeamTerminology.BUDDY));
+                        partialId, 2, "Partial notes", 0, null, null, null, null, null, null, null,
+                        null, null, null, false, null));
 
-        assertThat(diveService.getMostRecentTeamTerminology(user)).contains(TeamTerminology.BUDDY);
+        final var queue = diveService.getBackfillQueue(user);
+
+        assertThat(queue).extracting("diveId").containsExactly(emptyId, partialId);
+        assertThat(queue.get(0).missingCount()).isEqualTo(5);
+        assertThat(queue.get(1).missingCount()).isEqualTo(4);
+        assertThat(queue.get(1).missingFields()).doesNotContain("NOTES");
     }
 }

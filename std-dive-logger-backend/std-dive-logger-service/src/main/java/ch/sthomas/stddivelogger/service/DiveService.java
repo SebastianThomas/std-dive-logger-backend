@@ -596,6 +596,15 @@ public class DiveService {
         return diveDataService.findMostRecentTeamTerminology(user.id());
     }
 
+    /**
+     * The user's backfill queue - every dive still missing at least one checklist item, most
+     * incomplete/oldest first. Powers the "guide me through filling in gaps" flow so the user
+     * doesn't have to go hunting for sparsely-logged dives themselves.
+     */
+    public List<DiveBackfillStatus> getBackfillQueue(final User user) {
+        return diveDataService.getBackfillQueue(user.id());
+    }
+
     public DiveSite updateDiveSite(
             final User user,
             final long siteId,

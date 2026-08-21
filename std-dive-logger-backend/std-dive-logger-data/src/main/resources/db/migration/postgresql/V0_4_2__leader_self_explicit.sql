@@ -1,0 +1,2 @@
+ALTER TABLE t_dives
+    ADD COLUMN leader_self_explicit BOOLEAN NOT NULL DEFAULT FALSE;
