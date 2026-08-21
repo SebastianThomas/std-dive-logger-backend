@@ -10,12 +10,22 @@ public record Gas(
         @Nullable CylinderSize size,
         @Nullable GasContent content,
         @Nullable String description) {
-    public static final Gas AIR = new Gas(20.9);
+    public static final Gas AIR = new Gas(0.209);
 
     public Gas {
         final var sum = o2 + n2 + he + h2;
         if (sum < 0.99 || sum > 1.01) {
             throw new IllegalArgumentException("Gas must consist of 100%");
+        }
+        // The sum check alone doesn't catch every nonsensical mix: the 2-arg convenience
+        // constructor below always computes n2 = 1 - o2 - he, so the sum is exactly 1 by
+        // construction even when o2 + he alone is already over 100% - that just drives n2
+        // negative instead. -0.01 tolerance matches the sum check's own 1% slack, so this only
+        // rejects a genuinely negative component, not floating-point noise around zero.
+        if (o2 < -0.01 || n2 < -0.01 || he < -0.01 || h2 < -0.01) {
+            throw new IllegalArgumentException(
+                    "Gas percentages cannot be negative - check that O2/He/N2/H2 together don't"
+                            + " exceed 100%");
         }
     }
 

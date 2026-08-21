@@ -146,9 +146,14 @@ public record SubsurfaceXmlFile(
             @JacksonXmlProperty(isAttribute = true) @Nullable String end,
             @JacksonXmlProperty(isAttribute = true) @Nullable String depth) {
         public Gas toGas() {
+            // parsePercent returns the raw percent number (e.g. "32%" -> 32.0), but Gas's
+            // fields are 0-1 fractions - dividing by 100 was missing here (unlike the
+            // equivalent DiveConfigurationCylinder construction in SubsurfaceXmlReaderService),
+            // which fed e.g. 32.0 straight in as o2, driving n2 wildly negative for any
+            // gas-switch event referencing this cylinder.
             return new Gas(
-                    parsePercent(o2),
-                    parsePercent(he),
+                    parsePercent(o2) / 100,
+                    parsePercent(he) / 100,
                     parseCylinderSize(size),
                     parseGasContent(start),
                     description);

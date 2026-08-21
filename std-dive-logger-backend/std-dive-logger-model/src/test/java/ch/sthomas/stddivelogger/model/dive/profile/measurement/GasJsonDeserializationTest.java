@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
+import ch.sthomas.stddivelogger.utils.advice.HttpMessageNotReadableAdviceTrait;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,5 +43,19 @@ class GasJsonDeserializationTest {
     void aPureO2GasObjectIsAccepted() {
         final var gas = mapper.readValue("{\"o2\":1,\"n2\":0,\"he\":0,\"h2\":0}", Gas.class);
         assertThat(gas.o2()).isEqualTo(1.0);
+    }
+
+    /**
+     * Documents the exact message shape {@link HttpMessageNotReadableAdviceTrait} depends on:
+     * Jackson (and Spring's {@code HttpMessageNotReadableException} wrapping it) both preserve a
+     * literal {@code "problem: <message>"} marker carrying whatever message the failing
+     * constructor/compact-constructor threw - that's what lets the advice trait surface a specific
+     * validation message instead of a generic "failed to read request" for ANY record with a
+     * compact constructor across the whole app, not just {@link Gas}.
+     */
+    @Test
+    void theFailureMessagePreservesTheOriginalProblemTextForTheAdviceTraitToExtract() {
+        assertThatThrownBy(() -> mapper.readValue("{\"o2\":0.21,\"he\":0}", Gas.class))
+                .hasMessageContaining("problem: Gas must consist of 100%");
     }
 }
