@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -23,6 +24,7 @@ public class ExceptionHandling extends ResponseEntityExceptionHandler
                 ConstraintViolationAdviceTrait,
                 DiveDBConstraintAdviceTrait,
                 HttpMessageNotReadableAdviceTrait,
+                MethodArgumentNotValidAdviceTrait,
                 SecurityAdviceTrait {
 
     private static final Logger logger = LoggerFactory.getLogger(ExceptionHandling.class);
@@ -41,6 +43,23 @@ public class ExceptionHandling extends ResponseEntityExceptionHandler
                 ProblemDetail.forStatusAndDetail(
                         HttpStatus.valueOf(status.value()),
                         HttpMessageNotReadableAdviceTrait.extractDetail(exception));
+        return handleExceptionInternal(exception, problemDetail, headers, status, request);
+    }
+
+    // See MethodArgumentNotValidAdviceTrait's own doc for why this must be a real @Override here
+    // rather than a plain @ExceptionHandler default method like every other trait in this package.
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
+            final MethodArgumentNotValidException exception,
+            final HttpHeaders headers,
+            final HttpStatusCode status,
+            final WebRequest request) {
+        logger.warn(
+                "Validation failed for request to {}.", request.getDescription(false), exception);
+        final var problemDetail =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.valueOf(status.value()),
+                        MethodArgumentNotValidAdviceTrait.extractDetail(exception));
         return handleExceptionInternal(exception, problemDetail, headers, status, request);
     }
 }

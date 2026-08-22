@@ -14,6 +14,12 @@ public record DBResult<T>(@Nullable T value, @Nullable DiveDBConstraintException
         if (value != null && dbException != null) {
             throw new IllegalArgumentException("At least one of value and exception must be null");
         }
+        // Without this, `new DBResult<>(null, null)` would construct successfully with
+        // isException() == false, and the @SuppressWarnings("NullAway") on value() below would
+        // then hand back a null pretending to be a non-null T instead of either accessor throwing.
+        if (value == null && dbException == null) {
+            throw new IllegalArgumentException("Exactly one of value and exception must be set");
+        }
     }
 
     // isException()/the constructor invariant guarantee value is non-null here, but that's a
