@@ -12,22 +12,19 @@ import io.jsonwebtoken.security.Keys;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.util.LinkedMultiValueMap;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.Date;
@@ -47,7 +44,7 @@ import javax.crypto.SecretKey;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "scheduling.enabled=false")
-@AutoConfigureTestRestTemplate
+@AutoConfigureRestTestClient
 @Testcontainers
 class ImportIntegrationTest {
     private static final String TEST_JWT_SECRET =
@@ -55,8 +52,8 @@ class ImportIntegrationTest {
     private static final String TEST_USER_EMAIL = "test@test.ch";
 
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(
+    static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer(
                             DockerImageName.parse("postgis/postgis:18-3.6")
                                     .asCompatibleSubstituteFor("postgres"))
                     .withReuse(true);
@@ -68,7 +65,7 @@ class ImportIntegrationTest {
                 "ch.sthomas.stddivelogger.storage.r2.base-url", () -> "http://localhost/unused");
     }
 
-    @Autowired private TestRestTemplate restTemplate;
+    @Autowired private RestTestClient restTestClient;
 
     private static String bearerToken() {
         final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
@@ -136,65 +133,79 @@ class ImportIntegrationTest {
 
     @Test
     void divesoftImportEndpointRejectsUnauthenticatedRequests() {
-        final var headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        final var response =
-                restTemplate.postForEntity(
-                        "/v1/import/divesoft",
-                        new HttpEntity<>("{\"dives\":[]}", headers),
-                        String.class);
-        assertThat(response.getStatusCode()).isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
+        restTestClient
+                .post()
+                .uri("/v1/import/divesoft")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"dives\":[]}")
+                .exchange()
+                .expectStatus()
+                .value(status -> assertThat(status).isIn(401, 403));
     }
 
     @Test
     void stagingThenCommittingWithoutOverridesPersistsUsingTheGuessedSite() {
-        final var stageResponse =
-                restTemplate.postForEntity(
-                        "/v1/import/divesoft",
-                        new HttpEntity<>(
-                                syntheticDiveRequestBody("it-test-dive-1"),
-                                authorizedJsonHeaders()),
-                        StageImportResult.class);
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/divesoft")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(syntheticDiveRequestBody("it-test-dive-1"))
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
 
-        assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        final var stageBody = Objects.requireNonNull(stageResponse.getBody());
-        assertThat(stageBody.errors()).isEmpty();
-        assertThat(stageBody.staged()).hasSize(1);
-        final var staged = stageBody.staged().getFirst();
+        final var body = Objects.requireNonNull(stageBody);
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(1);
+        final var staged = body.staged().getFirst();
         assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Lake");
 
         final var commitRequest =
                 new PendingImportCommitRequest(
                         null, null, null, null, null, null, null, null, null, null);
-        final var commitResponse =
-                restTemplate.postForEntity(
-                        "/v1/import/pending/" + staged.id() + "/commit",
-                        new HttpEntity<>(commitRequest, authorizedJsonHeaders()),
-                        SimplifiedDive.class);
-
-        assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(commitResponse.getBody()).isNotNull();
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
+        assertThat(commitBody).isNotNull();
 
         // The pending import is consumed by commit - listing pending imports afterwards is empty.
-        final var pendingAfterCommit =
-                restTemplate.exchange(
-                        "/v1/import/pending",
-                        HttpMethod.GET,
-                        new HttpEntity<>(authorizedJsonHeaders()),
-                        StageImportResult[].class);
-        assertThat(pendingAfterCommit.getStatusCode()).isEqualTo(HttpStatus.OK);
+        restTestClient
+                .get()
+                .uri("/v1/import/pending")
+                .headers(h -> h.addAll(authorizedJsonHeaders()))
+                .exchange()
+                .expectStatus()
+                .isOk();
     }
 
     @Test
     void committingWithASiteOverrideUsesTheOverrideInsteadOfTheGuess() {
-        final var stageResponse =
-                restTemplate.postForEntity(
-                        "/v1/import/divesoft",
-                        new HttpEntity<>(
-                                syntheticDiveRequestBody("it-test-dive-2"),
-                                authorizedJsonHeaders()),
-                        StageImportResult.class);
-        final var staged = Objects.requireNonNull(stageResponse.getBody()).staged().getFirst();
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/divesoft")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(syntheticDiveRequestBody("it-test-dive-2"))
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
+        final var staged = Objects.requireNonNull(stageBody).staged().getFirst();
 
         final var commitRequest =
                 new PendingImportCommitRequest(
@@ -208,34 +219,47 @@ class ImportIntegrationTest {
                         new Location(1.0, 2.0),
                         null,
                         null);
-        final var commitResponse =
-                restTemplate.postForEntity(
-                        "/v1/import/pending/" + staged.id() + "/commit",
-                        new HttpEntity<>(commitRequest, authorizedJsonHeaders()),
-                        SimplifiedDive.class);
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
 
-        assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(Objects.requireNonNull(commitResponse.getBody()).customIdentifier())
+        assertThat(Objects.requireNonNull(commitBody).customIdentifier())
                 .isEqualTo("Overridden Name");
     }
 
     @Test
     void uploadingARealUddfFileThenCommittingPersistsTheParsedMeasurementData() {
-        final var body = new LinkedMultiValueMap<String, Object>();
-        body.add("file", new ClassPathResource("Perdix_2_A3B6F031__42_2024-12-1_15-24-0.uddf"));
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add(
+                "file", new ClassPathResource("Perdix_2_A3B6F031__42_2024-12-1_15-24-0.uddf"));
 
-        final var headers = authorizedHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import")
+                        .headers(h -> h.addAll(authorizedHeaders()))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(multipartBody)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
 
-        final var stageResponse =
-                restTemplate.postForEntity(
-                        "/v1/import", new HttpEntity<>(body, headers), StageImportResult.class);
-
-        assertThat(stageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        final var stageBody = Objects.requireNonNull(stageResponse.getBody());
-        assertThat(stageBody.errors()).isEmpty();
-        assertThat(stageBody.staged()).hasSize(1);
-        final var staged = stageBody.staged().getFirst();
+        final var body = Objects.requireNonNull(stageBody);
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(1);
+        final var staged = body.staged().getFirst();
         // Real duration parsed from the UDDF profile timestamps, not a synthetic placeholder.
         // (Unlike the Divesoft path, the UDDF reader doesn't populate the cheap maxDepth guess on
         // PendingImportSummary - the real per-measurement depth data only surfaces once
@@ -258,14 +282,20 @@ class ImportIntegrationTest {
                         new Location(3.0, 4.0),
                         null,
                         null);
-        final var commitResponse =
-                restTemplate.postForEntity(
-                        "/v1/import/pending/" + staged.id() + "/commit",
-                        new HttpEntity<>(commitRequest, authorizedJsonHeaders()),
-                        SimplifiedDive.class);
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
 
-        assertThat(commitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(commitResponse.getBody()).isNotNull();
+        assertThat(commitBody).isNotNull();
         // The persisted dive's summary is computed from the actual per-measurement depth data
         // parsed out of the UDDF file, confirming real measurements (not just a placeholder row)
         // made it into the database.
@@ -273,17 +303,17 @@ class ImportIntegrationTest {
         // raw UDDF start/end span used for the staged duration guess, so the two aren't expected
         // to match exactly - both being independently positive is what confirms real per-source
         // data flowed through both times.)
-        final var commitBody = Objects.requireNonNull(commitResponse.getBody());
-        assertThat(commitBody.summary().maxDepth()).isGreaterThan(0.0);
-        assertThat(commitBody.summary().bottomTime().toSeconds()).isGreaterThan(0L);
+        final var nonNullCommitBody = Objects.requireNonNull(commitBody);
+        assertThat(nonNullCommitBody.summary().maxDepth()).isGreaterThan(0.0);
+        assertThat(nonNullCommitBody.summary().bottomTime().toSeconds()).isGreaterThan(0L);
 
         // The pending import is consumed by commit - it's gone from the pending list afterwards.
-        final var pendingAfterCommit =
-                restTemplate.exchange(
-                        "/v1/import/pending",
-                        HttpMethod.GET,
-                        new HttpEntity<>(authorizedJsonHeaders()),
-                        StageImportResult[].class);
-        assertThat(pendingAfterCommit.getStatusCode()).isEqualTo(HttpStatus.OK);
+        restTestClient
+                .get()
+                .uri("/v1/import/pending")
+                .headers(h -> h.addAll(authorizedJsonHeaders()))
+                .exchange()
+                .expectStatus()
+                .isOk();
     }
 }

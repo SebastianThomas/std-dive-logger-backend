@@ -25,9 +25,9 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
@@ -44,8 +44,8 @@ import java.util.List;
 class BuddyRoleLeaderTerminologyIntegrationTest {
 
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(
+    static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer(
                             DockerImageName.parse("postgis/postgis:18-3.6")
                                     .asCompatibleSubstituteFor("postgres"))
                     .withReuse(true);

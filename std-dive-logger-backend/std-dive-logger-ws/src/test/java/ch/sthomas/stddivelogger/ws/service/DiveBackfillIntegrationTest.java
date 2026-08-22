@@ -24,9 +24,9 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
@@ -42,8 +42,8 @@ import java.time.Instant;
 class DiveBackfillIntegrationTest {
 
     @Container @ServiceConnection
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(
+    static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer(
                             DockerImageName.parse("postgis/postgis:18-3.6")
                                     .asCompatibleSubstituteFor("postgres"))
                     .withReuse(true);
@@ -68,7 +68,8 @@ class DiveBackfillIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private DiveSiteRepository diveSiteRepository;
 
-    private long createDive(final User user, final long siteId, final int number, final Instant start) {
+    private long createDive(
+            final User user, final long siteId, final int number, final Instant start) {
         return diveService
                 .createEmptyDive(
                         user,
@@ -88,7 +89,9 @@ class DiveBackfillIntegrationTest {
                 userRepository.save(new UserEntity("backfill-it@test.ch", "hash", "A")).toRecord();
         final var siteId =
                 diveSiteRepository
-                        .save(new DiveSiteEntity("Backfill IT Site", new Location(47.0, 8.0).toPoint()))
+                        .save(
+                                new DiveSiteEntity(
+                                        "Backfill IT Site", new Location(47.0, 8.0).toPoint()))
                         .toRecord()
                         .id();
 
@@ -123,8 +126,22 @@ class DiveBackfillIntegrationTest {
         diveService.updateDive(
                 user,
                 new UpdateDiveBody(
-                        partialId, 2, "Partial notes", 0, null, null, null, null, null, null, null,
-                        null, null, null, false, null));
+                        partialId,
+                        2,
+                        "Partial notes",
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null));
 
         final var queue = diveService.getBackfillQueue(user);
 

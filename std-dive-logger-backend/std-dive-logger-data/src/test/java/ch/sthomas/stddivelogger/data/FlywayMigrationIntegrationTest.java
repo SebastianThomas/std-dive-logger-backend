@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -21,8 +21,8 @@ import org.testcontainers.utility.DockerImageName;
 class FlywayMigrationIntegrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>(
+    static final PostgreSQLContainer postgres =
+            new PostgreSQLContainer(
                             DockerImageName.parse("postgis/postgis:18-3.6")
                                     .asCompatibleSubstituteFor("postgres"))
                     .withReuse(true);

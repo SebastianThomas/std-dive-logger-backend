@@ -38,8 +38,8 @@ import java.util.Objects;
  *
  * <p>Only implements {@link ObjectStorageService}, not {@link StorageService} - actual object IO
  * genuinely needs real R2 credentials, but a base URL doesn't (see {@link
- * RemoteBaseUrlStorageService}). {@code @Lazy} so that apps which merely happen to scan this
- * class (e.g. {@code autocomplete}, via a shared {@code service}-module class that injects {@link
+ * RemoteBaseUrlStorageService}). {@code @Lazy} so that apps which merely happen to scan this class
+ * (e.g. {@code autocomplete}, via a shared {@code service}-module class that injects {@link
  * ObjectStorageService} but never calls it) don't force this credential-requiring client to be
  * constructed at startup.
  */

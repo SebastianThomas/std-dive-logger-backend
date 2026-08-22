@@ -266,10 +266,10 @@ public class DiveEntity {
     }
 
     /**
-     * The backfill checklist for this dive - see {@link DiveBackfillStatus}'s own doc for what
-     * each key means. Deliberately reads the raw entity graph rather than going through {@link
-     * #toRecord}, since that also computes cylinder consumption/buddy links/tags this check
-     * doesn't need.
+     * The backfill checklist for this dive - see {@link DiveBackfillStatus}'s own doc for what each
+     * key means. Deliberately reads the raw entity graph rather than going through {@link
+     * #toRecord}, since that also computes cylinder consumption/buddy links/tags this check doesn't
+     * need.
      */
     public DiveBackfillStatus toBackfillStatus() {
         final var missing = new ArrayList<String>();

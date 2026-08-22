@@ -221,7 +221,9 @@ public class DiveServiceTest {
                 .thenReturn(expected);
         final var service =
                 new DiveService(
-                        diveDataService, mock(ObjectStorageService.class), mock(UserDataService.class));
+                        diveDataService,
+                        mock(ObjectStorageService.class),
+                        mock(UserDataService.class));
 
         final var result = service.searchDives(USER, "wreck", true, 0);
 
