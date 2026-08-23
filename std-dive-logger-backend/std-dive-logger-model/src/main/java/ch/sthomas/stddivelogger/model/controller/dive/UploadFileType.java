@@ -11,8 +11,12 @@ import java.util.stream.Collectors;
 public enum UploadFileType {
     NONE(null),
     UDDF_SHEARWATER("uddf"),
+    // Suunto FIT shares this extension - FitReaderService tells brands apart from the file's own
+    // manufacturer field, not a separate UploadFileType.
     FIT_GARMIN("fit"),
-    XML_SUBSURFACE("xml");
+    XML_SUBSURFACE("xml"),
+    // Brand-neutral on purpose - JsonReaderService detects the actual format by content.
+    JSON("json");
 
     public static final Map<String, UploadFileType> fileTypesByExtension =
             Arrays.stream(UploadFileType.values())

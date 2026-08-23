@@ -8,9 +8,12 @@ import com.nimbusds.jose.util.Pair;
 
 import jakarta.persistence.*;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Gatherers;
 
 @Entity
@@ -42,6 +45,9 @@ public class DiveSummaryEntity {
     @Column(name = "duration_seconds")
     private long durationSeconds;
 
+    @Column(name = "max_time_to_surface_seconds")
+    private @Nullable Long maxTimeToSurfaceSeconds;
+
     public DiveSummaryEntity() {}
 
     public DiveSummaryEntity(final DiveEntity dive) {
@@ -58,11 +64,30 @@ public class DiveSummaryEntity {
         this.start = profiles.getFirst().getStart();
         this.end = profiles.getLast().getEnd();
         this.durationSeconds = getBottomTime(profiles).toSeconds();
+        // Across every profile's measurements, regardless of which profile it came from - a
+        // twin-computer dive's real TTS peak is whichever profile happened to record the highest
+        // reading, not tied to any one profile.
+        final var maxTts =
+                profiles.stream()
+                        .flatMap(DiveProfileEntity::getMeasurementsStream)
+                        .map(DiveMeasurementEntity::getTimeToSurfaceSeconds)
+                        .filter(Objects::nonNull)
+                        .mapToLong(Integer::longValue)
+                        .max();
+        this.maxTimeToSurfaceSeconds = maxTts.isPresent() ? maxTts.getAsLong() : null;
     }
 
     public DiveSummary toRecord() {
         return new DiveSummary(
-                start, end, avgDepth, maxDepth, null, Duration.ofSeconds(durationSeconds));
+                start,
+                end,
+                avgDepth,
+                maxDepth,
+                null,
+                Duration.ofSeconds(durationSeconds),
+                maxTimeToSurfaceSeconds != null
+                        ? Duration.ofSeconds(maxTimeToSurfaceSeconds)
+                        : null);
     }
 
     private Duration getBottomTime(final List<DiveProfileEntity> profiles) {

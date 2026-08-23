@@ -18,7 +18,11 @@ public record UserDiveStats(
         @Nullable Long nrOfBuddies,
         @Nullable Long nrOfSites,
         @Nullable Temperature maxTemp,
-        @Nullable Temperature minTemp)
+        @Nullable Temperature minTemp,
+        // Per-dive max TTS, then averaged/maxed across dives - not an average/max of raw
+        // per-sample TTS readings.
+        @Nullable Duration avgMaxTimeToSurface,
+        @Nullable Duration maxMaxTimeToSurface)
         implements Comparable<UserDiveStats> {
     public UserDiveStats withBuddies(@Nullable final Long l) {
         return new UserDiveStats(
@@ -30,7 +34,9 @@ public record UserDiveStats(
                 l,
                 nrOfSites,
                 maxTemp,
-                minTemp);
+                minTemp,
+                avgMaxTimeToSurface,
+                maxMaxTimeToSurface);
     }
 
     public UserDiveStats withSites(@Nullable final Long l) {
@@ -43,7 +49,9 @@ public record UserDiveStats(
                 nrOfBuddies,
                 l,
                 maxTemp,
-                minTemp);
+                minTemp,
+                avgMaxTimeToSurface,
+                maxMaxTimeToSurface);
     }
 
     @Override

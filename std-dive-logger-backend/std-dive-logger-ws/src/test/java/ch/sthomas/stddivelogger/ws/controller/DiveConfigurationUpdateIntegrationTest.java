@@ -127,7 +127,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         new DiveMeasurementEntity(
                                 new DiveMeasurement(
                                         start, null, 10.0, null, List.of(), null, null, null, null,
-                                        null, null, null),
+                                        null, null, null, null),
                                 null),
                         new DiveMeasurementEntity(
                                 new DiveMeasurement(
@@ -136,6 +136,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                         10.0,
                                         null,
                                         List.of(),
+                                        null,
                                         null,
                                         null,
                                         null,

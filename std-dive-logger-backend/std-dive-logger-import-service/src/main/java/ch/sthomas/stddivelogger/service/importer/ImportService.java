@@ -50,6 +50,7 @@ public class ImportService {
     private final UddfReaderService uddfReaderService;
     private final SubsurfaceXmlReaderService subsurfaceXmlReaderService;
     private final DivesoftReaderService divesoftReaderService;
+    private final JsonReaderService jsonReaderService;
     private final PendingImportDataService pendingImportDataService;
     private final DiveService diveService;
 
@@ -58,12 +59,14 @@ public class ImportService {
             final UddfReaderService uddfReaderService,
             final SubsurfaceXmlReaderService subsurfaceXmlReaderService,
             final DivesoftReaderService divesoftReaderService,
+            final JsonReaderService jsonReaderService,
             final PendingImportDataService pendingImportDataService,
             final DiveService diveService) {
         this.fitReaderService = fitReaderService;
         this.uddfReaderService = uddfReaderService;
         this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;
         this.divesoftReaderService = divesoftReaderService;
+        this.jsonReaderService = jsonReaderService;
         this.pendingImportDataService = pendingImportDataService;
         this.diveService = diveService;
     }
@@ -137,7 +140,6 @@ public class ImportService {
                             MessageFormat.format(
                                     "Could not resolve file type for filename {0}, supported extensions: {1}",
                                     filename, UploadFileType.supportedExtensions()));
-            // fromFilename(...) only ever returns one of these for a non-null filename.
             case UDDF_SHEARWATER ->
                     uddfReaderService.parse(user, Objects.requireNonNull(filename), inputStream);
             case FIT_GARMIN ->
@@ -152,6 +154,15 @@ public class ImportService {
             case XML_SUBSURFACE ->
                     subsurfaceXmlReaderService.parse(
                             user, Objects.requireNonNull(filename), inputStream);
+            case JSON ->
+                    Stream.of(
+                            new ParsedImportResultStreaming(
+                                    Stream.of(
+                                            jsonReaderService.parse(
+                                                    user,
+                                                    Objects.requireNonNull(filename),
+                                                    inputStream)),
+                                    Stream.empty()));
         };
     }
 

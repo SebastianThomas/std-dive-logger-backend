@@ -44,6 +44,7 @@ class AnalyticsServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null),
                 offsetSeconds + 1L);
     }

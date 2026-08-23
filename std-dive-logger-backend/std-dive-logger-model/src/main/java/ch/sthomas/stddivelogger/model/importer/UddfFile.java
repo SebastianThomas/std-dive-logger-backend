@@ -523,7 +523,8 @@ public record UddfFile(
                             null,
                             null,
                             (double) cns,
-                            toMode(diveMode)),
+                            toMode(diveMode),
+                            null), // No TTS field in UDDF.
                     gas);
         }
 

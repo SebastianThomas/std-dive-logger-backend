@@ -11,4 +11,5 @@ public record DiveSummary(
         double averageDepth,
         double maxDepth,
         @Nullable Duration surfaceIntervalBefore,
-        Duration bottomTime) {}
+        Duration bottomTime,
+        @Nullable Duration maxTimeToSurface) {}

@@ -310,7 +310,8 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                         last.n2(),
                         otu != null ? otu : last.o2Tox(),
                         cns != null ? cns : last.cns(),
-                        last.mode());
+                        last.mode(),
+                        last.timeToSurface());
         final var result = new ArrayList<>(measurements.subList(0, measurements.size() - 1));
         result.add(withTotals);
         return result;
@@ -364,6 +365,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 null,
                 null,
                 null,
-                null);
+                null,
+                null); // No TTS field in Subsurface's <sample> elements.
     }
 }

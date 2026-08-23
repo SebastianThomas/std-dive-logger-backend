@@ -516,13 +516,13 @@ public class DiveService {
                         List.of(
                                 new DiveMeasurement(
                                         start, null, 0.0, null, null, null, null, null, null, null,
-                                        null, null),
-                                new DiveMeasurement(
-                                        mid, null, maxDepth, null, null, null, null, null, null,
                                         null, null, null),
                                 new DiveMeasurement(
+                                        mid, null, maxDepth, null, null, null, null, null, null,
+                                        null, null, null, null),
+                                new DiveMeasurement(
                                         end, null, 0.0, null, null, null, null, null, null, null,
-                                        null, null)));
+                                        null, null, null)));
         return diveDataService
                 .saveDive(
                         user,

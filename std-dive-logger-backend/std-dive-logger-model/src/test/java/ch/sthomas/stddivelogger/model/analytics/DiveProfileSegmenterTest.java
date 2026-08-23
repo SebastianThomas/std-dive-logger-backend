@@ -34,6 +34,7 @@ class DiveProfileSegmenterTest {
                         null,
                         null,
                         null,
+                        null,
                         null),
                 id);
     }

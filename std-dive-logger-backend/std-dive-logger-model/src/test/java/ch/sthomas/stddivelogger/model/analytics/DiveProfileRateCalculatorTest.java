@@ -33,6 +33,7 @@ class DiveProfileRateCalculatorTest {
                         null,
                         null,
                         null,
+                        null,
                         null),
                 id);
     }
@@ -102,6 +103,7 @@ class DiveProfileRateCalculatorTest {
                                 Double.NaN,
                                 null,
                                 List.of(),
+                                null,
                                 null,
                                 null,
                                 null,

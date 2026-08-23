@@ -118,6 +118,7 @@ class AnalyticsRecomputeIntegrationTest {
                                     null,
                                     null,
                                     null,
+                                    null,
                                     null),
                             null));
         }

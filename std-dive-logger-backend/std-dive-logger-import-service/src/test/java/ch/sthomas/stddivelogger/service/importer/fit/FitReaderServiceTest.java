@@ -169,6 +169,83 @@ public class FitReaderServiceTest {
         assertEquals(3.0, Objects.requireNonNull(summary.o2Toxicity()), 0.0001);
     }
 
+    // getSummary(FitMessages) is the fallback layer added for Suunto's FIT export, which never
+    // emits DiveSummaryMesg at all (see SuuntoFitCharacterizationTest for the empirical proof, and
+    // SuuntoFitReaderServiceTest for the same coverage against a real Suunto fixture end-to-end) -
+    // these two tests exercise it directly with mocks, isolated from everything else that changes
+    // between a Garmin- and Suunto-shaped file.
+
+    @Test
+    void getSummaryPrefersDiveSummaryMesgsOverSessionFallbackWhenBothArePresent() {
+        final var messages = mock(FitMessages.class);
+        final var first = mock(DiveSummaryMesg.class);
+        when(first.getTimestamp()).thenReturn(new DateTime(Date.from(Instant.EPOCH)));
+        final var last = mock(DiveSummaryMesg.class);
+        when(last.getTimestamp())
+                .thenReturn(new DateTime(Date.from(Instant.EPOCH.plusSeconds(60))));
+        when(last.getAvgDepth()).thenReturn(5.0f);
+        when(last.getMaxDepth()).thenReturn(9.0f);
+        when(last.getSurfaceInterval()).thenReturn(0L);
+        when(last.getBottomTime()).thenReturn(60.0f);
+        when(messages.getDiveSummaryMesgs()).thenReturn(List.of(first, last));
+        // A session that would produce an obviously different result if it were used instead -
+        // proves the DiveSummaryMesg path really does win when both are available.
+        final var session = mock(com.garmin.fit.SessionMesg.class);
+        when(session.getStartTime()).thenReturn(new DateTime(Date.from(Instant.EPOCH)));
+        when(session.getTimestamp())
+                .thenReturn(new DateTime(Date.from(Instant.EPOCH.plusSeconds(999))));
+        when(messages.getSessionMesgs()).thenReturn(List.of(session));
+
+        final var summary = service.getSummary(messages).orElseThrow();
+
+        assertEquals(9.0, summary.maxDepth(), 0.0001);
+        assertEquals(Instant.EPOCH.plusSeconds(60), summary.end());
+    }
+
+    @Test
+    void getSummaryFallsBackToSessionAndRecordsWhenNoDiveSummaryMesgsExist() {
+        final var messages = mock(FitMessages.class);
+        when(messages.getDiveSummaryMesgs()).thenReturn(List.of());
+        final var start = Instant.parse("2026-08-22T08:13:39Z");
+        final var end = Instant.parse("2026-08-22T09:18:29Z");
+        final var session = mock(com.garmin.fit.SessionMesg.class);
+        when(session.getStartTime()).thenReturn(new DateTime(Date.from(start)));
+        when(session.getTimestamp()).thenReturn(new DateTime(Date.from(end)));
+        when(messages.getSessionMesgs()).thenReturn(List.of(session));
+        final var shallow = recordAt(start);
+        final var shallowDepth = depthFieldOf(10.0);
+        when(shallow.getField(RecordMesg.DepthFieldNum)).thenReturn(shallowDepth);
+        final var deep = recordAt(start.plusSeconds(60));
+        final var deepDepth = depthFieldOf(20.0);
+        when(deep.getField(RecordMesg.DepthFieldNum)).thenReturn(deepDepth);
+        when(messages.getRecordMesgs()).thenReturn(List.of(shallow, deep));
+
+        final var summary = service.getSummary(messages).orElseThrow();
+
+        assertEquals(start, summary.start());
+        assertEquals(end, summary.end());
+        assertEquals(15.0, summary.averageDepth(), 0.0001);
+        assertEquals(20.0, summary.maxDepth(), 0.0001);
+        assertEquals(Duration.between(start, end), summary.bottomTime());
+        assertNull(summary.descentTime());
+        assertNull(summary.startCNS());
+    }
+
+    @Test
+    void getSummaryIsEmptyWhenNeitherDiveSummaryMesgsNorASessionAreUsable() {
+        final var messages = mock(FitMessages.class);
+        when(messages.getDiveSummaryMesgs()).thenReturn(List.of());
+        when(messages.getSessionMesgs()).thenReturn(List.of());
+
+        assertEquals(Optional.empty(), service.getSummary(messages));
+    }
+
+    private static com.garmin.fit.Field depthFieldOf(final double value) {
+        final var field = mock(com.garmin.fit.Field.class);
+        when(field.getDoubleValue()).thenReturn(value);
+        return field;
+    }
+
     @Test
     void getDecoDoesNotDoubleScaleNextStopDepth() {
         final var record = mock(RecordMesg.class);

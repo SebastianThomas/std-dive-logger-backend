@@ -29,6 +29,7 @@ class DiveProfileUploadTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 

@@ -27,6 +27,7 @@ class DiveProfileEntityTest {
                         null,
                         null,
                         null,
+                        null,
                         null);
         return new DiveMeasurementEntity(measurement, null);
     }

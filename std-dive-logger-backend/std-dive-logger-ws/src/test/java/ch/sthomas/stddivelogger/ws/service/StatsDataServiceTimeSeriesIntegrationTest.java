@@ -96,11 +96,16 @@ class StatsDataServiceTimeSeriesIntegrationTest {
     private DiveComputerEntity computer;
 
     private DiveEntity createDive(final int number, final Instant start, final double rmvLiters) {
+        return createDive(number, start, rmvLiters, 0L);
+    }
+
+    private DiveEntity createDive(
+            final int number, final Instant start, final double rmvLiters, final long ttsSeconds) {
         final var m0 =
                 new DiveMeasurementEntity(
                         new DiveMeasurement(
                                 start, null, 10.0, null, List.of(), null, null, null, null, null,
-                                null, null),
+                                null, null, null),
                         null);
         final var m1 =
                 new DiveMeasurementEntity(
@@ -116,7 +121,8 @@ class StatsDataServiceTimeSeriesIntegrationTest {
                                 null,
                                 null,
                                 null,
-                                null),
+                                null,
+                                ttsSeconds > 0 ? java.time.Duration.ofSeconds(ttsSeconds) : null),
                         null);
         final var profile =
                 new DiveProfileEntity(computer, start, start.plusSeconds(60), List.of(m0, m1));
@@ -177,6 +183,38 @@ class StatsDataServiceTimeSeriesIntegrationTest {
         assertThat(bucket.diveCount()).isEqualTo(2L);
         // Not (18 + 0) / 2 = 9.0 - the dive with no real data must not drag the average down.
         assertThat(bucket.avgRmvLiters()).isEqualTo(18.0);
+    }
+
+    @Test
+    void bucketComputesAvgAndMaxTtsFromEachDivesOwnPeakNotRawSamples() {
+        // Same month bucket: one dive peaking at 400s TTS, one at 200s.
+        createDive(1, Instant.parse("2026-05-05T10:00:00Z"), 0.0, 400L);
+        createDive(2, Instant.parse("2026-05-20T10:00:00Z"), 0.0, 200L);
+
+        final var series =
+                statsDataService.getTimeSeries(
+                        user, StatsGranularity.MONTH, StatsFilters.EMPTY, null);
+
+        assertThat(series.points()).hasSize(1);
+        final var bucket = series.points().getFirst();
+        assertThat(bucket.diveCount()).isEqualTo(2L);
+        assertThat(bucket.avgMaxTimeToSurfaceSeconds()).isEqualTo(300.0);
+        assertThat(bucket.maxMaxTimeToSurfaceSeconds()).isEqualTo(400.0);
+    }
+
+    @Test
+    void bucketTtsIsNullWhenNoDiveInTheBucketHasAnyTtsData() {
+        createDive(1, Instant.parse("2026-06-05T10:00:00Z"), 0.0);
+        createDive(2, Instant.parse("2026-06-20T10:00:00Z"), 0.0);
+
+        final var series =
+                statsDataService.getTimeSeries(
+                        user, StatsGranularity.MONTH, StatsFilters.EMPTY, null);
+
+        assertThat(series.points()).hasSize(1);
+        final var bucket = series.points().getFirst();
+        assertThat(bucket.avgMaxTimeToSurfaceSeconds()).isNull();
+        assertThat(bucket.maxMaxTimeToSurfaceSeconds()).isNull();
     }
 
     @Test

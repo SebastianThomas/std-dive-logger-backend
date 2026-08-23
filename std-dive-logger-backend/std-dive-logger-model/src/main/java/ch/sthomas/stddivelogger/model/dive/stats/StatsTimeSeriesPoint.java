@@ -24,4 +24,8 @@ public record StatsTimeSeriesPoint(
         @Nullable Double avgEndCns,
         @Nullable Double avgTemperatureCelsius,
         @Nullable Double avgVisibilityMeters,
-        @Nullable Double avgWeightKg) {}
+        @Nullable Double avgWeightKg,
+        // Per-dive max TTS, then averaged/maxed across the dives in this bucket - not an
+        // average/max of raw per-sample TTS readings.
+        @Nullable Double avgMaxTimeToSurfaceSeconds,
+        @Nullable Double maxMaxTimeToSurfaceSeconds) {}

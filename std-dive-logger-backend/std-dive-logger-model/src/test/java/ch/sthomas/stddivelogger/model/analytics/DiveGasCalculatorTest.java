@@ -49,7 +49,8 @@ class DiveGasCalculatorTest {
                         null,
                         null,
                         null,
-                        mode),
+                        mode,
+                        null),
                 nextId++);
     }
 

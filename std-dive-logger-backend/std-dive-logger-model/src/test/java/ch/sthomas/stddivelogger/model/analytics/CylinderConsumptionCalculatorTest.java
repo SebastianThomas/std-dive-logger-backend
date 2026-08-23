@@ -50,7 +50,8 @@ class CylinderConsumptionCalculatorTest {
                         null,
                         null,
                         null,
-                        mode),
+                        mode,
+                        null),
                 nextId++);
     }
 

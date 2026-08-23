@@ -97,6 +97,8 @@ class StatsDataServiceIntegrationTest {
             final String buddyName,
             final double tempA,
             final double tempB,
+            final long ttsASeconds,
+            final long ttsBSeconds,
             final DiveSiteEntity site,
             final SuitEntity suit,
             final DiveComputerEntity computer,
@@ -115,7 +117,8 @@ class StatsDataServiceIntegrationTest {
                                 null,
                                 null,
                                 null,
-                                null),
+                                null,
+                                java.time.Duration.ofSeconds(ttsASeconds)),
                         null);
         final var m1 =
                 new DiveMeasurementEntity(
@@ -131,7 +134,8 @@ class StatsDataServiceIntegrationTest {
                                 null,
                                 null,
                                 null,
-                                null),
+                                null,
+                                java.time.Duration.ofSeconds(ttsBSeconds)),
                         null);
         final var profile =
                 new DiveProfileEntity(computer, start, start.plusSeconds(60), List.of(m0, m1));
@@ -187,6 +191,8 @@ class StatsDataServiceIntegrationTest {
                 "Alice",
                 10.0,
                 15.0,
+                300L,
+                600L,
                 site,
                 suit,
                 computer,
@@ -197,6 +203,8 @@ class StatsDataServiceIntegrationTest {
                 "Bob",
                 5.0,
                 8.0,
+                120L,
+                90L,
                 site,
                 suit,
                 computer,
@@ -216,6 +224,26 @@ class StatsDataServiceIntegrationTest {
         assertThat(stats2026.nrOfBuddies()).isEqualTo(1L);
         assertThat(Objects.requireNonNull(stats2026.maxTemp()).celsius()).isEqualTo(8.0);
         assertThat(Objects.requireNonNull(stats2026.minTemp()).celsius()).isEqualTo(5.0);
+    }
+
+    @Test
+    void yearBreakdownComputesAvgAndMaxTtsPerDivesOwnPeakNotRawSampleValues() {
+        final var byYear = statsDataService.getStatsByYear(user);
+
+        // 2025's only dive has measurements at 300s/600s TTS - its own peak (600s) is both the
+        // "avg across dives" and "max across dives" for a year with a single dive.
+        final var stats2025 = Objects.requireNonNull(byYear.get(2025));
+        assertThat(Objects.requireNonNull(stats2025.avgMaxTimeToSurface()).toSeconds())
+                .isEqualTo(600L);
+        assertThat(Objects.requireNonNull(stats2025.maxMaxTimeToSurface()).toSeconds())
+                .isEqualTo(600L);
+
+        // 2026's only dive peaks at 120s (not 90s - the smaller sample doesn't win).
+        final var stats2026 = Objects.requireNonNull(byYear.get(2026));
+        assertThat(Objects.requireNonNull(stats2026.avgMaxTimeToSurface()).toSeconds())
+                .isEqualTo(120L);
+        assertThat(Objects.requireNonNull(stats2026.maxMaxTimeToSurface()).toSeconds())
+                .isEqualTo(120L);
     }
 
     @Test
@@ -277,6 +305,15 @@ class StatsDataServiceIntegrationTest {
         assertThat(overall.nrOfSites()).isEqualTo(1L);
         assertThat(Objects.requireNonNull(overall.maxTemp()).celsius()).isEqualTo(15.0);
         assertThat(Objects.requireNonNull(overall.minTemp()).celsius()).isEqualTo(5.0);
+        // Dive 1 peaks at 600s TTS, dive 2 at 120s - avg is of those two per-dive peaks (360s),
+        // not an average of all four raw sample values (300/600/120/90 -> 277.5s), and max is the
+        // larger of the two peaks (600s), not the largest raw sample across all dives (also 600s
+        // here, but for a different reason - see the per-year test for a case where the two
+        // differ from a raw-sample max).
+        assertThat(Objects.requireNonNull(overall.avgMaxTimeToSurface()).toSeconds())
+                .isEqualTo(360L);
+        assertThat(Objects.requireNonNull(overall.maxMaxTimeToSurface()).toSeconds())
+                .isEqualTo(600L);
     }
 
     @Test

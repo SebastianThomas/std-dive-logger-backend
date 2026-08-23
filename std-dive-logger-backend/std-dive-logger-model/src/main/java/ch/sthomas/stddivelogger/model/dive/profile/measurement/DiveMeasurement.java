@@ -23,7 +23,11 @@ public record DiveMeasurement(
         @Nullable Double n2,
         @Nullable Double o2Tox,
         @Nullable Double cns,
-        @Nullable DiveMode mode) {
+        @Nullable DiveMode mode,
+        // Time needed for a safe ascent from here (device-assumed ascent rate, e.g. 9-10m/min) -
+        // not the same thing as being in mandatory deco: a plain ascent from 3m still reads as
+        // ~20s-1min of this, with an empty deco list.
+        @Nullable Duration timeToSurface) {
     public enum DiveMeasurementProperty {
         TEMPERATURE,
         DEPTH,

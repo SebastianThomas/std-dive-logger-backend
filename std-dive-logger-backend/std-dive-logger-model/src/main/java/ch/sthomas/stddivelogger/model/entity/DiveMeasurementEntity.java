@@ -72,6 +72,9 @@ public class DiveMeasurementEntity {
     @Column(name = "ndl_minutes", nullable = true)
     private @Nullable Integer ndlMinutes;
 
+    @Column(name = "time_to_surface_seconds", nullable = true)
+    private @Nullable Integer timeToSurfaceSeconds;
+
     @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "fk_gas_id")
     private @Nullable GasEntity gas;
@@ -93,6 +96,11 @@ public class DiveMeasurementEntity {
         this.ndlMinutes =
                 Optional.ofNullable(diveMeasurement.ndl())
                         .map(Duration::toMinutes)
+                        .map(Long::intValue)
+                        .orElse(null);
+        this.timeToSurfaceSeconds =
+                Optional.ofNullable(diveMeasurement.timeToSurface())
+                        .map(Duration::toSeconds)
                         .map(Long::intValue)
                         .orElse(null);
         this.gas = gas;
@@ -129,7 +137,8 @@ public class DiveMeasurementEntity {
                 n2,
                 o2Tox,
                 cns,
-                mode);
+                mode,
+                Optional.ofNullable(timeToSurfaceSeconds).map(Duration::ofSeconds).orElse(null));
     }
 
     public DiveMeasurementWithId toRecordWithId() {
@@ -151,6 +160,10 @@ public class DiveMeasurementEntity {
 
     public double getDepth() {
         return depth;
+    }
+
+    public @Nullable Integer getTimeToSurfaceSeconds() {
+        return timeToSurfaceSeconds;
     }
 
     public OffsetDateTime getTime() {

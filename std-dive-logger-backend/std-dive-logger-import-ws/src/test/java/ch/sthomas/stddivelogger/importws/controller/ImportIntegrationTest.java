@@ -316,4 +316,131 @@ class ImportIntegrationTest {
                 .expectStatus()
                 .isOk();
     }
+
+    @Test
+    void uploadingARealSuuntoJsonFileThenCommittingPersistsARealTtsPeak() {
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add("file", new ClassPathResource("suunto-eon-core-dive-1-deco.json"));
+
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import")
+                        .headers(h -> h.addAll(authorizedHeaders()))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(multipartBody)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        final var body = Objects.requireNonNull(stageBody);
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(1);
+        final var staged = body.staged().getFirst();
+
+        // No GPS/site guess in this format (same as UDDF) - an explicit override is required.
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Integration Test Suunto Site",
+                        new Location(5.0, 6.0),
+                        null,
+                        null);
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        // End-to-end confirmation of the real ~8.9min (532s) deco peak found via this fixture's
+        // JSON TimeToSurface field (see SuuntoJsonReaderServiceTest for the unit-level check) -
+        // this asserts it survives the full stage -> commit -> DiveSummaryEntity.update() ->
+        // persisted-and-reloaded round trip through the real database, not just in-memory parsing.
+        final var nonNullCommitBody = Objects.requireNonNull(commitBody);
+        final var summary = nonNullCommitBody.summary();
+        assertThat(summary.maxTimeToSurface()).isEqualTo(java.time.Duration.ofSeconds(532));
+        assertThat(summary.maxDepth()).isGreaterThan(0.0);
+        // The full chain end to end: parsed TTS -> persisted DecoStop -> DiveEntity.hasDeco()'s
+        // max-based 5min threshold -> DiveDataService.recomputeAutoTags() on save -> the global
+        // "Deco" system tag actually lands on the committed dive's tag list.
+        assertThat(nonNullCommitBody.tags()).anyMatch(t -> t.name().equals("Deco"));
+    }
+
+    @Test
+    void uploadingARealSuuntoFitFileThenCommittingHasNoTtsConfirmingTheFormatGapEndToEnd() {
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add("file", new ClassPathResource("suunto-eon-core-dive-1-deco.fit"));
+
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import")
+                        .headers(h -> h.addAll(authorizedHeaders()))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(multipartBody)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        final var body = Objects.requireNonNull(stageBody);
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(1);
+        final var staged = body.staged().getFirst();
+
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Integration Test Suunto FIT Site",
+                        new Location(7.0, 8.0),
+                        null,
+                        null);
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        // Same physical dive as the JSON test above (real ~8.9min/532s deco peak per its JSON
+        // export), uploaded via FIT instead - confirms end-to-end, through the real database, that
+        // FIT genuinely carries no TTS signal for this device (see SuuntoFitCharacterizationTest
+        // for the unit-level SDK facts this is built on), not just that the unit tests say so.
+        final var nonNullCommitBody = Objects.requireNonNull(commitBody);
+        final var summary = nonNullCommitBody.summary();
+        assertThat(summary.maxTimeToSurface()).isNull();
+        assertThat(summary.maxDepth()).isGreaterThan(0.0);
+        // The real-world consequence of that format gap: the same dive that gets auto-tagged
+        // "Deco" via its JSON upload (see the test above) does NOT via FIT - a genuine information
+        // loss, not a bug in the auto-tag logic itself.
+        assertThat(nonNullCommitBody.tags()).noneMatch(t -> t.name().equals("Deco"));
+    }
 }

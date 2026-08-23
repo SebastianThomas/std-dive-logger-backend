@@ -160,6 +160,45 @@ class DivesoftReaderServiceTest {
         assertTrue(Objects.requireNonNull(profile.measurements().get(0).deco()).isEmpty());
         assertEquals(
                 List.of(new DecoStop("ceiling", 3.0, 0)), profile.measurements().get(1).deco());
+        // Not just an unfilled placeholder: Divesoft's format genuinely has no per-sample
+        // remaining-time field at all (see rawGraphDataHasNoTtsOrRemainingTimeField below), so
+        // timeToSurface() must stay null here too, unlike Suunto where it's populated regardless
+        // of whether a sample is in mandatory deco.
+        assertNull(profile.measurements().get(1).timeToSurface());
+    }
+
+    @Test
+    void rawGraphDataHasNoTtsOrRemainingTimeField() throws IOException {
+        // Confirmed directly against the raw JSON, not the already-mapped DivesoftGraphData model
+        // (which uses @JsonIgnoreProperties(ignoreUnknown = true) and so would silently swallow an
+        // extra field rather than fail to compile) - the same way Suunto's TimeToSurface field was
+        // found missing from SuuntoSample.java before it was added. If Divesoft ever adds a
+        // TTS-equivalent field, this test breaks and DivesoftReaderService.getDiveProfile()'s
+        // seconds=0 comment needs revisiting, not just this assertion.
+        for (final var fixture :
+                List.of("divesoft-dive-1.json", "divesoft-dive-2-hyperoxic.json")) {
+            try (final InputStream inputStream =
+                    DivesoftReaderServiceTest.class.getClassLoader().getResourceAsStream(fixture)) {
+                final var root = objectMapper.readTree(inputStream);
+                final var graphData = root.path("diveAndMixes").path("dive").path("graphData");
+                assertTrue(graphData.isObject(), fixture + " has no diveAndMixes.dive.graphData");
+                final var fieldNames = new java.util.TreeSet<>(graphData.propertyNames());
+                assertEquals(
+                        new java.util.TreeSet<>(
+                                List.of(
+                                        "depth",
+                                        "temperature",
+                                        "ceiling",
+                                        "setpoint",
+                                        "ppo2",
+                                        "modes",
+                                        "mixes")),
+                        fieldNames,
+                        fixture
+                                + "'s graphData keys - if this fails, Divesoft added/renamed a "
+                                + "field and the TTS check above needs re-running by hand");
+            }
+        }
     }
 
     @Test

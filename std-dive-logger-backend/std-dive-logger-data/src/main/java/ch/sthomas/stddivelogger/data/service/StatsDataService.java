@@ -75,7 +75,8 @@ public class StatsDataService {
             """
             dives AS (
                 SELECT d.pk_dive_id AS dive_id, d.dive_number, d.dive_site AS site_id,
-                       ds.duration_seconds, ds.max_depth, ds.dive_start,
+                       ds.duration_seconds, ds.max_depth, ds.max_time_to_surface_seconds,
+                       ds.dive_start,
                        dc.base_configuration, COALESCE(site.site_type, 'UNSPECIFIED') AS site_type
                 FROM t_dives d
                 JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
@@ -136,7 +137,9 @@ public class StatsDataService {
             MAX(dv.max_depth) AS max_depth,
             COUNT(DISTINCT dv.site_id) AS unique_sites,
             MAX(dv.duration_seconds) AS max_duration,
-            COALESCE(SUM(dv.duration_seconds), 0) AS total_duration
+            COALESCE(SUM(dv.duration_seconds), 0) AS total_duration,
+            AVG(dv.max_time_to_surface_seconds) AS avg_max_time_to_surface_seconds,
+            MAX(dv.max_time_to_surface_seconds) AS max_max_time_to_surface_seconds
             """;
 
     private static @Nullable Double nullableDouble(final ResultSet rs, final String column)
@@ -166,6 +169,8 @@ public class StatsDataService {
     private static UserDiveStats mapAggregateRow(final ResultSet rs) throws SQLException {
         final var maxNumber = nullableLong(rs, "max_number");
         final var maxDuration = nullableLong(rs, "max_duration");
+        final var avgMaxTts = nullableDouble(rs, "avg_max_time_to_surface_seconds");
+        final var maxMaxTts = nullableLong(rs, "max_max_time_to_surface_seconds");
         return new UserDiveStats(
                 rs.getLong("dive_count"),
                 maxNumber != null ? maxNumber : -1,
@@ -175,7 +180,9 @@ public class StatsDataService {
                 rs.getLong("buddy_count"),
                 rs.getLong("unique_sites"),
                 temperatureOrNull(rs, "max_temp"),
-                temperatureOrNull(rs, "min_temp"));
+                temperatureOrNull(rs, "min_temp"),
+                avgMaxTts != null ? Duration.ofSeconds(Math.round(avgMaxTts)) : null,
+                maxMaxTts != null ? Duration.ofSeconds(maxMaxTts) : null);
     }
 
     @Transactional(readOnly = true)
@@ -366,6 +373,8 @@ public class StatsDataService {
             throws SQLException {
         final var maxNumber = nullableLong(rs, "max_number");
         final var maxDuration = nullableLong(rs, "max_duration");
+        final var avgMaxTts = nullableDouble(rs, "avg_max_time_to_surface_seconds");
+        final var maxMaxTts = nullableLong(rs, "max_max_time_to_surface_seconds");
         return new UserDiveStats(
                 rs.getLong("dive_count"),
                 maxNumber != null ? maxNumber : -1,
@@ -375,7 +384,9 @@ public class StatsDataService {
                 0L,
                 rs.getLong("unique_sites"),
                 temperatureOrNull(rs, "max_temp"),
-                temperatureOrNull(rs, "min_temp"));
+                temperatureOrNull(rs, "min_temp"),
+                avgMaxTts != null ? Duration.ofSeconds(Math.round(avgMaxTts)) : null,
+                maxMaxTts != null ? Duration.ofSeconds(maxMaxTts) : null);
     }
 
     /**
@@ -603,6 +614,7 @@ public class StatsDataService {
                         ds.dive_start,
                         ds.max_depth,
                         ds.avg_depth,
+                        ds.max_time_to_surface_seconds,
                         ds.duration_seconds,
                         NULLIF(gc.rmv_liters, 0) AS rmv_liters,
                         v.visibility_meters,
@@ -638,7 +650,9 @@ public class StatsDataService {
                     AVG(ec.cns) AS avg_end_cns,
                     AVG(at.avg_temp_celsius) AS avg_temperature_celsius,
                     AVG(fd.visibility_meters) AS avg_visibility_meters,
-                    AVG(fd.weight_kg) AS avg_weight_kg
+                    AVG(fd.weight_kg) AS avg_weight_kg,
+                    AVG(fd.max_time_to_surface_seconds) AS avg_max_time_to_surface_seconds,
+                    MAX(fd.max_time_to_surface_seconds) AS max_max_time_to_surface_seconds
             """;
 
     /**
@@ -682,7 +696,9 @@ public class StatsDataService {
                 nullableDouble(rs, "avg_end_cns"),
                 nullableDouble(rs, "avg_temperature_celsius"),
                 nullableDouble(rs, "avg_visibility_meters"),
-                nullableDouble(rs, "avg_weight_kg"));
+                nullableDouble(rs, "avg_weight_kg"),
+                nullableDouble(rs, "avg_max_time_to_surface_seconds"),
+                nullableDouble(rs, "max_max_time_to_surface_seconds"));
     }
 
     /**

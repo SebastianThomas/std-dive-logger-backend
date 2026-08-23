@@ -4,6 +4,8 @@ package ch.sthomas.stddivelogger.model.controller.dive;
 public enum PendingImportSource {
     DIVESOFT,
     FIT_GARMIN,
+    FIT_SUUNTO,
+    JSON_SUUNTO,
     UDDF_SHEARWATER,
     XML_SUBSURFACE
 }

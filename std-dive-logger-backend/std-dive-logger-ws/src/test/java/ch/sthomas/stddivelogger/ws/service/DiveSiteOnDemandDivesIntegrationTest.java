@@ -116,7 +116,7 @@ class DiveSiteOnDemandDivesIntegrationTest {
                 new DiveMeasurementEntity(
                         new DiveMeasurement(
                                 start, null, 10.0, null, List.of(), null, null, null, null, null,
-                                null, null),
+                                null, null, null),
                         null);
         final var m1 =
                 new DiveMeasurementEntity(
@@ -126,6 +126,7 @@ class DiveSiteOnDemandDivesIntegrationTest {
                                 12.0,
                                 null,
                                 List.of(),
+                                null,
                                 null,
                                 null,
                                 null,

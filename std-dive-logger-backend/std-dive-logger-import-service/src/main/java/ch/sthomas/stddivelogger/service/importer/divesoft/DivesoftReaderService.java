@@ -235,6 +235,11 @@ public class DivesoftReaderService extends BaseReaderService {
                                     : null,
                             depthSample.value(),
                             null,
+                            // seconds=0 is intentional, not a placeholder to fix later: Divesoft's
+                            // graphData has no TTS/remaining-time field paired with ceiling at all
+                            // (confirmed against the raw export - see
+                            // DivesoftReaderServiceTest.rawGraphDataHasNoTtsOrRemainingTimeField),
+                            // unlike Suunto's TimeToSurface.
                             ceiling != null && ceiling.ceiling() > 0
                                     ? List.of(new DecoStop("ceiling", ceiling.ceiling(), 0))
                                     : List.of(),
@@ -249,7 +254,8 @@ public class DivesoftReaderService extends BaseReaderService {
                             null,
                             null,
                             isLast ? dive.cns() : null,
-                            currentMode));
+                            currentMode,
+                            null)); // No TTS field in Divesoft's export.
         }
         return new DiveProfileUpload(computer.id(), start, end, measurements);
     }

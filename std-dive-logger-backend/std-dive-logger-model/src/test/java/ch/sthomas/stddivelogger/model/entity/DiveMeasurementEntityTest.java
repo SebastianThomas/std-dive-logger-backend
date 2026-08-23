@@ -29,6 +29,7 @@ class DiveMeasurementEntityTest {
                         null,
                         null,
                         null,
+                        null,
                         null);
 
         final var entity = new DiveMeasurementEntity(measurement, null);

@@ -36,6 +36,7 @@ import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -69,12 +70,16 @@ public class FitReaderService extends BaseReaderService {
             throw new IllegalStateException("Expected to save computers, but this failed.");
         }
         final var diveNumber = getDiveNumber(summaryMessages);
-        final var summary = getSummary(summaryMessages);
+        final var summary = getSummary(messages);
 
         final var session = messages.getSessionMesgs().getFirst();
         final var gases = getGases(messages);
 
         final var computer = getComputer(messages, computers);
+        final var source =
+                computer.manufacturer().name().equalsIgnoreCase("Suunto")
+                        ? PendingImportSource.FIT_SUUNTO
+                        : PendingImportSource.FIT_GARMIN;
         final var profile =
                 getDiveProfile(
                         messages.getRecordMesgs(),
@@ -100,7 +105,7 @@ public class FitReaderService extends BaseReaderService {
                 hasCoordinates ? semicirclesToDegrees(session.getStartPositionLong()) : null;
 
         return new ParsedImport(
-                PendingImportSource.FIT_GARMIN,
+                source,
                 null,
                 filename,
                 getDiveName(filename),
@@ -206,7 +211,10 @@ public class FitReaderService extends BaseReaderService {
                             Optional.ofNullable(record.getCnsLoad())
                                     .map(Short::doubleValue)
                                     .orElse(null),
-                            null)); // Garmin does not report CCR mode
+                            null, // Garmin does not report CCR mode
+                            Optional.ofNullable(record.getTimeToSurface())
+                                    .map(Duration::ofSeconds)
+                                    .orElse(null)));
             i++;
         }
         return new DiveProfileUpload(
@@ -232,6 +240,56 @@ public class FitReaderService extends BaseReaderService {
                                                         Optional.ofNullable(record.getPressureSac())
                                                                 .map(p -> p * l)))
                 .orElse(null);
+    }
+
+    // Package-private for direct unit testing. Tries Garmin-shaped DiveSummaryMesg first, then
+    // falls back to SessionMesg + records - Suunto's FIT export never emits DiveSummaryMesg (see
+    // SuuntoFitCharacterizationTest).
+    Optional<DiveProfileSummary> getSummary(final FitMessages messages) {
+        final var fromSummaryMesgs = getSummary(messages.getDiveSummaryMesgs());
+        return fromSummaryMesgs.isPresent() ? fromSummaryMesgs : getSummaryFromSession(messages);
+    }
+
+    // Computes avg/max depth from records rather than Suunto's own developer-field max-depth -
+    // avoids a vendor-specific decode path for a value derivable from data already walked.
+    private static Optional<DiveProfileSummary> getSummaryFromSession(final FitMessages messages) {
+        if (messages.getSessionMesgs().size() != 1) {
+            return Optional.empty();
+        }
+        final var session = messages.getSessionMesgs().getFirst();
+        final var records = messages.getRecordMesgs();
+        if (records.isEmpty() || session.getStartTime() == null || session.getTimestamp() == null) {
+            return Optional.empty();
+        }
+        final var depths =
+                records.stream()
+                        .map(r -> r.getField(RecordMesg.DepthFieldNum))
+                        .filter(Objects::nonNull)
+                        .mapToDouble(Field::getDoubleValue)
+                        .toArray();
+        if (depths.length == 0) {
+            return Optional.empty();
+        }
+        final var start = toInstant(session.getStartTime());
+        final var end = toInstant(session.getTimestamp());
+        final var avgDepth = Arrays.stream(depths).average().orElseThrow();
+        final var maxDepth = Arrays.stream(depths).max().orElseThrow();
+        return Optional.of(
+                new DiveProfileSummary(
+                        start,
+                        end,
+                        avgDepth,
+                        maxDepth,
+                        null,
+                        Duration.between(start, end),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null));
     }
 
     // Package-private (not private) so it can be unit-tested directly with mocked DiveSummaryMesg
@@ -295,12 +353,21 @@ public class FitReaderService extends BaseReaderService {
                         .map(FitReaderService::toInstant)
                         .toList();
         final var products =
-                fileIdMessages.stream()
-                        .map(FileIdMesg::getProduct)
-                        .map(GarminProduct::getStringFromValue) // Potentially unsafe
-                        .map(s -> CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, s))
-                        .toList();
+                fileIdMessages.stream().map(FitReaderService::resolveProductName).toList();
         return getComputers(user, manufacturers, serialNumbers, products, timesCreated);
+    }
+
+    // GarminProduct only decodes Garmin's own product-code namespace (empty string for Suunto's -
+    // see SuuntoFitCharacterizationTest). product_name is manufacturer-agnostic; prefer it.
+    private static String resolveProductName(final FileIdMesg fileId) {
+        final var productName = fileId.getProductName();
+        if (productName != null && !productName.isBlank()) {
+            return productName;
+        }
+        final var decoded = GarminProduct.getStringFromValue(fileId.getProduct());
+        return decoded.isEmpty()
+                ? "product-" + fileId.getProduct()
+                : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, decoded);
     }
 
     private List<DiveComputer> getComputers(
@@ -336,15 +403,21 @@ public class FitReaderService extends BaseReaderService {
             final String product,
             final Instant timeCreated) {
         if (serialNumber == null) {
-            logger.warn(
-                    "Serial number is null for {} {} (of user {}), time created: {}",
+            // Not every manufacturer's FIT export has a device serial (Suunto's doesn't - see
+            // SuuntoFitCharacterizationTest). Falls back to manufacturer+product so the import
+            // still resolves, at the cost of merging two physical units of the same model.
+            logger.info(
+                    "Serial number is null for {} {} (of user {}), time created: {} - falling back"
+                            + " to a manufacturer+product identifier.",
                     manufacturer,
                     product,
                     user,
                     timeCreated);
-            return null;
         }
-        final var sn = String.valueOf(serialNumber);
+        final var sn =
+                serialNumber != null
+                        ? String.valueOf(serialNumber)
+                        : "no-serial-" + manufacturer + "-" + product;
         final var existingComputer =
                 diveService.getDiveComputerBySerialNumber(user, manufacturer, sn);
         return existingComputer.orElseGet(

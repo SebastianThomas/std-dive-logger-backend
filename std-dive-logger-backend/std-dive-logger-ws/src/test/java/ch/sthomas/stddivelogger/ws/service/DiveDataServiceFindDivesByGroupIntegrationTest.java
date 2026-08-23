@@ -104,7 +104,7 @@ class DiveDataServiceFindDivesByGroupIntegrationTest {
                 new DiveMeasurementEntity(
                         new DiveMeasurement(
                                 start, null, 10.0, null, List.of(), null, null, null, null, null,
-                                null, null),
+                                null, null, null),
                         null);
         final var m1 =
                 new DiveMeasurementEntity(
@@ -114,6 +114,7 @@ class DiveDataServiceFindDivesByGroupIntegrationTest {
                                 12.0,
                                 null,
                                 List.of(),
+                                null,
                                 null,
                                 null,
                                 null,
