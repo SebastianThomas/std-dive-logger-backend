@@ -14,9 +14,11 @@ public enum UploadFileType {
     // Suunto FIT shares this extension - FitReaderService tells brands apart from the file's own
     // manufacturer field, not a separate UploadFileType.
     FIT_GARMIN("fit"),
-    XML_SUBSURFACE("xml"),
-    // Brand-neutral on purpose - JsonReaderService detects the actual format by content.
-    JSON("json");
+    // Brand-neutral on purpose - XmlReaderService/JsonReaderService detect the actual format by
+    // content (Subsurface vs. Shearwater's own native XML share this extension).
+    XML("xml"),
+    JSON("json"),
+    DL7("zxu");
 
     public static final Map<String, UploadFileType> fileTypesByExtension =
             Arrays.stream(UploadFileType.values())

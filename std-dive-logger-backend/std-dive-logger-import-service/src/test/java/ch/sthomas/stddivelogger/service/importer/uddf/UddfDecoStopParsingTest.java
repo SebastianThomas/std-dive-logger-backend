@@ -44,4 +44,33 @@ class UddfDecoStopParsingTest {
         assertEquals(6, firstStop.depth());
         assertTrue(firstStop.seconds() > 0);
     }
+
+    @Test
+    void ttsIsDerivedFromTheSameWaypointsDecostopSumSinceUddfHasNoNativeTtsField()
+            throws IOException {
+        final UddfFile file;
+        try (final var inputStream = getClass().getClassLoader().getResourceAsStream(FILE)) {
+            file = xmlMapper().readValue(inputStream, UddfFile.class);
+        }
+
+        final var measurements = file.exportMeasurements(0);
+        final var withDeco =
+                measurements.stream()
+                        .filter(m -> !Objects.requireNonNull(m.deco()).isEmpty())
+                        .toList();
+        assertFalse(withDeco.isEmpty());
+
+        for (final var m : withDeco) {
+            final var deco = Objects.requireNonNull(m.deco());
+            final var expectedTts = deco.stream().mapToLong(DecoStop::seconds).sum();
+            assertEquals(expectedTts, Objects.requireNonNull(m.timeToSurface()).toSeconds());
+        }
+
+        final var withoutDeco =
+                measurements.stream()
+                        .filter(m -> Objects.requireNonNull(m.deco()).isEmpty())
+                        .toList();
+        assertFalse(withoutDeco.isEmpty());
+        assertTrue(withoutDeco.stream().allMatch(m -> m.timeToSurface() == null));
+    }
 }

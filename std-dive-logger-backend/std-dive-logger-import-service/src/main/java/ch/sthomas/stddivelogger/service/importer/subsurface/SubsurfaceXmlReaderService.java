@@ -349,8 +349,8 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                                 Temperature.TemperatureUnit.CELSIUS))
                         .orElse(null);
         // Subsurface's <sample> elements carry no per-sample PO2/RMV/N2/O2Tox/CNS - only depth,
-        // temperature, NDL, deco and gas switches are logged per sample; cns/otu exist only as a
-        // single end-of-dive total on <dive> (see applyEndOfDiveTotals) and sac only as a
+        // temperature, NDL, deco, TTS and gas switches are logged per sample; cns/otu exist only
+        // as a single end-of-dive total on <dive> (see applyEndOfDiveTotals) and sac only as a
         // whole-dive average (not wired here - converting it to DiveGasConsumption.sacBar needs
         // cylinder volume and isn't a safe one-line guess).
         return new DiveMeasurement(
@@ -366,6 +366,6 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 null,
                 null,
                 null,
-                null); // No TTS field in Subsurface's <sample> elements.
+                sample.ttsToDuration());
     }
 }

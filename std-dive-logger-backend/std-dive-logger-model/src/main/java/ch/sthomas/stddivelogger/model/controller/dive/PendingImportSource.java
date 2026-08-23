@@ -7,5 +7,7 @@ public enum PendingImportSource {
     FIT_SUUNTO,
     JSON_SUUNTO,
     UDDF_SHEARWATER,
-    XML_SUBSURFACE
+    XML_SUBSURFACE,
+    XML_SHEARWATER,
+    DL7_SHEARWATER
 }

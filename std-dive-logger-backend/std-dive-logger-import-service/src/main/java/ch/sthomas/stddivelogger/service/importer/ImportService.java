@@ -18,8 +18,8 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.divesoft.DivesoftReaderService;
+import ch.sthomas.stddivelogger.service.importer.dl7.Dl7ReaderService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
-import ch.sthomas.stddivelogger.service.importer.subsurface.SubsurfaceXmlReaderService;
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
 
 import org.jspecify.annotations.Nullable;
@@ -48,25 +48,28 @@ public class ImportService {
 
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
-    private final SubsurfaceXmlReaderService subsurfaceXmlReaderService;
+    private final XmlReaderService xmlReaderService;
     private final DivesoftReaderService divesoftReaderService;
     private final JsonReaderService jsonReaderService;
+    private final Dl7ReaderService dl7ReaderService;
     private final PendingImportDataService pendingImportDataService;
     private final DiveService diveService;
 
     public ImportService(
             final FitReaderService fitReaderService,
             final UddfReaderService uddfReaderService,
-            final SubsurfaceXmlReaderService subsurfaceXmlReaderService,
+            final XmlReaderService xmlReaderService,
             final DivesoftReaderService divesoftReaderService,
             final JsonReaderService jsonReaderService,
+            final Dl7ReaderService dl7ReaderService,
             final PendingImportDataService pendingImportDataService,
             final DiveService diveService) {
         this.fitReaderService = fitReaderService;
         this.uddfReaderService = uddfReaderService;
-        this.subsurfaceXmlReaderService = subsurfaceXmlReaderService;
+        this.xmlReaderService = xmlReaderService;
         this.divesoftReaderService = divesoftReaderService;
         this.jsonReaderService = jsonReaderService;
+        this.dl7ReaderService = dl7ReaderService;
         this.pendingImportDataService = pendingImportDataService;
         this.diveService = diveService;
     }
@@ -151,9 +154,7 @@ public class ImportService {
                                                     Objects.requireNonNull(filename),
                                                     inputStream)),
                                     Stream.empty()));
-            case XML_SUBSURFACE ->
-                    subsurfaceXmlReaderService.parse(
-                            user, Objects.requireNonNull(filename), inputStream);
+            case XML -> xmlReaderService.parse(user, Objects.requireNonNull(filename), inputStream);
             case JSON ->
                     Stream.of(
                             new ParsedImportResultStreaming(
@@ -162,6 +163,15 @@ public class ImportService {
                                                     user,
                                                     Objects.requireNonNull(filename),
                                                     inputStream)),
+                                    Stream.empty()));
+            case DL7 ->
+                    Stream.of(
+                            new ParsedImportResultStreaming(
+                                    Stream.of(
+                                            dl7ReaderService.parse(
+                                                    user,
+                                                    Objects.requireNonNull(filename),
+                                                    inputStream.readAllBytes())),
                                     Stream.empty()));
         };
     }

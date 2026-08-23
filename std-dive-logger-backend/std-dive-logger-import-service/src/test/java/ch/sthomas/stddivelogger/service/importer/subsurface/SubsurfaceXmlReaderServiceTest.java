@@ -204,4 +204,52 @@ class SubsurfaceXmlReaderServiceTest {
             assertEquals(0.0, bailout.gas().he(), 1e-9);
         }
     }
+
+    private static String withTtsXml() {
+        // Subsurface's <sample> already carries a distinct tts attribute from ndl/stoptime -
+        // this dive has no real deco (no stopdepth/stoptime/in_deco), only a plain-ascent TTS.
+        return """
+                <divelog>
+                  <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
+                  <dives>
+                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
+                rating="0" divesiteid="site-1" visibility="0" current="0">
+                      <buddy>Test Buddy</buddy>
+                      <cylinder description="AL80" o2="21%"/>
+                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+                time="10:00:00" duration="0:10 min">
+                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                        <sample time="0:00 min" depth="0.0 m" tts="0:01 min"/>
+                        <sample time="0:05 min" depth="20.0 m" tts="0:08 min"/>
+                      </divecomputer>
+                    </dive>
+                  </dives>
+                </divelog>
+                """;
+    }
+
+    @Test
+    void ttsIsMappedOntoEachMeasurementIndependentlyOfDeco() throws IOException {
+        final var service =
+                new SubsurfaceXmlReaderService(xmlMapper, diveServiceReturningComputer());
+        try (final var inputStream =
+                new ByteArrayInputStream(withTtsXml().getBytes(StandardCharsets.UTF_8))) {
+            final var result =
+                    service.parse(user, "tts.xml", inputStream)
+                            .reduce(ParsedImportResultStreaming::concat)
+                            .orElseThrow()
+                            .toResult();
+
+            assertEquals(1, result.parsed().size());
+            final var measurements =
+                    result.parsed().getFirst().payload().profiles().getFirst().measurements();
+            assertEquals(2, measurements.size());
+            assertEquals(java.time.Duration.ofMinutes(1), measurements.get(0).timeToSurface());
+            assertEquals(java.time.Duration.ofMinutes(8), measurements.get(1).timeToSurface());
+            // Neither sample is in mandatory deco (no stopdepth/stoptime/in_deco in the fixture) -
+            // TTS is populated regardless.
+            assertEquals(true, Objects.requireNonNull(measurements.get(0).deco()).isEmpty());
+            assertEquals(true, Objects.requireNonNull(measurements.get(1).deco()).isEmpty());
+        }
+    }
 }

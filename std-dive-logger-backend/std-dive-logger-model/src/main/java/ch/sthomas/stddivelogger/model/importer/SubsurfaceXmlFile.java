@@ -263,6 +263,11 @@ public record SubsurfaceXmlFile(
             return Optional.ofNullable(ndl).map(SubsurfaceXmlFile::parseDuration).orElse(null);
         }
 
+        /** Time-to-surface at this sample - distinct from ndl/toDeco()'s per-stop stoptime. */
+        public @Nullable Duration ttsToDuration() {
+            return Optional.ofNullable(tts).map(SubsurfaceXmlFile::parseDuration).orElse(null);
+        }
+
         public @Nullable List<Duration> stopTimes() {
             if (stoptime == null) {
                 return null;
