@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
+import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
@@ -57,6 +58,7 @@ import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
@@ -460,22 +462,133 @@ public class DiveDataService {
     /**
      * Replaces only the raw measurement data (and start/end) of an existing profile, leaving the
      * parent dive's other properties (suit, gas consumption, weight, visibility, notes, tags,
-     * buddies, ...) untouched. Intended as a recovery tool for fixing parser bugs after the fact.
+     * buddies, ...) untouched. Intended for re-parsing a dive's original source with a newer/richer
+     * importer (e.g. a format that now carries TTS that didn't used to be captured), not for
+     * attaching a different computer's own recording of the same dive - that's "merge profiles"
+     * ({@code addProfileToDiveWithDiveId}). Rejects (via {@link ReimportSimilarityCheck}) anything
+     * that doesn't look like the same dive, so the two features can't be confused for each other.
      */
     @Transactional
     public Dive reimportProfileMeasurements(
             final long diveId,
             final long profileId,
             final List<DiveMeasurement> newMeasurements,
-            final Instant start,
-            final Instant end) {
+            final Instant newStart,
+            final Instant newEnd) {
         final var dive = findDiveEntityById(diveId);
         final var profile = findProfileOnDive(dive, profileId);
+
+        final var mismatch =
+                ReimportSimilarityCheck.checkSameDive(
+                        profile.getStart(),
+                        profile.getEnd(),
+                        profile.toMeasurementRecords(),
+                        newStart,
+                        newEnd,
+                        newMeasurements);
+        if (mismatch.isPresent()) {
+            throw new IllegalArgumentException(
+                    "The uploaded file doesn't look like the same dive as the profile you're "
+                            + "replacing ("
+                            + mismatch.get()
+                            + "). If this is meant to be a different dive computer's own "
+                            + "recording of the same dive, use \"merge profiles\" instead of "
+                            + "reimport.");
+        }
+
+        // Looked up directly via the repository rather than profile.diveProfileHistory - that
+        // mapped-by association is never explicitly back-filled on the in-memory entity right
+        // after DiveProfileHistoryEntity is first inserted (see createDive() above), so trusting
+        // it here could see a stale null within the same persistence context/transaction.
+        final var history = diveProfileHistoryRepository.findById(profileId).orElseThrow();
+
+        // A prior manual time-alignment (see alignProfileManual) is preserved by applying the same
+        // offset to the freshly re-parsed data, rather than silently reverting to the file's own
+        // raw (unaligned) timestamp - reimport should only ever change what the parser produced.
+        final var manualOffset = Duration.between(history.getOriginalStart(), profile.getStart());
+        final var alignedStart = newStart.plus(manualOffset);
+        final var alignedEnd = newEnd.plus(manualOffset);
+        final var alignedMeasurements =
+                manualOffset.isZero()
+                        ? newMeasurements
+                        : shiftMeasurementTimes(newMeasurements, manualOffset);
+
         // Replace all existing rows atomically: delete then insert via repository,
         // completely bypassing the entity's managed measurements collection (no orphanRemoval).
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
         diveMeasurementRepository.flush();
-        profile.replaceMeasurements(toMeasurementEntities(newMeasurements), start, end);
+        profile.replaceMeasurements(
+                toMeasurementEntities(alignedMeasurements), alignedStart, alignedEnd);
+        // The manual-alignment reset target re-baselines to the newly reimported raw times too -
+        // "reset alignment" should undo drift relative to the file just reimported, not a stale
+        // pre-reimport one.
+        history.updateOriginal(newStart, newEnd);
+        diveProfileHistoryRepository.save(history);
+
+        dive.updateDiveSummary();
+        recomputeAutoTags(dive, dive.getUserEntity().getId());
+        return toRecord(diveRepository.save(dive));
+    }
+
+    private static List<DiveMeasurement> shiftMeasurementTimes(
+            final List<DiveMeasurement> measurements, final Duration offset) {
+        return measurements.stream()
+                .map(
+                        m ->
+                                new DiveMeasurement(
+                                        m.time().plus(offset),
+                                        m.temperature(),
+                                        m.depth(),
+                                        m.ndl(),
+                                        m.deco(),
+                                        m.gas(),
+                                        m.po2(),
+                                        m.rmvLiters(),
+                                        m.n2(),
+                                        m.o2Tox(),
+                                        m.cns(),
+                                        m.mode(),
+                                        m.timeToSurface()))
+                .toList();
+    }
+
+    public record ReimportPreviewContext(
+            Instant profileStart,
+            Instant profileEnd,
+            List<DiveMeasurement> profileMeasurements,
+            Dive dive) {}
+
+    /**
+     * Everything ImportService needs to run the similarity check and compute field conflicts for a
+     * reimport preview, in one read.
+     */
+    @Transactional(readOnly = true)
+    public ReimportPreviewContext getReimportPreviewContext(
+            final long diveId, final long profileId) {
+        final var dive = findDiveEntityById(diveId);
+        final var profile = findProfileOnDive(dive, profileId);
+        return new ReimportPreviewContext(
+                profile.getStart(),
+                profile.getEnd(),
+                profile.toMeasurementRecords(),
+                toRecord(dive));
+    }
+
+    /**
+     * Applies a reimport's resolved notes/visibility/namedBuddies/gasConsumption (see {@code
+     * ReimportFieldMerge} - each null param here means "leave exactly as-is", already decided by
+     * that resolution logic before this is called). Never touches anything else - site,
+     * configuration, tags, leader/team fields are deliberately out of scope for reimport.
+     */
+    @Transactional
+    public Dive applyReimportResolution(
+            final long diveId,
+            final @Nullable String notes,
+            final @Nullable Visibility visibility,
+            final @Nullable List<String> namedBuddies,
+            final @Nullable DiveGasConsumption gasConsumption) {
+        final var dive = findDiveEntityById(diveId);
+        dive.applyReimportResolution(notes, visibility, namedBuddies, gasConsumption);
         return toRecord(diveRepository.save(dive));
     }
 

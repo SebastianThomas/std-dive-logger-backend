@@ -7,10 +7,14 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResult;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
+import ch.sthomas.stddivelogger.model.dive.NamedBuddy;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
 import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
@@ -423,27 +427,157 @@ public class ImportService {
     }
 
     /**
-     * Reimports a single profile's raw measurements from its original source file, leaving every
-     * other dive property untouched. Currently only supported for UDDF files.
+     * Phase 1 of "reimport in place": parses the uploaded file with the same per-format dispatch as
+     * a normal upload (any supported format, not just UDDF), checks it against {@code
+     * ReimportSimilarityCheck} using the target profile's own current data (throws if it doesn't
+     * look like the same dive - see that class's doc comment for why), computes any field-level
+     * conflicts between the dive's current notes/visibility/namedBuddies/gasConsumption and what
+     * the reimport would bring in, and stages the parsed result as a pending import (tagged with
+     * the reimport target) without changing anything yet. If {@code conflicts.hasAny()} is false on
+     * the result, the caller can commit immediately with an all-null {@link ReimportResolution};
+     * otherwise the caller must resolve each conflicting field first.
      */
-    public Dive reimportProfile(
+    public ReimportPreviewResult previewReimportProfile(
             final User user,
             final long diveId,
             final long profileId,
             final int entry,
             final MultipartFile file) {
-        final var filename = file.getOriginalFilename();
-        final var fileType = UploadFileType.fromFilename(filename);
-        if (fileType != UploadFileType.UDDF_SHEARWATER) {
-            throw new IllegalArgumentException(
-                    "Reimporting a profile is currently only supported for UDDF files, got: "
-                            + filename);
-        }
+        final var filename = Objects.requireNonNull(file.getOriginalFilename());
+        final ParsedImportResultStreaming.Result result;
         try {
-            return uddfReaderService.reimportProfile(
-                    user, diveId, profileId, entry, file.getInputStream());
+            result =
+                    parseFile(user, filename, file.getInputStream())
+                            .reduce(ParsedImportResultStreaming::concat)
+                            .map(ParsedImportResultStreaming::toResult)
+                            .orElse(new ParsedImportResultStreaming.Result(List.of(), List.of()));
         } catch (final IOException e) {
             throw new UncheckedIOException("Could not read uploaded file " + filename, e);
         }
+        if (!result.errors().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Could not parse " + filename + ": " + String.join("; ", result.errors()));
+        }
+        if (entry < 0 || entry >= result.parsed().size()) {
+            throw new IllegalArgumentException(
+                    "Entry "
+                            + entry
+                            + " not found - "
+                            + filename
+                            + " has "
+                            + result.parsed().size()
+                            + " dive(s)");
+        }
+        final var parsedImport = result.parsed().get(entry);
+        final var reimportedProfile = parsedImport.payload().profiles().getFirst();
+
+        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
+        final var mismatch =
+                ReimportSimilarityCheck.checkSameDive(
+                        context.profileStart(),
+                        context.profileEnd(),
+                        context.profileMeasurements(),
+                        reimportedProfile.start(),
+                        reimportedProfile.end(),
+                        reimportedProfile.measurements());
+        if (mismatch.isPresent()) {
+            throw new IllegalArgumentException(
+                    "The uploaded file doesn't look like the same dive as the profile you're "
+                            + "replacing ("
+                            + mismatch.get()
+                            + "). If this is meant to be a different dive computer's own "
+                            + "recording of the same dive, use \"merge profiles\" instead of "
+                            + "reimport.");
+        }
+
+        final var conflicts =
+                ReimportFieldMerge.computeConflicts(
+                        context.dive().notes(),
+                        context.dive().visibility(),
+                        context.dive().namedBuddies().stream().map(NamedBuddy::name).toList(),
+                        context.dive().gasConsumption(),
+                        parsedImport.payload().notes(),
+                        parsedImport.payload().visibility(),
+                        parsedImport.payload().namedBuddies(),
+                        parsedImport.payload().gasConsumption());
+
+        final var pendingImport = stageOne(user, parsedImport);
+        pendingImportDataService.markReimportTarget(pendingImport.getId(), diveId, profileId);
+        return new ReimportPreviewResult(pendingImport.getId(), conflicts);
+    }
+
+    /**
+     * Phase 2: replaces the target profile's measurements (re-running the similarity check as a
+     * defense-in-depth double check) and applies the given resolution for whichever fields {@link
+     * #previewReimportProfile} flagged as conflicting - a null choice for a field that wasn't
+     * actually conflicting is fine (nothing to resolve there); a null choice for one that was
+     * throws.
+     */
+    public Dive commitReimportProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final long pendingImportId,
+            final ReimportResolution resolution) {
+        final var pendingImport =
+                pendingImportDataService
+                        .findByIdAndUserForCommit(pendingImportId, user)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "No pending import " + pendingImportId));
+        final var targetDiveId = pendingImport.getReimportTargetDiveId();
+        final var targetProfileId = pendingImport.getReimportTargetProfileId();
+        if (targetDiveId == null || targetProfileId == null) {
+            throw new IllegalArgumentException(
+                    "Pending import " + pendingImportId + " is not a staged reimport");
+        }
+        if (targetDiveId != diveId || targetProfileId != profileId) {
+            throw new IllegalArgumentException(
+                    "Pending import "
+                            + pendingImportId
+                            + " was staged for dive "
+                            + targetDiveId
+                            + "/profile "
+                            + targetProfileId
+                            + ", not dive "
+                            + diveId
+                            + "/profile "
+                            + profileId);
+        }
+        final var payload = pendingImport.getPayload();
+        final var reimportedProfile = payload.profiles().getFirst();
+
+        diveService.reimportProfile(
+                user,
+                diveId,
+                profileId,
+                reimportedProfile.measurements(),
+                reimportedProfile.start(),
+                reimportedProfile.end());
+
+        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
+        final var existingBuddyNames =
+                context.dive().namedBuddies().stream().map(NamedBuddy::name).toList();
+        final var updated =
+                diveService.applyReimportResolution(
+                        user,
+                        diveId,
+                        ReimportFieldMerge.resolveNotes(
+                                context.dive().notes(), payload.notes(), resolution.notes()),
+                        ReimportFieldMerge.resolveVisibility(
+                                context.dive().visibility(),
+                                payload.visibility(),
+                                resolution.visibility()),
+                        ReimportFieldMerge.resolveNamedBuddies(
+                                existingBuddyNames,
+                                payload.namedBuddies(),
+                                resolution.namedBuddies()),
+                        ReimportFieldMerge.resolveGasConsumption(
+                                context.dive().gasConsumption(),
+                                payload.gasConsumption(),
+                                resolution.gasConsumption()));
+        pendingImportDataService.deleteById(pendingImportId);
+        return updated;
     }
 }

@@ -420,6 +420,39 @@ public class DiveEntity {
         return this;
     }
 
+    /**
+     * Applies only the specific fields a reimport-in-place conflict was resolved to overwrite -
+     * deliberately narrower than {@link #update}, which also unconditionally rewrites the
+     * leader/team-terminology columns even when its own leader params are null. Reimport must never
+     * touch those (or number, identifier, site, configuration) at all - only notes/visibility/
+     * namedBuddies/gasConsumption, and only when the caller explicitly resolved a conflict on that
+     * field (null here means "leave it exactly as the user already had it").
+     */
+    public void applyReimportResolution(
+            @Nullable final String notes,
+            @Nullable final Visibility visibility,
+            @Nullable final List<String> namedBuddies,
+            @Nullable final DiveGasConsumption gasConsumption) {
+        if (notes != null) {
+            this.notes = notes;
+        }
+        if (visibility != null) {
+            this.visibility = new VisibilityEntity(this, visibility);
+        }
+        if (namedBuddies != null) {
+            final var resolved =
+                    namedBuddies.stream()
+                            .map(b -> new DiveBuddyNameEntity(this, b))
+                            .collect(Collectors.toCollection(ArrayList::new));
+            this.namedBuddies.removeIf(Predicate.not(resolved::contains));
+            this.namedBuddies.addAll(CollectionUtils.subtract(resolved, this.namedBuddies));
+        }
+        if (gasConsumption != null) {
+            this.gasConsumption = new DiveGasConsumptionEntity(this, gasConsumption);
+        }
+        this.updateDiveSummary();
+    }
+
     public DiveEntity updateDiveSummary() {
         if (diveSummary != null) {
             diveSummary.update(this);

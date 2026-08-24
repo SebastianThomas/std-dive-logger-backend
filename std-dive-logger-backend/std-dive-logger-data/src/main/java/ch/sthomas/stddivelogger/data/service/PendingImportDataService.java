@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.user.User;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -58,6 +59,14 @@ public class PendingImportDataService {
                         maxDepth,
                         payload,
                         Instant.now()));
+    }
+
+    @Transactional
+    public PendingImportEntity markReimportTarget(
+            final long pendingImportId, final long diveId, final long profileId) {
+        final var entity = pendingImportRepository.findById(pendingImportId).orElseThrow();
+        entity.withReimportTarget(diveId, profileId);
+        return pendingImportRepository.save(entity);
     }
 
     public List<PendingImportEntity> findByUser(final User user) {

@@ -877,6 +877,33 @@ public class DiveService {
                 diveId, profileId, newMeasurements, start, end);
     }
 
+    public DiveDataService.ReimportPreviewContext getReimportPreviewContext(
+            final User user, final long diveId, final long profileId) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.getReimportPreviewContext(diveId, profileId);
+    }
+
+    /**
+     * Applies a reimport's resolved notes/visibility/namedBuddies/gasConsumption - see {@code
+     * ReimportFieldMerge} for how conflicts between the dive's current values and the reimported
+     * file's own values get resolved before this is called.
+     */
+    public Dive applyReimportResolution(
+            final User user,
+            final long diveId,
+            final @Nullable String notes,
+            final @Nullable Visibility visibility,
+            final @Nullable List<String> namedBuddies,
+            final @Nullable DiveGasConsumption gasConsumption) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.applyReimportResolution(
+                diveId, notes, visibility, namedBuddies, gasConsumption);
+    }
+
     public Suit createSuit(
             final @NotNull User user,
             final @NotNull SuitType type,

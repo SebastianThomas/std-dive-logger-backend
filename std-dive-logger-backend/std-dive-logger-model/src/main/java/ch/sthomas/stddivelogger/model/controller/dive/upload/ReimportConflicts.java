@@ -1,0 +1,34 @@
+package ch.sthomas.stddivelogger.model.controller.dive.upload;
+
+import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import org.jspecify.annotations.Nullable;
+
+import java.util.List;
+
+/**
+ * Fields where a reimported file's own value both exists and genuinely disagrees with what's
+ * already on the dive - computed by {@code ReimportConflicts.compute(...)}, which applies "prefer
+ * non-empty over empty, no-op when equal" automatically first, so only real conflicts land here.
+ * Each present field needs the caller to pick a {@code ReimportResolution} choice before commit;
+ * absent (null) fields were auto-resolved (or had nothing to resolve) and need no input.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ReimportConflicts(
+        @Nullable FieldConflict<String> notes,
+        @Nullable FieldConflict<Visibility> visibility,
+        @Nullable FieldConflict<List<String>> namedBuddies,
+        @Nullable FieldConflict<DiveGasConsumption> gasConsumption) {
+
+    public record FieldConflict<T>(T existing, T reimported) {}
+
+    public boolean hasAny() {
+        return notes != null
+                || visibility != null
+                || namedBuddies != null
+                || gasConsumption != null;
+    }
+}

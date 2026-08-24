@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.model.entity;
 import static java.time.ZoneOffset.UTC;
 
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import jakarta.persistence.*;
 
@@ -121,6 +122,10 @@ public class DiveProfileEntity {
 
     public DoubleStream getDepths() {
         return getMeasurementsStream().mapToDouble(DiveMeasurementEntity::getDepth);
+    }
+
+    public List<DiveMeasurement> toMeasurementRecords() {
+        return getMeasurementsStream().map(DiveMeasurementEntity::toRecord).toList();
     }
 
     Stream<DiveMeasurementEntity> getMeasurementsStream() {

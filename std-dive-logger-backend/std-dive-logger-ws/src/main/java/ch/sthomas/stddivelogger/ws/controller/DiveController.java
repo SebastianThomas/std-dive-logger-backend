@@ -7,6 +7,8 @@ import ch.sthomas.stddivelogger.model.controller.TrimProfileBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateTagsBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResult;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
@@ -703,12 +705,14 @@ public class DiveController {
 
     @Operation(
             summary =
-                    "Reimport a profile's raw measurements from its original source file, leaving every"
-                            + " other dive property (suit, gas consumption, weight, visibility, notes, tags,"
-                            + " buddies, ...) untouched. Recovery tool for fixing importer bugs after the fact;"
-                            + " currently only supports UDDF files.")
+                    "Phase 1 of reimporting a profile from its original source file (any supported"
+                            + " format): checks the upload really is the same dive as the target profile"
+                            + " (rejects otherwise - use \"merge profiles\" for a different computer's own"
+                            + " recording of the same dive instead), stages it, and returns any field-level"
+                            + " conflicts (notes/visibility/namedBuddies/gasConsumption) that need a choice"
+                            + " before committing. Nothing is changed yet.")
     @PostMapping(path = "/{id}/profiles/{profileId}/reimport", consumes = MULTIPART_FORM_DATA_VALUE)
-    public Dive reimportProfile(
+    public ReimportPreviewResult previewReimportProfile(
             @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") @Positive final long diveId,
             @PathVariable("profileId") @Positive final long profileId,
@@ -717,7 +721,29 @@ public class DiveController {
         if (user == null) {
             throw new UnauthorizedException("Log in to reimport a profile.");
         }
-        return importService.reimportProfile(user, diveId, profileId, entry, file);
+        return importService.previewReimportProfile(user, diveId, profileId, entry, file);
+    }
+
+    @Operation(
+            summary =
+                    "Phase 2: replaces the target profile's measurements and applies the given"
+                            + " resolution for whichever fields the preview step flagged as conflicting."
+                            + " Leaves everything else about the dive (suit, site, configuration, tags,"
+                            + " leader, ...) untouched.")
+    @PostMapping(
+            path = "/{id}/profiles/{profileId}/reimport/{pendingImportId}/commit",
+            consumes = APPLICATION_JSON_VALUE)
+    public Dive commitReimportProfile(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @PathVariable("profileId") @Positive final long profileId,
+            @PathVariable("pendingImportId") @Positive final long pendingImportId,
+            @NotNull @Valid @RequestBody final ReimportResolution resolution) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to reimport a profile.");
+        }
+        return importService.commitReimportProfile(
+                user, diveId, profileId, pendingImportId, resolution);
     }
 
     @Operation(

@@ -63,4 +63,17 @@ public class DiveProfileHistoryEntity {
     public Instant getOriginalStart() {
         return originalStart.toInstant();
     }
+
+    public Instant getOriginalEnd() {
+        return originalEnd.toInstant();
+    }
+
+    /**
+     * Re-baselines "original" after a reimport - the freshly re-parsed raw times become the new
+     * reset target, so a prior manual alignment's offset still resolves correctly afterward.
+     */
+    public void updateOriginal(final Instant newOriginalStart, final Instant newOriginalEnd) {
+        this.originalStart = newOriginalStart.atOffset(ZoneOffset.UTC);
+        this.originalEnd = newOriginalEnd.atOffset(ZoneOffset.UTC);
+    }
 }

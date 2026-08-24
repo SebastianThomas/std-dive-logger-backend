@@ -72,6 +72,15 @@ public class PendingImportEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // Non-null only for a staged "reimport in place" upload (see ImportService.previewReimport) -
+    // set via withReimportTarget after construction rather than a constructor param, so every
+    // existing call site of the constructor below is unaffected.
+    @Column(name = "reimport_target_dive_id")
+    private @Nullable Long reimportTargetDiveId;
+
+    @Column(name = "reimport_target_profile_id")
+    private @Nullable Long reimportTargetProfileId;
+
     public PendingImportEntity() {}
 
     public PendingImportEntity(
@@ -163,6 +172,20 @@ public class PendingImportEntity {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public @Nullable Long getReimportTargetDiveId() {
+        return reimportTargetDiveId;
+    }
+
+    public @Nullable Long getReimportTargetProfileId() {
+        return reimportTargetProfileId;
+    }
+
+    public PendingImportEntity withReimportTarget(final long diveId, final long profileId) {
+        this.reimportTargetDiveId = diveId;
+        this.reimportTargetProfileId = profileId;
+        return this;
     }
 
     public PendingImportSummary toSummary() {
