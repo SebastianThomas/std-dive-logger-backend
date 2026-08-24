@@ -313,6 +313,14 @@
                 <version>21.120.0</version>
             </dependency>
 
+            <!-- Offline lat/lon -> IANA timezone lookup, for correcting dive-computer exports
+                 that carry a plain wall-clock reading with no timezone of their own. -->
+            <dependency>
+                <groupId>net.iakovlev</groupId>
+                <artifactId>timeshape</artifactId>
+                <version>2025b.26</version>
+            </dependency>
+
             <dependency>
                 <groupId>com.vdurmont</groupId>
                 <artifactId>semver4j</artifactId>

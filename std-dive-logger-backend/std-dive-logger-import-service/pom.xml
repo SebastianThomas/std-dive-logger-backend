@@ -35,6 +35,11 @@
             <artifactId>fit</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>net.iakovlev</groupId>
+            <artifactId>timeshape</artifactId>
+        </dependency>
+
         <!-- Storage -->
         <dependency>
             <groupId>io.minio</groupId>

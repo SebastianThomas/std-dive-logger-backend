@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -40,5 +41,38 @@ public record DiveProfileUpload(
         }
         return new DiveProfileUpload(
                 diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept);
+    }
+
+    /**
+     * Returns a copy with {@code start}/{@code end} and every measurement's time shifted by {@code
+     * offset} - a no-op copy when the offset is zero. Used to correct a profile parsed from a
+     * source with no timezone of its own (see the Shearwater XML/UDDF/DL7 readers) once the real
+     * timezone becomes known, typically only once a dive site is chosen at commit time.
+     */
+    public DiveProfileUpload shifted(final Duration offset) {
+        if (offset.isZero()) {
+            return this;
+        }
+        final var shiftedMeasurements =
+                measurements.stream()
+                        .map(
+                                m ->
+                                        new DiveMeasurement(
+                                                m.time().plus(offset),
+                                                m.temperature(),
+                                                m.depth(),
+                                                m.ndl(),
+                                                m.deco(),
+                                                m.gas(),
+                                                m.po2(),
+                                                m.rmvLiters(),
+                                                m.n2(),
+                                                m.o2Tox(),
+                                                m.cns(),
+                                                m.mode(),
+                                                m.timeToSurface()))
+                        .toList();
+        return new DiveProfileUpload(
+                diveComputerId, start.plus(offset), end.plus(offset), shiftedMeasurements);
     }
 }

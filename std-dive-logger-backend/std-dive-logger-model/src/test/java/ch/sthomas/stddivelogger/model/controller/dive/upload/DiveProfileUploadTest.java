@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,5 +96,41 @@ class DiveProfileUploadTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> upload.trimmed(START.plusSeconds(200), START.plusSeconds(100)));
+    }
+
+    @Test
+    void returnsTheSameInstanceWhenTheOffsetIsZero() {
+        final var upload = steadyDescentUpload();
+        assertSame(upload, upload.shifted(Duration.ZERO));
+    }
+
+    @Test
+    void shiftsStartEndAndEveryMeasurementByTheSameOffset() {
+        final var upload = steadyDescentUpload();
+        final var offset = Duration.ofHours(8);
+
+        final var shifted = upload.shifted(offset);
+
+        assertEquals(upload.start().plus(offset), shifted.start());
+        assertEquals(upload.end().plus(offset), shifted.end());
+        assertEquals(upload.measurements().size(), shifted.measurements().size());
+        for (var i = 0; i < upload.measurements().size(); i++) {
+            assertEquals(
+                    upload.measurements().get(i).time().plus(offset),
+                    shifted.measurements().get(i).time());
+            assertEquals(
+                    upload.measurements().get(i).depth(), shifted.measurements().get(i).depth());
+        }
+    }
+
+    @Test
+    void shiftsBackwardsForANegativeOffset() {
+        final var upload = steadyDescentUpload();
+        final var offset = Duration.ofHours(-2);
+
+        final var shifted = upload.shifted(offset);
+
+        assertEquals(upload.start().plus(offset), shifted.start());
+        assertEquals(upload.end().plus(offset), shifted.end());
     }
 }

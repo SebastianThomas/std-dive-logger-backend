@@ -185,9 +185,10 @@ public class Dl7ReaderService extends BaseReaderService {
     }
 
     /**
-     * No timezone in the source ("20260822101349") - same reasoning as ShearwaterXmlReaderService:
-     * treated as UTC directly to match this project's already-tested UDDF behavior for the
-     * identical wall-clock value from the same device.
+     * No timezone in the source ("20260822101349") - same reasoning as {@code
+     * ShearwaterXmlReaderService.parseStartDate}: parsed as UTC here purely as a staging
+     * placeholder, corrected to the site's real timezone once one is known at commit time (see
+     * {@code ImportService.correctForUnknownTimezone}).
      */
     private static Instant parseTimestamp(final String raw) {
         return LocalDateTime.parse(raw, TIMESTAMP_FORMAT).toInstant(ZoneOffset.UTC);

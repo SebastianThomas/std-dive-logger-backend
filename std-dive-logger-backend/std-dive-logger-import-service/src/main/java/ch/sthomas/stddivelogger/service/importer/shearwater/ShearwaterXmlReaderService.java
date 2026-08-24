@@ -172,8 +172,10 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
     /**
      * No timezone in the source string ("8/22/2026 10:13:49 AM") - confirmed against this same
      * device's UDDF export for the identical dive, which stamps the identical wall-clock value with
-     * a "Z" (UTC) suffix rather than a real conversion, so treating it as UTC directly matches this
-     * project's existing, already-tested UDDF behavior for the same data.
+     * a "Z" (UTC) suffix rather than a real conversion. Parsed as UTC here purely as a staging
+     * placeholder consistent with that; {@code ImportService.correctForUnknownTimezone} corrects it
+     * to the site's real timezone once one is known, at commit time (this format carries no GPS of
+     * its own to resolve one any earlier).
      */
     static @NonNull Instant parseStartDate(final String raw) {
         return LocalDateTime.parse(raw, START_DATE_FORMAT).toInstant(ZoneOffset.UTC);

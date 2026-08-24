@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.service.importer;
 import ch.sthomas.stddivelogger.data.service.PendingImportDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
@@ -11,6 +12,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResu
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
+import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.NamedBuddy;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
@@ -37,10 +39,15 @@ import java.io.UncheckedIOException;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -50,6 +57,17 @@ import java.util.stream.Stream;
 public class ImportService {
     private static final Duration PENDING_IMPORT_EXPIRY = Duration.ofHours(48);
 
+    // Shearwater's own export formats carry a plain wall-clock reading with no timezone of their
+    // own - every reader for these three sources parses it as if it were UTC (see e.g.
+    // ShearwaterXmlReaderService.parseStartDate's own doc comment). See
+    // correctForUnknownTimezone's doc comment for how that guess gets corrected once a real
+    // dive-site location is known.
+    private static final Set<PendingImportSource> SOURCES_WITH_UNKNOWN_TIMEZONE =
+            EnumSet.of(
+                    PendingImportSource.XML_SHEARWATER,
+                    PendingImportSource.UDDF_SHEARWATER,
+                    PendingImportSource.DL7_SHEARWATER);
+
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
     private final XmlReaderService xmlReaderService;
@@ -58,6 +76,7 @@ public class ImportService {
     private final Dl7ReaderService dl7ReaderService;
     private final PendingImportDataService pendingImportDataService;
     private final DiveService diveService;
+    private final LocationTimezoneResolver locationTimezoneResolver;
 
     public ImportService(
             final FitReaderService fitReaderService,
@@ -67,7 +86,8 @@ public class ImportService {
             final JsonReaderService jsonReaderService,
             final Dl7ReaderService dl7ReaderService,
             final PendingImportDataService pendingImportDataService,
-            final DiveService diveService) {
+            final DiveService diveService,
+            final LocationTimezoneResolver locationTimezoneResolver) {
         this.fitReaderService = fitReaderService;
         this.uddfReaderService = uddfReaderService;
         this.xmlReaderService = xmlReaderService;
@@ -76,6 +96,7 @@ public class ImportService {
         this.dl7ReaderService = dl7ReaderService;
         this.pendingImportDataService = pendingImportDataService;
         this.diveService = diveService;
+        this.locationTimezoneResolver = locationTimezoneResolver;
     }
 
     public StageImportResult stageDivesoft(final User user, final DivesoftImportRequest request) {
@@ -208,7 +229,7 @@ public class ImportService {
         final var attachToNumber = resolveAttachTarget(user, overrides, payload);
         final SimplifiedDive result;
         if (attachToNumber != null) {
-            result = attach(user, attachToNumber, overrides, payload);
+            result = attach(user, attachToNumber, overrides, payload, entity.getSource());
         } else {
             result = createDive(user, entity, overrides, payload);
         }
@@ -338,13 +359,39 @@ public class ImportService {
             final User user,
             final DiveNumber diveNumber,
             final PendingImportCommitRequest overrides,
-            final PendingImportPayload payload) {
+            final PendingImportPayload payload,
+            final PendingImportSource source) {
         final var notes = Optional.ofNullable(overrides.notes()).orElse(payload.notes());
+        final var correctedPayload =
+                correctPayloadForAttachTimezone(user, overrides, source, payload);
         SimplifiedDive result = null;
-        for (final var profile : payload.profiles()) {
+        for (final var profile : correctedPayload.profiles()) {
             result = diveService.addProfile(user, diveNumber, notes, profile);
         }
         return Objects.requireNonNull(result, "Pending import has no profiles to attach");
+    }
+
+    /**
+     * Only correctable when the frontend explicitly linked to an existing dive ({@code
+     * linkToExistingDiveId}) - that dive's own site is a real, already-known location. The other
+     * way to reach {@code attach} (Shearwater/UDDF's "+"-prefixed fractional dive-number auto-merge
+     * convention, resolved purely from a number with no dive fetched at all) has no site lookup
+     * available at this point without adding one - left uncorrected, same as before this fix,
+     * rather than guessing.
+     */
+    private PendingImportPayload correctPayloadForAttachTimezone(
+            final User user,
+            final PendingImportCommitRequest overrides,
+            final PendingImportSource source,
+            final PendingImportPayload payload) {
+        if (overrides.linkToExistingDiveId() == null) {
+            return payload;
+        }
+        return diveService
+                .getDiveById(user, overrides.linkToExistingDiveId())
+                .map(Dive::site)
+                .map(site -> correctForUnknownTimezone(source, payload, site))
+                .orElse(payload);
     }
 
     private SimplifiedDive createDive(
@@ -353,19 +400,23 @@ public class ImportService {
             final PendingImportCommitRequest overrides,
             final PendingImportPayload payload) {
         final var siteId = resolveSite(entity, overrides);
+        final var site = diveService.getSiteById(siteId).orElseThrow();
+        final var correctedPayload = correctForUnknownTimezone(entity.getSource(), payload, site);
         final var diveIdentifier =
                 Optional.ofNullable(overrides.diveIdentifier())
                         .or(() -> Optional.ofNullable(entity.getDiveIdentifierGuess()))
                         .orElse("Imported dive");
-        final var notes = Optional.ofNullable(overrides.notes()).orElse(payload.notes());
+        final var notes = Optional.ofNullable(overrides.notes()).orElse(correctedPayload.notes());
         final var visibility =
-                Optional.ofNullable(overrides.visibility()).orElse(payload.visibility());
+                Optional.ofNullable(overrides.visibility()).orElse(correctedPayload.visibility());
         final var namedBuddies =
-                Optional.ofNullable(overrides.namedBuddies()).orElse(payload.namedBuddies());
+                Optional.ofNullable(overrides.namedBuddies())
+                        .orElse(correctedPayload.namedBuddies());
         final var diveNumber =
                 overrides.diveNumber() != null
                         ? Optional.of(overrides.diveNumber())
-                        : Optional.ofNullable(payload.diveNumberGuess()).map(DiveNumber::number);
+                        : Optional.ofNullable(correctedPayload.diveNumberGuess())
+                                .map(DiveNumber::number);
         final var saveResult =
                 diveService.saveDive(
                         user,
@@ -373,15 +424,64 @@ public class ImportService {
                         diveIdentifier,
                         notes,
                         visibility,
-                        payload.gasConsumption(),
-                        payload.configuration(),
+                        correctedPayload.gasConsumption(),
+                        correctedPayload.configuration(),
                         siteId,
-                        payload.profiles(),
+                        correctedPayload.profiles(),
                         namedBuddies);
         if (saveResult.isException()) {
             throw saveResult.dbException();
         }
         return saveResult.value();
+    }
+
+    /**
+     * Shearwater's own export formats (native XML, UDDF, DL7) carry no timezone/GPS of their own
+     * (see {@link #SOURCES_WITH_UNKNOWN_TIMEZONE}'s doc comment) - their readers parse the raw
+     * wall-clock reading as if it were UTC, which is only actually correct for a diver in UTC+0.
+     * Once a real dive-site location is known (only ever true at commit time for these formats),
+     * this looks up the site's real timezone and re-interprets that same wall-clock reading in it,
+     * shifting every measurement in every profile uniformly. A no-op for any other source, or in
+     * the (in practice essentially unreachable - the underlying data covers the whole globe via
+     * nautical offset zones, see {@code LocationTimezoneResolverTest}) case that the site's
+     * coordinates don't resolve to any zone at all - the original UTC-labeled guess is kept rather
+     * than left partially corrected.
+     */
+    private PendingImportPayload correctForUnknownTimezone(
+            final PendingImportSource source,
+            final PendingImportPayload payload,
+            final @Nullable DiveSite site) {
+        if (!SOURCES_WITH_UNKNOWN_TIMEZONE.contains(source) || site == null) {
+            return payload;
+        }
+        final var zone = locationTimezoneResolver.resolve(site.latitude(), site.longitude());
+        if (zone.isEmpty()) {
+            return payload;
+        }
+        final var correctedProfiles =
+                payload.profiles().stream()
+                        .map(
+                                profile ->
+                                        profile.shifted(
+                                                timezoneOffset(profile.start(), zone.get())))
+                        .toList();
+        return new PendingImportPayload(
+                correctedProfiles,
+                payload.notes(),
+                payload.visibility(),
+                payload.gasConsumption(),
+                payload.configuration(),
+                payload.namedBuddies(),
+                payload.diveNumberGuess());
+    }
+
+    /**
+     * The shift needed to move an {@link Instant} that was naively parsed as "this wall-clock
+     * reading, in UTC" to what it should actually be: the same wall-clock reading, in {@code zone}.
+     */
+    private static Duration timezoneOffset(final Instant assumedUtc, final ZoneId zone) {
+        final var wallClock = LocalDateTime.ofInstant(assumedUtc, ZoneOffset.UTC);
+        return Duration.between(assumedUtc, wallClock.atZone(zone).toInstant());
     }
 
     /**
