@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,12 +36,17 @@ import java.util.List;
  *       closed loop to maintain setpoint/volume.
  * </ul>
  *
- * RMV is computed as total litres consumed ÷ total "pressure-minutes" (the sum, across every
- * consecutive pair of measurements that qualify, of that segment's duration in minutes × its
- * average ambient pressure) - the correct denominator, since a minute spent deep costs more gas at
- * a given breathing rate than a minute spent shallow. Multiple cylinders of the same role combine
- * by summing both litres and pressure-minutes before dividing, so a richer-data cylinder
- * appropriately outweighs a thinner one rather than the two being averaged as if equally reliable.
+ * RMV is computed as total litres consumed ÷ total "pressure-minutes" (across every consecutive
+ * pair of measurements that qualify, that segment's duration in minutes × its average ambient
+ * pressure) - the correct denominator, since a minute spent deep costs more gas at a given
+ * breathing rate than a minute spent shallow. Multiple cylinders of the same role always combine
+ * their litres by summing (gas draw from simultaneous cylinders is genuinely additive), but their
+ * pressure-minutes combine by <b>union</b>, not by summing each cylinder's own window
+ * independently: two cylinders with disjoint usage windows (a sequential twinset switch) union to
+ * the same total as summing would give, but two cylinders sharing the same (or overlapping) window
+ * - e.g. true simultaneous doubles on one manifold, the common case of no usage window set on
+ * either - represent the *same* elapsed dive time, not twice as much of it. Summing pressure-
+ * minutes for that case double-counts the denominator and understates RMV by roughly half.
  */
 public final class CylinderConsumptionCalculator {
 
@@ -102,6 +108,12 @@ public final class CylinderConsumptionCalculator {
     }
 
     /**
+     * A cylinder's usage window - either bound {@code null} means unbounded on that side, i.e.
+     * "used for the whole dive".
+     */
+    private record UsageWindow(@Nullable Instant start, @Nullable Instant end) {}
+
+    /**
      * @param modeTimeline when non-null, only segments held at {@link DiveMode#OC} count towards
      *     the pressure-minutes denominator (used for bailout RMV); {@code null} means every segment
      *     counts (a plain OC dive's own cylinders).
@@ -112,8 +124,7 @@ public final class CylinderConsumptionCalculator {
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline) {
         var totalLiters = 0.0;
-        var totalPressureMinutes = 0.0;
-        var any = false;
+        final var windows = new ArrayList<UsageWindow>();
         for (final var cylinder : cylinders) {
             if (cylinder.role() != role) {
                 continue;
@@ -122,42 +133,42 @@ public final class CylinderConsumptionCalculator {
             if (liters == null) {
                 continue;
             }
-            final var pressureMinutes =
-                    pressureMinutesInWindow(
-                            depthTimeline,
-                            modeTimeline,
-                            cylinder.usageStart(),
-                            cylinder.usageEnd());
-            if (pressureMinutes <= 0) {
+            final var window = new UsageWindow(cylinder.usageStart(), cylinder.usageEnd());
+            // Gate on this cylinder's own window actually covering some of the dive, same as
+            // before - a cylinder whose window doesn't overlap the profile at all contributes
+            // neither litres nor pressure-minutes.
+            if (pressureMinutesCovered(depthTimeline, modeTimeline, List.of(window)) <= 0) {
                 continue;
             }
             totalLiters += liters;
-            totalPressureMinutes += pressureMinutes;
-            any = true;
+            windows.add(window);
         }
-        return any && totalPressureMinutes > 0 ? totalLiters / totalPressureMinutes : null;
+        if (windows.isEmpty()) {
+            return null;
+        }
+        // The combined denominator is the union of every contributing cylinder's window, not the
+        // sum of each computed independently - see this class's own doc comment for why summing
+        // double-counts elapsed time whenever two cylinders share (or overlap) a window.
+        final var totalPressureMinutes =
+                pressureMinutesCovered(depthTimeline, modeTimeline, windows);
+        return totalPressureMinutes > 0 ? totalLiters / totalPressureMinutes : null;
     }
 
     /**
      * Sums (segment duration in minutes × average ambient pressure) across every consecutive pair
-     * of samples in {@code depthTimeline} that falls within {@code [windowStart, windowEnd]}
-     * (either bound {@code null} means unbounded on that side - covers a cylinder with no explicit
-     * usage window, i.e. used for the whole dive) and, when {@code modeTimeline} is given, whose
-     * held mode at the segment's start is {@link DiveMode#OC}.
+     * of samples in {@code depthTimeline} that falls within <b>any</b> of {@code windows} (a
+     * segment covered by more than one window still counts only once) and, when {@code
+     * modeTimeline} is given, whose held mode at the segment's start is {@link DiveMode#OC}.
      */
-    private static double pressureMinutesInWindow(
+    private static double pressureMinutesCovered(
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline,
-            final @Nullable Instant windowStart,
-            final @Nullable Instant windowEnd) {
+            final List<UsageWindow> windows) {
         var total = 0.0;
         for (var i = 0; i + 1 < depthTimeline.size(); i++) {
             final var a = depthTimeline.get(i);
             final var b = depthTimeline.get(i + 1);
-            if (windowStart != null && a.time().isBefore(windowStart)) {
-                continue;
-            }
-            if (windowEnd != null && b.time().isAfter(windowEnd)) {
+            if (windows.stream().noneMatch(w -> segmentWithinWindow(a.time(), b.time(), w))) {
                 continue;
             }
             if (modeTimeline != null) {
@@ -174,6 +185,14 @@ public final class CylinderConsumptionCalculator {
             total += durationMinutes * avgAmbient;
         }
         return total;
+    }
+
+    private static boolean segmentWithinWindow(
+            final Instant segmentStart, final Instant segmentEnd, final UsageWindow window) {
+        if (window.start() != null && segmentStart.isBefore(window.start())) {
+            return false;
+        }
+        return window.end() == null || !segmentEnd.isAfter(window.end());
     }
 
     private static double durationInMinutes(final Instant start, final Instant end) {

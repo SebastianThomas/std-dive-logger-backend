@@ -111,24 +111,56 @@ class CylinderConsumptionCalculatorTest {
     }
 
     @Test
-    void combinesMultipleOcCylindersByWeightedSumNotSimpleAverage() {
-        // Same window/pressure-minutes (2.0) for both cylinders, so combined RMV is just
-        // (1200 + 600) / (2.0 + 2.0) = 450, not (600 + 300) / 2 = 450 coincidentally equal here -
-        // use unequal sizes/drops to make sure it's really summing, not averaging per-cylinder RMV.
+    void combinesSimultaneousDoublesByPressureMinutesUnionNotSum() {
+        // Two OC cylinders, both with no usage window - the common "true doubles on one manifold"
+        // case, breathed at the same time, not sequentially. They share the exact same window, so
+        // the denominator must be that one window's pressure-minutes (2.0), not double-counted as
+        // if each cylinder covered its own separate 2.0 minutes of the dive.
         final var m0 = sample(0, 0, null);
         final var m1 = sample(60, 20, null);
         final var profile = profile(List.of(m0, m1));
-        final var cylinderA = cylinder(12, 200, 100, CylinderRole.OC); // 1200L, RMV 600
-        final var cylinderB = cylinder(10, 160, 100, CylinderRole.OC); // 600L, RMV 300
+        final var cylinderA = cylinder(12, 200, 100, CylinderRole.OC); // 1200L
+        final var cylinderB = cylinder(10, 160, 100, CylinderRole.OC); // 600L
 
         final var result =
                 CylinderConsumptionCalculator.calculate(
                         List.of(profile), List.of(cylinderA, cylinderB));
 
-        // (1200 + 600) / (2.0 + 2.0) = 450, distinct from a naive average of 600 and 300 (450 is
-        // coincidentally the same here since pressure-minutes are equal - assert the actual
-        // formula terms instead to make sure it's not accidentally just averaging).
-        assertEquals((1200.0 + 600.0) / (2.0 + 2.0), notNull(result.ocRmvLiters()), 1e-9);
+        // Combined 1800L over the one shared 2.0 pressure-minute window -> 900, i.e. literally the
+        // sum of each cylinder's own individual RMV (600 + 300) - correct for gas genuinely drawn
+        // simultaneously from both tanks across identical elapsed time.
+        assertEquals(1800.0 / 2.0, notNull(result.ocRmvLiters()), 1e-9);
+    }
+
+    @Test
+    void combinesPartiallyOverlappingWindowsByUnionNotSum() {
+        // Cylinder A covers the whole dive (both bounds null), cylinder B's own window is fully
+        // inside A's. The union is just A's own full-dive window (2.0 pressure-minutes), not
+        // A's 2.0 plus B's (smaller) window summed on top.
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(30, 10, null);
+        final var m2 = sample(60, 20, null);
+        final var profile = profile(List.of(m0, m1, m2));
+        final var cylinderA = cylinder(12, 200, 100, CylinderRole.OC); // 1200L, whole dive
+        final var cylinderB =
+                new DiveConfigurationCylinder(
+                        2,
+                        new CylinderSize(CylinderSizeUnit.LITER, 10),
+                        160.0,
+                        100.0,
+                        "",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        m0.measurement().time(),
+                        m1.measurement().time()); // 600L, only the first half
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile), List.of(cylinderA, cylinderB));
+
+        // Union of [whole dive] and [first half] is just [whole dive] -> 2.0 pressure-minutes
+        // (same as the single-cylinder case), litres still sum to 1200 + 600 = 1800.
+        assertEquals(1800.0 / 2.0, notNull(result.ocRmvLiters()), 1e-9);
     }
 
     @Test
