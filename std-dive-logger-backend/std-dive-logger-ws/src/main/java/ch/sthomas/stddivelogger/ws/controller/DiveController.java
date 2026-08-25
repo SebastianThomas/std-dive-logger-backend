@@ -203,7 +203,8 @@ public class DiveController {
     @Operation(
             summary =
                     "Get dives matching any combination of filters (tags, site, suit, base"
-                            + " configuration, text query, dive-start date range), ANDed together")
+                            + " configuration, text query, dive-start date range, dive-number"
+                            + " range), ANDed together")
     @GetMapping(path = "/filtered")
     public PagedResponse<SimplifiedDive> getFilteredDives(
             @AuthenticationPrincipal final @Nullable User user,
@@ -220,6 +221,10 @@ public class DiveController {
             @RequestParam(name = "endDate", required = false) @Nullable final Instant endDate,
             @RequestParam(name = "startTime", required = false) @Nullable final LocalTime startTime,
             @RequestParam(name = "endTime", required = false) @Nullable final LocalTime endTime,
+            @RequestParam(name = "minNumber", required = false) @Positive @Nullable
+                    final Integer minNumber,
+            @RequestParam(name = "maxNumber", required = false) @Positive @Nullable
+                    final Integer maxNumber,
             @RequestParam(name = "page", required = false, defaultValue = "0") @PositiveOrZero
                     final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -241,7 +246,9 @@ public class DiveController {
                         startDate,
                         endDate,
                         startTime,
-                        endTime),
+                        endTime,
+                        minNumber,
+                        maxNumber),
                 DiveSort.ofNullable(sortColumn, sortDirection),
                 page);
     }

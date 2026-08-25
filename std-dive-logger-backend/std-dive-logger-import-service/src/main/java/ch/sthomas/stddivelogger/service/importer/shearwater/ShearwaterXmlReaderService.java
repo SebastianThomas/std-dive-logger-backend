@@ -128,6 +128,7 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
         for (var i = 0; i < records.size(); i++) {
             final var record = records.get(i);
             final var isLast = i == records.size() - 1;
+            final var mode = toMode(record.currentCircuitSetting());
             measurements.add(
                     new DiveMeasurement(
                             start.plusMillis(record.currentTime()),
@@ -143,14 +144,24 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
                                                     Math.round(record.firstStopTime() * 60)))
                                     : List.of(),
                             new Gas(record.fractionO2(), record.fractionHe()),
-                            new PO2(null, record.averagePPO2(), null),
+                            // averagePPO2 is a real sensor reading only on a closed-circuit
+                            // sample (this device's redundant O2 cells, see the record's own
+                            // sensor1/2/3Millivolts fields) - on open circuit there's no PO2
+                            // sensor at all, so the same field is Shearwater's own on-device
+                            // FO2 x ambient-pressure estimate instead. The native XML format
+                            // doesn't split this into two fields the way UDDF's
+                            // measuredpo2/calculatedpo2 pair does, so the split has to be
+                            // inferred from the circuit mode instead.
+                            mode == DiveMode.CC
+                                    ? new PO2(null, record.averagePPO2(), null)
+                                    : new PO2(null, null, record.averagePPO2()),
                             // Tank pressure/SAC aren't modeled (see ShearwaterDiveLogRecord) - no
                             // AI transmitter paired in the exports seen so far.
                             null,
                             null,
                             null,
                             isLast ? log.endCns() : null,
-                            toMode(record.currentCircuitSetting()),
+                            mode,
                             Duration.ofMinutes(record.ttsMins())));
         }
         final var end =

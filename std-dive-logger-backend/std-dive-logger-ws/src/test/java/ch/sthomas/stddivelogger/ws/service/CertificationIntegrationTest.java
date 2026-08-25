@@ -78,8 +78,50 @@ class CertificationIntegrationTest {
 
     @Test
     void seededAgenciesAreSearchable() {
-        final var results = certificationService.getAgencies("TDI");
+        final var results = certificationService.getAgencies(owner, "TDI");
         assertThat(results).extracting("name").contains("TDI");
+    }
+
+    @Test
+    void agenciesTheUserHasMoreCertificationsWithAreRankedFirst() {
+        // Alphabetically PADI comes before SSI, so this only passes if the cert-count ranking is
+        // actually applied rather than falling back to name order.
+        final var padi = certificationService.getAgencies(null, "PADI").getFirst();
+        final var ssi = certificationService.getAgencies(null, "SSI").getFirst();
+
+        certificationService.createCertification(
+                owner,
+                new CertificationBody(
+                        ssi.id(),
+                        "Open Water",
+                        LocalDate.of(2020, 1, 1),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null));
+        certificationService.createCertification(
+                owner,
+                new CertificationBody(
+                        ssi.id(),
+                        "Advanced",
+                        LocalDate.of(2021, 1, 1),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null));
+
+        final var rankedForOwner = certificationService.getAgencies(owner, "");
+        assertThat(rankedForOwner).extracting("id").containsSubsequence(ssi.id(), padi.id());
+
+        // A user with no certifications at all still sees the plain alphabetical order.
+        final var rankedForOther = certificationService.getAgencies(other, "");
+        assertThat(rankedForOther).extracting("id").containsSubsequence(padi.id(), ssi.id());
+
+        // Ties (nobody has any certs) fall back to alphabetical, same as an unauthenticated call.
+        final var unauthenticated = certificationService.getAgencies(null, "");
+        assertThat(unauthenticated).extracting("id").containsSubsequence(padi.id(), ssi.id());
     }
 
     @Test
@@ -111,7 +153,7 @@ class CertificationIntegrationTest {
 
     @Test
     void crudRoundTripAndOwnershipScoping() {
-        final var tdi = certificationService.getAgencies("TDI").getFirst();
+        final var tdi = certificationService.getAgencies(owner, "TDI").getFirst();
 
         final var created =
                 certificationService.createCertification(

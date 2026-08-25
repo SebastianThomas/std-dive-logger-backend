@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.TeamTerminology;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTrip;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripDefaultTeamMember;
+import ch.sthomas.stddivelogger.model.dive.trip.DiveTripListEntry;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripMember;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripType;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
@@ -48,8 +49,15 @@ public class DiveTripService {
         return trip;
     }
 
-    public List<DiveTrip> getTripsForUser(final User user) {
-        return diveTripDataService.findTripsByOwner(user.id());
+    /**
+     * Ordered by each trip's own most recent dive (transitively, including nested sub-trips),
+     * newest first, with a trip that has no dives logged under it yet pinned to the very top -
+     * never by database id/creation order, since a trip entered into the app after the fact for
+     * dives from months ago shouldn't rank above one you're actively logging into today. See {@code
+     * DiveTripDataService.findTripsByOwnerWithDateRange}.
+     */
+    public List<DiveTripListEntry> getTripsForUser(final User user) {
+        return diveTripDataService.findTripsByOwnerWithDateRange(user.id());
     }
 
     public DiveTrip getTrip(final User user, final long tripId) {

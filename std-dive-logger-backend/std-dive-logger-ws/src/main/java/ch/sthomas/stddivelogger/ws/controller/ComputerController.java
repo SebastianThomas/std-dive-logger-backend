@@ -18,6 +18,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.NoSuchElementException;
+
 @RestController
 @RequestMapping("/v1/computers")
 @Validated
@@ -36,6 +38,18 @@ public class ComputerController {
             throw new UnauthorizedException("Log in to access your dive computers");
         }
         return diveService.getDiveComputers(user, page);
+    }
+
+    @GetMapping("/{id}")
+    public DiveComputer getDiveComputer(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long id) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to access your dive computers");
+        }
+        return diveService
+                .getDiveComputerById(user, id)
+                .orElseThrow(() -> new NoSuchElementException("No dive computer " + id));
     }
 
     @GetMapping("/manufacturers")

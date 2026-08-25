@@ -20,8 +20,17 @@ import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
+    // EXISTS rather than a JOIN + DISTINCT (the original shape here) - a dive can have more than
+    // one profile from the same computer, so a plain join multiplies rows and needs DISTINCT to
+    // undo it, but Postgres then rejects sorting by any column (e.g. diveSummary.start, see
+    // DiveSortColumn.DATE) that isn't itself in the DISTINCT SELECT list ("for SELECT DISTINCT,
+    // ORDER BY expressions must appear in select list"). EXISTS never multiplies rows in the
+    // first place, so no DISTINCT is needed and every sort column works. Also now actually scopes
+    // by :userId, which the DISTINCT/JOIN version never did - it relied entirely on the caller
+    // (DiveService.getDivesByComputer) having already checked computer ownership first.
     @Query(
-            "SELECT DISTINCT d FROM DiveEntity d JOIN DiveProfileEntity dp ON dp.dive = d AND dp.computer.id = :computerId")
+            "SELECT d FROM DiveEntity d WHERE d.user.id = :userId AND EXISTS (SELECT 1 FROM"
+                    + " DiveProfileEntity dp WHERE dp.dive = d AND dp.computer.id = :computerId)")
     Page<DiveEntity> findByUser_IdAndComputer(Long userId, Long computerId, Pageable pageable);
 
     Page<DiveEntity> findByUser_IdAndConfiguration_Suit_Id(

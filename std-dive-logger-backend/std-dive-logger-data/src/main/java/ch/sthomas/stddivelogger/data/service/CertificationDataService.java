@@ -46,6 +46,23 @@ public class CertificationDataService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CertificationAgency> findAllAgenciesOrderedByUserCertCount(final long userId) {
+        return certificationAgencyRepository.findAllOrderedByUserCertCount(userId).stream()
+                .map(CertificationAgencyEntity::toRecord)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CertificationAgency> findAgenciesByPartialNameOrderedByUserCertCount(
+            final long userId, final String query) {
+        return certificationAgencyRepository
+                .findByPartialNameOrderedByUserCertCount(userId, query)
+                .stream()
+                .map(CertificationAgencyEntity::toRecord)
+                .toList();
+    }
+
     /**
      * Deliberately the only way to add an agency - no inline "type a new one" shortcut anywhere
      * else, and this rejects anything already present (case-insensitively) rather than silently

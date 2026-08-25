@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.user.Certification;
 import ch.sthomas.stddivelogger.model.user.CertificationAgency;
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,11 +21,19 @@ public class CertificationService {
         this.certificationDataService = certificationDataService;
     }
 
-    public List<CertificationAgency> getAgencies(final String query) {
-        if (query.isBlank()) {
-            return certificationDataService.findAllAgencies();
+    // Agencies the current user already has more certifications with are ranked first, so a
+    // likely match surfaces before typing anything - falls back to plain alphabetical order for
+    // an unauthenticated caller.
+    public List<CertificationAgency> getAgencies(final @Nullable User user, final String query) {
+        if (user == null) {
+            return query.isBlank()
+                    ? certificationDataService.findAllAgencies()
+                    : certificationDataService.findAgenciesByPartialName(query.trim());
         }
-        return certificationDataService.findAgenciesByPartialName(query.trim());
+        return query.isBlank()
+                ? certificationDataService.findAllAgenciesOrderedByUserCertCount(user.id())
+                : certificationDataService.findAgenciesByPartialNameOrderedByUserCertCount(
+                        user.id(), query.trim());
     }
 
     public CertificationAgency createAgency(final CreateCertificationAgencyBody body) {

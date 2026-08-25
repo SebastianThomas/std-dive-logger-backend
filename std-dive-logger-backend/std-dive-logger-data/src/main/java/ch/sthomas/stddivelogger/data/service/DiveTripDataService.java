@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.dive.BuddyRole;
 import ch.sthomas.stddivelogger.model.dive.TeamTerminology;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTrip;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripDefaultTeamMember;
+import ch.sthomas.stddivelogger.model.dive.trip.DiveTripListEntry;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripMember;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripType;
 import ch.sthomas.stddivelogger.model.entity.DiveBuddyNameEntity;
@@ -27,10 +28,13 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * A trip's members form a DAG (dive-trips-containing-dive-trips, for nesting - see {@code
@@ -71,10 +75,76 @@ public class DiveTripDataService {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
+    /**
+     * Every one of the owner's trips, each paired with the earliest/latest start date across every
+     * dive transitively under it (its own direct dives and every nested sub-trip's) - both null for
+     * a trip with no dives yet. Ordered by that latest date, most recent first, with a dateless
+     * (empty) trip sorted to the very top - it's presumably one actively being built right now, not
+     * one to bury under dated ones. Never orders by id/creation order: a trip logged after the fact
+     * for dives from months ago shouldn't jump to the top just because it was *entered* recently.
+     *
+     * <p>One query computes every trip's range at once (the recursive CTE's anchor is every owned
+     * trip simultaneously, tagged with its own root so the recursion never mixes them up) rather
+     * than one query per trip - cheap regardless of how many trips the user has.
+     */
     @Transactional(readOnly = true)
-    public List<DiveTrip> findTripsByOwner(final long ownerId) {
-        return diveTripRepository.findByOwner_IdOrderByCreatedAtDesc(ownerId).stream()
-                .map(DiveTripEntity::toRecord)
+    public List<DiveTripListEntry> findTripsByOwnerWithDateRange(final long ownerId) {
+        final var trips = diveTripRepository.findByOwner_IdOrderByCreatedAtDesc(ownerId);
+        if (trips.isEmpty()) {
+            return List.of();
+        }
+        final var sql =
+                """
+                WITH RECURSIVE trip_tree AS (
+                    SELECT pk_trip_id AS root_trip_id, pk_trip_id AS trip_id, 0 AS depth
+                    FROM t_dive_trip
+                    WHERE fk_owner_user_id = :ownerId
+                    UNION ALL
+                    SELECT tt.root_trip_id, m.fk_member_trip_id, tt.depth + 1
+                    FROM t_dive_trip_member m
+                    JOIN trip_tree tt ON m.fk_trip_id = tt.trip_id
+                    WHERE m.fk_member_trip_id IS NOT NULL AND tt.depth < :maxDepth
+                )
+                SELECT tt.root_trip_id AS trip_id,
+                       MIN(ds.dive_start) AS first_dive,
+                       MAX(ds.dive_start) AS last_dive
+                FROM trip_tree tt
+                JOIN t_dive_trip_member m
+                    ON m.fk_trip_id = tt.trip_id AND m.fk_member_dive_id IS NOT NULL
+                JOIN t_dive_summary ds ON ds.fk_dive_id = m.fk_member_dive_id
+                GROUP BY tt.root_trip_id
+                """;
+        final var params =
+                new MapSqlParameterSource()
+                        .addValue("ownerId", ownerId)
+                        .addValue("maxDepth", MAX_TRIP_DEPTH);
+        final var dateRangesByTripId =
+                namedParameterJdbcTemplate
+                        .query(
+                                sql,
+                                params,
+                                (rs, rowNum) ->
+                                        Map.entry(
+                                                rs.getLong("trip_id"),
+                                                Map.entry(
+                                                        rs.getTimestamp("first_dive").toInstant(),
+                                                        rs.getTimestamp("last_dive").toInstant())))
+                        .stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        return trips.stream()
+                .map(
+                        entity -> {
+                            final var range = dateRangesByTripId.get(entity.getId());
+                            return new DiveTripListEntry(
+                                    entity.toRecord(),
+                                    range == null ? null : range.getKey(),
+                                    range == null ? null : range.getValue());
+                        })
+                .sorted(
+                        Comparator.comparing(
+                                DiveTripListEntry::lastDiveDate,
+                                Comparator.nullsFirst(Comparator.reverseOrder())))
                 .toList();
     }
 

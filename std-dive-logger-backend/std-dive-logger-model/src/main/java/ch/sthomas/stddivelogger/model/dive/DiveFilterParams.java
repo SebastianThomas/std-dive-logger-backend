@@ -22,4 +22,7 @@ public record DiveFilterParams(
          * overlaps this range at all, not just when it's fully contained in it.
          */
         @Nullable LocalTime startTime,
-        @Nullable LocalTime endTime) {}
+        @Nullable LocalTime endTime,
+        /** Inclusive dive-number range (e.g. "my dives 120-126") - either bound alone is fine. */
+        @Nullable Integer minNumber,
+        @Nullable Integer maxNumber) {}

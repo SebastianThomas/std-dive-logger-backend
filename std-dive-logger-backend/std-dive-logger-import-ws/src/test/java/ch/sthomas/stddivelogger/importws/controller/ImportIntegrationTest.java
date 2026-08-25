@@ -443,4 +443,68 @@ class ImportIntegrationTest {
         // loss, not a bug in the auto-tag logic itself.
         assertThat(nonNullCommitBody.tags()).noneMatch(t -> t.name().equals("Deco"));
     }
+
+    @Test
+    void uploadingARealShearwaterXmlFileThenCommittingPersistsTheRealTtsPeakEndToEnd() {
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add("file", new ClassPathResource("shearwater-perdix2-native.xml"));
+
+        final var stageBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import")
+                        .headers(h -> h.addAll(authorizedHeaders()))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(multipartBody)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        final var body = Objects.requireNonNull(stageBody);
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(1);
+        final var staged = body.staged().getFirst();
+
+        // No GPS/site guess in this format either - an explicit override is required.
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Integration Test Shearwater Site",
+                        new Location(9.0, 10.0),
+                        null,
+                        null);
+        final var commitBody =
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + staged.id() + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(commitRequest)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody();
+
+        // Confirms the real 12min TTS peak (see ShearwaterXmlReaderServiceTest for the unit-level
+        // parse check) survives the full stage -> commit -> DiveSummaryEntity.update() ->
+        // persisted-and-reloaded round trip through the real database - not just in-memory
+        // parsing. Filed after a user reported seeing no TTS at all for real-deco Shearwater XML
+        // imports; that gap turned out to be the frontend never rendering the field anywhere on
+        // the dive view (now fixed), not a backend defect - this test is the missing coverage that
+        // would have caught it either way.
+        final var nonNullCommitBody = Objects.requireNonNull(commitBody);
+        final var summary = nonNullCommitBody.summary();
+        assertThat(summary.maxTimeToSurface()).isEqualTo(java.time.Duration.ofMinutes(12));
+        assertThat(summary.maxDepth()).isGreaterThan(0.0);
+        assertThat(nonNullCommitBody.tags()).anyMatch(t -> t.name().equals("Deco"));
+    }
 }

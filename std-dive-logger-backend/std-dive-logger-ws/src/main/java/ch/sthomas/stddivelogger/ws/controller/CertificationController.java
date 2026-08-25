@@ -38,11 +38,14 @@ public class CertificationController {
     @Operation(
             summary =
                     "List certifying agencies (TDI, SSI, ...), optionally filtered by ?query=. "
-                            + "Search this before ever creating a new one.")
+                            + "Search this before ever creating a new one. Ranked by how many "
+                            + "certifications the current user already holds with each agency, "
+                            + "ties broken alphabetically.")
     @GetMapping("/agencies")
     public List<CertificationAgency> getAgencies(
+            @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(required = false, defaultValue = "") final String query) {
-        return certificationService.getAgencies(query);
+        return certificationService.getAgencies(user, query);
     }
 
     @Operation(

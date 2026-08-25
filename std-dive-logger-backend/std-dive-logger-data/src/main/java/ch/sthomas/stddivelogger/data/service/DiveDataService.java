@@ -1198,6 +1198,14 @@ public class DiveDataService {
             where.append(" AND ds.dive_start < :endDate");
             params.addValue("endDate", java.sql.Timestamp.from(filters.endDate()));
         }
+        if (filters.minNumber() != null) {
+            where.append(" AND d.dive_number >= :minNumber");
+            params.addValue("minNumber", filters.minNumber());
+        }
+        if (filters.maxNumber() != null) {
+            where.append(" AND d.dive_number <= :maxNumber");
+            params.addValue("maxNumber", filters.maxNumber());
+        }
         if (filters.tagIds() != null && !filters.tagIds().isEmpty()) {
             where.append(
                     """

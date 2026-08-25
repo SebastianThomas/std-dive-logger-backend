@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.BuddyRole;
 import ch.sthomas.stddivelogger.model.dive.TeamTerminology;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTrip;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripDefaultTeamMember;
+import ch.sthomas.stddivelogger.model.dive.trip.DiveTripListEntry;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripMember;
 import ch.sthomas.stddivelogger.model.dive.trip.DiveTripType;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -38,9 +39,13 @@ public class DiveTripController {
         this.diveTripService = diveTripService;
     }
 
-    @Operation(summary = "List the current user's dive trips")
+    @Operation(
+            summary =
+                    "List the current user's dive trips, ordered by each trip's own most recent"
+                            + " dive (transitively) - newest first, with a dive-less trip pinned"
+                            + " to the top - never by id/creation order")
     @GetMapping(path = "")
-    public List<DiveTrip> getTrips(@AuthenticationPrincipal final User user) {
+    public List<DiveTripListEntry> getTrips(@AuthenticationPrincipal final User user) {
         return diveTripService.getTripsForUser(user);
     }
 

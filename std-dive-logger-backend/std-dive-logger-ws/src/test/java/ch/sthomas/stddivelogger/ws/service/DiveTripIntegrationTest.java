@@ -92,6 +92,10 @@ class DiveTripIntegrationTest {
     }
 
     private long createDive() {
+        return createDive(Instant.now());
+    }
+
+    private long createDive(final Instant start) {
         final var seq = diveSeq++;
         return diveService
                 .createEmptyDive(
@@ -102,7 +106,7 @@ class DiveTripIntegrationTest {
                                 siteId,
                                 18.0,
                                 Duration.ofMinutes(25),
-                                Instant.now()))
+                                start))
                 .id();
     }
 
@@ -182,5 +186,50 @@ class DiveTripIntegrationTest {
         // duplicate or clobber what's already there.
         diveTripService.addDiveMember(owner, course.id(), dive1, true);
         assertThat(diveService.getDiveById(owner, dive1).orElseThrow().namedBuddies()).hasSize(1);
+    }
+
+    @Test
+    void tripListIsOrderedByMostRecentTransitiveDiveNotByCreationOrder() {
+        // Created in an order that would give the WRONG result if sorted by id/creation instead:
+        // the trip with the oldest dive is created *last*.
+        final var empty = diveTripService.createTrip(owner, "Planning Ahead", DiveTripType.TRIP);
+        final var recent = diveTripService.createTrip(owner, "Recent Trip", DiveTripType.TRIP);
+        final var old = diveTripService.createTrip(owner, "Old Trip", DiveTripType.TRIP);
+
+        diveTripService.addDiveMember(
+                owner, old.id(), createDive(Instant.parse("2020-01-01T09:00:00Z")), false);
+        diveTripService.addDiveMember(
+                owner, recent.id(), createDive(Instant.parse("2026-06-01T09:00:00Z")), false);
+        // `empty` gets no dive at all - stays dateless.
+
+        final var entries = diveTripService.getTripsForUser(owner);
+
+        assertThat(entries)
+                .extracting(e -> e.trip().id())
+                .containsExactly(empty.id(), recent.id(), old.id());
+        assertThat(entries.get(0).firstDiveDate()).isNull();
+        assertThat(entries.get(0).lastDiveDate()).isNull();
+        assertThat(entries.get(1).lastDiveDate()).isEqualTo(Instant.parse("2026-06-01T09:00:00Z"));
+        assertThat(entries.get(2).lastDiveDate()).isEqualTo(Instant.parse("2020-01-01T09:00:00Z"));
+    }
+
+    @Test
+    void tripListDateComesFromNestedSubTripsToo() {
+        // "Season" has no dives of its own - only through its nested "Greece" sub-trip. It must
+        // still sort by that transitive date, not show up dateless.
+        final var season = diveTripService.createTrip(owner, "2026 Season", DiveTripType.TRIP);
+        final var greece = diveTripService.createTrip(owner, "Greece Holiday", DiveTripType.TRIP);
+        diveTripService.addTripMember(owner, season.id(), greece.id());
+        diveTripService.addDiveMember(
+                owner, greece.id(), createDive(Instant.parse("2026-07-15T09:00:00Z")), false);
+
+        final var entries = diveTripService.getTripsForUser(owner);
+
+        final var seasonEntry =
+                entries.stream()
+                        .filter(e -> e.trip().id() == season.id())
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(seasonEntry.lastDiveDate()).isEqualTo(Instant.parse("2026-07-15T09:00:00Z"));
     }
 }

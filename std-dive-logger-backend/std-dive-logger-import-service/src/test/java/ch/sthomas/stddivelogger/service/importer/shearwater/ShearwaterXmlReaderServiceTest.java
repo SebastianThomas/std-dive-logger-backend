@@ -10,6 +10,8 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
+import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterDiveLog;
+import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterDiveLogRecord;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.utils.ObjectMapperUtils;
@@ -78,6 +80,45 @@ class ShearwaterXmlReaderServiceTest {
     @Test
     void usesTheRealAnonymizedDeviceSerial() throws IOException {
         assertThat(parseFixture().computerSerial()).isEqualTo("1000000099");
+    }
+
+    @Test
+    void averagePpo2IsCalculatedNotMeasuredOnOpenCircuit() throws IOException {
+        // The whole real fixture is OC/BO throughout (no real O2 sensor exists on open circuit)
+        // - averagePPO2 there is this device's own FO2 x ambient-pressure estimate, not a sensor
+        // reading, so it belongs under `calculated`, never `measured`.
+        final var measurements = parseFixture().payload().profiles().getFirst().measurements();
+        assertThat(measurements).isNotEmpty();
+        assertThat(measurements)
+                .allSatisfy(
+                        m -> {
+                            final var po2 = Objects.requireNonNull(m.po2());
+                            assertThat(po2.measured()).isNull();
+                            assertThat(po2.calculated()).isNotNull().isPositive();
+                        });
+    }
+
+    @Test
+    void averagePpo2IsMeasuredOnClosedCircuit() {
+        // Synthetic, not from the real fixture (which never switches to CC) - a CCR sample's
+        // averagePPO2 is this device's real redundant-sensor reading (see
+        // ShearwaterDiveLogRecord's sensor1/2/3Millivolts fields), the one case that belongs
+        // under `measured`.
+        final var record =
+                new ShearwaterDiveLogRecord(0, 20.0, 22.0, 0, 0, 0, 0, 0.21, 0.0, 1.2, "CC");
+        final var log =
+                new ShearwaterDiveLog(
+                        1, "8/22/2026 10:00:00 AM", "8/22/2026 10:30:00 AM", 20.0, 1800, 0.0,
+                        "1000000099", "2", java.util.List.of(record));
+        final var service = new ShearwaterXmlReaderService(xmlMapper, diveServiceReturningComputer());
+        final var computer =
+                new DiveComputer(1L, new DiveComputerManufacturer(1L, "Shearwater"), "serial", "id", null);
+
+        final var profile = service.getDiveProfile(computer, log);
+
+        final var po2 = Objects.requireNonNull(profile.measurements().getFirst().po2());
+        assertThat(po2.measured()).isEqualTo(1.2);
+        assertThat(po2.calculated()).isNull();
     }
 
     @Test
