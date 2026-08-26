@@ -183,17 +183,17 @@ public class DiveService {
     }
 
     /**
-     * Auto-fills the CCR unit (and, via that unit's own default base configuration, the dive mode)
-     * from whichever computer recorded this dive's first profile - an import reader has no way to
-     * know the diver's own CCR units, but if that computer/handset was already linked to one (see
-     * DiveComputer.ccrUnitId, set via ComputerController#updateDiveComputer), this reproduces what
-     * a diver picking that unit manually would get, automatically.
+     * Auto-fills the CCR unit from whichever computer recorded this dive's first profile - an
+     * import reader has no way to know the diver's own CCR units, but if that computer/handset was
+     * already linked to one (see DiveComputer.ccrUnitId, set via
+     * ComputerController#updateDiveComputer), this reproduces what a diver picking that unit
+     * manually would get, automatically. Never touches the dive's own {@code BaseConfiguration},
+     * which is independent of which CCR unit is used.
      *
-     * <p>A no-op whenever there's nothing to infer from: no profiles, an explicit CCR unit already
-     * on the configuration (never overridden - the caller's own choice always wins), the computer
-     * isn't linked to a unit, or that unit has no default base configuration set yet (the diver
-     * hasn't confirmed one, so there's nothing safe to guess). The link itself is only evaluated at
-     * import time - relinking a computer later doesn't retroactively change dives already saved.
+     * <p>A no-op whenever there's nothing to infer from: no profiles, an explicit primary CCR unit
+     * already on the configuration (never overridden - the caller's own choice always wins), or the
+     * computer isn't linked to a unit. The link itself is only evaluated at import time - relinking
+     * a computer later doesn't retroactively change dives already saved.
      */
     // Package-private rather than private so DiveServiceTest can exercise it directly instead of
     // needing to mock the whole saveDive()/createSaveDivePreview() pipeline just to reach it.
@@ -208,7 +208,7 @@ public class DiveService {
                 diveDataService
                         .findCcrUnitLinkedToComputer(profiles.getFirst().diveComputerId())
                         .orElse(null);
-        if (linkedCcrUnit == null || linkedCcrUnit.defaultBaseConfiguration() == null) {
+        if (linkedCcrUnit == null) {
             return configuration;
         }
         // Defense in depth: the computer<->CCR-unit link is set via ComputerController, which
@@ -219,18 +219,18 @@ public class DiveService {
             return configuration;
         }
         logger.info(
-                "Inferred CCR unit {} (base {}) for user {} from dive computer {}",
+                "Inferred CCR unit {} for user {} from dive computer {}",
                 linkedCcrUnit.id(),
-                linkedCcrUnit.defaultBaseConfiguration(),
                 user.id(),
                 profiles.getFirst().diveComputerId());
         return new DiveConfiguration(
                 configuration.suit(),
-                linkedCcrUnit.defaultBaseConfiguration(),
+                configuration.base(),
                 configuration.weight(),
                 configuration.weightFeeling(),
                 configuration.cylinders(),
                 linkedCcrUnit,
+                configuration.secondaryCcrUnit(),
                 configuration.adHocSuitType());
     }
 
@@ -933,7 +933,8 @@ public class DiveService {
             final @NotNull User user,
             final @NotNull String name,
             @Nullable final String notes,
-            final boolean isPublic) {
+            final boolean isPublic,
+            @Nullable final CcrMountPosition mountPosition) {
         return diveDataService.saveCcrUnit(
                 user.id(),
                 new CcrUnit(
@@ -942,7 +943,7 @@ public class DiveService {
                         name,
                         Objects.requireNonNullElse(notes, ""),
                         isPublic,
-                        null));
+                        mountPosition));
     }
 
     public PagedResponse<CcrUnit> getCcrUnits(final User user, final int page) {

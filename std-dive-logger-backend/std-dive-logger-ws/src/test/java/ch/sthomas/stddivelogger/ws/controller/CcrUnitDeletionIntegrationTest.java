@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
@@ -146,11 +147,12 @@ class CcrUnitDeletionIntegrationTest {
         final var configuration =
                 new DiveConfiguration(
                         Suit.createUnknown(userRecord),
-                        BaseConfiguration.SIDEMOUNT_CCR,
+                        BaseConfiguration.SIDEMOUNT,
                         null,
                         null,
                         List.of(),
                         ccrUnit.toRecord(),
+                        null,
                         null);
         final var dive =
                 new DiveEntity(
@@ -161,6 +163,7 @@ class CcrUnitDeletionIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         ccrUnit,
+                        null,
                         configuration,
                         userEntity,
                         diveSite,
@@ -184,7 +187,7 @@ class CcrUnitDeletionIntegrationTest {
                                         "rEvo",
                                         "",
                                         false,
-                                        BaseConfiguration.SIDEMOUNT_CCR)));
+                                        CcrMountPosition.SIDEMOUNT)));
         final var computer = createComputer("PLAIN-DELETE-COMPUTER");
         computer.setCcrUnit(ccrUnit);
         diveComputerRepository.save(computer);
@@ -199,8 +202,7 @@ class CcrUnitDeletionIntegrationTest {
                 java.util.Objects.requireNonNull(survivingDive.getConfiguration());
         assertThat(survivingConfiguration.toRecord().ccrUnit()).isNull();
         // Nothing else about the dive's configuration changed.
-        assertThat(survivingConfiguration.toRecord().base())
-                .isEqualTo(BaseConfiguration.SIDEMOUNT_CCR);
+        assertThat(survivingConfiguration.toRecord().base()).isEqualTo(BaseConfiguration.SIDEMOUNT);
 
         final var survivingComputer =
                 diveComputerRepository.findById(computer.toRecord().id()).orElseThrow();
@@ -221,7 +223,7 @@ class CcrUnitDeletionIntegrationTest {
                                         "Someone else's rEvo",
                                         "",
                                         false,
-                                        BaseConfiguration.SIDEMOUNT_CCR)));
+                                        CcrMountPosition.SIDEMOUNT)));
 
         assertThatThrownBy(() -> diveService.deleteCcrUnit(userEntity.toRecord(), ccrUnit.getId()))
                 .isInstanceOf(NoSuchElementException.class);
@@ -240,7 +242,7 @@ class CcrUnitDeletionIntegrationTest {
                                         "rEvo",
                                         "",
                                         false,
-                                        BaseConfiguration.SIDEMOUNT_CCR)));
+                                        CcrMountPosition.SIDEMOUNT)));
         final var computerA = createComputer("BULK-DELETE-COMPUTER-A");
         final var computerB = createComputer("BULK-DELETE-COMPUTER-B");
         final var diveIdA = createDiveLinkedToCcrUnit(1, computerA, ccrUnit);

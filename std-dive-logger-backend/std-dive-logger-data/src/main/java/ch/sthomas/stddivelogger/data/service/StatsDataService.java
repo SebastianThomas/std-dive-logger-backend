@@ -25,12 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -317,7 +317,12 @@ public class StatsDataService {
                         params,
                         (rs, rowNum) ->
                                 new UserDiveStatsBy<>(
-                                        BaseConfiguration.valueOf(rs.getString("grp")),
+                                        // null (SQL NULL) means "not specified" - a real group,
+                                        // not an error, so BaseConfiguration.valueOf isn't called
+                                        // for it.
+                                        Optional.ofNullable(rs.getString("grp"))
+                                                .map(BaseConfiguration::valueOf)
+                                                .orElse(null),
                                         mapAggregateRow(rs)))
                 .stream()
                 .sorted(Comparator.reverseOrder())
@@ -748,12 +753,6 @@ public class StatsDataService {
         return new StatsTimeSeries(points, breakdown);
     }
 
-    private static final List<String> CCR_BASE_CONFIGURATION_NAMES =
-            Arrays.stream(BaseConfiguration.values())
-                    .filter(BaseConfiguration::isCcr)
-                    .map(Enum::name)
-                    .toList();
-
     private List<StatsTimeSeriesPoint> categoryBreakdown(
             final String preamble,
             final BucketSql bucket,
@@ -764,7 +763,7 @@ public class StatsDataService {
                     case SUIT ->
                             "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')";
                     case CCR_UNIT -> "COALESCE(cu.name, 'No CCR unit')";
-                    case BASE_CONFIGURATION -> "COALESCE(fd.base_configuration, 'UNKNOWN')";
+                    case BASE_CONFIGURATION -> "COALESCE(fd.base_configuration, 'Not specified')";
                 };
         final var joinClause =
                 switch (dimension) {
@@ -773,13 +772,13 @@ public class StatsDataService {
                             "LEFT JOIN t_ccr_units cu ON cu.pk_ccr_unit_id = fd.fk_ccr_unit_id\n";
                     case BASE_CONFIGURATION -> "";
                 };
-        // A CCR unit only ever makes sense on a CCR-configured dive — scope this specific
-        // breakdown to those, so it isn't swamped by every other (non-CCR) dive all lumped into
-        // one "No CCR unit" bucket.
+        // A CCR unit only ever makes sense on a dive that actually references one - scope this
+        // specific breakdown to those, so it isn't swamped by every other dive all lumped into
+        // one "No CCR unit" bucket. CCR-ness is independent of BaseConfiguration, so this checks
+        // the unit link directly rather than any base-configuration value.
         final var whereClause = new StringBuilder();
         if (dimension == StatsBreakdownDimension.CCR_UNIT) {
-            whereClause.append("WHERE fd.base_configuration IN (:ccrBaseConfigurations)\n");
-            params.addValue("ccrBaseConfigurations", CCR_BASE_CONFIGURATION_NAMES);
+            whereClause.append("WHERE fd.fk_ccr_unit_id IS NOT NULL\n");
         }
 
         final var sql =

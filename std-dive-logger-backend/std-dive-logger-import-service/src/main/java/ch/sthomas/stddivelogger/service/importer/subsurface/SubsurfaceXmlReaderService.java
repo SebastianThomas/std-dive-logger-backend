@@ -154,6 +154,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                 configuration.weightFeeling(),
                                 toCylinders(dive),
                                 configuration.ccrUnit(),
+                                configuration.secondaryCcrUnit(),
                                 configuration.adHocSuitType()),
                         buddies,
                         null);

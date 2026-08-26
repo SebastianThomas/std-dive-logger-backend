@@ -138,6 +138,7 @@ class AnalyticsRecomputeIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         null,
+                        null,
                         configuration,
                         userEntity,
                         diveSite,

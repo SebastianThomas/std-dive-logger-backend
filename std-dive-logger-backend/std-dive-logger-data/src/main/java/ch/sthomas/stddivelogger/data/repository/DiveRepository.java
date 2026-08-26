@@ -223,19 +223,13 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     void setSuit(SuitEntity suitEntity, Collection<Long> idsList);
 
     /**
-     * Only touches dives that are themselves CCR-configured — any non-CCR dive in {@code idsList}
-     * is silently left alone rather than failing the whole batch.
+     * A CCR unit is independent of a dive's own {@code BaseConfiguration}, so this applies
+     * unconditionally to every dive in {@code idsList}.
      */
     @Query(
-            """
-            UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity
-            WHERE c.diveId IN (:idsList) AND c.baseConfiguration IN (:ccrBaseConfigs)
-            """)
+            "UPDATE DiveConfigurationEntity c SET c.ccrUnit = :ccrUnitEntity WHERE c.diveId IN (:idsList)")
     @Modifying
-    void setCcrUnit(
-            CcrUnitEntity ccrUnitEntity,
-            Collection<Long> idsList,
-            Collection<BaseConfiguration> ccrBaseConfigs);
+    void setCcrUnit(CcrUnitEntity ccrUnitEntity, Collection<Long> idsList);
 
     @Query(
             "UPDATE DiveConfigurationEntity c SET c.weightKg = :newValue WHERE c.diveId IN (:idsList)")
@@ -248,4 +242,9 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query("UPDATE DiveConfigurationEntity c SET c.ccrUnit = NULL WHERE c.ccrUnit.id = :ccrUnitId")
     @Modifying(clearAutomatically = true)
     void clearCcrUnitFromConfigurations(long ccrUnitId);
+
+    @Query(
+            "UPDATE DiveConfigurationEntity c SET c.secondaryCcrUnit = NULL WHERE c.secondaryCcrUnit.id = :ccrUnitId")
+    @Modifying(clearAutomatically = true)
+    void clearSecondaryCcrUnitFromConfigurations(long ccrUnitId);
 }

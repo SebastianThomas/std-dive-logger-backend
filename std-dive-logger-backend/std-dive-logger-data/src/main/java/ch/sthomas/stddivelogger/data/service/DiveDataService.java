@@ -291,7 +291,9 @@ public class DiveDataService {
                         Optional.ofNullable(visibility).orElse(Visibility.EMPTY),
                         gasConsumption,
                         findOrCreateSuit(userEntity, configuration.suit()),
-                        resolveCcrUnitForConfiguration(userEntity, configuration),
+                        resolveCcrUnitForConfiguration(userEntity, configuration.ccrUnit()),
+                        resolveCcrUnitForConfiguration(
+                                userEntity, configuration.secondaryCcrUnit()),
                         configuration,
                         userEntity,
                         diveSite,
@@ -374,28 +376,25 @@ public class DiveDataService {
     }
 
     /**
-     * A CCR unit only ever applies to a CCR-type configuration — for anything else, any CCR unit
-     * sent along with the request is simply ignored rather than rejected, and no unit is required
-     * in the first place when the configuration genuinely is CCR.
+     * A CCR unit is independent of the diver's own {@code BaseConfiguration} - any dive may
+     * reference 0, 1, or 2 units (see {@link DiveConfiguration#ccrUnit}/{@link
+     * DiveConfiguration#secondaryCcrUnit}) regardless of how the diver's own cylinders are rigged.
      */
     @Nullable
     private CcrUnitEntity resolveCcrUnitForConfiguration(
-            final UserEntity user, final DiveConfiguration configuration) {
-        if (!configuration.base().isCcr() || configuration.ccrUnit() == null) {
-            return null;
-        }
-        return findOrCreateCcrUnit(user, configuration.ccrUnit());
+            final UserEntity user, @Nullable final CcrUnit ccrUnit) {
+        return ccrUnit == null ? null : findOrCreateCcrUnit(user, ccrUnit);
     }
 
     /**
      * Same best-guess as {@code DiveService#inferConfigurationFromComputer} - auto-fills the CCR
-     * unit (and its default base configuration) from whichever computer recorded this profile - but
-     * applied when a companion profile is attached to an *already existing* dive, which previously
-     * skipped this entirely (only a brand-new dive via {@code saveDive} got it). A no-op whenever
-     * there's nothing to infer from: no configuration on the dive yet (shouldn't happen - every
-     * dive gets one at creation), an explicit CCR unit already set (never overridden), the computer
-     * isn't linked to a unit, that unit has no default base configuration, or it belongs to a
-     * different user.
+     * unit from whichever computer recorded this profile - but applied when a companion profile is
+     * attached to an *already existing* dive, which previously skipped this entirely (only a
+     * brand-new dive via {@code saveDive} got it). Never touches the dive's own {@code
+     * BaseConfiguration}, which is independent of which CCR unit is used. A no-op whenever there's
+     * nothing to infer from: no configuration on the dive yet (shouldn't happen - every dive gets
+     * one at creation), an explicit primary CCR unit already set (never overridden), the computer
+     * isn't linked to a unit, or that unit belongs to a different user.
      */
     // Package-private rather than private so it can be exercised directly by a focused unit test
     // instead of needing a full addProfileToDiveWithDiveId() integration fixture just to reach it
@@ -412,30 +411,30 @@ public class DiveDataService {
                         .findById(profile.diveComputerId())
                         .map(DiveComputerEntity::getCcrUnit)
                         .orElse(null);
-        final var defaultBaseConfiguration =
-                linkedCcrUnit == null ? null : linkedCcrUnit.getDefaultBaseConfiguration();
-        if (linkedCcrUnit == null
-                || defaultBaseConfiguration == null
-                || linkedCcrUnit.getUser().getId() != user.id()) {
+        if (linkedCcrUnit == null || linkedCcrUnit.getUser().getId() != user.id()) {
             return;
         }
         final var current = configuration.toRecord();
         final var inferred =
                 new DiveConfiguration(
                         current.suit(),
-                        defaultBaseConfiguration,
+                        current.base(),
                         current.weight(),
                         current.weightFeeling(),
                         current.cylinders(),
                         linkedCcrUnit.toRecord(),
+                        current.secondaryCcrUnit(),
                         current.adHocSuitType());
         configuration.update(
-                configuration.getSuitEntity(), linkedCcrUnit, inferred, this::toEntity);
+                configuration.getSuitEntity(),
+                linkedCcrUnit,
+                configuration.getSecondaryCcrUnitEntity(),
+                inferred,
+                this::toEntity);
         logger.info(
-                "Inferred CCR unit {} (base {}) for user {} from dive computer {} while attaching a"
+                "Inferred CCR unit {} for user {} from dive computer {} while attaching a"
                         + " companion profile",
                 linkedCcrUnit.getId(),
-                defaultBaseConfiguration,
                 user.id(),
                 profile.diveComputerId());
     }
@@ -718,17 +717,27 @@ public class DiveDataService {
                             .orElseThrow(() -> new NoSuchElementException("Could not find Suit"));
             final var userEntity = userRepository.findById(user.id()).orElseThrow();
             final var ccrUnit =
-                    resolveCcrUnitForConfiguration(userEntity, updateBody.configuration());
+                    resolveCcrUnitForConfiguration(
+                            userEntity, updateBody.configuration().ccrUnit());
+            final var secondaryCcrUnit =
+                    resolveCcrUnitForConfiguration(
+                            userEntity, updateBody.configuration().secondaryCcrUnit());
             if (existingDive.getConfiguration() != null) {
                 existingDive
                         .getConfiguration()
-                        .update(suit, ccrUnit, updateBody.configuration(), this::toEntity);
+                        .update(
+                                suit,
+                                ccrUnit,
+                                secondaryCcrUnit,
+                                updateBody.configuration(),
+                                this::toEntity);
             } else {
                 existingDive.setConfiguration(
                         new DiveConfigurationEntity(
                                 existingDive,
                                 suit,
                                 ccrUnit,
+                                secondaryCcrUnit,
                                 updateBody.configuration(),
                                 this::toEntity));
             }
@@ -1970,7 +1979,7 @@ public class DiveDataService {
         existing.setName(ccrUnit.name());
         existing.setAdditionalNotes(ccrUnit.notes());
         existing.setPublic(ccrUnit.isPublic());
-        existing.setDefaultBaseConfiguration(ccrUnit.defaultBaseConfiguration());
+        existing.setMountPosition(ccrUnit.mountPosition());
         return ccrUnitRepository.save(existing).toRecord();
     }
 
@@ -1990,6 +1999,7 @@ public class DiveDataService {
                                         new NoSuchElementException(
                                                 "Could not find CCR unit by id " + id));
         diveRepository.clearCcrUnitFromConfigurations(id);
+        diveRepository.clearSecondaryCcrUnitFromConfigurations(id);
         diveComputerRepository.clearCcrUnitFromComputers(id);
         ccrUnitRepository.delete(existing);
     }
@@ -2094,13 +2104,9 @@ public class DiveDataService {
         diveRepository.setSuit(suit.get(), ids);
     }
 
-    private static final List<BaseConfiguration> CCR_BASE_CONFIGURATIONS =
-            Arrays.stream(BaseConfiguration.values()).filter(BaseConfiguration::isCcr).toList();
-
     /**
-     * Applies the CCR unit only to whichever of {@code ids} are themselves CCR-configured dives
-     * (enforced by {@link DiveRepository#setCcrUnit}) — any non-CCR dive included in the batch is
-     * simply left alone rather than failing the whole request.
+     * Sets the (primary) CCR unit on every dive in {@code ids} - a CCR unit is independent of the
+     * dive's own {@code BaseConfiguration}, so this applies unconditionally to the whole batch.
      */
     @Transactional
     public void setCcrUnitById(
@@ -2109,7 +2115,7 @@ public class DiveDataService {
         if (ccrUnit.isEmpty()) {
             throw new NoSuchElementException("Could not find CCR unit by id " + newCcrUnitId);
         }
-        diveRepository.setCcrUnit(ccrUnit.get(), ids, CCR_BASE_CONFIGURATIONS);
+        diveRepository.setCcrUnit(ccrUnit.get(), ids);
     }
 
     @Transactional

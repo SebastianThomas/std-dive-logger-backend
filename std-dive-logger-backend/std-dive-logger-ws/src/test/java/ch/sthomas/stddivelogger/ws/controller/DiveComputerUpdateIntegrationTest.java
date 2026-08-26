@@ -8,7 +8,7 @@ import ch.sthomas.stddivelogger.data.repository.DiveComputerManufacturerReposito
 import ch.sthomas.stddivelogger.data.repository.DiveComputerRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
-import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.entity.CcrUnitEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
@@ -119,7 +119,7 @@ class DiveComputerUpdateIntegrationTest {
                                         "My rEvo",
                                         "",
                                         false,
-                                        BaseConfiguration.BACKMOUNT_CCR)));
+                                        CcrMountPosition.BACKMOUNT)));
         final var ccrUnitId = ccrUnit.toRecord().id();
 
         final var updated =

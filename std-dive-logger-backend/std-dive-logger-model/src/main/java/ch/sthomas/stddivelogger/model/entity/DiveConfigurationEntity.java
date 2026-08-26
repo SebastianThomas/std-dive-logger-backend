@@ -34,15 +34,23 @@ public class DiveConfigurationEntity {
     @JoinColumn(name = "fk_suit_id")
     private SuitEntity suit;
 
-    // Nullable — only meaningful when baseConfiguration is a CCR variant. Unlike suit, most
-    // dives simply have none.
+    // Nullable - most dives use no CCR unit at all, or just one. See secondaryCcrUnit below for
+    // genuine dual-rebreather setups.
     @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinColumn(name = "fk_ccr_unit_id")
     private @Nullable CcrUnitEntity ccrUnit;
 
+    // A second, independent CCR unit for dual-rebreather setups - each unit's own mount position
+    // (CcrUnitEntity.mountPosition) says how it's worn, so any combination is representable.
+    @ManyToOne(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @JoinColumn(name = "fk_secondary_ccr_unit_id")
+    private @Nullable CcrUnitEntity secondaryCcrUnit;
+
+    // Nullable - the diver's own rig (backmount/sidemount) is independent of CCR and never
+    // guessed; null means "not specified".
     @Column(name = "base_configuration")
     @Enumerated(EnumType.STRING)
-    private BaseConfiguration baseConfiguration;
+    private @Nullable BaseConfiguration baseConfiguration;
 
     @Column(name = "weight_kg")
     private @Nullable Double weightKg;
@@ -76,12 +84,14 @@ public class DiveConfigurationEntity {
             final DiveEntity dive,
             final SuitEntity suit,
             @Nullable final CcrUnitEntity ccrUnit,
+            @Nullable final CcrUnitEntity secondaryCcrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.diveId = dive.getId();
         this.dive = dive;
         this.suit = suit;
         this.ccrUnit = ccrUnit;
+        this.secondaryCcrUnit = secondaryCcrUnit;
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
@@ -111,6 +121,7 @@ public class DiveConfigurationEntity {
                 weightFeeling,
                 cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList(),
                 ccrUnit != null ? ccrUnit.toRecord() : null,
+                secondaryCcrUnit != null ? secondaryCcrUnit.toRecord() : null,
                 adHocSuitType);
     }
 
@@ -121,10 +132,12 @@ public class DiveConfigurationEntity {
     public void update(
             final SuitEntity suit,
             @Nullable final CcrUnitEntity ccrUnit,
+            @Nullable final CcrUnitEntity secondaryCcrUnit,
             final DiveConfiguration configuration,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
         this.suit = suit;
         this.ccrUnit = ccrUnit;
+        this.secondaryCcrUnit = secondaryCcrUnit;
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
@@ -158,7 +171,15 @@ public class DiveConfigurationEntity {
         return suit;
     }
 
-    public BaseConfiguration getBaseConfiguration() {
+    public @Nullable CcrUnitEntity getCcrUnitEntity() {
+        return ccrUnit;
+    }
+
+    public @Nullable CcrUnitEntity getSecondaryCcrUnitEntity() {
+        return secondaryCcrUnit;
+    }
+
+    public @Nullable BaseConfiguration getBaseConfiguration() {
         return baseConfiguration;
     }
 }

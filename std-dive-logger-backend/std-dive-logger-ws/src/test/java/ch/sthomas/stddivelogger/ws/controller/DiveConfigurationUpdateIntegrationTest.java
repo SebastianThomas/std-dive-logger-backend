@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import ch.sthomas.stddivelogger.data.repository.CcrUnitRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerManufacturerRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
@@ -12,6 +13,8 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
@@ -21,6 +24,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSizeUnit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.entity.CcrUnitEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerManufacturerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
@@ -96,6 +100,7 @@ class DiveConfigurationUpdateIntegrationTest {
     @Autowired private DiveRepository diveRepository;
     @Autowired private DiveComputerRepository diveComputerRepository;
     @Autowired private DiveComputerManufacturerRepository diveComputerManufacturerRepository;
+    @Autowired private CcrUnitRepository ccrUnitRepository;
     @Autowired private EntityManager entityManager;
 
     private UserEntity userEntity;
@@ -157,6 +162,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         null,
+                        null,
                         DiveConfiguration.createEmpty(userEntity.toRecord()),
                         userEntity,
                         site,
@@ -195,10 +201,11 @@ class DiveConfigurationUpdateIntegrationTest {
                         suitId,
                         new DiveConfiguration(
                                 Suit.createUnknown(userEntity.toRecord()),
-                                BaseConfiguration.SINGLE_TANK,
+                                BaseConfiguration.BACKMOUNT,
                                 null,
                                 null,
                                 List.of(cylinder(11.1, "back gas")),
+                                null,
                                 null,
                                 null),
                         null,
@@ -238,6 +245,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                 null,
                                 List.of(cylinder(11.1, "left"), cylinder(11.1, "right")),
                                 null,
+                                null,
                                 null),
                         null,
                         null,
@@ -270,10 +278,11 @@ class DiveConfigurationUpdateIntegrationTest {
                         suitId,
                         new DiveConfiguration(
                                 Suit.createUnknown(userEntity.toRecord()),
-                                BaseConfiguration.SINGLE_TANK,
+                                BaseConfiguration.BACKMOUNT,
                                 null,
                                 null,
                                 List.of(cylinder(15.0, "single back gas")),
+                                null,
                                 null,
                                 null),
                         null,
@@ -298,55 +307,64 @@ class DiveConfigurationUpdateIntegrationTest {
                 .isEqualTo("single back gas");
     }
 
-    private UpdateDiveBody withBaseConfiguration(final BaseConfiguration base) {
-        return new UpdateDiveBody(
-                diveId,
-                1,
-                null,
-                suitId,
-                new DiveConfiguration(
-                        Suit.createUnknown(userEntity.toRecord()),
-                        base,
-                        null,
-                        null,
-                        List.of(),
-                        null,
-                        null),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                null);
+    private CcrUnitEntity ccrUnit(final String name, final CcrMountPosition mountPosition) {
+        return ccrUnitRepository.save(
+                new CcrUnitEntity(
+                        userEntity,
+                        new CcrUnit(null, userEntity.getId(), name, "", false, mountPosition)));
     }
 
     /**
-     * Regression coverage for the Chestmount CCR split - {@code CHESTMOUNT_CCR} used to be a
-     * single, genuinely ambiguous value (bailout could be sidemount- or backmount-carried); it's
-     * now two distinct enum values so gear reporting/stats can actually tell them apart.
+     * Regression coverage for the Base Configuration / CCR redesign: {@code BaseConfiguration} is
+     * now just the diver's own rig (backmount/sidemount), fully independent of CCR, and a dive can
+     * reference two independent CCR units - each with its own {@link CcrMountPosition} - rather
+     * than needing a dedicated enum value per possible pairing (the old {@code CHESTMOUNT_CCR_*}/
+     * {@code DUAL_CCR_*} values this replaces couldn't even represent every real combination).
      */
     @Test
-    void bothChestmountCcrBailoutVariantsRoundTripThroughAnUpdate() {
-        diveService.updateDive(
-                userEntity.toRecord(),
-                withBaseConfiguration(BaseConfiguration.CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT));
-        final var withSidemountBailout =
-                diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
-        assertThat(Objects.requireNonNull(withSidemountBailout.configuration()).base())
-                .isEqualTo(BaseConfiguration.CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT);
+    void aDiveCanReferenceTwoIndependentlyMountedCcrUnits() {
+        final var chestUnit = ccrUnit("Chest Unit", CcrMountPosition.CHESTMOUNT);
+        final var sidemountUnit = ccrUnit("Sidemount Unit", CcrMountPosition.SIDEMOUNT);
+        final var body =
+                new UpdateDiveBody(
+                        diveId,
+                        1,
+                        null,
+                        suitId,
+                        new DiveConfiguration(
+                                Suit.createUnknown(userEntity.toRecord()),
+                                BaseConfiguration.BACKMOUNT,
+                                null,
+                                null,
+                                List.of(),
+                                chestUnit.toRecord(),
+                                sidemountUnit.toRecord(),
+                                null),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null,
+                        null);
 
-        diveService.updateDive(
-                userEntity.toRecord(),
-                withBaseConfiguration(BaseConfiguration.CHESTMOUNT_CCR_BACKMOUNT_BAILOUT));
-        final var withBackmountBailout =
-                diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
-        assertThat(Objects.requireNonNull(withBackmountBailout.configuration()).base())
-                .isEqualTo(BaseConfiguration.CHESTMOUNT_CCR_BACKMOUNT_BAILOUT);
+        diveService.updateDive(userEntity.toRecord(), body);
+
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var configuration = Objects.requireNonNull(reloaded.configuration());
+        assertThat(configuration.base()).isEqualTo(BaseConfiguration.BACKMOUNT);
+        assertThat(Objects.requireNonNull(configuration.ccrUnit()).id())
+                .isEqualTo(chestUnit.getId());
+        assertThat(Objects.requireNonNull(configuration.ccrUnit()).mountPosition())
+                .isEqualTo(CcrMountPosition.CHESTMOUNT);
+        assertThat(Objects.requireNonNull(configuration.secondaryCcrUnit()).id())
+                .isEqualTo(sidemountUnit.getId());
+        assertThat(Objects.requireNonNull(configuration.secondaryCcrUnit()).mountPosition())
+                .isEqualTo(CcrMountPosition.SIDEMOUNT);
     }
 }

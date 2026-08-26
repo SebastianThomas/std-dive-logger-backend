@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
@@ -66,7 +67,10 @@ public class ConfigurationController {
     }
 
     public record CreateCcrUnitBody(
-            @NotBlank String name, @Nullable String notes, boolean isPublic) {}
+            @NotBlank String name,
+            @Nullable String notes,
+            boolean isPublic,
+            @Nullable CcrMountPosition mountPosition) {}
 
     @GetMapping("/ccrUnit")
     public PagedResponse<CcrUnit> getCcrUnits(
@@ -86,7 +90,8 @@ public class ConfigurationController {
     public CcrUnit createCcrUnit(
             @AuthenticationPrincipal @NotNull final User user,
             @RequestBody @Valid final CreateCcrUnitBody body) {
-        return diveService.createCcrUnit(user, body.name(), body.notes(), body.isPublic());
+        return diveService.createCcrUnit(
+                user, body.name(), body.notes(), body.isPublic(), body.mountPosition());
     }
 
     @PutMapping("/ccrUnit/{id}")

@@ -137,6 +137,7 @@ class StatsDataServiceTimeSeriesIntegrationTest {
                         gasConsumption,
                         suit,
                         null,
+                        null,
                         DiveConfiguration.createEmpty(user),
                         userEntity,
                         site,

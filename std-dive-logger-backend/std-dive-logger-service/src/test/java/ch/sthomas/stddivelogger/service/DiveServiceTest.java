@@ -17,6 +17,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
@@ -59,16 +60,16 @@ public class DiveServiceTest {
     }
 
     @Test
-    void inferConfigurationFromComputerFillsInBaseAndCcrUnitWhenComputerIsLinked() {
-        final var linkedUnit =
-                new CcrUnit(5L, 1L, "rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
+    void inferConfigurationFromComputerFillsInCcrUnitWhenComputerIsLinked() {
+        final var linkedUnit = new CcrUnit(5L, 1L, "rEvo", "", false, CcrMountPosition.SIDEMOUNT);
         final var service = serviceWithLinkedCcrUnit(Optional.of(linkedUnit));
 
         final var result =
                 service.inferConfigurationFromComputer(
                         USER, DiveConfiguration.createEmpty(USER), List.of(profileOnComputer(42)));
 
-        assertEquals(BaseConfiguration.SIDEMOUNT_CCR, result.base());
+        // BaseConfiguration is untouched - the diver's own rig is independent of the CCR unit.
+        assertNull(result.base());
         assertSame(linkedUnit, result.ccrUnit());
     }
 
@@ -81,40 +82,41 @@ public class DiveServiceTest {
                 service.inferConfigurationFromComputer(
                         USER, original, List.of(profileOnComputer(42)));
 
-        assertEquals(BaseConfiguration.OTHER, result.base());
+        assertNull(result.base());
         assertNull(result.ccrUnit());
     }
 
     @Test
-    void inferConfigurationFromComputerLeavesConfigurationUntouchedWhenUnitHasNoDefaultBase() {
-        // A CCR unit exists and is linked, but the diver hasn't confirmed a default base
-        // configuration for it yet - nothing safe to guess, so leave the configuration as-is.
-        final var linkedUnitWithoutDefault = new CcrUnit(5L, 1L, "rEvo", "", false, null);
-        final var service = serviceWithLinkedCcrUnit(Optional.of(linkedUnitWithoutDefault));
+    void inferConfigurationFromComputerFillsInCcrUnitEvenWhenItHasNoMountPositionSet() {
+        // A CCR unit exists and is linked, but the diver hasn't confirmed a mount position for it
+        // yet - there's nothing to guess about mount position, but the unit itself still gets
+        // attached (that's a fact, not a guess).
+        final var linkedUnitWithoutMountPosition = new CcrUnit(5L, 1L, "rEvo", "", false, null);
+        final var service = serviceWithLinkedCcrUnit(Optional.of(linkedUnitWithoutMountPosition));
 
         final var result =
                 service.inferConfigurationFromComputer(
                         USER, DiveConfiguration.createEmpty(USER), List.of(profileOnComputer(42)));
 
-        assertEquals(BaseConfiguration.OTHER, result.base());
-        assertNull(result.ccrUnit());
+        assertNull(result.base());
+        assertSame(linkedUnitWithoutMountPosition, result.ccrUnit());
     }
 
     @Test
     void inferConfigurationFromComputerNeverOverridesAnAlreadyExplicitCcrUnit() {
-        final var linkedUnit =
-                new CcrUnit(5L, 1L, "rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
+        final var linkedUnit = new CcrUnit(5L, 1L, "rEvo", "", false, CcrMountPosition.SIDEMOUNT);
         final var explicitUnit =
-                new CcrUnit(9L, 1L, "Other unit", "", false, BaseConfiguration.BACKMOUNT_CCR);
+                new CcrUnit(9L, 1L, "Other unit", "", false, CcrMountPosition.BACKMOUNT);
         final var service = serviceWithLinkedCcrUnit(Optional.of(linkedUnit));
         final var explicit =
                 new DiveConfiguration(
                         DiveConfiguration.createEmpty(USER).suit(),
-                        BaseConfiguration.BACKMOUNT_CCR,
+                        BaseConfiguration.BACKMOUNT,
                         null,
                         null,
                         List.of(),
                         explicitUnit,
+                        null,
                         null);
 
         final var result =
@@ -122,7 +124,7 @@ public class DiveServiceTest {
                         USER, explicit, List.of(profileOnComputer(42)));
 
         assertSame(explicitUnit, result.ccrUnit());
-        assertEquals(BaseConfiguration.BACKMOUNT_CCR, result.base());
+        assertEquals(BaseConfiguration.BACKMOUNT, result.base());
     }
 
     @Test
@@ -131,29 +133,27 @@ public class DiveServiceTest {
         // isn't the caller's own - see the IDOR this was added alongside (updateDiveComputer
         // previously let anyone re-link *any* user's computer to a unit they own themselves).
         final var otherUsersUnit =
-                new CcrUnit(
-                        5L, 2L, "Someone else's rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
+                new CcrUnit(5L, 2L, "Someone else's rEvo", "", false, CcrMountPosition.SIDEMOUNT);
         final var service = serviceWithLinkedCcrUnit(Optional.of(otherUsersUnit));
 
         final var result =
                 service.inferConfigurationFromComputer(
                         USER, DiveConfiguration.createEmpty(USER), List.of(profileOnComputer(42)));
 
-        assertEquals(BaseConfiguration.OTHER, result.base());
+        assertNull(result.base());
         assertNull(result.ccrUnit());
     }
 
     @Test
     void inferConfigurationFromComputerLeavesConfigurationUntouchedWithNoProfiles() {
-        final var linkedUnit =
-                new CcrUnit(5L, 1L, "rEvo", "", false, BaseConfiguration.SIDEMOUNT_CCR);
+        final var linkedUnit = new CcrUnit(5L, 1L, "rEvo", "", false, CcrMountPosition.SIDEMOUNT);
         final var service = serviceWithLinkedCcrUnit(Optional.of(linkedUnit));
 
         final var result =
                 service.inferConfigurationFromComputer(
                         USER, DiveConfiguration.createEmpty(USER), List.of());
 
-        assertEquals(BaseConfiguration.OTHER, result.base());
+        assertNull(result.base());
         assertNull(result.ccrUnit());
     }
 

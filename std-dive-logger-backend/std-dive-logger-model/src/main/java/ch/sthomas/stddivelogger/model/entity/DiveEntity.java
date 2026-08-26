@@ -160,6 +160,7 @@ public class DiveEntity {
             final DiveGasConsumption gasConsumption,
             final SuitEntity suit,
             @Nullable final CcrUnitEntity ccrUnit,
+            @Nullable final CcrUnitEntity secondaryCcrUnit,
             final DiveConfiguration configuration,
             final UserEntity userEntity,
             final DiveSiteEntity diveSiteEntity,
@@ -172,7 +173,12 @@ public class DiveEntity {
         this.gasConsumption = new DiveGasConsumptionEntity(this, gasConsumption);
         this.configuration =
                 new DiveConfigurationEntity(
-                        this, suit, ccrUnit, configuration, getCylinderSizeEntity);
+                        this,
+                        suit,
+                        ccrUnit,
+                        secondaryCcrUnit,
+                        configuration,
+                        getCylinderSizeEntity);
         this.user = userEntity;
         this.previewImage = null;
         this.notes = notes;
@@ -503,8 +509,8 @@ public class DiveEntity {
         return switch (rule) {
             case CCR ->
                     configuration != null
-                            && configuration.getBaseConfiguration() != null
-                            && configuration.getBaseConfiguration().name().contains("CCR");
+                            && (configuration.getCcrUnitEntity() != null
+                                    || configuration.getSecondaryCcrUnitEntity() != null);
             case DECO -> hasDeco();
         };
     }

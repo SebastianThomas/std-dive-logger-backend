@@ -132,7 +132,7 @@ class HttpMessageNotReadableAdviceIntegrationTest {
                   "siteId": %d,
                   "configuration": {
                     "suit": { "id": 1 },
-                    "base": "OTHER",
+                    "base": null,
                     "weight": null,
                     "cylinders": [
                       {

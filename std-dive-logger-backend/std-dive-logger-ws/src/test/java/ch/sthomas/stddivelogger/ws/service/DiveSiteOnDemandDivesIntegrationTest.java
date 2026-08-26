@@ -146,6 +146,7 @@ class DiveSiteOnDemandDivesIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         null,
+                        null,
                         DiveConfiguration.createEmpty(owner.toRecord()),
                         owner,
                         site,

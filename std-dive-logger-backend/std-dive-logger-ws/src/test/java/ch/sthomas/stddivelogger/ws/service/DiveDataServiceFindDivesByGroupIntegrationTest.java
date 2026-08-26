@@ -134,6 +134,7 @@ class DiveDataServiceFindDivesByGroupIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         null,
+                        null,
                         DiveConfiguration.createEmpty(user),
                         userEntity,
                         site,

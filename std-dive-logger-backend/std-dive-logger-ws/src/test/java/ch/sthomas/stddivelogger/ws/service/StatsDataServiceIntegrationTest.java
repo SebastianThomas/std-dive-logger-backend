@@ -148,6 +148,7 @@ class StatsDataServiceIntegrationTest {
                         DiveGasConsumption.EMPTY,
                         suit,
                         null,
+                        null,
                         DiveConfiguration.createEmpty(userEntity.toRecord()),
                         userEntity,
                         site,
@@ -261,7 +262,10 @@ class StatsDataServiceIntegrationTest {
     void tagBreakdownComputesBuddyCountAndTemperatureAcrossAllTaggedDives() {
         final var byTag = statsDataService.getStatsByTag(user);
         final var wreckStats =
-                byTag.stream().filter(t -> t.key().id() == tagId).findFirst().orElseThrow();
+                byTag.stream()
+                        .filter(t -> Objects.requireNonNull(t.key()).id() == tagId)
+                        .findFirst()
+                        .orElseThrow();
 
         assertThat(wreckStats.stats().nrOfBuddies()).isEqualTo(2L);
         assertThat(Objects.requireNonNull(wreckStats.stats().maxTemp()).celsius()).isEqualTo(15.0);
@@ -321,13 +325,19 @@ class StatsDataServiceIntegrationTest {
         final var byBuddy = statsDataService.getStatsByBuddy(user);
 
         final var alice =
-                byBuddy.stream().filter(b -> b.key().equals("Alice")).findFirst().orElseThrow();
+                byBuddy.stream()
+                        .filter(b -> Objects.requireNonNull(b.key()).equals("Alice"))
+                        .findFirst()
+                        .orElseThrow();
         assertThat(alice.stats().diveCount()).isEqualTo(1L);
         assertThat(Objects.requireNonNull(alice.stats().maxTemp()).celsius()).isEqualTo(15.0);
         assertThat(Objects.requireNonNull(alice.stats().minTemp()).celsius()).isEqualTo(10.0);
 
         final var bob =
-                byBuddy.stream().filter(b -> b.key().equals("Bob")).findFirst().orElseThrow();
+                byBuddy.stream()
+                        .filter(b -> Objects.requireNonNull(b.key()).equals("Bob"))
+                        .findFirst()
+                        .orElseThrow();
         assertThat(bob.stats().diveCount()).isEqualTo(1L);
         assertThat(Objects.requireNonNull(bob.stats().maxTemp()).celsius()).isEqualTo(8.0);
         assertThat(Objects.requireNonNull(bob.stats().minTemp()).celsius()).isEqualTo(5.0);
