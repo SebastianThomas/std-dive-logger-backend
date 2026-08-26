@@ -107,6 +107,7 @@ class DiveConditionsUpdateIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null));
 
         final var afterFirstUpdate = diveService.getDiveById(user, created.id()).orElseThrow();
@@ -135,6 +136,7 @@ class DiveConditionsUpdateIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null));
 
         final var afterSecondUpdate = diveService.getDiveById(user, created.id()).orElseThrow();

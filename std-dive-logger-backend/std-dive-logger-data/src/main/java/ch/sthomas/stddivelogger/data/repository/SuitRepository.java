@@ -19,5 +19,8 @@ public interface SuitRepository extends JpaRepository<SuitEntity, Long> {
     Page<SuitEntity> findByUser_Id(Long userId, Pageable pageable);
 
     Optional<SuitEntity> findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
-            Long userId, SuitType type, @Nullable Double thicknessMM, String additionalNotes);
+            Long userId,
+            @Nullable SuitType type,
+            @Nullable Double thicknessMM,
+            String additionalNotes);
 }

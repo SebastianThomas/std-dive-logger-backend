@@ -51,7 +51,7 @@ public class ConfigurationController {
     @PostMapping("/suit")
     public Suit createSuit(
             @AuthenticationPrincipal @NotNull final User user,
-            final @NotNull SuitType type,
+            @Nullable final SuitType type,
             @Nullable @Positive final Double thickness,
             @Nullable final String notes) {
         return diveService.createSuit(user, type, thickness, notes);

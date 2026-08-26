@@ -199,6 +199,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                 null,
                                 null,
                                 List.of(cylinder(11.1, "back gas")),
+                                null,
                                 null),
                         null,
                         null,
@@ -210,6 +211,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null);
 
         assertThatCode(() -> diveService.updateDive(userEntity.toRecord(), body))
@@ -235,6 +237,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                 null,
                                 null,
                                 List.of(cylinder(11.1, "left"), cylinder(11.1, "right")),
+                                null,
                                 null),
                         null,
                         null,
@@ -246,6 +249,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null);
         diveService.updateDive(userEntity.toRecord(), firstUpdate);
         // Flush + clear the persistence context so the second update reloads the dive fresh from
@@ -270,6 +274,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                 null,
                                 null,
                                 List.of(cylinder(15.0, "single back gas")),
+                                null,
                                 null),
                         null,
                         null,
@@ -281,6 +286,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null);
 
         assertThatCode(() -> diveService.updateDive(userEntity.toRecord(), secondUpdate))
@@ -290,5 +296,57 @@ class DiveConfigurationUpdateIntegrationTest {
         assertThat(Objects.requireNonNull(reloaded.configuration()).cylinders()).hasSize(1);
         assertThat(Objects.requireNonNull(reloaded.configuration()).cylinders().getFirst().notes())
                 .isEqualTo("single back gas");
+    }
+
+    private UpdateDiveBody withBaseConfiguration(final BaseConfiguration base) {
+        return new UpdateDiveBody(
+                diveId,
+                1,
+                null,
+                suitId,
+                new DiveConfiguration(
+                        Suit.createUnknown(userEntity.toRecord()),
+                        base,
+                        null,
+                        null,
+                        List.of(),
+                        null,
+                        null),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null);
+    }
+
+    /**
+     * Regression coverage for the Chestmount CCR split - {@code CHESTMOUNT_CCR} used to be a
+     * single, genuinely ambiguous value (bailout could be sidemount- or backmount-carried); it's
+     * now two distinct enum values so gear reporting/stats can actually tell them apart.
+     */
+    @Test
+    void bothChestmountCcrBailoutVariantsRoundTripThroughAnUpdate() {
+        diveService.updateDive(
+                userEntity.toRecord(),
+                withBaseConfiguration(BaseConfiguration.CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT));
+        final var withSidemountBailout =
+                diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        assertThat(Objects.requireNonNull(withSidemountBailout.configuration()).base())
+                .isEqualTo(BaseConfiguration.CHESTMOUNT_CCR_SIDEMOUNT_BAILOUT);
+
+        diveService.updateDive(
+                userEntity.toRecord(),
+                withBaseConfiguration(BaseConfiguration.CHESTMOUNT_CCR_BACKMOUNT_BAILOUT));
+        final var withBackmountBailout =
+                diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        assertThat(Objects.requireNonNull(withBackmountBailout.configuration()).base())
+                .isEqualTo(BaseConfiguration.CHESTMOUNT_CCR_BACKMOUNT_BAILOUT);
     }
 }

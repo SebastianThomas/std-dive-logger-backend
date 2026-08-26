@@ -582,6 +582,56 @@ public class DiveController {
     }
 
     @Operation(
+            summary = "Every default buddy role the current user has saved, named and linked alike",
+            description =
+                    "Applied automatically the next time that buddy is newly added to a dive"
+                            + " (manually or via import) - distinct from the retroactive"
+                            + " \"apply to all dives\" role endpoints above.")
+    @GetMapping("/buddies/default-roles")
+    public List<DiveBuddyDefaultRole> getDefaultBuddyRoles(
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view your default buddy roles.");
+        }
+        return diveService.getDefaultBuddyRoles(user);
+    }
+
+    @Operation(
+            summary =
+                    "Save (or clear, with a null role) the default role applied whenever this named"
+                            + " buddy is newly added to a dive")
+    @PutMapping(path = "/buddies/{name}/default-role", consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> setDefaultNamedBuddyRole(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("name") @NotBlank final String name,
+            @Valid @NotNull @RequestBody final BuddyRoleBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to set a buddy's default role.");
+        }
+        diveService.setDefaultNamedBuddyRole(user, name, body.role());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary =
+                    "Save (or clear, with a null role) the default role applied whenever this"
+                            + " linked buddy is newly added to a dive, as rated from the current"
+                            + " user's own side")
+    @PutMapping(
+            path = "/buddies/users/{buddyUserId}/default-role",
+            consumes = APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> setDefaultLinkedBuddyRole(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("buddyUserId") @Positive final long buddyUserId,
+            @Valid @NotNull @RequestBody final BuddyRoleBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to set a buddy's default role.");
+        }
+        diveService.setDefaultLinkedBuddyRole(user, buddyUserId, body.role());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
             summary = "The user's most recent explicit buddy/team terminology choice",
             description =
                     "Powers the frontend's terminology-picker smart default - null if the user has"

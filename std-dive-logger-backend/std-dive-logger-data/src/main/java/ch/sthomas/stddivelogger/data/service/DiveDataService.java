@@ -97,6 +97,7 @@ public class DiveDataService {
     private final AnalyticsDataService analyticsDataService;
     private final DiveBuddyRepository diveBuddyRepository;
     private final DiveSiteLinkRepository diveSiteLinkRepository;
+    private final DiveBuddyDefaultRoleRepository diveBuddyDefaultRoleRepository;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -122,7 +123,8 @@ public class DiveDataService {
             final DiveMeasurementRepository diveMeasurementRepository,
             final AnalyticsDataService analyticsDataService,
             final DiveBuddyRepository diveBuddyRepository,
-            final DiveSiteLinkRepository diveSiteLinkRepository) {
+            final DiveSiteLinkRepository diveSiteLinkRepository,
+            final DiveBuddyDefaultRoleRepository diveBuddyDefaultRoleRepository) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -147,6 +149,7 @@ public class DiveDataService {
         this.analyticsDataService = analyticsDataService;
         this.diveBuddyRepository = diveBuddyRepository;
         this.diveSiteLinkRepository = diveSiteLinkRepository;
+        this.diveBuddyDefaultRoleRepository = diveBuddyDefaultRoleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -295,6 +298,7 @@ public class DiveDataService {
                         profileEntities,
                         namedBuddies,
                         this::toEntity);
+        applyDefaultBuddyRoles(user.id(), entity.getNamedBuddies());
         try {
             recomputeAutoTags(entity, user.id());
             final var savedDive = diveRepository.save(entity);
@@ -423,7 +427,8 @@ public class DiveDataService {
                         current.weight(),
                         current.weightFeeling(),
                         current.cylinders(),
-                        linkedCcrUnit.toRecord());
+                        linkedCcrUnit.toRecord(),
+                        current.adHocSuitType());
         configuration.update(
                 configuration.getSuitEntity(), linkedCcrUnit, inferred, this::toEntity);
         logger.info(
@@ -645,6 +650,15 @@ public class DiveDataService {
         return diveComputerRepository
                 .findByUser_IdAndManufacturer_NameAndSerialNumber(
                         userId, manufacturer, serialNumber)
+                // Same real computer under a differently-spelled manufacturer name (e.g.
+                // "Shearwater" vs "Shearwater Research, Inc") - reuse it rather than creating a
+                // duplicate. Serial number must still match exactly; see the repository method's
+                // own doc comment for what counts as a fuzzy manufacturer match.
+                .or(
+                        () ->
+                                diveComputerRepository
+                                        .findByUser_IdAndSerialNumberAndManufacturer_NameFuzzy(
+                                                userId, serialNumber, manufacturer))
                 .map(DiveComputerEntity::toRecord);
     }
 
@@ -760,6 +774,11 @@ public class DiveDataService {
                             existingDive, updateBody.waterType(), updateBody.current()));
         }
         validateLeaderReference(updateBody, newBuddies, existingDive);
+        if (updateBody.averageDepth() != null) {
+            // Must happen before update() below, which recomputes the rest of the summary and
+            // would otherwise read this field before it's set.
+            existingDive.setAverageDepth(updateBody.averageDepth());
+        }
         // All @MapsId child entities already mutated above — pass null to avoid re-assignment.
         existingDive.update(
                 updateBody.number(),
@@ -854,19 +873,31 @@ public class DiveDataService {
             final Map<String, DiveBuddyNameEntity> namedBuddies,
             final DiveEntity existingDive,
             final NamedBuddyInput input) {
-        final var entity =
+        final var existing =
                 Optional.ofNullable(namedBuddies.get(input.name()))
                         .or(
                                 () ->
                                         diveBuddyNameRepository.findByDive_IdAndName(
-                                                dive.id(), input.name()))
-                        .orElseGet(
-                                () ->
-                                        diveBuddyNameRepository.save(
-                                                new DiveBuddyNameEntity(
-                                                        existingDive, input.name())));
-        entity.setRole(input.role());
-        return entity;
+                                                dive.id(), input.name()));
+        if (existing.isPresent()) {
+            final var entity = existing.get();
+            entity.setRole(input.role());
+            return entity;
+        }
+        // A buddy genuinely new to this dive - fall back to the diver's saved default role for
+        // them (see DiveBuddyDefaultRoleEntity) rather than leaving it unset, but only here: an
+        // already-present buddy always takes the client's explicit input above, even if that's
+        // null (a deliberate clear must never be silently re-filled from the default).
+        final var role =
+                input.role() != null
+                        ? input.role()
+                        : diveBuddyDefaultRoleRepository
+                                .findByUser_IdAndBuddyName(
+                                        existingDive.getUserEntity().getId(), input.name())
+                                .map(DiveBuddyDefaultRoleEntity::getRole)
+                                .orElse(null);
+        return diveBuddyNameRepository.save(
+                new DiveBuddyNameEntity(existingDive, input.name(), role));
     }
 
     @Transactional
@@ -1714,7 +1745,19 @@ public class DiveDataService {
         // linking never fails just because the two ids were named in the "wrong" order.
         final var lower = userDiveId < buddyDiveId ? userDive : buddyDive;
         final var higher = userDiveId < buddyDiveId ? buddyDive : userDive;
-        diveBuddyRepository.save(new DiveBuddyEntity(lower, higher));
+        final var link = new DiveBuddyEntity(lower, higher);
+        // Freshly linked, so both sides start role-less - fill in each diver's own saved default
+        // for the other, if they have one (see setDefaultLinkedBuddyRole). Independent lookups:
+        // either, both, or neither side may have a default set for the other.
+        diveBuddyDefaultRoleRepository
+                .findByUser_IdAndBuddyUser_Id(
+                        userDive.getUserEntity().getId(), buddyDive.getUserEntity().getId())
+                .ifPresent(d -> link.setRoleAsSeenFrom(userDiveId, d.getRole()));
+        diveBuddyDefaultRoleRepository
+                .findByUser_IdAndBuddyUser_Id(
+                        buddyDive.getUserEntity().getId(), userDive.getUserEntity().getId())
+                .ifPresent(d -> link.setRoleAsSeenFrom(buddyDiveId, d.getRole()));
+        diveBuddyRepository.save(link);
         return reloadDive(userDiveId);
     }
 
@@ -2169,6 +2212,99 @@ public class DiveDataService {
                 });
         diveBuddyRepository.saveAll(links);
         return links.size();
+    }
+
+    /**
+     * Saves (or, when {@code role} is null, clears) the diver's default role for a named (free-
+     * text) buddy - applied automatically the next time this buddy is newly added to a dive, see
+     * {@link #applyDefaultBuddyRoles}. Distinct from {@link #setNamedBuddyRole}, which instead
+     * retroactively backfills every dive that already lists them.
+     */
+    @Transactional
+    public void setDefaultNamedBuddyRole(
+            final long userId, final String name, @Nullable final BuddyRole role) {
+        final var trimmedName = name.trim();
+        if (role == null) {
+            diveBuddyDefaultRoleRepository.deleteByUser_IdAndBuddyName(userId, trimmedName);
+            return;
+        }
+        final var userEntity = userRepository.findById(userId).orElseThrow();
+        final var existing =
+                diveBuddyDefaultRoleRepository.findByUser_IdAndBuddyName(userId, trimmedName);
+        if (existing.isPresent()) {
+            existing.get().setRole(role);
+            diveBuddyDefaultRoleRepository.save(existing.get());
+        } else {
+            diveBuddyDefaultRoleRepository.save(
+                    new DiveBuddyDefaultRoleEntity(userEntity, null, trimmedName, role));
+        }
+    }
+
+    /**
+     * Saves (or, when {@code role} is null, clears) the diver's default role for a linked-account
+     * buddy, as rated from {@code userId}'s own side. See {@link #setDefaultNamedBuddyRole}.
+     */
+    @Transactional
+    public void setDefaultLinkedBuddyRole(
+            final long userId, final long buddyUserId, @Nullable final BuddyRole role) {
+        if (role == null) {
+            diveBuddyDefaultRoleRepository.deleteByUser_IdAndBuddyUser_Id(userId, buddyUserId);
+            return;
+        }
+        final var userEntity = userRepository.findById(userId).orElseThrow();
+        final var existing =
+                diveBuddyDefaultRoleRepository.findByUser_IdAndBuddyUser_Id(userId, buddyUserId);
+        if (existing.isPresent()) {
+            existing.get().setRole(role);
+            diveBuddyDefaultRoleRepository.save(existing.get());
+        } else {
+            final var buddyUserEntity = userRepository.findById(buddyUserId).orElseThrow();
+            diveBuddyDefaultRoleRepository.save(
+                    new DiveBuddyDefaultRoleEntity(userEntity, buddyUserEntity, null, role));
+        }
+    }
+
+    /** Every default buddy role the user has saved, named and linked alike. */
+    @Transactional(readOnly = true)
+    public List<DiveBuddyDefaultRole> findDefaultBuddyRoles(final long userId) {
+        return diveBuddyDefaultRoleRepository.findByUser_Id(userId).stream()
+                .map(DiveBuddyDefaultRoleEntity::toRecord)
+                .toList();
+    }
+
+    /**
+     * Fills in a saved default role (see {@link #setDefaultNamedBuddyRole}) for every named buddy
+     * in {@code buddies} that doesn't already have one - used right after a dive is first created
+     * (import or otherwise), when every named buddy is still fresh and role-less. Never touches a
+     * buddy that already carries a role.
+     */
+    private void applyDefaultBuddyRoles(
+            final long userId, final List<DiveBuddyNameEntity> buddies) {
+        final var roleless =
+                buddies.stream()
+                        .filter(b -> b.getRole() == null)
+                        .map(DiveBuddyNameEntity::getName)
+                        .toList();
+        if (roleless.isEmpty()) {
+            return;
+        }
+        final var defaults =
+                diveBuddyDefaultRoleRepository
+                        .findByUser_IdAndBuddyNameIn(userId, roleless)
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        DiveBuddyDefaultRoleEntity::getBuddyName,
+                                        DiveBuddyDefaultRoleEntity::getRole));
+        buddies.forEach(
+                b -> {
+                    if (b.getRole() == null) {
+                        final var defaultRole = defaults.get(b.getName());
+                        if (defaultRole != null) {
+                            b.setRole(defaultRole);
+                        }
+                    }
+                });
     }
 
     /**

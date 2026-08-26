@@ -4,7 +4,6 @@ import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 
 import org.jspecify.annotations.Nullable;
 
@@ -21,9 +20,9 @@ public class SuitEntity {
     @JoinColumn(name = "fk_user_id")
     private UserEntity user;
 
-    @Column(name = "type", nullable = false)
+    @Column(name = "type")
     @Enumerated(EnumType.STRING)
-    private SuitType type;
+    private @Nullable SuitType type;
 
     @Column(name = "thickness_mm")
     private @Nullable Double thicknessMM;
@@ -47,11 +46,11 @@ public class SuitEntity {
         return new Suit(id, user.getId(), type, thicknessMM, additionalNotes);
     }
 
-    public SuitType getType() {
+    public @Nullable SuitType getType() {
         return type;
     }
 
-    public void setType(final @NotNull SuitType type) {
+    public void setType(final @Nullable SuitType type) {
         this.type = type;
     }
 

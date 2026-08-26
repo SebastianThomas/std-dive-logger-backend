@@ -123,7 +123,8 @@ class TeamTerminologyDefaultIntegrationTest {
                         null,
                         null,
                         false,
-                        TeamTerminology.TEAM));
+                        TeamTerminology.TEAM,
+                        null));
 
         assertThat(diveService.getMostRecentTeamTerminology(user)).contains(TeamTerminology.TEAM);
 
@@ -146,7 +147,8 @@ class TeamTerminologyDefaultIntegrationTest {
                         null,
                         null,
                         false,
-                        TeamTerminology.BUDDY));
+                        TeamTerminology.BUDDY,
+                        null));
 
         assertThat(diveService.getMostRecentTeamTerminology(user)).contains(TeamTerminology.BUDDY);
     }

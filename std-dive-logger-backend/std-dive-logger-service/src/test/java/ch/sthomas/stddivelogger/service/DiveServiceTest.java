@@ -114,7 +114,8 @@ public class DiveServiceTest {
                         null,
                         null,
                         List.of(),
-                        explicitUnit);
+                        explicitUnit,
+                        null);
 
         final var result =
                 service.inferConfigurationFromComputer(

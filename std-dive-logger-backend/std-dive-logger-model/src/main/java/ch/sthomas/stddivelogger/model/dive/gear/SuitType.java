@@ -6,6 +6,5 @@ public enum SuitType {
     THERMOCLINE,
     NEOPRENE,
     MEMBRANE_DRY,
-    NEOPRENE_DRY,
-    OTHER;
+    NEOPRENE_DRY;
 }

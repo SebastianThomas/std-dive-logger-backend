@@ -30,4 +30,8 @@ public class DiveComputerManufacturerEntity {
     public DiveComputerManufacturer toRecord() {
         return new DiveComputerManufacturer(id, name);
     }
+
+    public String getName() {
+        return name;
+    }
 }

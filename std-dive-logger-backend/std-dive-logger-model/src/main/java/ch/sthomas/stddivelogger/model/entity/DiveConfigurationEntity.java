@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 import ch.sthomas.stddivelogger.model.dive.gear.WeightFeeling;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
@@ -49,6 +50,12 @@ public class DiveConfigurationEntity {
     @Column(name = "weight_feeling")
     private @Nullable WeightFeeling weightFeeling;
 
+    // A suit type noted for this dive with no specific saved Suit behind it at all - see
+    // DiveConfiguration.adHocSuitType's own doc comment for why (e.g. a one-off rental).
+    @Column(name = "ad_hoc_suit_type")
+    @Enumerated(EnumType.STRING)
+    private @Nullable SuitType adHocSuitType;
+
     // orphanRemoval so a cylinder dropped by update() below is actually deleted rather than left
     // behind as a duplicated, orphaned row pointing at this same configuration. This only works
     // because update() mutates this exact managed collection in place (clear() + addAll()) -
@@ -78,6 +85,7 @@ public class DiveConfigurationEntity {
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
+        this.adHocSuitType = configuration.adHocSuitType();
         this.cylinders =
                 configuration.cylinders().stream()
                         .map(
@@ -102,7 +110,8 @@ public class DiveConfigurationEntity {
                 weightKg,
                 weightFeeling,
                 cylinders.stream().map(DiveConfigurationCylinderEntity::toRecord).toList(),
-                ccrUnit != null ? ccrUnit.toRecord() : null);
+                ccrUnit != null ? ccrUnit.toRecord() : null,
+                adHocSuitType);
     }
 
     /**
@@ -119,6 +128,7 @@ public class DiveConfigurationEntity {
         this.baseConfiguration = configuration.base();
         this.weightKg = configuration.weight();
         this.weightFeeling = configuration.weightFeeling();
+        this.adHocSuitType = configuration.adHocSuitType();
         // Resolve every CylinderSizeEntity (a find-or-create that can itself flush) *before*
         // touching this.cylinders - clear()ing the managed collection and only then hitting a
         // flush-triggering lookup mid-stream leaves Hibernate mid-mutation on this exact

@@ -463,6 +463,18 @@ public class DiveEntity {
     }
 
     /**
+     * Lets a diver explicitly set a manual dive's average depth (see
+     * DiveSummaryEntity#setAverageDepth for why it can't be computed for one). Call before {@link
+     * #update} / {@link #updateDiveSummary} so the explicit value isn't left stale.
+     */
+    public void setAverageDepth(final @Nullable Double averageDepth) {
+        if (diveSummary == null) {
+            this.diveSummary = new DiveSummaryEntity(this);
+        }
+        diveSummary.setAverageDepth(averageDepth);
+    }
+
+    /**
      * Recomputes auto-detected tags from the given candidates. Should be called by the service
      * layer after any structural change to the dive (profiles, configuration).
      */

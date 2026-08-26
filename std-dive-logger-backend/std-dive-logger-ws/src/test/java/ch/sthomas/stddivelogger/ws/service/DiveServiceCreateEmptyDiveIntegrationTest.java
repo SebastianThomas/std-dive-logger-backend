@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
+import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
@@ -100,6 +101,9 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
                 .hasValue(27.5);
         assertThat(Duration.between(profile.start(), profile.end()))
                 .isEqualTo(Duration.ofMinutes(40));
+        // The synthetic surface/max-depth/surface profile isn't a real depth-time curve -
+        // averaging it (e.g. to maxDepth/3) would be a fabricated number, not a real average.
+        assertThat(dive.summary().averageDepth()).isNull();
 
         try (final var writer = new StringWriter()) {
             GraphImageCreator.fromDive(
@@ -111,5 +115,79 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
                     new java.awt.Dimension(800, 450));
             assertThat(writer.toString()).isNotBlank();
         }
+    }
+
+    @Test
+    void diverCanExplicitlySetAManualDivesAverageDepth() {
+        final var userEntity =
+                userRepository.save(
+                        new UserEntity("manual-dive-avgdepth-it@test.ch", "hash", "IT"));
+        final var user = userEntity.toRecord();
+        final var site =
+                diveSiteRepository.save(
+                        new DiveSiteEntity(
+                                "Manual Dive Avg Depth IT Site",
+                                new Location(47.0, 8.0).toPoint()));
+
+        final var savedDive =
+                diveService.createEmptyDive(
+                        user,
+                        new UploadDiveBody(
+                                null,
+                                "manual-dive-avgdepth-it",
+                                site.toRecord().id(),
+                                20.0,
+                                Duration.ofMinutes(30),
+                                Instant.parse("2026-06-01T09:00:00Z")));
+
+        final var updated =
+                diveService.updateDive(
+                        user,
+                        new UpdateDiveBody(
+                                savedDive.id(),
+                                savedDive.number(),
+                                null,
+                                0,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                false,
+                                null,
+                                14.2));
+
+        assertThat(updated.summary().averageDepth()).isEqualTo(14.2);
+
+        // A later, unrelated edit (no averageDepth in this update) must not wipe the explicitly-set
+        // value back to null.
+        final var afterUnrelatedEdit =
+                diveService.updateDive(
+                        user,
+                        new UpdateDiveBody(
+                                savedDive.id(),
+                                savedDive.number(),
+                                "Some notes",
+                                0,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                false,
+                                null,
+                                null));
+
+        assertThat(afterUnrelatedEdit.summary().averageDepth()).isEqualTo(14.2);
     }
 }

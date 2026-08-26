@@ -120,6 +120,7 @@ class DiveBackfillIntegrationTest {
                         null,
                         null,
                         true,
+                        null,
                         null));
 
         // Only notes filled in - still missing visibility/gas/waterType/leader.
@@ -141,6 +142,7 @@ class DiveBackfillIntegrationTest {
                         null,
                         null,
                         false,
+                        null,
                         null));
 
         final var queue = diveService.getBackfillQueue(user);

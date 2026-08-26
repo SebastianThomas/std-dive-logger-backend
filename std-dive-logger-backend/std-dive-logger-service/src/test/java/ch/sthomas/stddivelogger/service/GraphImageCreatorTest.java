@@ -47,7 +47,7 @@ public class GraphImageCreatorTest {
     private static final Logger logger = LoggerFactory.getLogger(GraphImageCreatorTest.class);
 
     private static DiveSummary testSummary(final Instant start, final Instant end) {
-        return new DiveSummary(start, end, 0, 0, null, Duration.ZERO, null);
+        return new DiveSummary(start, end, 0.0, 0, null, Duration.ZERO, null);
     }
 
     @Test

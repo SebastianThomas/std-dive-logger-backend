@@ -230,7 +230,8 @@ public class DiveService {
                 configuration.weight(),
                 configuration.weightFeeling(),
                 configuration.cylinders(),
-                linkedCcrUnit);
+                linkedCcrUnit,
+                configuration.adHocSuitType());
     }
 
     public SimplifiedDive addProfile(
@@ -906,7 +907,7 @@ public class DiveService {
 
     public Suit createSuit(
             final @NotNull User user,
-            final @NotNull SuitType type,
+            final @Nullable SuitType type,
             @Nullable final Double thickness,
             @Nullable final String notes) {
         return diveDataService.saveSuit(
@@ -1109,5 +1110,31 @@ public class DiveService {
     /** Every distinct user linked as a buddy on at least one of {@code user}'s own dives. */
     public List<User> getLinkedBuddyUsers(final User user) {
         return diveDataService.findLinkedBuddyUsersForUser(user.id());
+    }
+
+    /**
+     * Saves (or clears, when {@code role} is null) the user's default role for a named dive buddy -
+     * applied automatically the next time this buddy is newly added to a dive.
+     */
+    public void setDefaultNamedBuddyRole(
+            final User user, final String name, final @Nullable BuddyRole role) {
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Buddy name must not be blank");
+        }
+        diveDataService.setDefaultNamedBuddyRole(user.id(), name, role);
+    }
+
+    /**
+     * Saves (or clears, when {@code role} is null) the user's default role for a linked-account
+     * buddy, as rated from {@code user}'s own side.
+     */
+    public void setDefaultLinkedBuddyRole(
+            final User user, final long buddyUserId, final @Nullable BuddyRole role) {
+        diveDataService.setDefaultLinkedBuddyRole(user.id(), buddyUserId, role);
+    }
+
+    /** Every default buddy role {@code user} has saved, named and linked alike. */
+    public List<DiveBuddyDefaultRole> getDefaultBuddyRoles(final User user) {
+        return diveDataService.findDefaultBuddyRoles(user.id());
     }
 }

@@ -105,6 +105,10 @@ public class DiveProfileEntity {
         return id;
     }
 
+    public DiveComputerEntity getComputer() {
+        return computer;
+    }
+
     public Instant getStart() {
         return profileStart.toInstant();
     }

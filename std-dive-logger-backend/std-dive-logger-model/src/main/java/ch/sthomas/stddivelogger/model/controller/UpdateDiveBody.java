@@ -37,7 +37,12 @@ public record UpdateDiveBody(
         // that from "never touched the leader picker at all" (both this and the two ids above
         // left at their defaults), which must resolve to DiveLeader.UNSET, not DiveLeader.SELF.
         boolean leaderSelfExplicit,
-        @Nullable TeamTerminology teamTerminology) {
+        @Nullable TeamTerminology teamTerminology,
+        // Only meaningful for a manually-entered dive, which has no real depth-time profile to
+        // compute an average from (see DiveSummaryEntity#update) - null leaves whatever's already
+        // stored untouched, same "absent means unchanged" convention as notes/visibility above,
+        // not an explicit "clear it" signal. Ignored for a dive with a real computer profile.
+        @Nullable @Positive Double averageDepth) {
 
     public UpdateDiveBody {
         if (leaderNamedBuddyId != null && leaderBuddyDiveId != null) {

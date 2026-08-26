@@ -108,11 +108,20 @@ class ShearwaterXmlReaderServiceTest {
                 new ShearwaterDiveLogRecord(0, 20.0, 22.0, 0, 0, 0, 0, 0.21, 0.0, 1.2, "CC");
         final var log =
                 new ShearwaterDiveLog(
-                        1, "8/22/2026 10:00:00 AM", "8/22/2026 10:30:00 AM", 20.0, 1800, 0.0,
-                        "1000000099", "2", java.util.List.of(record));
-        final var service = new ShearwaterXmlReaderService(xmlMapper, diveServiceReturningComputer());
+                        1,
+                        "8/22/2026 10:00:00 AM",
+                        "8/22/2026 10:30:00 AM",
+                        20.0,
+                        1800,
+                        0.0,
+                        "1000000099",
+                        "2",
+                        java.util.List.of(record));
+        final var service =
+                new ShearwaterXmlReaderService(xmlMapper, diveServiceReturningComputer());
         final var computer =
-                new DiveComputer(1L, new DiveComputerManufacturer(1L, "Shearwater"), "serial", "id", null);
+                new DiveComputer(
+                        1L, new DiveComputerManufacturer(1L, "Shearwater"), "serial", "id", null);
 
         final var profile = service.getDiveProfile(computer, log);
 

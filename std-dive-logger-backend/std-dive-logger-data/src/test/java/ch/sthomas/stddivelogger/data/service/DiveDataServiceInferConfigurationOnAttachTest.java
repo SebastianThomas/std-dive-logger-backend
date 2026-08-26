@@ -149,7 +149,8 @@ class DiveDataServiceInferConfigurationOnAttachTest {
                         null,
                         null,
                         List.of(),
-                        existingUnit.toRecord());
+                        existingUnit.toRecord(),
+                        null);
         final var configuration =
                 new DiveConfigurationEntity(
                         dive,

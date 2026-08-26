@@ -137,6 +137,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 null,
                                 false,
+                                null,
                                 null));
 
         assertThat(updated.namedBuddies()).hasSize(1);
@@ -168,7 +169,8 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 namedBuddyId,
                                 null,
                                 false,
-                                TeamTerminology.TEAM));
+                                TeamTerminology.TEAM,
+                                null));
 
         assertThat(withLeaderAndTerminology.leader().type()).isEqualTo(DiveLeader.LeaderType.NAMED);
         assertThat(withLeaderAndTerminology.leader().namedBuddyId()).isEqualTo(namedBuddyId);
@@ -204,6 +206,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 buddyDiveId,
                                 false,
+                                null,
                                 null));
 
         assertThat(updated.leader().type()).isEqualTo(DiveLeader.LeaderType.LINKED);
@@ -217,7 +220,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                         () ->
                                 new UpdateDiveBody(
                                         diveId, 1, null, 0, null, null, null, null, null, null,
-                                        null, null, 1L, 2L, false, null))
+                                        null, null, 1L, 2L, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -244,6 +247,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null,
                                 null,
                                 false,
+                                null,
                                 null));
         final var foreignBuddyId = otherDiveWithBuddy.namedBuddies().getFirst().id();
 
@@ -267,6 +271,7 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                                 foreignBuddyId,
                                                 null,
                                                 false,
+                                                null,
                                                 null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }

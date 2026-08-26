@@ -153,7 +153,8 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                 configuration.weight(),
                                 configuration.weightFeeling(),
                                 toCylinders(dive),
-                                configuration.ccrUnit()),
+                                configuration.ccrUnit(),
+                                configuration.adHocSuitType()),
                         buddies,
                         null);
         final var start = profiles.stream().map(DiveProfileUpload::start).min(Instant::compareTo);

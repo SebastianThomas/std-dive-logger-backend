@@ -1,11 +1,16 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.sthomas.stddivelogger.data.repository.CcrUnitRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerManufacturerRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
+import ch.sthomas.stddivelogger.model.entity.CcrUnitEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerManufacturerEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
@@ -62,6 +67,7 @@ class DiveComputerUpdateIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private DiveComputerRepository diveComputerRepository;
     @Autowired private DiveComputerManufacturerRepository diveComputerManufacturerRepository;
+    @Autowired private CcrUnitRepository ccrUnitRepository;
 
     private UserEntity owner;
     private UserEntity attacker;
@@ -88,5 +94,39 @@ class DiveComputerUpdateIntegrationTest {
                                 diveDataService.updateDiveComputer(
                                         attacker.toRecord(), computerId, "HIJACKED", null))
                 .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void ownerCanRenameTheirOwnDiveComputerAndItPersists() {
+        final var updated =
+                diveDataService.updateDiveComputer(owner.toRecord(), computerId, "Renamed", null);
+
+        assertThat(updated.customIdentifier()).isEqualTo("Renamed");
+        final var reloaded = diveComputerRepository.findByIdAndUser_Id(computerId, owner.getId());
+        assertThat(reloaded).isPresent();
+        assertThat(reloaded.orElseThrow().toRecord().customIdentifier()).isEqualTo("Renamed");
+    }
+
+    @Test
+    void renamingAnOwnedComputerAlsoAppliesTheGivenCcrUnitLink() {
+        final var ccrUnit =
+                ccrUnitRepository.save(
+                        new CcrUnitEntity(
+                                owner,
+                                new CcrUnit(
+                                        null,
+                                        owner.getId(),
+                                        "My rEvo",
+                                        "",
+                                        false,
+                                        BaseConfiguration.BACKMOUNT_CCR)));
+        final var ccrUnitId = ccrUnit.toRecord().id();
+
+        final var updated =
+                diveDataService.updateDiveComputer(
+                        owner.toRecord(), computerId, "Renamed With Unit", ccrUnitId);
+
+        assertThat(updated.customIdentifier()).isEqualTo("Renamed With Unit");
+        assertThat(updated.ccrUnitId()).isEqualTo(ccrUnitId);
     }
 }

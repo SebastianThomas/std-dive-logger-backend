@@ -10,10 +10,12 @@ import org.jspecify.annotations.Nullable;
 public record Suit(
         @Nullable @Positive Long id,
         @Positive long userId,
-        @NotNull SuitType type,
+        // null means "not specified" - distinct from SuitType.NONE, which means the diver
+        // actually wore no exposure suit at all.
+        @Nullable SuitType type,
         @Nullable @Positive Double thickness,
         @NotNull String notes) {
     public static Suit createUnknown(final User user) {
-        return new Suit(null, user.id(), SuitType.OTHER, null, "");
+        return new Suit(null, user.id(), null, null, "");
     }
 }

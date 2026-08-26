@@ -150,7 +150,8 @@ class CcrUnitDeletionIntegrationTest {
                         null,
                         null,
                         List.of(),
-                        ccrUnit.toRecord());
+                        ccrUnit.toRecord(),
+                        null);
         final var dive =
                 new DiveEntity(
                         number,
