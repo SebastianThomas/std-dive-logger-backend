@@ -128,6 +128,13 @@ public class DiveEntity {
     @BatchSize(size = 30)
     private @Nullable List<DiveTagEntity> tags;
 
+    // One row per (dive, reason) the user has marked "no more info to add" in the backfill guide.
+    // Same batched-collection shape as tags/namedBuddies above. See DiveBackfillDismissalEntity for
+    // why this is a table rather than a flag on this entity.
+    @OneToMany(mappedBy = "dive", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 30)
+    private List<DiveBackfillDismissalEntity> backfillDismissals;
+
     @Column(name = "fk_leader_named_buddy_id")
     private @Nullable Long leaderNamedBuddyId;
 
@@ -195,6 +202,7 @@ public class DiveEntity {
                         .collect(Collectors.toCollection(ArrayList::new));
         this.diveSummary = new DiveSummaryEntity(this);
         this.tags = new ArrayList<>();
+        this.backfillDismissals = new ArrayList<>();
     }
 
     private @Nullable String getPreviewImage(@NotNull final String baseUrl) {
@@ -278,7 +286,7 @@ public class DiveEntity {
      * need.
      */
     public DiveBackfillStatus toBackfillStatus() {
-        final var missing = new ArrayList<String>();
+        final var missing = new ArrayList<DiveBackfillField>();
         final var visibilityRecord =
                 Optional.ofNullable(visibility).map(VisibilityEntity::toRecord).orElse(null);
         if (visibilityRecord == null
@@ -286,26 +294,47 @@ public class DiveEntity {
                         && (visibilityRecord.description() == null
                                 || visibilityRecord.description().isBlank())
                         && visibilityRecord.feeling() == null)) {
-            missing.add("VISIBILITY");
+            missing.add(DiveBackfillField.VISIBILITY);
         }
         final var gasRecord =
                 Optional.ofNullable(gasConsumption)
                         .map(DiveGasConsumptionEntity::toRecord)
                         .orElse(null);
         if (gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY)) {
-            missing.add("GAS_CONSUMPTION");
+            missing.add(DiveBackfillField.GAS_CONSUMPTION);
         }
         if (Optional.ofNullable(conditions).map(DiveConditionsEntity::getWaterType).orElse(null)
                 == null) {
-            missing.add("WATER_TYPE");
+            missing.add(DiveBackfillField.WATER_TYPE);
         }
         if (getLeader().type() == DiveLeader.LeaderType.UNSET) {
-            missing.add("LEADER");
+            missing.add(DiveBackfillField.LEADER);
         }
         if (notes == null || notes.isBlank()) {
-            missing.add("NOTES");
+            missing.add(DiveBackfillField.NOTES);
         }
-        return new DiveBackfillStatus(id, number, diveIdentifier, getSummary().start(), missing);
+        final var dismissed = new ArrayList<>(getDismissedBackfillFields());
+        return new DiveBackfillStatus(
+                id, number, diveIdentifier, getSummary().start(), missing, dismissed);
+    }
+
+    /** Reasons the user has explicitly marked "no more info to add" for this dive. */
+    public Set<DiveBackfillField> getDismissedBackfillFields() {
+        return backfillDismissals.stream()
+                .map(DiveBackfillDismissalEntity::getReason)
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(DiveBackfillField.class)));
+    }
+
+    /** Marks one backfill reason "no more info to add" for this dive (no-op if already set). */
+    public void dismissBackfillField(final DiveBackfillField reason) {
+        if (backfillDismissals.stream().noneMatch(d -> d.getReason() == reason)) {
+            backfillDismissals.add(new DiveBackfillDismissalEntity(this, reason));
+        }
+    }
+
+    /** Clears a "no more info" dismissal, moving the reason back into the active queue. */
+    public void restoreBackfillField(final DiveBackfillField reason) {
+        backfillDismissals.removeIf(d -> d.getReason() == reason);
     }
 
     private DiveSummary getSummary() {

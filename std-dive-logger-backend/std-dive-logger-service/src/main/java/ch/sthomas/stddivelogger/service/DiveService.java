@@ -606,6 +606,44 @@ public class DiveService {
         return diveDataService.getBackfillQueue(user.id());
     }
 
+    /** One dive's backfill status - powers the pointers/banner on that dive's edit page. */
+    public DiveBackfillStatus getBackfillStatus(final User user, final long diveId) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.getBackfillStatus(diveId);
+    }
+
+    /**
+     * Dismiss ({@code true}) or restore one backfill reason for one dive - or, with a null reason,
+     * the whole dive (every currently-missing reason / all of its dismissals). "Dismissed" means
+     * the user has said there's no more info to add, so it drops out of the active queue.
+     */
+    public DiveBackfillStatus setBackfillDismissed(
+            final User user,
+            final long diveId,
+            @Nullable final DiveBackfillField reason,
+            final boolean dismissed) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return reason != null
+                ? diveDataService.setBackfillFieldDismissed(diveId, reason, dismissed)
+                : diveDataService.setDiveBackfillDismissed(diveId, dismissed);
+    }
+
+    /**
+     * Bulk-dismiss: with a null reason, every outstanding reason on every currently-queued dive;
+     * otherwise that one reason across all of the user's dives (the batch button for when a new
+     * backfillable field ships).
+     */
+    public List<DiveBackfillStatus> dismissAllBackfill(
+            final User user, @Nullable final DiveBackfillField reason) {
+        return reason != null
+                ? diveDataService.dismissBackfillReasonEverywhere(user.id(), reason)
+                : diveDataService.dismissAllBackfill(user.id());
+    }
+
     public DiveSite updateDiveSite(
             final User user,
             final long siteId,

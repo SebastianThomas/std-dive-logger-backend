@@ -1407,18 +1407,90 @@ public class DiveDataService {
      * per-dive since {@link DiveEntity#toBackfillStatus} deliberately skips the heavier
      * cylinder-consumption/buddy-link/tag computation {@link DiveEntity#toRecord} does.
      */
+    // Active dives first (fully-dismissed sink to the bottom), then most outstanding gaps first,
+    // then oldest dive first - "so nothing slips through" per the user's own framing - then id for
+    // a stable order.
+    private static final Comparator<DiveBackfillStatus> BACKFILL_QUEUE_ORDER =
+            Comparator.comparing(DiveBackfillStatus::fullyDismissed)
+                    .thenComparing(
+                            Comparator.comparingInt(DiveBackfillStatus::outstandingCount)
+                                    .reversed())
+                    .thenComparing(
+                            DiveBackfillStatus::diveStart,
+                            Comparator.nullsLast(Comparator.naturalOrder()))
+                    .thenComparingLong(DiveBackfillStatus::diveId);
+
     @Transactional(readOnly = true)
     public List<DiveBackfillStatus> getBackfillQueue(final long userId) {
         return diveRepository.findByUser_Id(userId).stream()
                 .map(DiveEntity::toBackfillStatus)
                 .filter(status -> status.missingCount() > 0)
-                .sorted(
-                        Comparator.comparingInt(DiveBackfillStatus::missingCount)
-                                .reversed()
-                                .thenComparing(
-                                        DiveBackfillStatus::diveStart,
-                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .sorted(BACKFILL_QUEUE_ORDER)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DiveBackfillStatus getBackfillStatus(final long diveId) {
+        return diveRepository.findById(diveId).orElseThrow().toBackfillStatus();
+    }
+
+    /** Dismiss ({@code true}) or restore one backfill reason for one dive. */
+    @Transactional
+    public DiveBackfillStatus setBackfillFieldDismissed(
+            final long diveId, final DiveBackfillField reason, final boolean dismissed) {
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        if (dismissed) {
+            dive.dismissBackfillField(reason);
+        } else {
+            dive.restoreBackfillField(reason);
+        }
+        diveRepository.save(dive);
+        entityManager.flush();
+        return dive.toBackfillStatus();
+    }
+
+    /**
+     * Dismiss every currently-missing reason for one dive ({@code true}) - a snapshot, so a reason
+     * that becomes missing later still surfaces - or clear all of this dive's dismissals.
+     */
+    @Transactional
+    public DiveBackfillStatus setDiveBackfillDismissed(final long diveId, final boolean dismissed) {
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        if (dismissed) {
+            dive.toBackfillStatus().missingFields().forEach(dive::dismissBackfillField);
+        } else {
+            EnumSet.allOf(DiveBackfillField.class).forEach(dive::restoreBackfillField);
+        }
+        diveRepository.save(dive);
+        entityManager.flush();
+        return dive.toBackfillStatus();
+    }
+
+    /** Dismiss every outstanding reason on every currently-queued dive. */
+    @Transactional
+    public List<DiveBackfillStatus> dismissAllBackfill(final long userId) {
+        getBackfillQueue(userId).stream()
+                .filter(status -> !status.fullyDismissed())
+                .forEach(status -> setDiveBackfillDismissed(status.diveId(), true));
+        return getBackfillQueue(userId);
+    }
+
+    /**
+     * Dismiss one reason across every one of the user's dives that currently has it outstanding -
+     * the batch button for when a new backfillable field ships and shouldn't flood old dives.
+     */
+    @Transactional
+    public List<DiveBackfillStatus> dismissBackfillReasonEverywhere(
+            final long userId, final DiveBackfillField reason) {
+        final var dives = diveRepository.findByUser_Id(userId);
+        for (final var dive : dives) {
+            if (dive.toBackfillStatus().missingFields().contains(reason)) {
+                dive.dismissBackfillField(reason);
+            }
+        }
+        diveRepository.saveAll(dives);
+        entityManager.flush();
+        return getBackfillQueue(userId);
     }
 
     @Transactional

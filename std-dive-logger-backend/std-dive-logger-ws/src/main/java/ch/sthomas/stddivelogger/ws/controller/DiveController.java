@@ -660,6 +660,59 @@ public class DiveController {
         return diveService.getBackfillQueue(user);
     }
 
+    @Operation(
+            summary = "One dive's backfill status",
+            description =
+                    "Which checklist fields this dive is missing and which the user has dismissed"
+                            + " ('no more info to add') - powers the in-form pointers on the edit"
+                            + " page.")
+    @GetMapping("/{id}/backfill")
+    public DiveBackfillStatus getBackfillStatus(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view a dive's backfill status.");
+        }
+        return diveService.getBackfillStatus(user, diveId);
+    }
+
+    public record BackfillDismissRequest(@Nullable DiveBackfillField reason, boolean dismissed) {}
+
+    @Operation(
+            summary = "Dismiss or restore a dive's backfill gap(s)",
+            description =
+                    "A null reason targets the whole dive (every currently-missing field on"
+                            + " dismiss, all dismissals on restore); otherwise just that one field."
+                            + " Dismissed = 'no more info to add', so it leaves the active queue.")
+    @PutMapping(path = "/{id}/backfill/dismissed", consumes = APPLICATION_JSON_VALUE)
+    public DiveBackfillStatus setBackfillDismissed(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @NotNull @RequestBody final BackfillDismissRequest body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to update a dive's backfill status.");
+        }
+        return diveService.setBackfillDismissed(user, diveId, body.reason(), body.dismissed());
+    }
+
+    public record BackfillBulkDismissRequest(@Nullable DiveBackfillField reason) {}
+
+    @Operation(
+            summary = "Bulk-dismiss backfill gaps",
+            description =
+                    "A null reason dismisses every outstanding field on every queued dive;"
+                            + " otherwise that one field across all of the user's dives (e.g. after"
+                            + " a new backfillable field ships). Returns the refreshed queue.")
+    @PostMapping(path = "/backfill/dismiss", consumes = APPLICATION_JSON_VALUE)
+    public List<DiveBackfillStatus> dismissAllBackfill(
+            @AuthenticationPrincipal final @Nullable User user,
+            @NotNull @RequestBody final BackfillBulkDismissRequest body) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to update your backfill queue.");
+        }
+        return diveService.dismissAllBackfill(user, body.reason());
+    }
+
     @Operation(summary = "Merge Dive Profiles")
     @PostMapping(path = "/{id}/profiles/merge", consumes = APPLICATION_JSON_VALUE)
     public Dive mergeDiveProfiles(
