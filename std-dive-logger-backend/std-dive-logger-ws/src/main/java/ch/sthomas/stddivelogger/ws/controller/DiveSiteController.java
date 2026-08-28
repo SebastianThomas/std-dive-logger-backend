@@ -1,11 +1,14 @@
 package ch.sthomas.stddivelogger.ws.controller;
 
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -127,9 +130,12 @@ public class DiveSiteController {
     public record CreateDiveSiteBody(
             @NotBlank String name,
             @DecimalMin("-90") @DecimalMax("90") double lat,
-            @DecimalMin("-180") @DecimalMax("180") double lon) {}
+            @DecimalMin("-180") @DecimalMax("180") double lon,
+            @NotNull WaterType waterType) {}
 
-    @Operation(summary = "Create new DiveSite")
+    @Operation(
+            summary = "Create new DiveSite",
+            description = "waterType is required - a dive site's water is a physical property.")
     @PostMapping(path = "")
     public DiveSite createDiveSite(
             @Valid @NotNull @RequestBody final CreateDiveSiteBody body,
@@ -137,7 +143,8 @@ public class DiveSiteController {
         if (user == null) {
             throw new UnauthorizedException("Log in to create a dive site");
         }
-        return diveService.createDiveSite(body.name, new Location(body.lat, body.lon));
+        return diveService.createDiveSite(
+                body.name, new Location(body.lat, body.lon), body.waterType);
     }
 
     public record UpdateDiveSiteLinkBody(
@@ -149,6 +156,7 @@ public class DiveSiteController {
             @Size(max = 128) String countryRegion,
             Double maxDepth,
             DiveSiteType type,
+            @NotNull WaterType waterType,
             @Valid @NotNull List<UpdateDiveSiteLinkBody> links) {}
 
     @Operation(
@@ -156,7 +164,8 @@ public class DiveSiteController {
             description =
                     "Requires the requesting user to have logged at least one dive at this site -"
                             + " site name/coordinates are not editable here, only"
-                            + " description/country/maxDepth/type/links.")
+                            + " description/country/maxDepth/type/waterType/links. waterType is"
+                            + " required - the site cannot be saved without a valid one.")
     @PutMapping(path = "/{id}")
     public DiveSite updateDiveSite(
             @PathVariable @Positive final long id,
@@ -172,6 +181,26 @@ public class DiveSiteController {
                 body.countryRegion,
                 body.maxDepth,
                 body.type,
+                body.waterType,
                 body.links.stream().map(l -> new DiveSiteLink(0, l.url(), l.label())).toList());
+    }
+
+    public record SetWaterTypeBody(@NotNull WaterType waterType) {}
+
+    @Operation(
+            summary = "Set just a DiveSite's water type",
+            description =
+                    "Lightweight path for the \"help improve this site\" suggestions - only touches"
+                            + " water type, unlike the full metadata PUT. Requires a logged dive at"
+                            + " the site.")
+    @PostMapping(path = "/{id}/water-type", consumes = APPLICATION_JSON_VALUE)
+    public DiveSite setWaterType(
+            @PathVariable @Positive final long id,
+            @Valid @NotNull @RequestBody final SetWaterTypeBody body,
+            @AuthenticationPrincipal final @Nullable User user) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to edit a dive site");
+        }
+        return diveService.setWaterTypeForSite(user, id, body.waterType());
     }
 }

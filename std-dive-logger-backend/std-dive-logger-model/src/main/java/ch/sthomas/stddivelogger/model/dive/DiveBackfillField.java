@@ -10,7 +10,6 @@ package ch.sthomas.stddivelogger.model.dive;
 public enum DiveBackfillField {
     VISIBILITY,
     GAS_CONSUMPTION,
-    WATER_TYPE,
     LEADER,
     NOTES
 }

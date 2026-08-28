@@ -303,12 +303,6 @@ public class DiveEntity {
         if (gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY)) {
             missing.add(DiveBackfillField.GAS_CONSUMPTION);
         }
-        // Satisfied by either the dive's own override or - the normal case - the site's water type.
-        if (Optional.ofNullable(conditions).map(DiveConditionsEntity::getWaterType).orElse(null)
-                        == null
-                && diveSite.getWaterType() == null) {
-            missing.add(DiveBackfillField.WATER_TYPE);
-        }
         if (getLeader().type() == DiveLeader.LeaderType.UNSET) {
             missing.add(DiveBackfillField.LEADER);
         }

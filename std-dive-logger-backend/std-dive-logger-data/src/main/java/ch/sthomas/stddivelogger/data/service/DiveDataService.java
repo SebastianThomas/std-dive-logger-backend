@@ -1372,10 +1372,22 @@ public class DiveDataService {
 
     @Transactional
     public DiveSite saveDiveSite(final String name, final Location coordinate) {
+        return saveDiveSite(name, coordinate, null);
+    }
+
+    /**
+     * Create a dive site. {@code waterType} is required for user-facing creation (see {@code
+     * CreateDiveSiteBody}) but stays nullable here so the internal import/fuzzy auto-create path
+     * ({@link ch.sthomas.stddivelogger.service.DiveService#getOrCreateDiveSite}) can still make a
+     * bare site that a "help improve this site" nudge fills in later.
+     */
+    @Transactional
+    public DiveSite saveDiveSite(
+            final String name, final Location coordinate, @Nullable final WaterType waterType) {
         try {
-            return diveSiteRepository
-                    .save(new DiveSiteEntity(name, coordinate.toPoint()))
-                    .toRecord();
+            final var entity = new DiveSiteEntity(name, coordinate.toPoint());
+            entity.setWaterType(waterType);
+            return diveSiteRepository.save(entity).toRecord();
         } catch (final DataIntegrityViolationException e) {
             throw new IllegalArgumentException("Dive site with name " + name + " already exists.");
         }
@@ -1477,14 +1489,12 @@ public class DiveDataService {
     }
 
     /**
-     * Set the water type on the dive site itself - a physical property of the place, so this one
-     * write resolves the {@code WATER_TYPE} backfill gap for every dive there (unless a dive has
-     * its own override). Returns the user's refreshed backfill queue. Authorization (the caller
-     * must have logged a dive at this site) is checked in the service layer.
+     * Set just the water type on a dive site - the lightweight path behind the "help improve this
+     * site" suggestions (map popup, site detail, site selector). Authorization (the caller must
+     * have logged a dive at this site) is checked in the service layer. Returns the updated site.
      */
     @Transactional
-    public List<DiveBackfillStatus> setWaterTypeForSite(
-            final long userId, final long siteId, final WaterType waterType) {
+    public DiveSite setWaterTypeForSite(final long siteId, final WaterType waterType) {
         final var site =
                 diveSiteRepository
                         .findById(siteId)
@@ -1493,9 +1503,7 @@ public class DiveDataService {
                                         new NoSuchElementException(
                                                 "Could not find dive site by id " + siteId));
         site.setWaterType(waterType);
-        diveSiteRepository.save(site);
-        entityManager.flush();
-        return getBackfillQueue(userId);
+        return diveSiteRepository.save(site).toRecordWithLinks(true);
     }
 
     /**
@@ -1523,6 +1531,7 @@ public class DiveDataService {
             @Nullable final String countryRegion,
             @Nullable final Double maxDepth,
             @Nullable final DiveSiteType type,
+            final WaterType waterType,
             final List<DiveSiteLink> links) {
         final var entity =
                 diveSiteRepository
@@ -1535,6 +1544,7 @@ public class DiveDataService {
         entity.setCountryRegion(countryRegion);
         entity.setMaxDepth(maxDepth);
         entity.setSiteType(type);
+        entity.setWaterType(waterType);
         diveSiteRepository.save(entity);
 
         diveSiteLinkRepository.deleteByDiveSite_Id(siteId);

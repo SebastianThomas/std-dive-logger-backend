@@ -26,3 +26,9 @@ WHERE ranked.rn = 1
 UPDATE t_dive_conditions
 SET water_type = NULL
 WHERE water_type IS NOT NULL;
+
+-- Water type is no longer a backfill checklist reason (DiveBackfillField), so drop any dismissal
+-- rows that referenced it - otherwise loading them would fail the now-narrower enum.
+DELETE
+FROM t_dive_backfill_dismissal
+WHERE reason = 'WATER_TYPE';

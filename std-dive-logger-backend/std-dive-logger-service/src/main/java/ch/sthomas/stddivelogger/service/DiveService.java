@@ -581,8 +581,9 @@ public class DiveService {
                 .orElseGet(() -> diveDataService.saveDiveSite(name, location));
     }
 
-    public DiveSite createDiveSite(final String name, final Location location) {
-        return diveDataService.saveDiveSite(name, location);
+    public DiveSite createDiveSite(
+            final String name, final Location location, final WaterType waterType) {
+        return diveDataService.saveDiveSite(name, location, waterType);
     }
 
     public Optional<DiveSite> getSiteByIdForUser(final long id, final User user) {
@@ -646,16 +647,16 @@ public class DiveService {
     }
 
     /**
-     * Set the water type on a dive site (community-editable metadata, so gated on the user having
-     * logged a dive there - same rule as {@link #updateDiveSite}). One write resolves the {@code
-     * WATER_TYPE} backfill gap for every dive at that site. Returns the refreshed backfill queue.
+     * Set just the water type on a dive site - community-editable metadata, so gated on the user
+     * having logged a dive there (same rule as {@link #updateDiveSite}). Backs the "help improve
+     * this site" suggestions. Returns the updated site.
      */
-    public List<DiveBackfillStatus> setWaterTypeForSite(
+    public DiveSite setWaterTypeForSite(
             final User user, final long siteId, final WaterType waterType) {
         if (!diveDataService.hasLoggedDiveAtSite(user.id(), siteId)) {
             throw ForbiddenException.forDiveSiteId(user, siteId);
         }
-        return diveDataService.setWaterTypeForSite(user.id(), siteId, waterType);
+        return diveDataService.setWaterTypeForSite(siteId, waterType);
     }
 
     public DiveSite updateDiveSite(
@@ -665,12 +666,13 @@ public class DiveService {
             final @Nullable String countryRegion,
             final @Nullable Double maxDepth,
             final @Nullable DiveSiteType type,
+            final WaterType waterType,
             final List<DiveSiteLink> links) {
         if (!diveDataService.hasLoggedDiveAtSite(user.id(), siteId)) {
             throw ForbiddenException.forDiveSiteId(user, siteId);
         }
         return diveDataService.updateDiveSite(
-                siteId, description, countryRegion, maxDepth, type, links);
+                siteId, description, countryRegion, maxDepth, type, waterType, links);
     }
 
     public void deleteDiveById(final User user, final long diveId) {

@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
@@ -86,7 +87,10 @@ class DiveSiteMetadataIntegrationTest {
                                         "region",
                                         30.0,
                                         DiveSiteType.WRECK,
+                                        WaterType.SALT,
                                         List.of()))
+                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> diveService.setWaterTypeForSite(user, site.id(), WaterType.SALT))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -113,12 +117,14 @@ class DiveSiteMetadataIntegrationTest {
                         "Red Sea",
                         35.5,
                         DiveSiteType.WRECK,
+                        WaterType.SALT,
                         List.of(new DiveSiteLink(0, "https://example.com", "Info")));
 
         assertThat(updated.description()).isEqualTo("A nice wreck");
         assertThat(updated.countryRegion()).isEqualTo("Red Sea");
         assertThat(updated.maxDepth()).isEqualTo(35.5);
         assertThat(updated.type()).isEqualTo(DiveSiteType.WRECK);
+        assertThat(updated.waterType()).isEqualTo(WaterType.SALT);
         assertThat(updated.links()).hasSize(1);
         assertThat(updated.links().getFirst().url()).isEqualTo("https://example.com");
         assertThat(updated.canEdit()).isTrue();
@@ -126,5 +132,12 @@ class DiveSiteMetadataIntegrationTest {
         final var fetched = diveService.getSiteByIdForUser(site.id(), user).orElseThrow();
         assertThat(fetched.links()).hasSize(1);
         assertThat(fetched.canEdit()).isTrue();
+        assertThat(fetched.waterType()).isEqualTo(WaterType.SALT);
+
+        // The lightweight "help improve this site" path updates just the water type.
+        final var afterQuickSet =
+                diveService.setWaterTypeForSite(user, site.id(), WaterType.BRACKISH);
+        assertThat(afterQuickSet.waterType()).isEqualTo(WaterType.BRACKISH);
+        assertThat(afterQuickSet.description()).isEqualTo("A nice wreck");
     }
 }

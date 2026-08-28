@@ -10,7 +10,6 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResult;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.*;
-import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
@@ -712,25 +711,6 @@ public class DiveController {
             throw new UnauthorizedException("Log in to update your backfill queue.");
         }
         return diveService.dismissAllBackfill(user, body.reason());
-    }
-
-    public record BackfillWaterTypeRequest(@Positive long siteId, @NotNull WaterType waterType) {}
-
-    @Operation(
-            summary = "Set a dive site's water type",
-            description =
-                    "A dive site's water is a physical property of the place - one write resolves the"
-                            + " water-type backfill gap for every dive there (a dive may still"
-                            + " override it individually). Requires the user to have logged a dive at"
-                            + " the site. Returns the refreshed queue.")
-    @PostMapping(path = "/backfill/water-type", consumes = APPLICATION_JSON_VALUE)
-    public List<DiveBackfillStatus> setWaterTypeForSite(
-            @AuthenticationPrincipal final @Nullable User user,
-            @NotNull @Valid @RequestBody final BackfillWaterTypeRequest body) {
-        if (user == null) {
-            throw new UnauthorizedException("Log in to update your dives.");
-        }
-        return diveService.setWaterTypeForSite(user, body.siteId(), body.waterType());
     }
 
     @Operation(summary = "Merge Dive Profiles")
