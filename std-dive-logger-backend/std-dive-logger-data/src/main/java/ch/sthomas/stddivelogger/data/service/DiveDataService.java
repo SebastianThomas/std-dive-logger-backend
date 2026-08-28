@@ -1477,30 +1477,23 @@ public class DiveDataService {
     }
 
     /**
-     * Set the water type on every one of the user's dives at a given site - or, with {@code
-     * onlyMissing}, only the ones that don't have one yet. A dive site's water is a fixed physical
-     * property, so this is the fast path for the {@code WATER_TYPE} backfill gap across a trip's
-     * worth of dives. Creates a {@link DiveConditionsEntity} for dives that have none.
+     * Set the water type on the dive site itself - a physical property of the place, so this one
+     * write resolves the {@code WATER_TYPE} backfill gap for every dive there (unless a dive has
+     * its own override). Returns the user's refreshed backfill queue. Authorization (the caller
+     * must have logged a dive at this site) is checked in the service layer.
      */
     @Transactional
-    public List<DiveBackfillStatus> setWaterTypeForDivesAtSite(
-            final long userId,
-            final long siteId,
-            final WaterType waterType,
-            final boolean onlyMissing) {
-        final var dives = diveRepository.findByUser_IdAndDiveSite_Id(userId, siteId);
-        for (final var dive : dives) {
-            final var conditions = dive.getConditions();
-            if (onlyMissing && conditions != null && conditions.getWaterType() != null) {
-                continue;
-            }
-            if (conditions != null) {
-                conditions.setWaterType(waterType);
-            } else {
-                dive.setConditions(new DiveConditionsEntity(dive, waterType, null));
-            }
-        }
-        diveRepository.saveAll(dives);
+    public List<DiveBackfillStatus> setWaterTypeForSite(
+            final long userId, final long siteId, final WaterType waterType) {
+        final var site =
+                diveSiteRepository
+                        .findById(siteId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Could not find dive site by id " + siteId));
+        site.setWaterType(waterType);
+        diveSiteRepository.save(site);
         entityManager.flush();
         return getBackfillQueue(userId);
     }

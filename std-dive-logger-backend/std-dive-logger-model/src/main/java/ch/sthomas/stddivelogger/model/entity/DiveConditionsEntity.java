@@ -58,11 +58,6 @@ public class DiveConditionsEntity {
         return waterType;
     }
 
-    /** Sets just the water type, leaving current strength untouched - for the bulk backfill set. */
-    public void setWaterType(@Nullable final WaterType waterType) {
-        this.waterType = waterType;
-    }
-
     public @Nullable Current toCurrentRecord() {
         if (currentKnots == null && currentDescription == null && currentFeeling == null) {
             return null;

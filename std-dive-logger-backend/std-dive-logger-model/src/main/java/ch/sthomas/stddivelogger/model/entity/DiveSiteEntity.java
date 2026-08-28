@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import jakarta.persistence.*;
@@ -48,6 +49,13 @@ public class DiveSiteEntity {
     @Column(name = "site_type")
     private @Nullable DiveSiteType siteType;
 
+    // Water is a physical property of the place. A dive may still override it per-dive
+    // (DiveConditionsEntity), but this is the default and the source of truth. Currently only
+    // written via the backfill "set water type by site" action.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "water_type")
+    private @Nullable WaterType waterType;
+
     @OneToMany(mappedBy = "diveSite")
     @BatchSize(size = 30)
     private List<DiveSiteLinkEntity> links = List.of();
@@ -83,8 +91,19 @@ public class DiveSiteEntity {
         this.siteType = siteType;
     }
 
+    public @Nullable WaterType getWaterType() {
+        return waterType;
+    }
+
+    public void setWaterType(@Nullable final WaterType waterType) {
+        this.waterType = waterType;
+    }
+
     public DiveSite toRecord() {
-        return new DiveSite(id, name, new Location(location.getCoordinate()));
+        final var loc = new Location(location.getCoordinate());
+        return new DiveSite(
+                id, name, loc.lat(), loc.lon(), null, null, null, null, waterType, List.of(),
+                false);
     }
 
     public DiveSite toRecordWithLinks(final boolean canEdit) {
@@ -98,6 +117,7 @@ public class DiveSiteEntity {
                 countryRegion,
                 maxDepth,
                 siteType,
+                waterType,
                 links.stream().map(DiveSiteLinkEntity::toRecord).toList(),
                 canEdit);
     }

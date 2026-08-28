@@ -215,7 +215,7 @@ class DiveBackfillIntegrationTest {
     }
 
     @Test
-    void bulkSetWaterTypeFillsTheGapForEveryDiveAtASite() {
+    void settingWaterTypeOnTheSiteResolvesTheGapForEveryDiveThere() {
         final var user = newUser("backfill-watertype@test.ch");
         final var lakeSite = newSite("Alpine Lake");
         final var seaSite = newSite("Reef Wall");
@@ -223,10 +223,9 @@ class DiveBackfillIntegrationTest {
         final var lakeDive2 = createDive(user, lakeSite, 2, Instant.parse("2026-01-02T09:00:00Z"));
         final var seaDive = createDive(user, seaSite, 3, Instant.parse("2026-02-01T09:00:00Z"));
 
-        final var queue =
-                diveService.setWaterTypeForDivesAtSite(user, lakeSite, WaterType.FRESH, true);
+        final var queue = diveService.setWaterTypeForSite(user, lakeSite, WaterType.FRESH);
 
-        // Both lake dives filled, sea dive untouched.
+        // One write on the site - both lake dives drop the gap, the other site's dive doesn't.
         assertThat(queue)
                 .filteredOn(s -> s.diveId() == lakeDive1 || s.diveId() == lakeDive2)
                 .allSatisfy(
@@ -235,6 +234,59 @@ class DiveBackfillIntegrationTest {
                                         .doesNotContain(DiveBackfillField.WATER_TYPE));
         assertThat(diveService.getBackfillStatus(user, seaDive).missingFields())
                 .contains(DiveBackfillField.WATER_TYPE);
+
+        // The value lives on the site; the dive itself has no override.
+        assertThat(diveService.getDiveById(user, lakeDive1).orElseThrow().waterType()).isNull();
+        assertThat(diveSiteRepository.findById(lakeSite).orElseThrow().getWaterType())
+                .isEqualTo(WaterType.FRESH);
+        assertThat(diveSiteRepository.findById(seaSite).orElseThrow().getWaterType()).isNull();
+    }
+
+    @Test
+    void aDiveKeepsItsOwnWaterTypeOverrideRegardlessOfTheSite() {
+        final var user = newUser("backfill-override@test.ch");
+        final var siteId = newSite("Estuary");
+        final var diveId = createDive(user, siteId, 1, Instant.parse("2026-01-01T09:00:00Z"));
+
+        diveService.updateDive(
+                user,
+                new UpdateDiveBody(
+                        diveId,
+                        1,
+                        "notes",
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        WaterType.BRACKISH,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null,
+                        null));
+        diveService.setWaterTypeForSite(user, siteId, WaterType.FRESH);
+
+        final var dive = diveService.getDiveById(user, diveId).orElseThrow();
+        assertThat(dive.waterType()).isEqualTo(WaterType.BRACKISH);
+        assertThat(diveSiteRepository.findById(siteId).orElseThrow().getWaterType())
+                .isEqualTo(WaterType.FRESH);
+        assertThat(diveService.getBackfillStatus(user, diveId).missingFields())
+                .doesNotContain(DiveBackfillField.WATER_TYPE);
+    }
+
+    @Test
+    void cannotSetWaterTypeForASiteWithoutHavingDivedThere() {
+        final var owner = newUser("watertype-owner@test.ch");
+        final var stranger = newUser("watertype-stranger@test.ch");
+        final var siteId = newSite("Private Cove");
+        createDive(owner, siteId, 1, Instant.parse("2026-01-01T09:00:00Z"));
+
+        assertThatThrownBy(() -> diveService.setWaterTypeForSite(stranger, siteId, WaterType.SALT))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @Test

@@ -646,17 +646,16 @@ public class DiveService {
     }
 
     /**
-     * Bulk-set the water type on the user's own dives at a site (only the ones missing it unless
-     * {@code onlyMissing} is false). Inherently scoped to the user's own dives, so no per-dive
-     * write-access check is needed. Returns the refreshed backfill queue.
+     * Set the water type on a dive site (community-editable metadata, so gated on the user having
+     * logged a dive there - same rule as {@link #updateDiveSite}). One write resolves the {@code
+     * WATER_TYPE} backfill gap for every dive at that site. Returns the refreshed backfill queue.
      */
-    public List<DiveBackfillStatus> setWaterTypeForDivesAtSite(
-            final User user,
-            final long siteId,
-            final WaterType waterType,
-            final boolean onlyMissing) {
-        return diveDataService.setWaterTypeForDivesAtSite(
-                user.id(), siteId, waterType, onlyMissing);
+    public List<DiveBackfillStatus> setWaterTypeForSite(
+            final User user, final long siteId, final WaterType waterType) {
+        if (!diveDataService.hasLoggedDiveAtSite(user.id(), siteId)) {
+            throw ForbiddenException.forDiveSiteId(user, siteId);
+        }
+        return diveDataService.setWaterTypeForSite(user.id(), siteId, waterType);
     }
 
     public DiveSite updateDiveSite(

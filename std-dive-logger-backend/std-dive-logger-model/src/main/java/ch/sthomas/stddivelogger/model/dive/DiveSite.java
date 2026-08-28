@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.dive;
 
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -30,6 +31,11 @@ public record DiveSite(
         @Nullable String countryRegion,
         @Nullable Double maxDepth,
         @Nullable DiveSiteType type,
+        @Schema(
+                        description =
+                                "The site's water type (SALT/FRESH/BRACKISH). A physical property of"
+                                        + " the place; an individual dive may override it.")
+                @Nullable WaterType waterType,
         List<DiveSiteLink> links,
         @Schema(
                         description =
@@ -42,12 +48,23 @@ public record DiveSite(
     }
 
     public DiveSite(final long id, final String name, final Location location) {
-        this(id, name, location.lat(), location.lon(), null, null, null, null, List.of(), false);
+        this(
+                id,
+                name,
+                location.lat(),
+                location.lon(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                false);
     }
 
     public DiveSite(
             final long id, final String name, final double latitude, final double longitude) {
-        this(id, name, latitude, longitude, null, null, null, null, List.of(), false);
+        this(id, name, latitude, longitude, null, null, null, null, null, List.of(), false);
     }
 
     public DiveSite withCanEdit(final boolean canEdit) {
@@ -60,6 +77,7 @@ public record DiveSite(
                 countryRegion,
                 maxDepth,
                 type,
+                waterType,
                 links,
                 canEdit);
     }
