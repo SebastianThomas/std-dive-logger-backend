@@ -215,6 +215,29 @@ class DiveBackfillIntegrationTest {
     }
 
     @Test
+    void bulkSetWaterTypeFillsTheGapForEveryDiveAtASite() {
+        final var user = newUser("backfill-watertype@test.ch");
+        final var lakeSite = newSite("Alpine Lake");
+        final var seaSite = newSite("Reef Wall");
+        final var lakeDive1 = createDive(user, lakeSite, 1, Instant.parse("2026-01-01T09:00:00Z"));
+        final var lakeDive2 = createDive(user, lakeSite, 2, Instant.parse("2026-01-02T09:00:00Z"));
+        final var seaDive = createDive(user, seaSite, 3, Instant.parse("2026-02-01T09:00:00Z"));
+
+        final var queue =
+                diveService.setWaterTypeForDivesAtSite(user, lakeSite, WaterType.FRESH, true);
+
+        // Both lake dives filled, sea dive untouched.
+        assertThat(queue)
+                .filteredOn(s -> s.diveId() == lakeDive1 || s.diveId() == lakeDive2)
+                .allSatisfy(
+                        s ->
+                                assertThat(s.missingFields())
+                                        .doesNotContain(DiveBackfillField.WATER_TYPE));
+        assertThat(diveService.getBackfillStatus(user, seaDive).missingFields())
+                .contains(DiveBackfillField.WATER_TYPE);
+    }
+
+    @Test
     void cannotTouchAnotherUsersDiveBackfill() {
         final var owner = newUser("backfill-owner@test.ch");
         final var stranger = newUser("backfill-stranger@test.ch");

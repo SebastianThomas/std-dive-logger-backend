@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
@@ -1472,6 +1473,35 @@ public class DiveDataService {
         getBackfillQueue(userId).stream()
                 .filter(status -> !status.fullyDismissed())
                 .forEach(status -> setDiveBackfillDismissed(status.diveId(), true));
+        return getBackfillQueue(userId);
+    }
+
+    /**
+     * Set the water type on every one of the user's dives at a given site - or, with {@code
+     * onlyMissing}, only the ones that don't have one yet. A dive site's water is a fixed physical
+     * property, so this is the fast path for the {@code WATER_TYPE} backfill gap across a trip's
+     * worth of dives. Creates a {@link DiveConditionsEntity} for dives that have none.
+     */
+    @Transactional
+    public List<DiveBackfillStatus> setWaterTypeForDivesAtSite(
+            final long userId,
+            final long siteId,
+            final WaterType waterType,
+            final boolean onlyMissing) {
+        final var dives = diveRepository.findByUser_IdAndDiveSite_Id(userId, siteId);
+        for (final var dive : dives) {
+            final var conditions = dive.getConditions();
+            if (onlyMissing && conditions != null && conditions.getWaterType() != null) {
+                continue;
+            }
+            if (conditions != null) {
+                conditions.setWaterType(waterType);
+            } else {
+                dive.setConditions(new DiveConditionsEntity(dive, waterType, null));
+            }
+        }
+        diveRepository.saveAll(dives);
+        entityManager.flush();
         return getBackfillQueue(userId);
     }
 

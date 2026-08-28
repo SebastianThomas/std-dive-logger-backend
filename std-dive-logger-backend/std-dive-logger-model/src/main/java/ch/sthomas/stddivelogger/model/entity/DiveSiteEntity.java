@@ -63,6 +63,10 @@ public class DiveSiteEntity {
         return id;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public void setDescription(@Nullable final String description) {
         this.description = description;
     }

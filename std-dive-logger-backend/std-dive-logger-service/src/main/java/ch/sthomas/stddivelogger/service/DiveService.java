@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
@@ -642,6 +643,20 @@ public class DiveService {
         return reason != null
                 ? diveDataService.dismissBackfillReasonEverywhere(user.id(), reason)
                 : diveDataService.dismissAllBackfill(user.id());
+    }
+
+    /**
+     * Bulk-set the water type on the user's own dives at a site (only the ones missing it unless
+     * {@code onlyMissing} is false). Inherently scoped to the user's own dives, so no per-dive
+     * write-access check is needed. Returns the refreshed backfill queue.
+     */
+    public List<DiveBackfillStatus> setWaterTypeForDivesAtSite(
+            final User user,
+            final long siteId,
+            final WaterType waterType,
+            final boolean onlyMissing) {
+        return diveDataService.setWaterTypeForDivesAtSite(
+                user.id(), siteId, waterType, onlyMissing);
     }
 
     public DiveSite updateDiveSite(

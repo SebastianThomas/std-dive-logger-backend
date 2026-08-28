@@ -21,6 +21,8 @@ public record DiveBackfillStatus(
         int number,
         String diveIdentifier,
         @Nullable Instant diveStart,
+        long siteId,
+        String siteName,
         List<DiveBackfillField> missingFields,
         List<DiveBackfillField> dismissedFields) {
 

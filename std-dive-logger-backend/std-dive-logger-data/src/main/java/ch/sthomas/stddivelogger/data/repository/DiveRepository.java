@@ -71,6 +71,10 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     // dive at a site may edit its description/links/type.
     boolean existsByUser_IdAndDiveSite_Id(long userId, long diveSiteId);
 
+    // All of one user's own dives at a given site - for the "set water type for every dive here"
+    // bulk backfill action.
+    List<DiveEntity> findByUser_IdAndDiveSite_Id(long userId, long diveSiteId);
+
     // Powers the "smart default" terminology prefill: the user's own most recent explicit
     // BUDDY/TEAM choice, used as the initial pick for a dive that doesn't have one of its own yet.
     Optional<DiveEntity> findFirstByUser_IdAndTeamTerminologyIsNotNullOrderByIdDesc(long userId);

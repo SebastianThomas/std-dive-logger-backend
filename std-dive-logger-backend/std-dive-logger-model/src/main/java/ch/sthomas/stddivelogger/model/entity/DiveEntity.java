@@ -315,7 +315,14 @@ public class DiveEntity {
         }
         final var dismissed = new ArrayList<>(getDismissedBackfillFields());
         return new DiveBackfillStatus(
-                id, number, diveIdentifier, getSummary().start(), missing, dismissed);
+                id,
+                number,
+                diveIdentifier,
+                getSummary().start(),
+                diveSite.getId(),
+                diveSite.getName(),
+                missing,
+                dismissed);
     }
 
     /** Reasons the user has explicitly marked "no more info to add" for this dive. */
