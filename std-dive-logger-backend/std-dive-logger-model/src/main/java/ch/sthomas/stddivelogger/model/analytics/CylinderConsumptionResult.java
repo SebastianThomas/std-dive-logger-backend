@@ -14,7 +14,11 @@ public record CylinderConsumptionResult(
         @Nullable Double ocRmvLiters,
         @Nullable Double bailoutRmvLiters,
         @Nullable Double o2Liters,
-        @Nullable Double diluentLiters) {
+        @Nullable Double diluentLiters,
+        // Total litres consumed across this dive's OC-role cylinders (surface volume), independent
+        // of the pressure-minutes weighting behind ocRmvLiters - null when no OC cylinder had
+        // usable start/end pressure. Feeds the inserted-vs-calculated gas-consumption check.
+        @Nullable Double ocConsumedLiters) {
     public static final CylinderConsumptionResult EMPTY =
-            new CylinderConsumptionResult(null, null, null, null);
+            new CylinderConsumptionResult(null, null, null, null, null);
 }

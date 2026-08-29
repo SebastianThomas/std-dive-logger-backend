@@ -2,6 +2,8 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
+import ch.sthomas.stddivelogger.model.dive.gear.StandardCylinder;
 import ch.sthomas.stddivelogger.model.dive.gear.SuitType;
 import ch.sthomas.stddivelogger.model.dive.gear.WeightFeeling;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
@@ -98,19 +100,29 @@ public class DiveConfigurationEntity {
         this.adHocSuitType = configuration.adHocSuitType();
         this.cylinders =
                 configuration.cylinders().stream()
-                        .map(
-                                c ->
-                                        new DiveConfigurationCylinderEntity(
-                                                this,
-                                                getCylinderSizeEntity.apply(c.size()),
-                                                c.startBar(),
-                                                c.endBar(),
-                                                c.notes(),
-                                                c.gas(),
-                                                c.role(),
-                                                c.usageStart(),
-                                                c.usageEnd()))
+                        .map(c -> toCylinderEntity(c, getCylinderSizeEntity))
                         .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    // Fills a null material via StandardCylinder.inferMaterial so imported/legacy payloads always
+    // land with a value.
+    private DiveConfigurationCylinderEntity toCylinderEntity(
+            final DiveConfigurationCylinder c,
+            final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
+        final var material =
+                c.material() != null
+                        ? c.material()
+                        : StandardCylinder.inferMaterial(c.size().liters(), c.size().unit());
+        return new DiveConfigurationCylinderEntity(
+                this,
+                getCylinderSizeEntity.apply(c.size()),
+                material,
+                c.startBar(),
+                c.endBar(),
+                c.notes(),
+                c.gas(),
+                c.role(),
+                c.usageWindows());
     }
 
     public DiveConfiguration toRecord() {
@@ -150,18 +162,7 @@ public class DiveConfigurationEntity {
         // and addAll() below run back-to-back with nothing in between that could flush.
         final var newCylinders =
                 configuration.cylinders().stream()
-                        .map(
-                                c ->
-                                        new DiveConfigurationCylinderEntity(
-                                                this,
-                                                getCylinderSizeEntity.apply(c.size()),
-                                                c.startBar(),
-                                                c.endBar(),
-                                                c.notes(),
-                                                c.gas(),
-                                                c.role(),
-                                                c.usageStart(),
-                                                c.usageEnd()))
+                        .map(c -> toCylinderEntity(c, getCylinderSizeEntity))
                         .toList();
         this.cylinders.clear();
         this.cylinders.addAll(newCylinders);

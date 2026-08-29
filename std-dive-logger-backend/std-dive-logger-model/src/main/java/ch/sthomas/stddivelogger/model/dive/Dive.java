@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.dive.stats.GasConsumptionComparison;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 
 import jakarta.validation.constraints.NotNull;
@@ -32,6 +33,12 @@ public record Dive(
          * this dive has no cylinders tracked at all, not when a figure happens to be zero.
          */
         @Nullable CylinderConsumptionResult cylinderConsumption,
+        /**
+         * Inserted-vs-calculated gas-consumption reconciliation - see {@link
+         * GasConsumptionComparison}. Null when there's no inserted {@code gasConsumption} to
+         * compare, or nothing to compare it against.
+         */
+        @Nullable GasConsumptionComparison gasConsumptionComparison,
         @Nullable DiveConfiguration configuration,
         @Nullable DiveSite site,
         @NotNull List<DiveProfile> profiles,

@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 class SubsurfaceXmlReaderServiceTest {
@@ -192,8 +193,8 @@ class SubsurfaceXmlReaderServiceTest {
             assertEquals(0.21, backgas.gas().o2(), 1e-9);
             assertEquals(0.35, backgas.gas().he(), 1e-9);
             assertEquals(CylinderRole.OC, backgas.role());
-            assertEquals(null, backgas.usageStart());
-            assertEquals(null, backgas.usageEnd());
+            assertEquals(List.of(), backgas.usageWindows());
+            assertEquals(null, backgas.material());
 
             final var bailout = cylinders.get(1);
             assertEquals(CylinderSizeUnit.CUFT, bailout.size().unit());

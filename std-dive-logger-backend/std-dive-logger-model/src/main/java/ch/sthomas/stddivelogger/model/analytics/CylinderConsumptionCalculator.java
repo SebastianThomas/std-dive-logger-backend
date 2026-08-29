@@ -5,6 +5,7 @@ import static ch.sthomas.stddivelogger.model.analytics.TimedHold.timeline;
 
 import ch.sthomas.stddivelogger.model.analytics.TimedHold.TimedValue;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
@@ -47,6 +48,10 @@ import java.util.List;
  * - e.g. true simultaneous doubles on one manifold, the common case of no usage window set on
  * either - represent the *same* elapsed dive time, not twice as much of it. Summing pressure-
  * minutes for that case double-counts the denominator and understates RMV by roughly half.
+ *
+ * <p>A cylinder with no usage window of its own is treated as the <b>complement</b> of the
+ * same-role windowed cylinders - it was breathed over exactly the parts of the dive those don't
+ * cover (the whole dive when none are windowed). See {@link #combinedRmv}.
  */
 public final class CylinderConsumptionCalculator {
 
@@ -74,8 +79,10 @@ public final class CylinderConsumptionCalculator {
                         : null;
         final var o2Liters = sumConsumedLiters(cylinders, CylinderRole.O2);
         final var diluentLiters = sumConsumedLiters(cylinders, CylinderRole.DILUENT);
+        final var ocConsumedLiters = sumConsumedLiters(cylinders, CylinderRole.OC);
 
-        return new CylinderConsumptionResult(ocRmv, bailoutRmv, o2Liters, diluentLiters);
+        return new CylinderConsumptionResult(
+                ocRmv, bailoutRmv, o2Liters, diluentLiters, ocConsumedLiters);
     }
 
     private static @Nullable Double consumedLiters(final DiveConfigurationCylinder cylinder) {
@@ -107,68 +114,130 @@ public final class CylinderConsumptionCalculator {
         return any ? total : null;
     }
 
-    /**
-     * A cylinder's usage window - either bound {@code null} means unbounded on that side, i.e.
-     * "used for the whole dive".
-     */
-    private record UsageWindow(@Nullable Instant start, @Nullable Instant end) {}
+    /** A cylinder's usage window - either bound {@code null} means unbounded on that side. */
+    private record UsageWindow(@Nullable Instant start, @Nullable Instant end) {
+        static UsageWindow of(final CylinderUsageWindow w) {
+            return new UsageWindow(w.start(), w.end());
+        }
+    }
 
     /**
+     * Combined RMV for one role. Cylinders split into <b>windowed</b> (≥1 usage window - active
+     * over the union of their own windows) and <b>unwindowed</b> (active over the
+     * <i>complement</i>: every part of the (mode-gated) profile not covered by any windowed
+     * cylinder of this role; the whole dive when no cylinder of the role is windowed).
+     *
+     * <p>RMV = Σ litres of every contributing cylinder ÷ (pressure-minutes over the union of all
+     * windowed cylinders' windows + the complement's pressure-minutes when ≥1 unwindowed cylinder
+     * contributes) - the two ranges are disjoint by construction, so the denominator just adds.
+     *
      * @param modeTimeline when non-null, only segments held at {@link DiveMode#OC} count towards
-     *     the pressure-minutes denominator (used for bailout RMV); {@code null} means every segment
-     *     counts (a plain OC dive's own cylinders).
+     *     pressure-minutes (used for bailout RMV); {@code null} means every segment counts.
      */
     private static @Nullable Double combinedRmv(
             final List<DiveConfigurationCylinder> cylinders,
             final CylinderRole role,
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline) {
-        var totalLiters = 0.0;
-        final var windows = new ArrayList<UsageWindow>();
+        final var windowed = new ArrayList<DiveConfigurationCylinder>();
+        final var unwindowed = new ArrayList<DiveConfigurationCylinder>();
         for (final var cylinder : cylinders) {
-            if (cylinder.role() != role) {
+            if (cylinder.role() != role || consumedLiters(cylinder) == null) {
                 continue;
             }
+            (cylinder.usageWindows().isEmpty() ? unwindowed : windowed).add(cylinder);
+        }
+        if (windowed.isEmpty() && unwindowed.isEmpty()) {
+            return null;
+        }
+
+        final var explicitWindows =
+                windowed.stream()
+                        .flatMap(c -> c.usageWindows().stream())
+                        .map(UsageWindow::of)
+                        .toList();
+        // Every (mode-gated) profile segment not inside any windowed cylinder's window. Empty
+        // explicitWindows => the whole (mode-gated) profile.
+        final var complementPressureMinutes =
+                pressureMinutesNotCovered(depthTimeline, modeTimeline, explicitWindows);
+
+        var numerator = 0.0;
+        var anyIncluded = false;
+        for (final var cylinder : windowed) {
             final var liters = consumedLiters(cylinder);
             if (liters == null) {
                 continue;
             }
-            final var window = new UsageWindow(cylinder.usageStart(), cylinder.usageEnd());
-            // Gate on this cylinder's own window actually covering some of the dive, same as
-            // before - a cylinder whose window doesn't overlap the profile at all contributes
-            // neither litres nor pressure-minutes.
-            if (pressureMinutesCovered(depthTimeline, modeTimeline, List.of(window)) <= 0) {
+            final var ownWindows = cylinder.usageWindows().stream().map(UsageWindow::of).toList();
+            // Same gate as before: a windowed cylinder whose own windows cover no pressure-minutes
+            // (doesn't overlap the profile) contributes nothing.
+            if (pressureMinutesCovered(depthTimeline, modeTimeline, ownWindows) <= 0) {
                 continue;
             }
-            totalLiters += liters;
-            windows.add(window);
+            numerator += liters;
+            anyIncluded = true;
         }
-        if (windows.isEmpty()) {
+        var anyUnwindowedIncluded = false;
+        for (final var cylinder : unwindowed) {
+            final var liters = consumedLiters(cylinder);
+            if (liters == null) {
+                continue;
+            }
+            // Drop an unwindowed cylinder when the complement covers 0 pressure-minutes - the
+            // windowed cylinders already span the whole dive, so a real pressure drop here is
+            // contradictory data; excluding its litres is safer than inflating RMV against zero
+            // added time.
+            if (complementPressureMinutes <= 0) {
+                continue;
+            }
+            numerator += liters;
+            anyIncluded = true;
+            anyUnwindowedIncluded = true;
+        }
+        if (!anyIncluded) {
             return null;
         }
-        // The combined denominator is the union of every contributing cylinder's window, not the
-        // sum of each computed independently - see this class's own doc comment for why summing
-        // double-counts elapsed time whenever two cylinders share (or overlap) a window.
-        final var totalPressureMinutes =
-                pressureMinutesCovered(depthTimeline, modeTimeline, windows);
-        return totalPressureMinutes > 0 ? totalLiters / totalPressureMinutes : null;
+
+        final var denominator =
+                pressureMinutesCovered(depthTimeline, modeTimeline, explicitWindows)
+                        + (anyUnwindowedIncluded ? complementPressureMinutes : 0.0);
+        return denominator > 0 ? numerator / denominator : null;
     }
 
-    /**
-     * Sums (segment duration in minutes × average ambient pressure) across every consecutive pair
-     * of samples in {@code depthTimeline} that falls within <b>any</b> of {@code windows} (a
-     * segment covered by more than one window still counts only once) and, when {@code
-     * modeTimeline} is given, whose held mode at the segment's start is {@link DiveMode#OC}.
-     */
     private static double pressureMinutesCovered(
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline,
             final List<UsageWindow> windows) {
+        return pressureMinutes(depthTimeline, modeTimeline, windows, false);
+    }
+
+    private static double pressureMinutesNotCovered(
+            final List<TimedValue<Double>> depthTimeline,
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final List<UsageWindow> windows) {
+        return pressureMinutes(depthTimeline, modeTimeline, windows, true);
+    }
+
+    /**
+     * Sums (segment duration in minutes × average ambient pressure) across every consecutive pair
+     * of samples in {@code depthTimeline} that falls within <b>any</b> of {@code windows} ({@code
+     * invert == false}) or within <b>none</b> of them ({@code invert == true}) and, when {@code
+     * modeTimeline} is given, whose held mode at the segment's start is {@link DiveMode#OC}. An
+     * empty {@code windows} list covers nothing ({@code invert == false}) / everything ({@code
+     * invert == true}).
+     */
+    private static double pressureMinutes(
+            final List<TimedValue<Double>> depthTimeline,
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final List<UsageWindow> windows,
+            final boolean invert) {
         var total = 0.0;
         for (var i = 0; i + 1 < depthTimeline.size(); i++) {
             final var a = depthTimeline.get(i);
             final var b = depthTimeline.get(i + 1);
-            if (windows.stream().noneMatch(w -> segmentWithinWindow(a.time(), b.time(), w))) {
+            final var within =
+                    windows.stream().anyMatch(w -> segmentWithinWindow(a.time(), b.time(), w));
+            if (within == invert) {
                 continue;
             }
             if (modeTimeline != null) {

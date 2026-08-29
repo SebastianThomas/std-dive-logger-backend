@@ -15,7 +15,9 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrUnit;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderMaterial;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
@@ -182,13 +184,13 @@ class DiveConfigurationUpdateIntegrationTest {
         return new DiveConfigurationCylinder(
                 0,
                 new CylinderSize(CylinderSizeUnit.LITER, liters),
+                null,
                 200.0,
                 50.0,
                 notes,
                 Gas.AIR,
                 CylinderRole.OC,
-                null,
-                null);
+                List.of());
     }
 
     @Test
@@ -305,6 +307,98 @@ class DiveConfigurationUpdateIntegrationTest {
         assertThat(Objects.requireNonNull(reloaded.configuration()).cylinders()).hasSize(1);
         assertThat(Objects.requireNonNull(reloaded.configuration()).cylinders().getFirst().notes())
                 .isEqualTo("single back gas");
+    }
+
+    private UpdateDiveBody configBody(final DiveConfigurationCylinder... cylinders) {
+        return new UpdateDiveBody(
+                diveId,
+                1,
+                null,
+                suitId,
+                new DiveConfiguration(
+                        Suit.createUnknown(userEntity.toRecord()),
+                        BaseConfiguration.BACKMOUNT,
+                        null,
+                        null,
+                        List.of(cylinders),
+                        null,
+                        null,
+                        null),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null);
+    }
+
+    @Test
+    void cylinderMaterialRoundTripsAndIsInferredWhenAbsent() {
+        diveService.updateDive(
+                userEntity.toRecord(),
+                configBody(
+                        new DiveConfigurationCylinder(
+                                0,
+                                new CylinderSize(CylinderSizeUnit.LITER, 12.0),
+                                CylinderMaterial.STEEL,
+                                200.0,
+                                50.0,
+                                "explicit steel",
+                                Gas.AIR,
+                                CylinderRole.OC,
+                                List.of()),
+                        // null material, 6 L -> inferred ALU (3.5 < 6 < 8.5)
+                        cylinder(6.0, "inferred alu"),
+                        // null material, 15 L -> inferred STEEL (>= 8.5)
+                        cylinder(15.0, "inferred steel")));
+
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var cylinders = Objects.requireNonNull(reloaded.configuration()).cylinders();
+        assertThat(cylinders)
+                .extracting(c -> c.notes() + ":" + c.material())
+                .containsExactlyInAnyOrder(
+                        "explicit steel:STEEL", "inferred alu:ALU", "inferred steel:STEEL");
+    }
+
+    @Test
+    void cylinderUsageWindowsRoundTripInOrder() {
+        final var w1Start = Instant.parse("2026-01-01T10:00:00Z");
+        final var w1End = Instant.parse("2026-01-01T10:10:00Z");
+        final var w2Start = Instant.parse("2026-01-01T10:20:00Z");
+        final var w2End = Instant.parse("2026-01-01T10:30:00Z");
+
+        diveService.updateDive(
+                userEntity.toRecord(),
+                configBody(
+                        new DiveConfigurationCylinder(
+                                0,
+                                new CylinderSize(CylinderSizeUnit.LITER, 12.0),
+                                CylinderMaterial.STEEL,
+                                200.0,
+                                50.0,
+                                "two windows",
+                                Gas.AIR,
+                                CylinderRole.OC,
+                                List.of(
+                                        new CylinderUsageWindow(w1Start, w1End),
+                                        new CylinderUsageWindow(w2Start, w2End)))));
+
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var windows =
+                Objects.requireNonNull(reloaded.configuration())
+                        .cylinders()
+                        .getFirst()
+                        .usageWindows();
+        assertThat(windows)
+                .containsExactly(
+                        new CylinderUsageWindow(w1Start, w1End),
+                        new CylinderUsageWindow(w2Start, w2End));
     }
 
     private CcrUnitEntity ccrUnit(final String name, final CcrMountPosition mountPosition) {

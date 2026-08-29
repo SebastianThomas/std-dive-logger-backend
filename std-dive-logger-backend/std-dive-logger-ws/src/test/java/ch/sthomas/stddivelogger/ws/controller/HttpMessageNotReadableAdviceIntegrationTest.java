@@ -143,8 +143,8 @@ class HttpMessageNotReadableAdviceIntegrationTest {
                         "notes": "",
                         "gas": { "o2": 0.21, "he": 0 },
                         "role": "OC",
-                        "usageStart": null,
-                        "usageEnd": null
+                        "material": null,
+                        "usageWindows": []
                       }
                     ]
                   }

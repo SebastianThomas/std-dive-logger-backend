@@ -215,6 +215,9 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                     new DiveConfigurationCylinder(
                             0,
                             size,
+                            // Material inferred from litres on persist
+                            // (StandardCylinder.inferMaterial).
+                            null,
                             barValue(SubsurfaceXmlFile.parseGasContent(cylinder.start())),
                             barValue(SubsurfaceXmlFile.parseGasContent(cylinder.end())),
                             Objects.requireNonNullElse(cylinder.description(), ""),
@@ -222,8 +225,7 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                                     SubsurfaceXmlFile.parsePercent(cylinder.o2()) / 100,
                                     SubsurfaceXmlFile.parsePercent(cylinder.he()) / 100),
                             CylinderRole.OC,
-                            null,
-                            null));
+                            List.of()));
         }
         return result;
     }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
@@ -73,13 +74,31 @@ class CylinderConsumptionCalculatorTest {
         return new DiveConfigurationCylinder(
                 1,
                 new CylinderSize(CylinderSizeUnit.LITER, sizeLiters),
+                null,
                 startBar,
                 endBar,
                 "",
                 Gas.AIR,
                 role,
+                List.of());
+    }
+
+    private static DiveConfigurationCylinder windowedCylinder(
+            final double sizeLiters,
+            final double startBar,
+            final double endBar,
+            final CylinderRole role,
+            final List<CylinderUsageWindow> windows) {
+        return new DiveConfigurationCylinder(
+                nextId++,
+                new CylinderSize(CylinderSizeUnit.LITER, sizeLiters),
                 null,
-                null);
+                startBar,
+                endBar,
+                "",
+                Gas.AIR,
+                role,
+                windows);
     }
 
     @Test
@@ -146,13 +165,16 @@ class CylinderConsumptionCalculatorTest {
                 new DiveConfigurationCylinder(
                         2,
                         new CylinderSize(CylinderSizeUnit.LITER, 10),
+                        null,
                         160.0,
                         100.0,
                         "",
                         Gas.AIR,
                         CylinderRole.OC,
-                        m0.measurement().time(),
-                        m1.measurement().time()); // 600L, only the first half
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(),
+                                        m1.measurement().time()))); // 600L, only the first half
 
         final var result =
                 CylinderConsumptionCalculator.calculate(
@@ -223,24 +245,28 @@ class CylinderConsumptionCalculatorTest {
                 new DiveConfigurationCylinder(
                         1,
                         new CylinderSize(CylinderSizeUnit.LITER, 12),
+                        null,
                         200.0,
                         150.0,
                         "",
                         Gas.AIR,
                         CylinderRole.OC,
-                        m0.measurement().time(),
-                        m1.measurement().time());
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time())));
         final var cylinderB =
                 new DiveConfigurationCylinder(
                         2,
                         new CylinderSize(CylinderSizeUnit.LITER, 12),
+                        null,
                         200.0,
                         100.0,
                         "",
                         Gas.AIR,
                         CylinderRole.OC,
-                        m1.measurement().time(),
-                        m2.measurement().time());
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m1.measurement().time(), m2.measurement().time())));
 
         final var result =
                 CylinderConsumptionCalculator.calculate(
@@ -250,5 +276,122 @@ class CylinderConsumptionCalculatorTest {
         // Cylinder B: 1200L over [10m,20m]/1min -> ambient 2.0->3.0, avg 2.5 -> 2.5 pressure-min.
         // Combined: (600 + 1200) / (1.5 + 2.5) = 450.
         assertEquals((600.0 + 1200.0) / (1.5 + 2.5), notNull(result.ocRmvLiters()), 1e-9);
+    }
+
+    @Test
+    void populatesOcConsumedLitersFromEveryOcCylinder() {
+        final var profile = profile(List.of(sample(0, 0, null), sample(60, 20, null)));
+        final var a = cylinder(12, 200, 100, CylinderRole.OC); // 1200L
+        final var b = cylinder(10, 200, 140, CylinderRole.OC); // 600L
+
+        final var result = CylinderConsumptionCalculator.calculate(List.of(profile), List.of(a, b));
+
+        assertEquals(1800.0, notNull(result.ocConsumedLiters()), 1e-9);
+    }
+
+    @Test
+    void twoDisjointWindowsOnOneCylinderWeightOverTheirUnion() {
+        // Same profile + expected result as respectsAnExplicitUsageWindow... above, but a single
+        // cylinder breathed across two disjoint stretches instead of two cylinder rows.
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 10, null);
+        final var m2 = sample(120, 20, null);
+        final var profile = profile(List.of(m0, m1, m2));
+        // 12L, 200 -> 50 bar -> 1800L, windows = [m0,m1] and [m1,m2] (the whole dive).
+        final var cylinder =
+                windowedCylinder(
+                        12,
+                        200,
+                        50,
+                        CylinderRole.OC,
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time()),
+                                new CylinderUsageWindow(
+                                        m1.measurement().time(), m2.measurement().time())));
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(cylinder));
+
+        // Union is the whole profile -> 1.5 + 2.5 = 4.0 pressure-minutes. 1800 / 4.0 = 450, the
+        // same as the old two-row (600 + 1200) / (1.5 + 2.5) result.
+        assertEquals(1800.0 / 4.0, notNull(result.ocRmvLiters()), 1e-9);
+    }
+
+    @Test
+    void unwindowedCylindersShareTheComplementOfTheWindowedOnes() {
+        // 4 one-minute segments: p-minutes 1.5 / 2.5 / 2.5 / 1.5 -> 8.0 total.
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 10, null);
+        final var m2 = sample(120, 20, null);
+        final var m3 = sample(180, 10, null);
+        final var m4 = sample(240, 0, null);
+        final var profile = profile(List.of(m0, m1, m2, m3, m4));
+        final var a =
+                windowedCylinder(
+                        12,
+                        200,
+                        150,
+                        CylinderRole.OC, // 600L
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time())));
+        final var b =
+                windowedCylinder(
+                        12,
+                        200,
+                        100,
+                        CylinderRole.OC, // 1200L
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m1.measurement().time(), m2.measurement().time())));
+        final var c =
+                windowedCylinder(
+                        12,
+                        200,
+                        100,
+                        CylinderRole.OC, // 1200L
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m2.measurement().time(), m3.measurement().time())));
+        final var d = cylinder(12, 210, 200, CylinderRole.OC); // 120L, unwindowed
+        final var e = cylinder(10, 200, 190, CylinderRole.OC); // 100L, unwindowed
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(a, b, c, d, e));
+
+        // The 2 unwindowed cover the last segment (the complement); denominator is the whole dive.
+        assertEquals(
+                (600.0 + 1200.0 + 1200.0 + 120.0 + 100.0) / 8.0,
+                notNull(result.ocRmvLiters()),
+                1e-9);
+    }
+
+    @Test
+    void unwindowedCylinderExcludedWhenWindowedCylindersSpanTheWholeDive() {
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 10, null);
+        final var m2 = sample(120, 20, null);
+        final var profile = profile(List.of(m0, m1, m2));
+        final var windowed =
+                windowedCylinder(
+                        12,
+                        200,
+                        50,
+                        CylinderRole.OC, // 1800L over the whole dive
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time()),
+                                new CylinderUsageWindow(
+                                        m1.measurement().time(), m2.measurement().time())));
+        final var unwindowed = cylinder(12, 200, 100, CylinderRole.OC); // 1200L, contradictory
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile), List.of(windowed, unwindowed));
+
+        // Complement is empty -> the unwindowed cylinder's litres are excluded rather than
+        // inflating RMV: 1800 / 4.0 = 450, not (1800 + 1200) / 4.0.
+        assertEquals(1800.0 / 4.0, notNull(result.ocRmvLiters()), 1e-9);
     }
 }

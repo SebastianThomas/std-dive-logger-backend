@@ -215,6 +215,46 @@ class DiveBackfillIntegrationTest {
     }
 
     @Test
+    void aGasConsumptionMismatchSurfacesAsADismissableChip() {
+        final var user = newUser("backfill-gasmismatch@test.ch");
+        final var siteId = newSite("Gas Mismatch Site");
+        final var diveId = createDive(user, siteId, 1, Instant.parse("2026-01-01T09:00:00Z"));
+
+        // rmv says 10 L/min, but total 1800 L over ~2.0 ata * 10 min implies ~90 - a big internal
+        // clash. Every other checklist item is filled here so the chip is the only thing left.
+        diveService.updateDive(
+                user,
+                new UpdateDiveBody(
+                        diveId,
+                        1,
+                        "Notes",
+                        0,
+                        null,
+                        new DiveGasConsumption(0, 10.0, 1800.0),
+                        new Visibility(10.0, "Clear", VisibilityFeeling.HIGH),
+                        null,
+                        null,
+                        null,
+                        WaterType.SALT,
+                        new Current(0.1, "Mild", 1),
+                        null,
+                        null,
+                        true,
+                        null,
+                        10.0));
+
+        var status = diveService.getBackfillStatus(user, diveId);
+        assertThat(status.missingFields())
+                .containsExactly(DiveBackfillField.GAS_CONSUMPTION_MISMATCH);
+
+        diveService.setBackfillDismissed(
+                user, diveId, DiveBackfillField.GAS_CONSUMPTION_MISMATCH, true);
+        status = diveService.getBackfillStatus(user, diveId);
+        assertThat(status.outstandingFields()).isEmpty();
+        assertThat(status.fullyDismissed()).isTrue();
+    }
+
+    @Test
     void cannotTouchAnotherUsersDiveBackfill() {
         final var owner = newUser("backfill-owner@test.ch");
         final var stranger = newUser("backfill-stranger@test.ch");

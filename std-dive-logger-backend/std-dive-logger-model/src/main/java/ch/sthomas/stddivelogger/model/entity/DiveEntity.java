@@ -1,11 +1,15 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.dive.stats.GasConsumptionComparison;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
 
 import jakarta.persistence.*;
@@ -234,6 +238,7 @@ public class DiveEntity {
                 cylinders.isEmpty()
                         ? null
                         : CylinderConsumptionCalculator.calculate(profileRecords, cylinders),
+                gasConsumptionComparison(),
                 Optional.ofNullable(configuration)
                         .map(DiveConfigurationEntity::toRecord)
                         .orElse(null),
@@ -251,6 +256,54 @@ public class DiveEntity {
                         .orElse(null),
                 getLeader(),
                 teamTerminology);
+    }
+
+    /**
+     * Inserted-vs-calculated gas-consumption reconciliation for this dive, or {@code null} when
+     * there's nothing to compare. Kept cheap for {@link #toBackfillStatus} (run per-dive over the
+     * whole backfill queue): bails before building any profile records unless {@code
+     * gasConsumption} is a real, non-{@link DiveGasConsumption#EMPTY} value, and only runs {@link
+     * CylinderConsumptionCalculator} when OC cylinders with both start/end bar exist.
+     */
+    private @Nullable GasConsumptionComparison gasConsumptionComparison() {
+        final var gas =
+                Optional.ofNullable(gasConsumption)
+                        .map(DiveGasConsumptionEntity::toRecord)
+                        .orElse(null);
+        if (gas == null || gas.equals(DiveGasConsumption.EMPTY)) {
+            return null;
+        }
+        final var summary = getSummary();
+        final List<DiveConfigurationCylinder> cylinders =
+                Optional.ofNullable(configuration)
+                        .map(DiveConfigurationEntity::toRecord)
+                        .map(DiveConfiguration::cylinders)
+                        .orElse(List.of());
+        final var hasUsableOcCylinder =
+                cylinders.stream()
+                        .anyMatch(
+                                c ->
+                                        c.role() == CylinderRole.OC
+                                                && c.startBar() != null
+                                                && c.endBar() != null);
+        final var cylinderResult =
+                hasUsableOcCylinder
+                        ? CylinderConsumptionCalculator.calculate(
+                                profiles.stream().map(DiveProfileEntity::toRecord).toList(),
+                                cylinders)
+                        : CylinderConsumptionResult.EMPTY;
+        final var comparison =
+                GasConsumptionComparison.of(
+                        gas,
+                        cylinderResult,
+                        summary.averageDepth(),
+                        summary.bottomTime().toSeconds());
+        // Nothing calculable or derivable to compare against - not a mismatch, just absent.
+        if (comparison.calculatedRmvLiters() == null
+                && comparison.impliedRmvFromTotalLiters() == null) {
+            return null;
+        }
+        return comparison;
     }
 
     private DiveLeader getLeader() {
@@ -302,6 +355,10 @@ public class DiveEntity {
                         .orElse(null);
         if (gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY)) {
             missing.add(DiveBackfillField.GAS_CONSUMPTION);
+        }
+        final var gasComparison = gasConsumptionComparison();
+        if (gasComparison != null && gasComparison.mismatch()) {
+            missing.add(DiveBackfillField.GAS_CONSUMPTION_MISMATCH);
         }
         if (getLeader().type() == DiveLeader.LeaderType.UNSET) {
             missing.add(DiveBackfillField.LEADER);
