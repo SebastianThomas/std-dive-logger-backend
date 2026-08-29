@@ -127,6 +127,23 @@ public class DiveSiteController {
         return diveService.getSiteByPartialName(query, page);
     }
 
+    @Operation(
+            summary = "The user's own dive sites, most-dived first",
+            description =
+                    "Backs the empty-query autocomplete suggestion (Ctrl+Space / Down arrow).")
+    @GetMapping(path = "/mine")
+    public List<DiveSite> myDiveSites(
+            @AuthenticationPrincipal final User user,
+            @RequestParam(name = "limit", defaultValue = "20") @Positive final int limit) {
+        return diveService.getSitesByUser(user, true).stream()
+                .sorted(
+                        java.util.Comparator.comparingLong(DiveSiteWithDives<DiveSite>::diveCount)
+                                .reversed())
+                .limit(limit)
+                .map(DiveSiteWithDives::site)
+                .toList();
+    }
+
     public record CreateDiveSiteBody(
             @NotBlank String name,
             @DecimalMin("-90") @DecimalMax("90") double lat,

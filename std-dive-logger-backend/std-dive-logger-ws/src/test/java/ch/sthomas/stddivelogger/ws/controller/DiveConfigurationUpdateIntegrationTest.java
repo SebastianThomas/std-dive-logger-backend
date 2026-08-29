@@ -194,6 +194,31 @@ class DiveConfigurationUpdateIntegrationTest {
     }
 
     @Test
+    void aCuftCylinderProducesARealisticCalculatedConsumptionNotA200xOne() {
+        diveService.updateDive(
+                userEntity.toRecord(),
+                configBody(
+                        new DiveConfigurationCylinder(
+                                0,
+                                new CylinderSize(CylinderSizeUnit.CUFT, 80),
+                                null,
+                                200.0,
+                                50.0,
+                                "AL80",
+                                Gas.AIR,
+                                CylinderRole.OC,
+                                List.of())));
+
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var consumed =
+                Objects.requireNonNull(reloaded.cylinderConsumption()).ocConsumedLiters();
+        // ~150 bar drop x ~11 L water volume ~ 1600 L, not the ~340 000 L the cuft-as-cubic-feet
+        // bug produced.
+        assertThat(consumed).isNotNull();
+        assertThat(consumed).isBetween(1200.0, 2200.0);
+    }
+
+    @Test
     void updatingAnExistingConfigurationsCylindersDoesNotThrow() {
         final var body =
                 new UpdateDiveBody(

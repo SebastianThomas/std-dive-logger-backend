@@ -15,8 +15,8 @@ public enum DiveBackfillField {
     /**
      * The dive's inserted whole-dive gas consumption disagrees with what the tracked cylinders +
      * profile imply (RMV or total litres off by more than {@code
-     * GasConsumptionComparison.RMV_MISMATCH_TOLERANCE}). Dismissable like any other reason - the
-     * inline warning on the dive view stays regardless.
+     * GasConsumptionComparison.MISMATCH_TOLERANCE}). Dismissable like any other reason - the inline
+     * warning on the dive view stays regardless.
      */
     GAS_CONSUMPTION_MISMATCH
 }

@@ -72,17 +72,24 @@ public final class CylinderConsumptionCalculator {
         final var isCcrDive = modeTimeline.stream().anyMatch(tv -> tv.value() == DiveMode.CC);
 
         final var ocRmv =
-                isCcrDive ? null : combinedRmv(cylinders, CylinderRole.OC, depthTimeline, null);
+                isCcrDive
+                        ? RoleRmv.NONE
+                        : combinedRmv(cylinders, CylinderRole.OC, depthTimeline, null);
         final var bailoutRmv =
                 isCcrDive
                         ? combinedRmv(cylinders, CylinderRole.BAILOUT, depthTimeline, modeTimeline)
-                        : null;
+                        : RoleRmv.NONE;
         final var o2Liters = sumConsumedLiters(cylinders, CylinderRole.O2);
         final var diluentLiters = sumConsumedLiters(cylinders, CylinderRole.DILUENT);
         final var ocConsumedLiters = sumConsumedLiters(cylinders, CylinderRole.OC);
 
         return new CylinderConsumptionResult(
-                ocRmv, bailoutRmv, o2Liters, diluentLiters, ocConsumedLiters);
+                ocRmv.rmvLiters(),
+                bailoutRmv.rmvLiters(),
+                o2Liters,
+                diluentLiters,
+                ocConsumedLiters,
+                ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes());
     }
 
     private static @Nullable Double consumedLiters(final DiveConfigurationCylinder cylinder) {
@@ -122,6 +129,14 @@ public final class CylinderConsumptionCalculator {
     }
 
     /**
+     * One role's combined RMV plus the pressure-minutes denominator behind it (for the
+     * gas-consistency breakdown). {@code rmvLiters} null = nothing to compute it from.
+     */
+    private record RoleRmv(@Nullable Double rmvLiters, double pressureMinutes) {
+        static final RoleRmv NONE = new RoleRmv(null, 0);
+    }
+
+    /**
      * Combined RMV for one role. Cylinders split into <b>windowed</b> (≥1 usage window - active
      * over the union of their own windows) and <b>unwindowed</b> (active over the
      * <i>complement</i>: every part of the (mode-gated) profile not covered by any windowed
@@ -134,7 +149,7 @@ public final class CylinderConsumptionCalculator {
      * @param modeTimeline when non-null, only segments held at {@link DiveMode#OC} count towards
      *     pressure-minutes (used for bailout RMV); {@code null} means every segment counts.
      */
-    private static @Nullable Double combinedRmv(
+    private static RoleRmv combinedRmv(
             final List<DiveConfigurationCylinder> cylinders,
             final CylinderRole role,
             final List<TimedValue<Double>> depthTimeline,
@@ -148,7 +163,7 @@ public final class CylinderConsumptionCalculator {
             (cylinder.usageWindows().isEmpty() ? unwindowed : windowed).add(cylinder);
         }
         if (windowed.isEmpty() && unwindowed.isEmpty()) {
-            return null;
+            return RoleRmv.NONE;
         }
 
         final var explicitWindows =
@@ -195,13 +210,13 @@ public final class CylinderConsumptionCalculator {
             anyUnwindowedIncluded = true;
         }
         if (!anyIncluded) {
-            return null;
+            return RoleRmv.NONE;
         }
 
         final var denominator =
                 pressureMinutesCovered(depthTimeline, modeTimeline, explicitWindows)
                         + (anyUnwindowedIncluded ? complementPressureMinutes : 0.0);
-        return denominator > 0 ? numerator / denominator : null;
+        return new RoleRmv(denominator > 0 ? numerator / denominator : null, denominator);
     }
 
     private static double pressureMinutesCovered(

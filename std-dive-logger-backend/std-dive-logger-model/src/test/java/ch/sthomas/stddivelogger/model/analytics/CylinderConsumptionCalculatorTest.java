@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.analytics;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -276,6 +277,45 @@ class CylinderConsumptionCalculatorTest {
         // Cylinder B: 1200L over [10m,20m]/1min -> ambient 2.0->3.0, avg 2.5 -> 2.5 pressure-min.
         // Combined: (600 + 1200) / (1.5 + 2.5) = 450.
         assertEquals((600.0 + 1200.0) / (1.5 + 2.5), notNull(result.ocRmvLiters()), 1e-9);
+    }
+
+    @Test
+    void aCuftRatedCylinderIsTreatedAsItsWaterVolumeNotItsFreeGasRating() {
+        // 0m -> 20m over 60s: 2.0 pressure-minutes. An "80 cuft" AL80 has ~11 L water volume, so a
+        // 150 bar drop is ~1600 L, RMV ~800 - not the ~330 000 L / ~165 000 RMV the old
+        // cuft-as-cubic-feet bug produced.
+        final var profile = profile(List.of(sample(0, 0, null), sample(60, 20, null)));
+        final var al80 =
+                new DiveConfigurationCylinder(
+                        1,
+                        new CylinderSize(CylinderSizeUnit.CUFT, 80),
+                        null,
+                        200.0,
+                        50.0,
+                        "",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        List.of());
+
+        final var result = CylinderConsumptionCalculator.calculate(List.of(profile), List.of(al80));
+
+        assertThat(notNull(result.ocRmvLiters())).isBetween(700.0, 900.0);
+        assertThat(notNull(result.ocConsumedLiters())).isBetween(1400.0, 1800.0);
+    }
+
+    @Test
+    void exposesOcPressureMinutesAsTheRmvDenominator() {
+        final var profile = profile(List.of(sample(0, 0, null), sample(60, 20, null)));
+        final var cylinder = cylinder(12, 200, 100, CylinderRole.OC); // 1200 L over 2.0 p-min
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(cylinder));
+
+        assertEquals(2.0, notNull(result.ocPressureMinutes()), 1e-9);
+        assertEquals(
+                notNull(result.ocConsumedLiters()) / notNull(result.ocPressureMinutes()),
+                notNull(result.ocRmvLiters()),
+                1e-9);
     }
 
     @Test

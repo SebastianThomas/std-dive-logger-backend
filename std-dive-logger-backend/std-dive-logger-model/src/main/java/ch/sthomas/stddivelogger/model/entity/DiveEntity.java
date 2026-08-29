@@ -7,7 +7,10 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
+import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.dive.stats.GasConsumptionComparison;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
@@ -263,7 +266,8 @@ public class DiveEntity {
      * there's nothing to compare. Kept cheap for {@link #toBackfillStatus} (run per-dive over the
      * whole backfill queue): bails before building any profile records unless {@code
      * gasConsumption} is a real, non-{@link DiveGasConsumption#EMPTY} value, and only runs {@link
-     * CylinderConsumptionCalculator} when OC cylinders with both start/end bar exist.
+     * CylinderConsumptionCalculator} when OC cylinders with both start/end bar exist. Suppressed
+     * entirely on a CCR dive - a whole-dive RMV/total isn't a meaningful concept for a closed loop.
      */
     private @Nullable GasConsumptionComparison gasConsumptionComparison() {
         final var gas =
@@ -286,24 +290,59 @@ public class DiveEntity {
                                         c.role() == CylinderRole.OC
                                                 && c.startBar() != null
                                                 && c.endBar() != null);
-        final var cylinderResult =
-                hasUsableOcCylinder
-                        ? CylinderConsumptionCalculator.calculate(
-                                profiles.stream().map(DiveProfileEntity::toRecord).toList(),
-                                cylinders)
-                        : CylinderConsumptionResult.EMPTY;
+        CylinderConsumptionResult cylinderResult = CylinderConsumptionResult.EMPTY;
+        if (hasUsableOcCylinder) {
+            final var profileRecords = profiles.stream().map(DiveProfileEntity::toRecord).toList();
+            final var isCcr =
+                    profileRecords.stream()
+                            .map(DiveProfile::measurements)
+                            .filter(Objects::nonNull)
+                            .flatMap(List::stream)
+                            .anyMatch(m -> m.measurement().mode() == DiveMode.CC);
+            if (isCcr) {
+                // A whole-dive RMV/total isn't a meaningful concept for a closed loop.
+                return null;
+            }
+            cylinderResult = CylinderConsumptionCalculator.calculate(profileRecords, cylinders);
+        }
         final var comparison =
                 GasConsumptionComparison.of(
                         gas,
                         cylinderResult,
                         summary.averageDepth(),
-                        summary.bottomTime().toSeconds());
+                        summary.bottomTime().toSeconds(),
+                        cylinderContributions(cylinders));
         // Nothing calculable or derivable to compare against - not a mismatch, just absent.
         if (comparison.calculatedRmvLiters() == null
+                && comparison.calculatedTotalLiters() == null
                 && comparison.impliedRmvFromTotalLiters() == null) {
             return null;
         }
         return comparison;
+    }
+
+    private static List<CylinderContribution> cylinderContributions(
+            final List<DiveConfigurationCylinder> cylinders) {
+        return cylinders.stream()
+                .map(
+                        c -> {
+                            final var waterVolume = c.size().liters();
+                            final Double consumed =
+                                    (c.startBar() != null
+                                                    && c.endBar() != null
+                                                    && c.startBar() - c.endBar() > 0)
+                                            ? (c.startBar() - c.endBar()) * waterVolume
+                                            : null;
+                            return new CylinderContribution(
+                                    waterVolume,
+                                    c.material(),
+                                    c.role(),
+                                    c.startBar(),
+                                    c.endBar(),
+                                    consumed,
+                                    c.usageWindows());
+                        })
+                .toList();
     }
 
     private DiveLeader getLeader() {

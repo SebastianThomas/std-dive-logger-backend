@@ -18,7 +18,11 @@ public record CylinderConsumptionResult(
         // Total litres consumed across this dive's OC-role cylinders (surface volume), independent
         // of the pressure-minutes weighting behind ocRmvLiters - null when no OC cylinder had
         // usable start/end pressure. Feeds the inserted-vs-calculated gas-consumption check.
-        @Nullable Double ocConsumedLiters) {
+        @Nullable Double ocConsumedLiters,
+        // The denominator behind ocRmvLiters: pressure-minutes (Sum of segment minutes x avg
+        // ambient ATA) over the stretches the OC cylinders were actually breathed. Surfaced so the
+        // gas-consistency breakdown can show "RMV = Sum litres / this". Null when ocRmvLiters is.
+        @Nullable Double ocPressureMinutes) {
     public static final CylinderConsumptionResult EMPTY =
-            new CylinderConsumptionResult(null, null, null, null, null);
+            new CylinderConsumptionResult(null, null, null, null, null, null);
 }
