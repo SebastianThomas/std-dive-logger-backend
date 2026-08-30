@@ -2,7 +2,9 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import static org.apache.commons.lang3.compare.ComparableUtils.min;
 
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
 import ch.sthomas.stddivelogger.model.dive.DiveSummary;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 
 import com.nimbusds.jose.util.Pair;
 
@@ -14,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Gatherers;
 
 @Entity
@@ -50,6 +53,28 @@ public class DiveSummaryEntity {
     @Column(name = "max_time_to_surface_seconds")
     private @Nullable Long maxTimeToSurfaceSeconds;
 
+    // Cylinder-derived RMV, from CylinderConsumptionCalculator. Exactly one is ever non-null on a
+    // given dive - ocRmvLiters for an open-circuit dive, bailoutRmvLiters for one with
+    // closed-circuit
+    // samples - and both are null when no usable cylinder is tracked. Persisted purely so Stats /
+    // Trends can aggregate RMV without re-running the calculator per row (see V0_4_10 migration).
+    @Column(name = "oc_rmv_liters")
+    private @Nullable Double ocRmvLiters;
+
+    @Column(name = "bailout_rmv_liters")
+    private @Nullable Double bailoutRmvLiters;
+
+    /**
+     * Bump whenever {@link CylinderConsumptionCalculator}'s RMV output changes, so the nightly
+     * summary job re-derives every dive whose stored {@link #gasComputationVersion} is behind (a
+     * dive save already recomputes on its own - this covers algorithm changes with no data change).
+     * Starts at 1; the migration defaults existing rows to 0.
+     */
+    public static final short GAS_COMPUTATION_VERSION = 1;
+
+    @Column(name = "gas_computation_version")
+    private short gasComputationVersion;
+
     public DiveSummaryEntity() {}
 
     public DiveSummaryEntity(final DiveEntity dive) {
@@ -83,6 +108,23 @@ public class DiveSummaryEntity {
                         .mapToLong(Integer::longValue)
                         .max();
         this.maxTimeToSurfaceSeconds = maxTts.isPresent() ? maxTts.getAsLong() : null;
+
+        final var cylinders =
+                Optional.ofNullable(dive.getConfiguration())
+                        .map(DiveConfigurationEntity::toRecord)
+                        .map(DiveConfiguration::cylinders)
+                        .orElse(List.of());
+        if (cylinders.isEmpty()) {
+            this.ocRmvLiters = null;
+            this.bailoutRmvLiters = null;
+        } else {
+            final var gas =
+                    CylinderConsumptionCalculator.calculate(
+                            profiles.stream().map(DiveProfileEntity::toRecord).toList(), cylinders);
+            this.ocRmvLiters = gas.ocRmvLiters();
+            this.bailoutRmvLiters = gas.bailoutRmvLiters();
+        }
+        this.gasComputationVersion = GAS_COMPUTATION_VERSION;
     }
 
     /**

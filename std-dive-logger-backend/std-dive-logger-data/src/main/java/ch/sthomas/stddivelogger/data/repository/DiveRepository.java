@@ -211,6 +211,17 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
             "SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId WHERE s.diveId IS NULL")
     Page<DiveEntity> findByNoSummary(Pageable pageable);
 
+    /**
+     * Dives whose summary is missing entirely or was computed by an older {@link
+     * DiveSummaryEntity#GAS_COMPUTATION_VERSION} - the nightly recompute sweep, so an improvement
+     * to the cylinder-consumption maths reaches every existing dive without waiting for a re-save.
+     */
+    @Query(
+            "SELECT d FROM DiveEntity d LEFT JOIN DiveSummaryEntity s ON d.id = s.diveId"
+                    + " WHERE s.diveId IS NULL OR s.gasComputationVersion < :version")
+    Page<DiveEntity> findBySummaryMissingOrGasComputationOlderThan(
+            short version, Pageable pageable);
+
     int countByIdInAndUser_Id(Collection<Long> ids, Long userId);
 
     @Query(

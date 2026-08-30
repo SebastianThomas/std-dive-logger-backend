@@ -429,6 +429,48 @@ class DiveConfigurationUpdateIntegrationTest {
     }
 
     @Test
+    void cylinderDerivedOcRmvIsPersistedOnTheDiveSummaryForStats() {
+        final var ocCylinder =
+                new DiveConfigurationCylinder(
+                        0,
+                        new CylinderSize(CylinderSizeUnit.LITER, 12),
+                        null,
+                        200.0,
+                        50.0,
+                        "back gas",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        List.of());
+        diveService.updateDive(userEntity.toRecord(), configBody(ocCylinder));
+        entityManager.flush();
+        entityManager.clear();
+
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var calculatedOcRmv =
+                Objects.requireNonNull(reloaded.cylinderConsumption()).ocRmvLiters();
+        assertThat(calculatedOcRmv).isNotNull();
+
+        final var persisted =
+                (Double)
+                        entityManager
+                                .createNativeQuery(
+                                        "SELECT oc_rmv_liters FROM t_dive_summary WHERE fk_dive_id = :id")
+                                .setParameter("id", diveId)
+                                .getSingleResult();
+        assertThat(persisted).isEqualTo(calculatedOcRmv);
+
+        final var version =
+                ((Number)
+                                entityManager
+                                        .createNativeQuery(
+                                                "SELECT gas_computation_version FROM t_dive_summary WHERE fk_dive_id = :id")
+                                        .setParameter("id", diveId)
+                                        .getSingleResult())
+                        .shortValue();
+        assertThat(version).isEqualTo((short) 1);
+    }
+
+    @Test
     void cylinderMaterialRoundTripsAndIsInferredWhenAbsent() {
         diveService.updateDive(
                 userEntity.toRecord(),

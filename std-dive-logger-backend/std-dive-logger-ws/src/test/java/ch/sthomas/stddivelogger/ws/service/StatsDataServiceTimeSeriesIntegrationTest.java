@@ -7,8 +7,10 @@ import ch.sthomas.stddivelogger.data.repository.DiveComputerRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.SuitRepository;
+import ch.sthomas.stddivelogger.data.repository.TagDefinitionRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
+import ch.sthomas.stddivelogger.model.dive.AutoDetectRule;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
@@ -83,6 +85,7 @@ class StatsDataServiceTimeSeriesIntegrationTest {
 
     @Autowired private StatsDataService statsDataService;
     @Autowired private UserRepository userRepository;
+    @Autowired private TagDefinitionRepository tagDefinitionRepository;
     @Autowired private SuitRepository suitRepository;
     @Autowired private DiveSiteRepository diveSiteRepository;
     @Autowired private DiveRepository diveRepository;
@@ -149,6 +152,17 @@ class StatsDataServiceTimeSeriesIntegrationTest {
         return diveRepository.save(dive);
     }
 
+    /** Applies the built-in CCR tag (auto_detect_rule = CCR, seeded system-wide by V0_2_9). */
+    private void markAsCcr(final DiveEntity dive) {
+        final var ccrTag =
+                tagDefinitionRepository.findAutoDetectTagsForUser(user.id()).stream()
+                        .filter(t -> t.getAutoDetectRule() == AutoDetectRule.CCR)
+                        .findFirst()
+                        .orElseThrow();
+        dive.setManualTags(List.of(ccrTag));
+        diveRepository.save(dive);
+    }
+
     @BeforeEach
     void setUp() {
         userEntity =
@@ -183,7 +197,25 @@ class StatsDataServiceTimeSeriesIntegrationTest {
         final var bucket = series.points().getFirst();
         assertThat(bucket.diveCount()).isEqualTo(2L);
         // Not (18 + 0) / 2 = 9.0 - the dive with no real data must not drag the average down.
-        assertThat(bucket.avgRmvLiters()).isEqualTo(18.0);
+        assertThat(bucket.avgOcRmvLiters()).isEqualTo(18.0);
+    }
+
+    @Test
+    void aCcrDivesRmvLandsInTheBailoutAverageNotTheOcAverage() {
+        createDive(1, Instant.parse("2026-07-05T10:00:00Z"), 16.0); // plain OC dive
+        final var ccrDive = createDive(2, Instant.parse("2026-07-20T10:00:00Z"), 9.0);
+        markAsCcr(ccrDive);
+
+        final var series =
+                statsDataService.getTimeSeries(
+                        user, StatsGranularity.MONTH, StatsFilters.EMPTY, null);
+
+        assertThat(series.points()).hasSize(1);
+        final var bucket = series.points().getFirst();
+        assertThat(bucket.diveCount()).isEqualTo(2L);
+        // The CCR dive's 9.0 is bailout RMV - kept out of the OC average entirely.
+        assertThat(bucket.avgOcRmvLiters()).isEqualTo(16.0);
+        assertThat(bucket.avgBailoutRmvLiters()).isEqualTo(9.0);
     }
 
     @Test
@@ -230,6 +262,7 @@ class StatsDataServiceTimeSeriesIntegrationTest {
         assertThat(series.points()).hasSize(1);
         final var bucket = series.points().getFirst();
         assertThat(bucket.diveCount()).isEqualTo(2L);
-        assertThat(bucket.avgRmvLiters()).isNull();
+        assertThat(bucket.avgOcRmvLiters()).isNull();
+        assertThat(bucket.avgBailoutRmvLiters()).isNull();
     }
 }

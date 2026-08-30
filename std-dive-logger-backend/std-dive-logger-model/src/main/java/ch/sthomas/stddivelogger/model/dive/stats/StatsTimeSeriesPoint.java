@@ -16,7 +16,11 @@ public record StatsTimeSeriesPoint(
         /** Only set on entries in {@link StatsTimeSeries#breakdown()}, never on {@code points}. */
         @Nullable String category,
         long diveCount,
-        @Nullable Double avgRmvLiters,
+        // Split by dive type - an OC dive's whole-dive RMV and a CCR dive's bailout RMV (breathed
+        // only over the open-circuit portion) are different situations, never pooled into one
+        // average. Each is null for a bucket whose dives are all of the other type / have no RMV.
+        @Nullable Double avgOcRmvLiters,
+        @Nullable Double avgBailoutRmvLiters,
         @Nullable Double maxDepth,
         @Nullable Double avgDepth,
         long totalDurationSeconds,

@@ -621,7 +621,22 @@ public class StatsDataService {
                         ds.avg_depth,
                         ds.max_time_to_surface_seconds,
                         ds.duration_seconds,
-                        NULLIF(gc.rmv_liters, 0) AS rmv_liters,
+                        -- Cylinder-derived RMV (exactly one of the two summary columns is set per
+                        -- dive), falling back to a manually-entered whole-dive RMV. Bucketed into
+                        -- the OC vs bailout average by is_ccr below, not by which column it came
+                        -- from.
+                        COALESCE(ds.oc_rmv_liters, ds.bailout_rmv_liters, NULLIF(gc.rmv_liters, 0))
+                            AS any_rmv_liters,
+                        -- A CCR dive: a CCR unit is attached, or the (auto or manually applied,
+                        -- non-dismissed) built-in CCR tag is on the dive. Its open-circuit RMV is
+                        -- bailout RMV - a different situation from an OC dive's whole-dive RMV.
+                        (dc.fk_ccr_unit_id IS NOT NULL OR EXISTS (
+                            SELECT 1 FROM t_dive_tags dt
+                            JOIN t_tag_definitions td ON td.pk_tag_id = dt.fk_tag_id
+                            WHERE dt.fk_dive_id = d.pk_dive_id
+                              AND dt.dismissed = false
+                              AND td.auto_detect_rule = 'CCR'
+                        )) AS is_ccr,
                         v.visibility_meters,
                         dc.weight_kg,
                         dc.fk_suit_id,
@@ -647,7 +662,8 @@ public class StatsDataService {
     private static final String METRIC_SELECT_LIST =
             """
                     COUNT(*) AS dive_count,
-                    AVG(fd.rmv_liters) AS avg_rmv_liters,
+                    AVG(fd.any_rmv_liters) FILTER (WHERE NOT fd.is_ccr) AS avg_oc_rmv_liters,
+                    AVG(fd.any_rmv_liters) FILTER (WHERE fd.is_ccr) AS avg_bailout_rmv_liters,
                     MAX(fd.max_depth) AS max_depth,
                     AVG(fd.avg_depth) AS avg_depth,
                     COALESCE(SUM(fd.duration_seconds), 0) AS total_duration_seconds,
@@ -693,7 +709,8 @@ public class StatsDataService {
                 withCategory ? null : nullableLong(rs, "dive_id_col"),
                 withCategory ? rs.getString("category") : null,
                 rs.getLong("dive_count"),
-                nullableDouble(rs, "avg_rmv_liters"),
+                nullableDouble(rs, "avg_oc_rmv_liters"),
+                nullableDouble(rs, "avg_bailout_rmv_liters"),
                 nullableDouble(rs, "max_depth"),
                 nullableDouble(rs, "avg_depth"),
                 rs.getLong("total_duration_seconds"),

@@ -2011,7 +2011,9 @@ public class DiveDataService {
                 diveRepository
                         .saveAll(
                                 diveRepository
-                                        .findByNoSummary(Pageable.ofSize(max))
+                                        .findBySummaryMissingOrGasComputationOlderThan(
+                                                DiveSummaryEntity.GAS_COMPUTATION_VERSION,
+                                                Pageable.ofSize(max))
                                         .map(DiveEntity::updateDiveSummary))
                         .size();
         logger.info("Computed Summaries for {} dives (limited at {})", count, max);
