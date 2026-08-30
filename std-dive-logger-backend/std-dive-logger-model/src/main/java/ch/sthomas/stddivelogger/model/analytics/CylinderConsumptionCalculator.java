@@ -214,14 +214,20 @@ public final class CylinderConsumptionCalculator {
         for (var i = 0; i + 1 < depthTimeline.size(); i++) {
             final var a = depthTimeline.get(i);
             final var b = depthTimeline.get(i + 1);
+            if (durationInMinutes(a.time(), b.time()) <= 0) {
+                // Zero-length segment - two samples at the same instant, common when a dive's
+                // profiles are merged from several computers that both log at whole-second
+                // resolution. It carries no information; skip it rather than letting it flush an
+                // otherwise-continuous run and shatter one interval into touching fragments.
+                continue;
+            }
             final var inSomeWindow =
                     windows.stream().anyMatch(w -> segmentWithinWindow(a.time(), b.time(), w));
             final var okMode =
                     modeTimeline == null
                             || heldAt(modeTimeline, a.time()).map(TimedValue::value).orElse(null)
                                     == DiveMode.OC;
-            final var include =
-                    !inSomeWindow && okMode && durationInMinutes(a.time(), b.time()) > 0;
+            final var include = !inSomeWindow && okMode;
             if (include) {
                 if (runStart == null) {
                     runStart = a.time();

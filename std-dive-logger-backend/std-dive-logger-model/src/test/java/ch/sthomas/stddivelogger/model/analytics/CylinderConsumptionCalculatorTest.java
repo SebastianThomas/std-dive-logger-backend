@@ -58,13 +58,18 @@ class CylinderConsumptionCalculatorTest {
     }
 
     private static DiveProfile profile(final List<DiveMeasurementWithId> measurements) {
+        return profile(1, measurements);
+    }
+
+    private static DiveProfile profile(
+            final long id, final List<DiveMeasurementWithId> measurements) {
         return new DiveProfile(
-                1,
-                computer(1),
+                id,
+                computer(id),
                 measurements.getFirst().measurement().time(),
                 measurements.getLast().measurement().time(),
                 measurements,
-                true);
+                id == 1);
     }
 
     private static DiveConfigurationCylinder cylinder(
@@ -567,6 +572,44 @@ class CylinderConsumptionCalculatorTest {
         assertEquals(1, result.openCircuitWindows().size());
         assertEquals(m2.measurement().time(), result.openCircuitWindows().getFirst().start());
         assertEquals(m3.measurement().time(), result.openCircuitWindows().getFirst().end());
+    }
+
+    @Test
+    void coincidentSamplesFromMergedProfilesDoNotFragmentTheOpenCircuitSpan() {
+        // A CCR dive whose profile is merged from two computers (the rebreather, which reports
+        // mode, + a bailout/deco computer that samples the same whole seconds but reports no
+        // mode) - so the combined depth timeline has pairs of identical timestamps. The
+        // open-circuit span must stay one interval, not shatter into a touching fragment per
+        // collision (the dive-217 bug).
+        final var rebreather =
+                profile(
+                        1,
+                        List.of(
+                                sample(0, 20, DiveMode.CC),
+                                sample(60, 20, DiveMode.OC), // bail out
+                                sample(120, 20, DiveMode.OC),
+                                sample(180, 20, DiveMode.OC),
+                                sample(240, 20, DiveMode.CC))); // back on the loop
+        final var decoComputer =
+                profile(
+                        2,
+                        List.of(
+                                sample(0, 20, null),
+                                sample(60, 20, null),
+                                sample(120, 20, null),
+                                sample(180, 20, null),
+                                sample(240, 20, null)));
+        final var bailout = cylinder(12, 200, 100, CylinderRole.BAILOUT);
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(rebreather, decoComputer), List.of(bailout));
+
+        assertEquals(1, result.openCircuitWindows().size());
+        assertEquals(START.plusSeconds(60), result.openCircuitWindows().getFirst().start());
+        assertEquals(START.plusSeconds(240), result.openCircuitWindows().getFirst().end());
+        // 3 minutes open-circuit at a constant 20 m -> 3.0 bar ambient -> 9.0 pressure-minutes.
+        assertEquals(9.0, notNull(result.bailoutPressureMinutes()), 1e-9);
     }
 
     @Test
