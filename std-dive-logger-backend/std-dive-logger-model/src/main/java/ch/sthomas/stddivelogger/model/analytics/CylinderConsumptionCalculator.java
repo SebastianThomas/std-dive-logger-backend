@@ -78,6 +78,8 @@ public final class CylinderConsumptionCalculator {
                     sumConsumedLiters(cylinders, CylinderRole.DILUENT),
                     sumConsumedLiters(cylinders, CylinderRole.OC),
                     null,
+                    null,
+                    List.of(),
                     contributionsFor(cylinders, List.of(), null, isCcrDive));
         }
 
@@ -92,6 +94,10 @@ public final class CylinderConsumptionCalculator {
         final var o2Liters = sumConsumedLiters(cylinders, CylinderRole.O2);
         final var diluentLiters = sumConsumedLiters(cylinders, CylinderRole.DILUENT);
         final var ocConsumedLiters = sumConsumedLiters(cylinders, CylinderRole.OC);
+        final var openCircuitWindows =
+                isCcrDive
+                        ? complementIntervals(depthTimeline, modeTimeline, List.of())
+                        : List.<CylinderUsageWindow>of();
 
         return new CylinderConsumptionResult(
                 ocRmv.rmvLiters(),
@@ -100,6 +106,8 @@ public final class CylinderConsumptionCalculator {
                 diluentLiters,
                 ocConsumedLiters,
                 ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes(),
+                bailoutRmv.rmvLiters() == null ? null : bailoutRmv.pressureMinutes(),
+                openCircuitWindows,
                 contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive));
     }
 

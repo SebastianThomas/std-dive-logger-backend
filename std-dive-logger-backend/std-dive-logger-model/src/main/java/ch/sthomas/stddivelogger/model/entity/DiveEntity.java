@@ -362,7 +362,17 @@ public class DiveEntity {
                 Optional.ofNullable(gasConsumption)
                         .map(DiveGasConsumptionEntity::toRecord)
                         .orElse(null);
-        if (gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY)) {
+        // Not a gap when the tracked cylinders carry pressures - the calculator derives RMV / total
+        // litres from those, so a manual whole-dive entry isn't required.
+        final var hasCylinderGasData =
+                Optional.ofNullable(configuration)
+                        .map(DiveConfigurationEntity::toRecord)
+                        .map(DiveConfiguration::cylinders)
+                        .orElse(List.of())
+                        .stream()
+                        .anyMatch(c -> c.startBar() != null && c.endBar() != null);
+        if ((gasRecord == null || gasRecord.equals(DiveGasConsumption.EMPTY))
+                && !hasCylinderGasData) {
             missing.add(DiveBackfillField.GAS_CONSUMPTION);
         }
         final var gasComparison = gasConsumptionComparison();

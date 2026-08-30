@@ -549,4 +549,34 @@ class CylinderConsumptionCalculatorTest {
         assertEquals(400.0, notNull(contribution.rmvLiters()), 1e-9); // 1200 / 3.0 p-min (OC only)
         assertEquals(notNull(result.bailoutRmvLiters()), notNull(contribution.rmvLiters()), 1e-9);
     }
+
+    @Test
+    void exposesTheOpenCircuitSpanAndBailoutDenominatorForACcrDive() {
+        final var m0 = sample(0, 20, DiveMode.CC);
+        final var m1 = sample(60, 20, DiveMode.CC);
+        final var m2 = sample(120, 20, DiveMode.OC); // bailout switch here
+        final var m3 = sample(180, 20, DiveMode.OC);
+        final var profile = profile(List.of(m0, m1, m2, m3));
+        final var bailout = cylinder(12, 200, 100, CylinderRole.BAILOUT);
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(bailout));
+
+        // Only [m2, m3] is open-circuit: 1 minute at 20 m -> 3.0 pressure-minutes.
+        assertEquals(3.0, notNull(result.bailoutPressureMinutes()), 1e-9);
+        assertEquals(1, result.openCircuitWindows().size());
+        assertEquals(m2.measurement().time(), result.openCircuitWindows().getFirst().start());
+        assertEquals(m3.measurement().time(), result.openCircuitWindows().getFirst().end());
+    }
+
+    @Test
+    void openCircuitSpanIsEmptyOnAPlainOcDive() {
+        final var profile = profile(List.of(sample(0, 0, null), sample(60, 20, null)));
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile), List.of(cylinder(12, 200, 100, CylinderRole.OC)));
+
+        assertThat(result.openCircuitWindows()).isEmpty();
+        assertNull(result.bailoutPressureMinutes());
+    }
 }

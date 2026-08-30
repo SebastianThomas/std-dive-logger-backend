@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.SuitRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
+import ch.sthomas.stddivelogger.model.dive.DiveBackfillField;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CcrMountPosition;
@@ -405,6 +406,26 @@ class DiveConfigurationUpdateIntegrationTest {
             assertThat(comparison.impliedRmvFromTotalLiters()).isNull();
             assertThat(comparison.mismatch()).isFalse();
         }
+    }
+
+    @Test
+    void aCylinderWithPressuresSatisfiesTheGasConsumptionBackfillGap() {
+        final var ocCylinder =
+                new DiveConfigurationCylinder(
+                        0,
+                        new CylinderSize(CylinderSizeUnit.LITER, 12),
+                        null,
+                        220.0,
+                        90.0,
+                        "back gas",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        List.of());
+        // No manual DiveGasConsumption at all - just the cylinder pressures.
+        diveService.updateDive(userEntity.toRecord(), configBody(ocCylinder));
+
+        assertThat(diveService.getBackfillStatus(userEntity.toRecord(), diveId).missingFields())
+                .doesNotContain(DiveBackfillField.GAS_CONSUMPTION);
     }
 
     @Test

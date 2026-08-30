@@ -16,7 +16,15 @@ class GasConsumptionComparisonTest {
     private static CylinderConsumptionResult calculated(
             @Nullable final Double ocRmv, @Nullable final Double ocConsumed) {
         return new CylinderConsumptionResult(
-                ocRmv, null, null, null, ocConsumed, ocConsumed == null ? null : 100.0, List.of());
+                ocRmv,
+                null,
+                null,
+                null,
+                ocConsumed,
+                ocConsumed == null ? null : 100.0,
+                null,
+                List.of(),
+                List.of());
     }
 
     private static GasConsumptionComparison of(

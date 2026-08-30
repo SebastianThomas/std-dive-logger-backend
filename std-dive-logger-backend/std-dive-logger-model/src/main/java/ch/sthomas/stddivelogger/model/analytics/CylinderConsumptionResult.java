@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.analytics;
 
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
 
 import org.jspecify.annotations.Nullable;
@@ -27,9 +28,16 @@ public record CylinderConsumptionResult(
         // ambient ATA) over the stretches the OC cylinders were actually breathed. Surfaced so the
         // gas-consistency breakdown can show "RMV = Sum litres / this". Null when ocRmvLiters is.
         @Nullable Double ocPressureMinutes,
+        // The denominator behind bailoutRmvLiters: pressure-minutes over the open-circuit (mode ==
+        // OC) portion of a CCR dive only. Null when bailoutRmvLiters is.
+        @Nullable Double bailoutPressureMinutes,
+        // The open-circuit stretches of a CCR dive (mode == OC), for the CCR breakdown's context
+        // line. Empty on an OC dive / when the profile carries no per-sample mode.
+        List<CylinderUsageWindow> openCircuitWindows,
         // Per-cylinder "show the working" lines (litres, and per-cylinder RMV for breathed
         // cylinders) - see CylinderContribution. Empty when there are no cylinders / no profile.
         List<CylinderContribution> contributions) {
     public static final CylinderConsumptionResult EMPTY =
-            new CylinderConsumptionResult(null, null, null, null, null, null, List.of());
+            new CylinderConsumptionResult(
+                    null, null, null, null, null, null, null, List.of(), List.of());
 }
