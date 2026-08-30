@@ -4,13 +4,11 @@ import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
 import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
-import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
-import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.dive.stats.GasConsumptionComparison;
 import ch.sthomas.stddivelogger.model.entity.gas.CylinderSizeEntity;
@@ -283,15 +281,12 @@ public class DiveEntity {
                         .map(DiveConfigurationEntity::toRecord)
                         .map(DiveConfiguration::cylinders)
                         .orElse(List.of());
-        final var hasUsableOcCylinder =
-                cylinders.stream()
-                        .anyMatch(
-                                c ->
-                                        c.role() == CylinderRole.OC
-                                                && c.startBar() != null
-                                                && c.endBar() != null);
+        // Any pressure-usable cylinder (not just OC) - a CCR configuration on an OC/gauge profile
+        // still wants the per-cylinder breakdown (bailout RMV, O2/diluent litres).
+        final var hasUsableCylinder =
+                cylinders.stream().anyMatch(c -> c.startBar() != null && c.endBar() != null);
         CylinderConsumptionResult cylinderResult = CylinderConsumptionResult.EMPTY;
-        if (hasUsableOcCylinder) {
+        if (hasUsableCylinder) {
             final var profileRecords = profiles.stream().map(DiveProfileEntity::toRecord).toList();
             final var isCcr =
                     profileRecords.stream()
@@ -310,8 +305,7 @@ public class DiveEntity {
                         gas,
                         cylinderResult,
                         summary.averageDepth(),
-                        summary.bottomTime().toSeconds(),
-                        cylinderContributions(cylinders));
+                        summary.bottomTime().toSeconds());
         // Nothing calculable or derivable to compare against - not a mismatch, just absent.
         if (comparison.calculatedRmvLiters() == null
                 && comparison.calculatedTotalLiters() == null
@@ -319,30 +313,6 @@ public class DiveEntity {
             return null;
         }
         return comparison;
-    }
-
-    private static List<CylinderContribution> cylinderContributions(
-            final List<DiveConfigurationCylinder> cylinders) {
-        return cylinders.stream()
-                .map(
-                        c -> {
-                            final var waterVolume = c.size().liters();
-                            final Double consumed =
-                                    (c.startBar() != null
-                                                    && c.endBar() != null
-                                                    && c.startBar() - c.endBar() > 0)
-                                            ? (c.startBar() - c.endBar()) * waterVolume
-                                            : null;
-                            return new CylinderContribution(
-                                    waterVolume,
-                                    c.material(),
-                                    c.role(),
-                                    c.startBar(),
-                                    c.endBar(),
-                                    consumed,
-                                    c.usageWindows());
-                        })
-                .toList();
     }
 
     private DiveLeader getLeader() {

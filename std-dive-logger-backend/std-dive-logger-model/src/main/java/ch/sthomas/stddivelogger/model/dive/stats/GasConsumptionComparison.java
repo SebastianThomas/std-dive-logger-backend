@@ -52,8 +52,7 @@ public record GasConsumptionComparison(
             final DiveGasConsumption gasConsumption,
             final CylinderConsumptionResult cylinderConsumption,
             final @Nullable Double avgDepthMeters,
-            final long durationSeconds,
-            final List<CylinderContribution> contributions) {
+            final long durationSeconds) {
         final Double insertedTotal =
                 gasConsumption.totalLiters() > 0 ? gasConsumption.totalLiters() : null;
         final var durationMinutes = durationSeconds / 60.0;
@@ -61,8 +60,14 @@ public record GasConsumptionComparison(
                 (insertedTotal != null && avgDepthMeters != null && durationMinutes > 0)
                         ? insertedTotal / ((1 + avgDepthMeters / 10.0) * durationMinutes)
                         : null;
+        // Keep this a *reference* conditional: a bare `rmvLiters() : impliedRmv` mixes primitive
+        // double with a nullable Double, which JLS 15.25 makes a numeric conditional - impliedRmv
+        // then gets unboxed even on the rmvLiters()>0 branch, NPEing when it's null (both manual
+        // inputs cleared -> no total -> no implied RMV).
         final Double insertedRmv =
-                gasConsumption.rmvLiters() > 0 ? gasConsumption.rmvLiters() : impliedRmv;
+                gasConsumption.rmvLiters() > 0
+                        ? Double.valueOf(gasConsumption.rmvLiters())
+                        : impliedRmv;
         final var calculatedRmv = cylinderConsumption.ocRmvLiters();
         final var calculatedTotal = cylinderConsumption.ocConsumedLiters();
 
@@ -85,7 +90,7 @@ public record GasConsumptionComparison(
                 totalLitersMismatch,
                 rmvVsImpliedMismatch,
                 rmvVsCalculatedMismatch || totalLitersMismatch || rmvVsImpliedMismatch,
-                contributions);
+                cylinderConsumption.contributions());
     }
 
     private static boolean differsBeyondTolerance(

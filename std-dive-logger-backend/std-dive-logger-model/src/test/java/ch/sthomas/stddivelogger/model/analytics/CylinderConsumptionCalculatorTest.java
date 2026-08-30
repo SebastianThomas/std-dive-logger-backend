@@ -434,4 +434,119 @@ class CylinderConsumptionCalculatorTest {
         // inflating RMV: 1800 / 4.0 = 450, not (1800 + 1200) / 4.0.
         assertEquals(1800.0 / 4.0, notNull(result.ocRmvLiters()), 1e-9);
     }
+
+    // --- per-cylinder contributions (the "show the working" breakdown) ---
+
+    @Test
+    void eachOcCylinderCarriesItsOwnRmvOverItsOwnWindow() {
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 10, null);
+        final var m2 = sample(120, 20, null);
+        final var profile = profile(List.of(m0, m1, m2));
+        final var bottom =
+                windowedCylinder(
+                        12,
+                        200,
+                        150,
+                        CylinderRole.OC, // 600L over [0m,10m] -> 1.5 p-min -> RMV 400
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time())));
+        final var deco =
+                windowedCylinder(
+                        7,
+                        200,
+                        100,
+                        CylinderRole.OC, // 700L over [10m,20m] -> 2.5 p-min -> RMV 280
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m1.measurement().time(), m2.measurement().time())));
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(bottom, deco));
+
+        final var contributions = result.contributions();
+        assertEquals(2, contributions.size());
+        assertEquals(400.0, notNull(contributions.get(0).rmvLiters()), 1e-9);
+        assertEquals(1.5, notNull(contributions.get(0).pressureMinutes()), 1e-9);
+        assertEquals(280.0, notNull(contributions.get(1).rmvLiters()), 1e-9);
+        assertThat(contributions).allSatisfy(c -> assertThat(c.coversWholeDive()).isFalse());
+    }
+
+    @Test
+    void o2AndDiluentContributionsHaveLitresButNoRmv() {
+        final var m0 = sample(0, 20, DiveMode.CC);
+        final var m1 = sample(60, 20, DiveMode.CC);
+        final var profile = profile(List.of(m0, m1));
+        final var o2 = cylinder(3, 200, 150, CylinderRole.O2); // 150L
+        final var diluent = cylinder(12, 200, 180, CylinderRole.DILUENT); // 240L
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(o2, diluent));
+
+        final var contributions = result.contributions();
+        assertEquals(150.0, notNull(contributions.get(0).consumedLiters()), 1e-9);
+        assertNull(contributions.get(0).rmvLiters());
+        assertNull(contributions.get(0).pressureMinutes());
+        assertNull(contributions.get(1).rmvLiters());
+    }
+
+    @Test
+    void aLoneUnwindowedOcCylinderCoversTheWholeDive() {
+        final var profile = profile(List.of(sample(0, 0, null), sample(60, 20, null)));
+        final var cylinder = cylinder(12, 200, 100, CylinderRole.OC);
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(cylinder));
+
+        final var only = result.contributions().getFirst();
+        assertThat(only.coversWholeDive()).isTrue();
+        assertThat(only.effectiveWindows()).isEmpty();
+        assertEquals(notNull(result.ocRmvLiters()), notNull(only.rmvLiters()), 1e-9);
+    }
+
+    @Test
+    void anUnwindowedCylinderNextToAWindowedOneGetsTheComputedComplementInterval() {
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 10, null);
+        final var m2 = sample(120, 20, null);
+        final var profile = profile(List.of(m0, m1, m2));
+        final var windowed =
+                windowedCylinder(
+                        12,
+                        200,
+                        150,
+                        CylinderRole.OC,
+                        List.of(
+                                new CylinderUsageWindow(
+                                        m0.measurement().time(), m1.measurement().time())));
+        final var unwindowed = cylinder(7, 200, 120, CylinderRole.OC);
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile), List.of(windowed, unwindowed));
+
+        final var complement = result.contributions().get(1);
+        assertThat(complement.coversWholeDive()).isFalse();
+        assertEquals(1, complement.effectiveWindows().size());
+        assertEquals(m1.measurement().time(), complement.effectiveWindows().getFirst().start());
+        assertEquals(m2.measurement().time(), complement.effectiveWindows().getFirst().end());
+        assertThat(complement.rmvLiters()).isNotNull();
+    }
+
+    @Test
+    void bailoutCylinderContributionRmvCountsOnlyTheOpenCircuitSpan() {
+        final var m0 = sample(0, 20, DiveMode.CC);
+        final var m1 = sample(60, 20, DiveMode.OC);
+        final var m2 = sample(120, 20, DiveMode.OC);
+        final var profile = profile(List.of(m0, m1, m2));
+        final var bailout = cylinder(12, 200, 100, CylinderRole.BAILOUT); // 1200L
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(List.of(profile), List.of(bailout));
+
+        final var contribution = result.contributions().getFirst();
+        assertEquals(400.0, notNull(contribution.rmvLiters()), 1e-9); // 1200 / 3.0 p-min (OC only)
+        assertEquals(notNull(result.bailoutRmvLiters()), notNull(contribution.rmvLiters()), 1e-9);
+    }
 }

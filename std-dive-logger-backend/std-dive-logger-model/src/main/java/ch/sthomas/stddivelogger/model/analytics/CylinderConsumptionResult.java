@@ -1,6 +1,10 @@
 package ch.sthomas.stddivelogger.model.analytics;
 
+import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
+
 import org.jspecify.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * Gas-consumption figures computed from a dive's tracked {@code DiveConfigurationCylinder}s -
@@ -22,7 +26,10 @@ public record CylinderConsumptionResult(
         // The denominator behind ocRmvLiters: pressure-minutes (Sum of segment minutes x avg
         // ambient ATA) over the stretches the OC cylinders were actually breathed. Surfaced so the
         // gas-consistency breakdown can show "RMV = Sum litres / this". Null when ocRmvLiters is.
-        @Nullable Double ocPressureMinutes) {
+        @Nullable Double ocPressureMinutes,
+        // Per-cylinder "show the working" lines (litres, and per-cylinder RMV for breathed
+        // cylinders) - see CylinderContribution. Empty when there are no cylinders / no profile.
+        List<CylinderContribution> contributions) {
     public static final CylinderConsumptionResult EMPTY =
-            new CylinderConsumptionResult(null, null, null, null, null, null);
+            new CylinderConsumptionResult(null, null, null, null, null, null, List.of());
 }

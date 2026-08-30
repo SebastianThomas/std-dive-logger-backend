@@ -40,6 +40,7 @@ import ch.sthomas.stddivelogger.service.DiveService;
 
 import jakarta.persistence.EntityManager;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -335,6 +336,12 @@ class DiveConfigurationUpdateIntegrationTest {
     }
 
     private UpdateDiveBody configBody(final DiveConfigurationCylinder... cylinders) {
+        return configBody(null, cylinders);
+    }
+
+    private UpdateDiveBody configBody(
+            final @Nullable DiveGasConsumption gasConsumption,
+            final DiveConfigurationCylinder... cylinders) {
         return new UpdateDiveBody(
                 diveId,
                 1,
@@ -349,7 +356,7 @@ class DiveConfigurationUpdateIntegrationTest {
                         null,
                         null,
                         null),
-                null,
+                gasConsumption,
                 null,
                 null,
                 null,
@@ -361,6 +368,43 @@ class DiveConfigurationUpdateIntegrationTest {
                 false,
                 null,
                 null);
+    }
+
+    @Test
+    void clearingBothManualGasFiguresWhileSacLingersDoesNotThrowOnReload() {
+        final var ocCylinder =
+                new DiveConfigurationCylinder(
+                        0,
+                        new CylinderSize(CylinderSizeUnit.LITER, 11.1),
+                        null,
+                        220.0,
+                        60.0,
+                        "back gas",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        List.of());
+        // A dive that had a full manual gas entry (SAC is computed on import and isn't
+        // user-editable).
+        diveService.updateDive(
+                userEntity.toRecord(),
+                configBody(new DiveGasConsumption(0.6, 15.0, 1500.0), ocCylinder));
+
+        // The user clears the RMV and total-litres inputs; the form still round-trips sacBar, so
+        // the
+        // stored DiveGasConsumption is (0.6, 0, 0) - not EMPTY, but nothing left to compare
+        // against.
+        diveService.updateDive(
+                userEntity.toRecord(), configBody(new DiveGasConsumption(0.6, 0, 0), ocCylinder));
+
+        // getDiveById -> toRecord -> gasConsumptionComparison used to NPE here.
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        final var comparison = reloaded.gasConsumptionComparison();
+        if (comparison != null) {
+            assertThat(comparison.insertedRmvLiters()).isNull();
+            assertThat(comparison.insertedTotalLiters()).isNull();
+            assertThat(comparison.impliedRmvFromTotalLiters()).isNull();
+            assertThat(comparison.mismatch()).isFalse();
+        }
     }
 
     @Test

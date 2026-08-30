@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
+import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
 
 import org.jspecify.annotations.Nullable;
 
@@ -65,11 +66,20 @@ public final class CylinderConsumptionCalculator {
             return CylinderConsumptionResult.EMPTY;
         }
         final var depthTimeline = timeline(profiles, m -> m.measurement().depth());
-        if (depthTimeline.isEmpty()) {
-            return CylinderConsumptionResult.EMPTY;
-        }
         final var modeTimeline = timeline(profiles, m -> m.measurement().mode());
         final var isCcrDive = modeTimeline.stream().anyMatch(tv -> tv.value() == DiveMode.CC);
+
+        if (depthTimeline.isEmpty()) {
+            // No profile depth data: litres only, no RMV / pressure-minutes.
+            return new CylinderConsumptionResult(
+                    null,
+                    null,
+                    sumConsumedLiters(cylinders, CylinderRole.O2),
+                    sumConsumedLiters(cylinders, CylinderRole.DILUENT),
+                    sumConsumedLiters(cylinders, CylinderRole.OC),
+                    null,
+                    contributionsFor(cylinders, List.of(), null, isCcrDive));
+        }
 
         final var ocRmv =
                 isCcrDive
@@ -89,7 +99,135 @@ public final class CylinderConsumptionCalculator {
                 o2Liters,
                 diluentLiters,
                 ocConsumedLiters,
-                ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes());
+                ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes(),
+                contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive));
+    }
+
+    /**
+     * Per-cylinder "show the working" lines. Litres for every cylinder; per-cylinder RMV +
+     * pressure-minutes + effective windows only for a cylinder actually breathed open-circuit (OC
+     * on an OC dive, BAILOUT on a CCR dive). A cylinder with no explicit window is the complement
+     * of its role's windowed cylinders - {@code effectiveWindows} then carries the computed
+     * complement interval(s), or is empty + {@code coversWholeDive} when it genuinely spans the
+     * whole (mode-gated) dive.
+     */
+    private static List<CylinderContribution> contributionsFor(
+            final List<DiveConfigurationCylinder> cylinders,
+            final List<TimedValue<Double>> depthTimeline,
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final boolean isCcrDive) {
+        return cylinders.stream()
+                .map(c -> contributionFor(c, cylinders, depthTimeline, modeTimeline, isCcrDive))
+                .toList();
+    }
+
+    private static CylinderContribution contributionFor(
+            final DiveConfigurationCylinder cylinder,
+            final List<DiveConfigurationCylinder> allCylinders,
+            final List<TimedValue<Double>> depthTimeline,
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final boolean isCcrDive) {
+        final var consumed = consumedLiters(cylinder);
+        final var role = cylinder.role();
+        final var breathesOpenCircuit =
+                (!isCcrDive && role == CylinderRole.OC)
+                        || (isCcrDive && role == CylinderRole.BAILOUT);
+
+        Double pressureMinutes = null;
+        Double rmvLiters = null;
+        List<CylinderUsageWindow> effectiveWindows = cylinder.usageWindows();
+        var coversWholeDive = false;
+
+        if (breathesOpenCircuit && consumed != null && !depthTimeline.isEmpty()) {
+            final var modeGate = role == CylinderRole.BAILOUT ? modeTimeline : null;
+            if (!cylinder.usageWindows().isEmpty()) {
+                final var own = cylinder.usageWindows().stream().map(UsageWindow::of).toList();
+                pressureMinutes = pressureMinutesCovered(depthTimeline, modeGate, own);
+            } else {
+                final var sameRoleExplicit = explicitWindowsForRole(allCylinders, role);
+                pressureMinutes =
+                        pressureMinutesNotCovered(depthTimeline, modeGate, sameRoleExplicit);
+                if (sameRoleExplicit.isEmpty()) {
+                    coversWholeDive = true;
+                    effectiveWindows = List.of();
+                } else {
+                    effectiveWindows =
+                            complementIntervals(depthTimeline, modeGate, sameRoleExplicit);
+                }
+            }
+            if (pressureMinutes > 0) {
+                rmvLiters = consumed / pressureMinutes;
+            } else {
+                pressureMinutes = null;
+            }
+        }
+
+        return new CylinderContribution(
+                cylinder.size().liters(),
+                cylinder.material(),
+                role,
+                cylinder.startBar(),
+                cylinder.endBar(),
+                consumed,
+                cylinder.usageWindows(),
+                pressureMinutes,
+                rmvLiters,
+                effectiveWindows,
+                coversWholeDive);
+    }
+
+    /** Every explicit usage window across the windowed, pressure-usable cylinders of one role. */
+    private static List<UsageWindow> explicitWindowsForRole(
+            final List<DiveConfigurationCylinder> cylinders, final CylinderRole role) {
+        return cylinders.stream()
+                .filter(
+                        c ->
+                                c.role() == role
+                                        && consumedLiters(c) != null
+                                        && !c.usageWindows().isEmpty())
+                .flatMap(c -> c.usageWindows().stream())
+                .map(UsageWindow::of)
+                .toList();
+    }
+
+    /**
+     * The contiguous stretches of {@code depthTimeline} inside <b>none</b> of {@code windows} (and,
+     * with {@code modeTimeline}, at {@link DiveMode#OC}) - the intervals an unwindowed cylinder was
+     * actually the one being breathed. Mirrors {@link #pressureMinutesNotCovered} but returns the
+     * merged intervals rather than their pressure-minutes.
+     */
+    private static List<CylinderUsageWindow> complementIntervals(
+            final List<TimedValue<Double>> depthTimeline,
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final List<UsageWindow> windows) {
+        final var result = new ArrayList<CylinderUsageWindow>();
+        Instant runStart = null;
+        Instant runEnd = null;
+        for (var i = 0; i + 1 < depthTimeline.size(); i++) {
+            final var a = depthTimeline.get(i);
+            final var b = depthTimeline.get(i + 1);
+            final var inSomeWindow =
+                    windows.stream().anyMatch(w -> segmentWithinWindow(a.time(), b.time(), w));
+            final var okMode =
+                    modeTimeline == null
+                            || heldAt(modeTimeline, a.time()).map(TimedValue::value).orElse(null)
+                                    == DiveMode.OC;
+            final var include =
+                    !inSomeWindow && okMode && durationInMinutes(a.time(), b.time()) > 0;
+            if (include) {
+                if (runStart == null) {
+                    runStart = a.time();
+                }
+                runEnd = b.time();
+            } else if (runStart != null) {
+                result.add(new CylinderUsageWindow(runStart, runEnd));
+                runStart = null;
+            }
+        }
+        if (runStart != null) {
+            result.add(new CylinderUsageWindow(runStart, runEnd));
+        }
+        return result;
     }
 
     private static @Nullable Double consumedLiters(final DiveConfigurationCylinder cylinder) {

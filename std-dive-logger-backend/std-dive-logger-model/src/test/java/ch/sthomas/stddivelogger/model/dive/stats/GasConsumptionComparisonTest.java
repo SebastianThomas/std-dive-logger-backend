@@ -16,14 +16,14 @@ class GasConsumptionComparisonTest {
     private static CylinderConsumptionResult calculated(
             @Nullable final Double ocRmv, @Nullable final Double ocConsumed) {
         return new CylinderConsumptionResult(
-                ocRmv, null, null, null, ocConsumed, ocConsumed == null ? null : 100.0);
+                ocRmv, null, null, null, ocConsumed, ocConsumed == null ? null : 100.0, List.of());
     }
 
     private static GasConsumptionComparison of(
             final DiveGasConsumption gas,
             final CylinderConsumptionResult calc,
             @Nullable final Double avgDepth) {
-        return GasConsumptionComparison.of(gas, calc, avgDepth, THIRTY_MIN, List.of());
+        return GasConsumptionComparison.of(gas, calc, avgDepth, THIRTY_MIN);
     }
 
     @Test
@@ -65,6 +65,19 @@ class GasConsumptionComparisonTest {
         assertThat(result.insertedRmvLiters()).isEqualTo(12.0);
         assertThat(result.calculatedRmvLiters()).isNull();
         assertThat(result.impliedRmvFromTotalLiters()).isNull();
+    }
+
+    @Test
+    void noNpeWhenBothManualInputsAreClearedAndNothingCanBeImplied() {
+        // User removed both the RMV and total-litres entries (sacBar may linger). No total -> no
+        // implied RMV; the inserted-RMV ternary must not unbox the null impliedRmv.
+        final var result = of(new DiveGasConsumption(0.6, 0, 0), calculated(15.0, 1500.0), 20.0);
+
+        assertThat(result.insertedRmvLiters()).isNull();
+        assertThat(result.insertedTotalLiters()).isNull();
+        assertThat(result.impliedRmvFromTotalLiters()).isNull();
+        assertThat(result.mismatch()).isFalse();
+        assertThat(result.calculatedRmvLiters()).isEqualTo(15.0);
     }
 
     @Test

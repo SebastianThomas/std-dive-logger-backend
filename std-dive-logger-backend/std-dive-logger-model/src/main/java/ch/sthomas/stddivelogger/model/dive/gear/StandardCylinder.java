@@ -32,10 +32,11 @@ public record StandardCylinder(
                 key, label, new CylinderSize(CylinderSizeUnit.LITER, liters), material);
     }
 
-    /** TWEAK IN REVIEW - drafted catalog, ~14 entries. */
+    /** TWEAK IN REVIEW - drafted catalog, ~15 entries. */
     public static final List<StandardCylinder> CATALOG =
             List.of(
-                    liter("steel-3", "3 L Steel (pony)", 3, CylinderMaterial.STEEL),
+                    liter("steel-2", "2 L Steel", 2, CylinderMaterial.STEEL),
+                    liter("steel-3", "3 L Steel", 3, CylinderMaterial.STEEL),
                     liter("steel-5", "5 L Steel", 5, CylinderMaterial.STEEL),
                     liter("steel-7", "7 L Steel", 7, CylinderMaterial.STEEL),
                     liter("steel-10", "10 L Steel", 10, CylinderMaterial.STEEL),
@@ -74,9 +75,9 @@ public record StandardCylinder(
 
     /**
      * Best-guess material for a size with none recorded (legacy rows, imports). TWEAK IN REVIEW:
-     * {@code <= 3.5 L} steel (steel pony bottles); {@code 3.5 - 8.5 L} alu (5.5/7 alu, AL40);
-     * {@code >= 8.5 L} steel (10/12/15/18/20); any {@code CUFT} size alu (US alu ratings). Exact 9
-     * / 11.1 L alu are handled by snapping before inference runs.
+     * {@code <= 3.5 L} steel (small steel stages / 2-3 L bottles); {@code 3.5 - 8.5 L} alu (5.5/7
+     * alu, AL40); {@code >= 8.5 L} steel (10/12/15/18/20); any {@code CUFT} size alu (US alu
+     * ratings). Exact 9 / 11.1 L alu are handled by snapping before inference runs.
      */
     public static CylinderMaterial inferMaterial(final double liters, final CylinderSizeUnit unit) {
         if (unit == CylinderSizeUnit.CUFT) {

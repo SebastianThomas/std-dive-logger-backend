@@ -51,7 +51,15 @@ class StandardCylinderTest {
     }
 
     @Test
+    void catalogCarriesTheSmallSteelStages() {
+        assertThat(StandardCylinder.byKey("steel-2").orElseThrow().size().value()).isEqualTo(2.0);
+        assertThat(StandardCylinder.byKey("steel-3").orElseThrow().label()).isEqualTo("3 L Steel");
+    }
+
+    @Test
     void inferMaterialFollowsTheBoundaryTable() {
+        assertThat(StandardCylinder.inferMaterial(2.0, CylinderSizeUnit.LITER))
+                .isEqualTo(CylinderMaterial.STEEL);
         assertThat(StandardCylinder.inferMaterial(3.0, CylinderSizeUnit.LITER))
                 .isEqualTo(CylinderMaterial.STEEL);
         assertThat(StandardCylinder.inferMaterial(3.5, CylinderSizeUnit.LITER))
