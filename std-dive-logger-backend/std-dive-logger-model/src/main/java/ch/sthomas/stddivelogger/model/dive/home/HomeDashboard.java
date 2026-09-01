@@ -28,6 +28,8 @@ public record HomeDashboard(
         long divesThisYear,
         HomeActivity windows,
         List<HomeRecentDive> recentDives,
+        // The user's highlighted ('starred') dives, most recent first (capped).
+        List<HomeRecentDive> highlightedDives,
         List<HomeBuddy> topBuddies,
         HomeRecords records) {
 
@@ -42,6 +44,7 @@ public record HomeDashboard(
                 null,
                 0,
                 HomeActivity.EMPTY,
+                List.of(),
                 List.of(),
                 List.of(),
                 HomeRecords.NONE);

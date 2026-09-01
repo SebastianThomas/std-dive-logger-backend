@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -97,16 +98,19 @@ class HomeControllerIntegrationTest {
                 .id();
     }
 
-    private void seedDive(
+    private long seedDive(
             final User owner,
             final long siteId,
             final int number,
             final double maxDepth,
             final Duration duration,
             final Instant start) {
-        diveService.createEmptyDive(
-                owner,
-                new UploadDiveBody(number, "home-ctl-it", siteId, maxDepth, duration, start));
+        return diveService
+                .createEmptyDive(
+                        owner,
+                        new UploadDiveBody(
+                                number, "home-ctl-it", siteId, maxDepth, duration, start))
+                .id();
     }
 
     @Test
@@ -153,6 +157,66 @@ class HomeControllerIntegrationTest {
                 .isEqualTo(2)
                 .jsonPath("$.recentDives.length()")
                 .isEqualTo(2);
+    }
+
+    @Test
+    void highlightingADiveThroughTheEndpointSurfacesItUnderHighlightedDives() {
+        final var owner = seedUser("Star Diver");
+        final var siteId = seedSite();
+        final var plainId =
+                seedDive(
+                        owner,
+                        siteId,
+                        1,
+                        18.0,
+                        Duration.ofMinutes(40),
+                        Instant.parse("2026-05-01T09:00:00Z"));
+        final var starredId =
+                seedDive(
+                        owner,
+                        siteId,
+                        2,
+                        22.0,
+                        Duration.ofMinutes(45),
+                        Instant.parse("2026-06-01T09:00:00Z"));
+
+        restTestClient
+                .put()
+                .uri("/v1/dives/" + starredId + "/highlighted")
+                .header("Authorization", "Bearer " + bearerToken(owner.email()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"highlighted\":true}")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.highlighted")
+                .isEqualTo(true);
+
+        restTestClient
+                .get()
+                .uri("/v1/home")
+                .header("Authorization", "Bearer " + bearerToken(owner.email()))
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.highlightedDives.length()")
+                .isEqualTo(1)
+                .jsonPath("$.highlightedDives[0].id")
+                .isEqualTo(starredId);
+
+        // A non-owner cannot highlight it.
+        final var stranger = seedUser("Stranger");
+        restTestClient
+                .put()
+                .uri("/v1/dives/" + plainId + "/highlighted")
+                .header("Authorization", "Bearer " + bearerToken(stranger.email()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"highlighted\":true}")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
     }
 
     @Test

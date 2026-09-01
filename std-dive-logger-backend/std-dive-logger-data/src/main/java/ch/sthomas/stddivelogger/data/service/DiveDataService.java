@@ -320,6 +320,18 @@ public class DiveDataService {
         }
     }
 
+    /**
+     * Whether {@code computerId} already has a profile starting at exactly {@code start}. Lets
+     * {@code DiveService.createEmptyDive} reject a manual dive that would collide on {@code
+     * t_dive_profiles}' {@code (fk_dive_computer, dive_profile_start)} unique constraint with a
+     * clean 400 rather than a post-commit 500.
+     */
+    @Transactional(readOnly = true)
+    public boolean profileExistsForComputerAt(final long computerId, final Instant start) {
+        return diveProfileRepository.existsByComputer_IdAndProfileStart(
+                computerId, start.atOffset(ZoneOffset.UTC));
+    }
+
     @Transactional
     public SuitEntity findOrCreateSuit(final UserEntity user, final Suit suit) {
         if (suit.id() != null) {
@@ -1247,6 +1259,9 @@ public class DiveDataService {
             where.append(" AND d.dive_number <= :maxNumber");
             params.addValue("maxNumber", filters.maxNumber());
         }
+        if (Boolean.TRUE.equals(filters.highlighted())) {
+            where.append(" AND d.highlighted = TRUE");
+        }
         if (filters.tagIds() != null && !filters.tagIds().isEmpty()) {
             where.append(
                     """
@@ -1477,6 +1492,16 @@ public class DiveDataService {
         diveRepository.save(dive);
         entityManager.flush();
         return dive.toBackfillStatus();
+    }
+
+    /** Set (or clear) a dive's "highlighted" star. Returns the updated simplified record. */
+    @Transactional
+    public SimplifiedDive setDiveHighlighted(final long diveId, final boolean highlighted) {
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        dive.setHighlighted(highlighted);
+        diveRepository.save(dive);
+        entityManager.flush();
+        return toSimplifiedRecord(dive);
     }
 
     /** Dismiss every outstanding reason on every currently-queued dive. */

@@ -510,6 +510,15 @@ public class DiveService {
         // separate zero-profile code path.
         final var manualComputer =
                 getOrCreateDiveComputer(user, "Manual", "manual-" + user.id(), "Manual Entry");
+        // Every manual dive shares this one synthetic computer, so two manual entries with the same
+        // (minute-precision) start would collide on t_dive_profiles' (fk_dive_computer,
+        // dive_profile_start) unique constraint - which surfaces as an opaque post-commit 500.
+        // Reject it up front with a message the diver can act on.
+        if (diveDataService.profileExistsForComputerAt(manualComputer.id(), start)) {
+            throw new IllegalArgumentException(
+                    "You already have a manually-logged dive that starts at that exact date and"
+                            + " time. Adjust the start time.");
+        }
         final var profile =
                 new DiveProfileUpload(
                         manualComputer.id(),
@@ -691,6 +700,14 @@ public class DiveService {
             throw ForbiddenException.forDiveId(user, diveId);
         }
         return diveDataService.updateTags(diveId, user.id(), manualTagIds, dismissedAutoTagIds);
+    }
+
+    public SimplifiedDive setHighlighted(
+            final User user, final long diveId, final boolean highlighted) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.setDiveHighlighted(diveId, highlighted);
     }
 
     public PagedResponse<User> getReaders(

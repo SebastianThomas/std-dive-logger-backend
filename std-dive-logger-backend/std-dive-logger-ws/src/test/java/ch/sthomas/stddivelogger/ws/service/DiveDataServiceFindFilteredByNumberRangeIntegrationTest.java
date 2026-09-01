@@ -93,7 +93,7 @@ class DiveDataServiceFindFilteredByNumberRangeIntegrationTest {
     private DiveSiteEntity site;
     private DiveComputerEntity computer;
 
-    private void createDive(final int number, final Instant start) {
+    private DiveEntity createDive(final int number, final Instant start) {
         final var m0 =
                 new DiveMeasurementEntity(
                         new DiveMeasurement(
@@ -137,7 +137,7 @@ class DiveDataServiceFindFilteredByNumberRangeIntegrationTest {
                         cs -> {
                             throw new UnsupportedOperationException("no cylinders in this fixture");
                         });
-        diveRepository.save(dive);
+        return diveRepository.save(dive);
     }
 
     @BeforeEach
@@ -174,7 +174,7 @@ class DiveDataServiceFindFilteredByNumberRangeIntegrationTest {
                         user.id(),
                         new DiveFilterParams(
                                 null, null, null, null, null, null, null, null, null, null, 120,
-                                126),
+                                126, null),
                         DiveSort.ofNullable(DiveSortColumn.NUMBER, SortDirection.ASCENDING),
                         0,
                         20);
@@ -183,6 +183,39 @@ class DiveDataServiceFindFilteredByNumberRangeIntegrationTest {
         assertThat(result.result())
                 .extracting("number")
                 .containsExactly(120, 121, 122, 123, 124, 125, 126);
+    }
+
+    @Test
+    void highlightedTrueKeepsOnlyStarredDives() {
+        final var d1 = createDive(1, Instant.parse("2026-01-01T09:00:00Z"));
+        createDive(2, Instant.parse("2026-01-02T09:00:00Z"));
+        final var d3 = createDive(3, Instant.parse("2026-01-03T09:00:00Z"));
+        d1.setHighlighted(true);
+        d3.setHighlighted(true);
+        diveRepository.saveAllAndFlush(List.of(d1, d3));
+
+        final var filtered =
+                diveDataService.findFiltered(
+                        user.id(),
+                        new DiveFilterParams(
+                                null, null, null, null, null, null, null, null, null, null, null,
+                                null, true),
+                        DiveSort.ofNullable(DiveSortColumn.NUMBER, SortDirection.ASCENDING),
+                        0,
+                        20);
+        assertThat(filtered.result()).extracting("number").containsExactly(1, 3);
+
+        // null highlighted -> no filtering
+        final var all =
+                diveDataService.findFiltered(
+                        user.id(),
+                        new DiveFilterParams(
+                                null, null, null, null, null, null, null, null, null, null, null,
+                                null, null),
+                        DiveSort.ofNullable(DiveSortColumn.NUMBER, SortDirection.ASCENDING),
+                        0,
+                        20);
+        assertThat(all.result()).hasSize(3);
     }
 
     @Test
@@ -195,7 +228,7 @@ class DiveDataServiceFindFilteredByNumberRangeIntegrationTest {
                 diveDataService.findFiltered(
                         user.id(),
                         new DiveFilterParams(
-                                null, null, null, null, null, null, null, null, null, null, 4,
+                                null, null, null, null, null, null, null, null, null, null, 4, null,
                                 null),
                         DiveSort.ofNullable(DiveSortColumn.NUMBER, SortDirection.ASCENDING),
                         0,

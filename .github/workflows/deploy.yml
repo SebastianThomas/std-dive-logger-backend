@@ -1,0 +1,137 @@
+name: deploy
+run-name: "deploy ${{ inputs.target || 'dev' }} @ ${{ inputs.tag || github.event.workflow_run.head_branch }}"
+
+# One workflow, both environments (the 4 Spring services -> K3s).
+#   - after "Build and push to Image Registry" succeeds for a v* tag
+#       -> auto-deploy to dev, but ONLY if that tag is reachable from main
+#   - manual "Run workflow" -> pick target (dev / prod) + the tag to ship;
+#     prod is never automatic. Run db.yml first if the target Cluster is new,
+#     then replay the dump (see README).
+on:
+  workflow_run:
+    workflows: ["Build and push to Image Registry"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      tag:
+        description: Tag to deploy (images must already be built, e.g. v1.2.3)
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.target || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+      target: ${{ steps.check.outputs.target }}
+      ref: ${{ steps.check.outputs.ref }}
+    steps:
+      - id: pre
+        env:
+          EVENT: ${{ github.event_name }}
+          WR_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WR_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          IN_TARGET: ${{ inputs.target }}
+          IN_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_dispatch ]; then
+            echo "target=$IN_TARGET" >> "$GITHUB_OUTPUT"
+            echo "ref=$IN_TAG" >> "$GITHUB_OUTPUT"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            # workflow_run: only a successful build of a v* tag
+            if [ "$WR_CONCLUSION" = success ] && [[ "$WR_BRANCH" == v* ]]; then
+              echo "target=dev" >> "$GITHUB_OUTPUT"
+              echo "ref=$WR_BRANCH" >> "$GITHUB_OUTPUT"
+              echo "run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::notice::build was ${WR_CONCLUSION} for ref '${WR_BRANCH}' - not deploying"
+              echo "run=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+      - if: steps.pre.outputs.run == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.pre.outputs.ref }}
+          fetch-depth: 0
+      - id: check
+        if: steps.pre.outputs.run == 'true'
+        env:
+          TARGET: ${{ steps.pre.outputs.target }}
+          REF: ${{ steps.pre.outputs.ref }}
+        run: |
+          set -euo pipefail
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          if [ "$TARGET" = prod ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git fetch origin main --quiet
+          if git merge-base --is-ancestor HEAD origin/main; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$REF is not reachable from main - not deploying to dev"
+          fi
+
+  deploy:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.gate.outputs.target }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.gate.outputs.ref }}
+
+      - uses: SebastianThomas/homelab-actions/headscale-connect@v1
+        with:
+          auth-key: ${{ secrets.TS_AUTHKEY }}
+          login-server: ${{ secrets.HEADSCALE_URL }}
+          ping: kube-cp-01
+
+      - uses: SebastianThomas/homelab-actions/kube-secret@v1
+        with:
+          server: ${{ secrets.KUBE_API }}
+          ca: ${{ secrets.KUBE_CA }}
+          token: ${{ secrets.KUBE_TOKEN }}
+          namespace: std-dive-logger-${{ needs.gate.outputs.target }}
+          name: std-dive-logger-secrets
+          literals: |
+            jwt-secret=${{ secrets.JWT_SECRET }}
+            jwt-refresh-secret=${{ secrets.JWT_REFRESH_SECRET }}
+            r2-account-id=${{ secrets.R2_ACCOUNT_ID }}
+            r2-access-key=${{ secrets.R2_ACCESS_KEY }}
+            r2-secret-key=${{ secrets.R2_SECRET_KEY }}
+            email-password=${{ secrets.EMAIL_PASSWORD }}
+
+      - uses: SebastianThomas/homelab-actions/kube-deploy@v1
+        with:
+          server: ${{ secrets.KUBE_API }}
+          ca: ${{ secrets.KUBE_CA }}
+          token: ${{ secrets.KUBE_TOKEN }}
+          namespace: std-dive-logger-${{ needs.gate.outputs.target }}
+          manifests: deploy/${{ needs.gate.outputs.target }}
+          images: |
+            WS_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-ws:${{ needs.gate.outputs.ref }}
+            IMPORT_WS_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-import-ws:${{ needs.gate.outputs.ref }}
+            AUTOCOMPLETE_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-autocomplete:${{ needs.gate.outputs.ref }}
+            ANALYTICS_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-analytics:${{ needs.gate.outputs.ref }}
+          rollouts: >-
+            deployment/std-dive-logger-ws
+            deployment/std-dive-logger-import-ws
+            deployment/std-dive-logger-autocomplete
+            deployment/std-dive-logger-analytics
+          rollout-timeout: 420s

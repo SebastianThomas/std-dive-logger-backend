@@ -98,6 +98,21 @@ public class HomeDataService {
              LIMIT 1)
             """;
 
+    // Same projection as Q_RECENT (reuses mapRecentDive); the partial idx_dives_highlighted keeps
+    // it to the highlighted subset only.
+    private static final String Q_HIGHLIGHTED =
+            """
+            SELECT d.pk_dive_id AS id, d.dive_number AS number, d.dive_identifier AS identifier,
+                   s.name AS site_name, ds.dive_start AS dive_start,
+                   ds.max_depth AS max_depth, ds.duration_seconds AS bottom_seconds
+            FROM t_dives d
+            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+            JOIN t_dive_site s     ON s.pk_dive_site_id = d.dive_site
+            WHERE d.fk_diver_id = :userId AND d.highlighted
+            ORDER BY ds.dive_start DESC, d.dive_number DESC
+            LIMIT 6
+            """;
+
     private static final String Q_BUDDIES =
             """
             SELECT b.name AS name, COUNT(*) AS dive_count
@@ -117,6 +132,8 @@ public class HomeDataService {
                 Objects.requireNonNull(
                         jdbc.queryForObject(Q_SUMMARY, params, HomeDataService::mapSummary));
         final var recentDives = jdbc.query(Q_RECENT, params, HomeDataService::mapRecentDive);
+        final var highlightedDives =
+                jdbc.query(Q_HIGHLIGHTED, params, HomeDataService::mapRecentDive);
         final var recordRows = jdbc.query(Q_RECORDS, params, HomeDataService::mapRecordRow);
         final var topBuddies = jdbc.query(Q_BUDDIES, params, HomeDataService::mapBuddy);
 
@@ -134,6 +151,7 @@ public class HomeDataService {
                 new HomeActivity(
                         summary.window30(), summary.window365(), summary.windowPrevious365()),
                 recentDives,
+                highlightedDives,
                 topBuddies,
                 new HomeRecords(recordOf(recordRows, "DEEPEST"), recordOf(recordRows, "LONGEST")));
     }

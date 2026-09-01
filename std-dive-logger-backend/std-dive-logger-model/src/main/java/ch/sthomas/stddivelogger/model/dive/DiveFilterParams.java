@@ -25,4 +25,6 @@ public record DiveFilterParams(
         @Nullable LocalTime endTime,
         /** Inclusive dive-number range (e.g. "my dives 120-126") - either bound alone is fine. */
         @Nullable Integer minNumber,
-        @Nullable Integer maxNumber) {}
+        @Nullable Integer maxNumber,
+        /** {@code TRUE} keeps only highlighted ('starred') dives; null/false doesn't filter. */
+        @Nullable Boolean highlighted) {}

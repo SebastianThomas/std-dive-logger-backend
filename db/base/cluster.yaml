@@ -1,0 +1,45 @@
+---
+# CNPG Postgres + PostGIS for std-dive-logger. One Cluster per environment - this
+# file is shared; db/dev and db/prod set the namespace via kustomize, so dev and
+# prod get fully separate Clusters / data / volumes.
+#
+# CNPG auto-creates Secret `std-dive-logger-db-app` (keys: username, password,
+# dbname, host, port, uri, jdbc-uri) - deploy/base/deployment-*.yaml read from it.
+#
+# Applied by homelab-actions/cnpg-cluster (see ../.github/workflows/db.yml),
+# deliberately separate from the app deploy workflow. The DB is *replayed* from
+# the legacy PostGIS dump once, right after this Cluster first goes Ready - see
+# the repo README.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: std-dive-logger-db
+spec:
+  instances: 1
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql-minimal-trixie
+    major: 18
+  postgresql:
+    extensions:
+      # postgis extension image is mounted on demand (see homelab-infra
+      # infrastructure/cloudnative-pg/image-catalog.yaml).
+      - name: postgis
+  storage:
+    size: 3Gi
+    storageClass: local-path
+  bootstrap:
+    initdb:
+      database: std_dive_logger
+      owner: std_dive_logger
+      postInitApplicationSQL:
+        # Fail fast if an extension the dump needs isn't in the image. postgis
+        # comes from the extension image above; pg_trgm / fuzzystrmatch are
+        # standard contrib (present in the CNPG base image).
+        - CREATE EXTENSION IF NOT EXISTS postgis
+        - CREATE EXTENSION IF NOT EXISTS pg_trgm
+        - CREATE EXTENSION IF NOT EXISTS fuzzystrmatch
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 640Mi }

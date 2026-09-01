@@ -49,7 +49,9 @@ public record Dive(
         @Nullable WaterType waterType,
         @Nullable Current current,
         @NotNull DiveLeader leader,
-        @Nullable TeamTerminology teamTerminology) {
+        @Nullable TeamTerminology teamTerminology,
+        /** Diver-set "star" - see {@code DiveEntity.highlighted}. */
+        boolean highlighted) {
     @Override
     @NotNull
     public String toString() {

@@ -219,6 +219,29 @@ class HomeDataServiceIntegrationTest {
     }
 
     @Test
+    void highlightedDivesAreOnlyThisUsersStarredOnesNewestFirst() {
+        final var other =
+                userRepository.save(new UserEntity("home-it-hl-other@test.ch", "h", "Other"));
+
+        dive(user, daysAgo(30), 30 * 60, 12.0, List.of()); // not highlighted
+        final var older = dive(user, daysAgo(20), 30 * 60, 18.0, List.of());
+        final var newer = dive(user, daysAgo(4), 30 * 60, 25.0, List.of());
+        final var strangersStar = dive(other, daysAgo(1), 30 * 60, 40.0, List.of());
+
+        older.setHighlighted(true);
+        newer.setHighlighted(true);
+        strangersStar.setHighlighted(true);
+        // Flush: Q_HIGHLIGHTED is raw JDBC and won't trigger a Hibernate auto-flush of the UPDATEs.
+        diveRepository.saveAllAndFlush(List.of(older, newer, strangersStar));
+
+        final var home = homeDataService.forUser(user.getId(), user.toRecord().name());
+
+        assertThat(home.highlightedDives())
+                .extracting(HomeRecentDive::id)
+                .containsExactly(newer.getId(), older.getId());
+    }
+
+    @Test
     void emptyLogbookReturnsZeroesAndNullsWithoutThrowing() {
         final var home = homeDataService.forUser(user.getId(), user.toRecord().name());
 
@@ -232,6 +255,7 @@ class HomeDataServiceIntegrationTest {
         assertThat(home.windows().last30Days().diveCount()).isZero();
         assertThat(home.windows().last30Days().bottomTime()).isNull();
         assertThat(home.recentDives()).isEmpty();
+        assertThat(home.highlightedDives()).isEmpty();
         assertThat(home.topBuddies()).isEmpty();
         assertThat(home.records().deepest()).isNull();
         assertThat(home.records().longest()).isNull();

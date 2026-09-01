@@ -1,0 +1,18 @@
+---
+# Base hostname is the PROD one (no suffix) - the dev overlay patches it to
+# ...std-dive-logger-dev.sthomas.ch. Traefik is the public edge (cert-manager
+# gateway certs; add the hostnames to homelab-infra gateway-certs.yaml).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: std-dive-logger-import-ws
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: kube-system
+  hostnames:
+    - importer.std-dive-logger.sthomas.ch
+  rules:
+    - backendRefs:
+        - name: std-dive-logger-import-ws
+          port: 80

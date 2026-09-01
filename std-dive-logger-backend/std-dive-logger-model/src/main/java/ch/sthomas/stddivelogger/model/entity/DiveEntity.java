@@ -154,6 +154,13 @@ public class DiveEntity {
     @Enumerated(EnumType.STRING)
     private @Nullable TeamTerminology teamTerminology;
 
+    /**
+     * Diver-set "star" - surfaces the dive on the home dashboard and in the list's highlight
+     * filter.
+     */
+    @Column(name = "highlighted", nullable = false)
+    private boolean highlighted;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -256,7 +263,8 @@ public class DiveEntity {
                         .map(DiveConditionsEntity::toCurrentRecord)
                         .orElse(null),
                 getLeader(),
-                teamTerminology);
+                teamTerminology,
+                highlighted);
     }
 
     /**
@@ -338,7 +346,8 @@ public class DiveEntity {
                 getBuddyLinks(includeBuddyDives).map(l -> toBuddyDive(l, this.id)).toList(),
                 getNamedBuddiesModels(),
                 getSummary(),
-                getTags());
+                getTags(),
+                highlighted);
     }
 
     /**
@@ -699,6 +708,14 @@ public class DiveEntity {
 
     public @Nullable TeamTerminology getTeamTerminology() {
         return teamTerminology;
+    }
+
+    public boolean isHighlighted() {
+        return highlighted;
+    }
+
+    public void setHighlighted(final boolean highlighted) {
+        this.highlighted = highlighted;
     }
 
     public List<DiveBuddyNameEntity> getNamedBuddies() {

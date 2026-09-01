@@ -272,7 +272,8 @@ public class GraphImageCreatorTest {
                         null,
                         null,
                         DiveLeader.SELF,
-                        null);
+                        null,
+                        false);
         final var tempFile = Files.createTempFile("test_dive_profile-", ".svg").toFile();
         try (final var outWriter = new FileWriter(tempFile)) {
             GraphImageCreator.fromDive(
@@ -391,7 +392,8 @@ public class GraphImageCreatorTest {
                         null,
                         null,
                         DiveLeader.SELF,
-                        null);
+                        null,
+                        false);
 
         final var withDecoWriter = new StringWriter();
         GraphImageCreator.fromDive(
@@ -449,7 +451,8 @@ public class GraphImageCreatorTest {
                         null,
                         null,
                         DiveLeader.SELF,
-                        null);
+                        null,
+                        false);
         final var noDecoWriter = new StringWriter();
         GraphImageCreator.fromDive(
                 noDecoDive,

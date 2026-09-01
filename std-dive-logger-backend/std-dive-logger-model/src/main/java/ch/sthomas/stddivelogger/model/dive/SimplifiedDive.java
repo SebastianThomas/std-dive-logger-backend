@@ -20,4 +20,6 @@ public record SimplifiedDive(
         @NotNull List<BuddyDive> buddiesDives,
         @NotNull List<String> namedBuddies,
         @NotNull DiveSummary summary,
-        @NotNull List<TagDefinition> tags) {}
+        @NotNull List<TagDefinition> tags,
+        /** Diver-set "star" - see {@code DiveEntity.highlighted}. */
+        boolean highlighted) {}

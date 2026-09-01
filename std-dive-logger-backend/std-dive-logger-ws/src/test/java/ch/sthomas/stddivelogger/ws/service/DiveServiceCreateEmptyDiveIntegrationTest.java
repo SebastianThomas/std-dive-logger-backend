@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
@@ -115,6 +116,57 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
                     new java.awt.Dimension(800, 450));
             assertThat(writer.toString()).isNotBlank();
         }
+    }
+
+    @Test
+    void twoManualDivesAtTheSameStartAreRejectedWithAClearMessageNotA500() {
+        final var user =
+                userRepository
+                        .save(new UserEntity("manual-dive-collision-it@test.ch", "hash", "IT"))
+                        .toRecord();
+        final var site =
+                diveSiteRepository
+                        .save(
+                                new DiveSiteEntity(
+                                        "Manual Dive Collision IT Site",
+                                        new Location(47.0, 8.0).toPoint()))
+                        .toRecord();
+        final var start = Instant.parse("2026-06-01T09:00:00Z");
+
+        diveService.createEmptyDive(
+                user,
+                new UploadDiveBody(
+                        null, "collision-1", site.id(), 20.0, Duration.ofMinutes(30), start));
+
+        // Same synthetic "Manual" computer + identical start -> would violate t_dive_profiles'
+        // (fk_dive_computer, dive_profile_start) unique constraint. Must surface as a plain 400,
+        // not the post-commit UnexpectedRollbackException it used to.
+        assertThatThrownBy(
+                        () ->
+                                diveService.createEmptyDive(
+                                        user,
+                                        new UploadDiveBody(
+                                                null,
+                                                "collision-2",
+                                                site.id(),
+                                                18.0,
+                                                Duration.ofMinutes(25),
+                                                start)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exact date and time");
+
+        // A different start on the same day is fine.
+        final var ok =
+                diveService.createEmptyDive(
+                        user,
+                        new UploadDiveBody(
+                                null,
+                                "collision-3",
+                                site.id(),
+                                18.0,
+                                Duration.ofMinutes(25),
+                                start.plusSeconds(60)));
+        assertThat(ok.id()).isPositive();
     }
 
     @Test

@@ -225,6 +225,8 @@ public class DiveController {
                     final Integer minNumber,
             @RequestParam(name = "maxNumber", required = false) @Positive @Nullable
                     final Integer maxNumber,
+            @RequestParam(name = "highlighted", required = false) @Nullable
+                    final Boolean highlighted,
             @RequestParam(name = "page", required = false, defaultValue = "0") @PositiveOrZero
                     final int page,
             @RequestParam(name = "sortCol", required = false) @Nullable
@@ -248,7 +250,8 @@ public class DiveController {
                         startTime,
                         endTime,
                         minNumber,
-                        maxNumber),
+                        maxNumber,
+                        highlighted),
                 DiveSort.ofNullable(sortColumn, sortDirection),
                 page);
     }
@@ -869,6 +872,23 @@ public class DiveController {
         }
         return diveService.updateTags(
                 user, diveId, body.manualTagIds(), body.dismissedAutoTagIds());
+    }
+
+    public record SetHighlightedBody(boolean highlighted) {}
+
+    @Operation(
+            summary =
+                    "Highlight ('star') a dive or clear it. Highlighted dives surface on the home"
+                            + " dashboard and can be filtered in the dive list.")
+    @PutMapping(path = "/{id}/highlighted", consumes = APPLICATION_JSON_VALUE)
+    public SimplifiedDive setHighlighted(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @NotNull @RequestBody final SetHighlightedBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to highlight a dive.");
+        }
+        return diveService.setHighlighted(user, diveId, body.highlighted());
     }
 
     @Operation(

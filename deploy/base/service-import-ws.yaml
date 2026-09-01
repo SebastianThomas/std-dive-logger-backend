@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: std-dive-logger-import-ws
+spec:
+  selector: { app: std-dive-logger-import-ws }
+  ports:
+    - { name: http, port: 80, targetPort: http }

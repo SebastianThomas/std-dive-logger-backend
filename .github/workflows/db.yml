@@ -1,0 +1,46 @@
+name: db
+run-name: "provision DB ${{ inputs.environment }} @ ${{ inputs.tag }}"
+
+# Provisions/reconciles the CNPG Postgres+PostGIS Cluster for one environment.
+# Deliberately separate from the app deploy - on demand, repeatable, never a
+# side effect of an app release. The legacy DB is replayed once from a dump
+# right after the Cluster first goes Ready (see README).
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment's Cluster to provision/reconcile
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      tag:
+        description: Tag/ref to read the db/ manifests from (e.g. v1.2.3)
+        required: true
+        type: string
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: SebastianThomas/homelab-actions/headscale-connect@v1
+        with:
+          auth-key: ${{ secrets.TS_AUTHKEY }}
+          login-server: ${{ secrets.HEADSCALE_URL }}
+          ping: kube-cp-01
+
+      - name: "${{ inputs.environment }} Cluster"
+        uses: SebastianThomas/homelab-actions/cnpg-cluster@v1
+        with:
+          server: ${{ secrets.KUBE_API }}
+          ca: ${{ secrets.KUBE_CA }}
+          token: ${{ secrets.KUBE_TOKEN }}
+          namespace: std-dive-logger-${{ inputs.environment }}
+          manifests: db/${{ inputs.environment }}
+          timeout: 900s

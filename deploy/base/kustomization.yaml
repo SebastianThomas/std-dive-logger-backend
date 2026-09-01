@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Not applied directly - dev/ and prod/ overlay this with their namespace, the
+# `std-dive-logger-env` ConfigMap (env-specific, non-secret values) and the
+# HTTPRoute hostnames. `std-dive-logger-secrets` is created by the deploy
+# workflow (kube-secret); `std-dive-logger-db-app` is CNPG's generated secret.
+resources:
+  - namespace.yaml
+  - deployment-ws.yaml
+  - deployment-import-ws.yaml
+  - deployment-autocomplete.yaml
+  - deployment-analytics.yaml
+  - service-ws.yaml
+  - service-import-ws.yaml
+  - service-autocomplete.yaml
+  - httproute-ws.yaml
+  - httproute-import-ws.yaml
+  - httproute-autocomplete.yaml

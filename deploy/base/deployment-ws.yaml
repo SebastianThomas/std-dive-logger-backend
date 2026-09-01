@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: std-dive-logger-ws
+  labels: { app: std-dive-logger-ws }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: std-dive-logger-ws }
+  template:
+    metadata:
+      labels: { app: std-dive-logger-ws }
+    spec:
+      containers:
+        - name: ws
+          image: ${WS_IMAGE}
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: mgmt, containerPort: 8086 }
+          envFrom:
+            - configMapRef: { name: std-dive-logger-env }
+          env:
+            - { name: SPRING_APPLICATION_NAME, value: std-dive-logger-ws }
+            - { name: ADDITIONAL_JAVA_OPTS, value: "-XX:MaxRAMPercentage=70.0" }
+            - { name: SPRING_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
+            - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
+            - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
+            - { name: STD_DIVE_LOGGER_WS_JWT_SECRET,         valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: jwt-secret } } }
+            - { name: STD_DIVE_LOGGER_WS_JWT_REFRESH_SECRET, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: jwt-refresh-secret } } }
+            - { name: STD_DIVE_LOGGER_STORAGE_R2_ACCOUNT_ID, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: r2-account-id } } }
+            - { name: STD_DIVE_LOGGER_STORAGE_R2_ACCESS_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: r2-access-key } } }
+            - { name: STD_DIVE_LOGGER_STORAGE_R2_SECRET_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: r2-secret-key } } }
+            - { name: PASSWORD,                              valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: email-password } } }
+            - { name: CH_STHOMAS_STDDIVELOGGER_WS_SERVICES_FEIGN_AUTOCOMPLETE_URL, value: "http://std-dive-logger-autocomplete" }
+          startupProbe:
+            httpGet: { path: /actuator/health/readiness, port: mgmt }
+            periodSeconds: 5
+            failureThreshold: 60          # up to 5 min for Flyway + JVM warmup
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: mgmt }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: mgmt }
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 896Mi }
