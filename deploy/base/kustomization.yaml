@@ -2,9 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Not applied directly - dev/ and prod/ overlay this with their namespace, the
-# `std-dive-logger-env` ConfigMap (env-specific, non-secret values) and the
-# HTTPRoute hostnames. `std-dive-logger-secrets` is created by the deploy
-# workflow (kube-secret); `std-dive-logger-db-app` is CNPG's generated secret.
+# `std-dive-logger-env` ConfigMap (env-specific, non-secret ${...} values the
+# mounted config references) and the HTTPRoute hostnames.
+# `std-dive-logger-secrets` is created by the deploy workflow (kube-secret);
+# `std-dive-logger-db-app` is CNPG's generated secret.
 resources:
   - namespace.yaml
   - deployment-ws.yaml
@@ -17,3 +18,24 @@ resources:
   - httproute-ws.yaml
   - httproute-import-ws.yaml
   - httproute-autocomplete.yaml
+
+# The mounted /config per service: <name>.properties + <name>-logback.xml,
+# copied from std-dive-logger-<svc>/conf/dev/. jib does NOT bake config;
+# SPRING_CONFIG_NAME + LOGGING_CONFIG (in the Deployments) point Spring at these.
+configMapGenerator:
+  - name: std-dive-logger-ws-config
+    files:
+      - config/std-dive-logger-ws-dev.properties
+      - config/std-dive-logger-ws-dev-logback.xml
+  - name: std-dive-logger-import-ws-config
+    files:
+      - config/std-dive-logger-import-ws-dev.properties
+      - config/std-dive-logger-import-ws-dev-logback.xml
+  - name: std-dive-logger-autocomplete-config
+    files:
+      - config/std-dive-logger-autocomplete-dev.properties
+      - config/std-dive-logger-autocomplete-dev-logback.xml
+  - name: std-dive-logger-analytics-config
+    files:
+      - config/std-dive-logger-analytics-dev.properties
+      - config/std-dive-logger-analytics-dev-logback.xml

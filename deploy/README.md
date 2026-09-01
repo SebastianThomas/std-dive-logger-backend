@@ -14,9 +14,15 @@ only supplies the shared `app-deployer` identity (`KUBE_TOKEN`).
 
 ## Config model
 
-The images bake `conf/dev/*.properties` at `/config/` (jib, `config.deploy.env=dev`).
-Those files are fully templatized — every env-specific / secret value is `${...}`,
-resolved from **environment variables** at container start:
+The jib images set `SPRING_CONFIG_LOCATION=/config/` but do **not** bake a config
+file (the `-Dconfig.*` build args are dead — nothing in the poms reads them).
+Legacy docker-compose mounted `config/<svc>/application.properties`; here that
+file is a **ConfigMap** (`deploy/base/config/<svc>.properties`, copied verbatim
+from `std-dive-logger-<svc>/conf/dev/…-dev.properties`) mounted at
+`/config/application.properties`. Re-copy those when the `conf/dev` files change.
+
+The mounted file is fully templatized — every env-specific / secret value is
+`${...}`, resolved from **environment variables** at container start:
 
 - DB: `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` ← CNPG's `std-dive-logger-db-app`
 - secrets: `std-dive-logger-secrets` (kube-secret, from GH repo/env secrets) —
