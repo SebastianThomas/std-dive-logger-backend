@@ -7,10 +7,16 @@ only supplies the shared `app-deployer` identity (`KUBE_TOKEN`).
 |---|---|---|
 | namespace | `std-dive-logger-dev` | `std-dive-logger-prod` |
 | ws | `std-dive-logger-dev.sthomas.ch` | `std-dive-logger.sthomas.ch` |
-| import-ws | `importer.std-dive-logger-dev.sthomas.ch` | `importer.std-dive-logger.sthomas.ch` |
-| autocomplete | `autocomplete.std-dive-logger-dev.sthomas.ch` | `autocomplete.std-dive-logger.sthomas.ch` |
+| import-ws | `std-dive-logger-importer-dev.sthomas.ch` | `std-dive-logger-importer.sthomas.ch` |
+| autocomplete | `std-dive-logger-autocomplete-dev.sthomas.ch` | `std-dive-logger-autocomplete.sthomas.ch` |
 | analytics | internal only (no route) | internal only |
 | frontend | `std-dive-logger-web-dev.sthomas.ch` (separate repo) | `std-dive-logger-web.sthomas.ch` |
+
+All hostnames are one label deep, so the cluster `*.sthomas.ch` wildcard cert
+covers them — no per-service cert or acme-dns delegation. The dev overlay
+patches the base (prod) hostnames; `analytics` and every Deployment also gets a
+`wait-for-db` initContainer so a fresh namespace doesn't crash-loop while CNPG
+initialises.
 
 ## Config model
 

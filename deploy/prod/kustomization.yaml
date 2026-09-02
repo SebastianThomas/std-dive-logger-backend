@@ -5,8 +5,8 @@ resources:
   - ../base
 
 # Hostnames are the base ones, unpatched:
-#   std-dive-logger.sthomas.ch / importer.std-dive-logger.sthomas.ch /
-#   autocomplete.std-dive-logger.sthomas.ch
+#   std-dive-logger.sthomas.ch / std-dive-logger-importer.sthomas.ch /
+#   std-dive-logger-autocomplete.sthomas.ch
 #
 # TODO before the first prod deploy: confirm the prod R2 bucket + base URL
 # (dev uses a throwaway bucket + the pub-*.r2.dev dev domain).

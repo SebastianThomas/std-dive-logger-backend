@@ -1,7 +1,7 @@
 ---
-# Base hostname is the PROD one (no suffix) - the dev overlay patches it to
-# ...std-dive-logger-dev.sthomas.ch. Traefik is the public edge (cert-manager
-# gateway certs; add the hostnames to homelab-infra gateway-certs.yaml).
+# Base hostname is the PROD one - the dev overlay patches it to
+# std-dive-logger-dev.sthomas.ch. TLS is the cluster *.sthomas.ch wildcard
+# cert on the Traefik websecure listener - nothing per-app.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

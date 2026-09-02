@@ -18,6 +18,17 @@ configMapGenerator:
       - STD_DIVE_LOGGER_STORAGE_R2_BASE_URL=https://pub-15e4d0e285a44cf8b0f443fd6d5d5db9.r2.dev
 
 patches:
+  # Dev is for pre-prod testing, not load - run all four services on a much
+  # smaller footprint than prod (base: 384Mi req / 896Mi lim). container[0] is
+  # always the app; the heap tracks the limit (MaxRAMPercentage=70 -> ~448Mi).
+  - target: { kind: Deployment }
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 25m, memory: 192Mi }
+          limits: { memory: 640Mi }
+
   - target: { kind: HTTPRoute, name: std-dive-logger-ws }
     patch: |
       - op: replace
@@ -27,9 +38,9 @@ patches:
     patch: |
       - op: replace
         path: /spec/hostnames/0
-        value: importer.std-dive-logger-dev.sthomas.ch
+        value: std-dive-logger-importer-dev.sthomas.ch
   - target: { kind: HTTPRoute, name: std-dive-logger-autocomplete }
     patch: |
       - op: replace
         path: /spec/hostnames/0
-        value: autocomplete.std-dive-logger-dev.sthomas.ch
+        value: std-dive-logger-autocomplete-dev.sthomas.ch
