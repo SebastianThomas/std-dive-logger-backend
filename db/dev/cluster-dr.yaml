@@ -1,0 +1,71 @@
+---
+# Off-site standby for std-dive-logger-db, pinned to the Pi.
+#
+# A designated replica cluster, not a second instance of std-dive-logger-db:
+# CNPG only promotes instances within one Cluster, so this one can never be
+# promoted automatically. Promotion means setting replica.enabled: false.
+#
+# Its purpose is backups - run pg_dump against this copy so the dump costs the
+# primary nothing. A standby alone is not a backup: a DROP TABLE replicates in
+# milliseconds.
+#
+# Storage is the Pi's SD card via local-path. If replication lag or card errors
+# appear, move the Pi's local-path root to a USB SSD.
+#
+# No replication slot on the source, so the primary's WAL stays bounded by
+# wal_keep_size while the Pi is offline. The trade: if it falls further behind
+# than that, re-clone (delete this Cluster + its PVC, re-apply).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: std-dive-logger-db-dr
+spec:
+  instances: 1
+
+  # Must match the source exactly - physical replication ships disk pages.
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql-minimal-trixie
+    major: 18
+  postgresql:
+    extensions:
+      - name: postgis
+
+  replica:
+    enabled: true
+    source: std-dive-logger-db-primary
+
+  bootstrap:
+    pg_basebackup:
+      source: std-dive-logger-db-primary
+
+  externalClusters:
+    - name: std-dive-logger-db-primary
+      connectionParameters:
+        # -rw is the primary; -ro has no endpoints while the source is single-instance.
+        host: std-dive-logger-db-rw
+        user: streaming_replica
+        dbname: postgres
+        sslmode: verify-full
+      sslKey: { name: std-dive-logger-db-replication, key: tls.key }
+      sslCert: { name: std-dive-logger-db-replication, key: tls.crt }
+      sslRootCert: { name: std-dive-logger-db-ca, key: ca.crt }
+
+  # Selector picks the Pi, toleration gets past its NoSchedule taint.
+  affinity:
+    nodeSelector:
+      homelab.sthomas.ch/location: home
+    tolerations:
+      - key: homelab.sthomas.ch/edge
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
+  storage:
+    size: 3Gi
+    storageClass: local-path
+
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 640Mi }

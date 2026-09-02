@@ -1,10 +1,6 @@
 ---
-# Namespace-agnostic base: the name is a placeholder that the dev/ and prod/
-# overlays rewrite via their `namespace:` (kustomize v5 renames the Namespace
-# object too). Pins all pods to the Strato node (only node today).
+# Placeholder name - the dev/ and prod/ overlays rewrite it via `namespace:`.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: std-dive-logger
-  annotations:
-    scheduler.alpha.kubernetes.io/node-selector: homelab.sthomas.ch/location=strato

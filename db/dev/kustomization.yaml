@@ -3,3 +3,6 @@ kind: Kustomization
 namespace: std-dive-logger-dev
 resources:
   - ../base
+  # Off-site standby on the Pi. Dev only for now - prod gets its own copy of
+  # this file when that namespace exists.
+  - cluster-dr.yaml
