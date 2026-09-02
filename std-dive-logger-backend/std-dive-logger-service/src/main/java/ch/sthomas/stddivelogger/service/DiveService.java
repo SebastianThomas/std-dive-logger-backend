@@ -262,6 +262,11 @@ public class DiveService {
     }
 
     public @Nullable Dive createSaveDivePreview(final Dive dive) {
+        // A manual dive's only profile is a synthetic surface/max-depth/surface placeholder - a
+        // preview graph of it is a meaningless triangle, so never generate one.
+        if (dive.manualEntry()) {
+            return null;
+        }
         try {
             final var d = createSaveDivePreviewUnsafe(dive);
             logger.info("Added preview image {} to dive {} ({})", d.previewImage(), d.id(), d);
@@ -708,6 +713,19 @@ public class DiveService {
             throw ForbiddenException.forDiveId(user, diveId);
         }
         return diveDataService.setDiveHighlighted(diveId, highlighted);
+    }
+
+    /**
+     * Re-dates a manually-logged dive. Only valid for a manual entry - a dive with a real
+     * dive-computer profile takes its time from the recording. Shifts the synthetic profile (and
+     * therefore the summary start/end) to the new start.
+     */
+    public Dive setManualDiveStartTime(
+            final User user, final long diveId, final Instant startTime) {
+        if (!hasWriteAccess(user, diveId)) {
+            throw ForbiddenException.forDiveId(user, diveId);
+        }
+        return diveDataService.setManualDiveStartTime(diveId, startTime);
     }
 
     public PagedResponse<User> getReaders(

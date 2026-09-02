@@ -87,7 +87,7 @@ public class DiveSummaryEntity {
         final var depths = profiles.stream().flatMapToDouble(DiveProfileEntity::getDepths);
         final var depthSummary = depths.summaryStatistics();
         this.maxDepth = depthSummary.getMax();
-        if (!isManualEntryDive(profiles)) {
+        if (!dive.isManualEntryDive()) {
             this.avgDepth = depthSummary.getAverage();
         }
         // Manual dives: leave avgDepth exactly as it already is (null unless the diver explicitly
@@ -134,14 +134,6 @@ public class DiveSummaryEntity {
      */
     public void setAverageDepth(final @Nullable Double averageDepth) {
         this.avgDepth = averageDepth;
-    }
-
-    // A manual dive's whole profile set is the single synthetic "Manual" computer profile built
-    // by DiveService#createEmptyDive - same duck-typed signal the frontend already uses
-    // (isManualDive in DiveView.vue), there's no dedicated DB flag.
-    private static boolean isManualEntryDive(final List<DiveProfileEntity> profiles) {
-        return profiles.size() == 1
-                && "Manual".equals(profiles.getFirst().getComputer().getManufacturer().getName());
     }
 
     public DiveSummary toRecord() {

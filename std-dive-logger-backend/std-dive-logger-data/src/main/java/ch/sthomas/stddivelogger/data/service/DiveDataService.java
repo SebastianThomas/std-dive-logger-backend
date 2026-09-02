@@ -1494,6 +1494,38 @@ public class DiveDataService {
         return dive.toBackfillStatus();
     }
 
+    /**
+     * Re-dates a manually-logged dive. Rejects a dive with a real dive-computer profile (its time
+     * comes from the recording, not a diver-picked value) and a start that would collide with
+     * another of this diver's manual dives on {@code t_dive_profiles}' {@code (fk_dive_computer,
+     * dive_profile_start)} unique constraint. Shifts the whole synthetic profile - and re-baselines
+     * the profile-history "original" so the shift isn't reverted by an alignment reset - then
+     * recomputes the summary.
+     */
+    @Transactional
+    public Dive setManualDiveStartTime(final long diveId, final Instant startTime) {
+        final var dive = diveRepository.findById(diveId).orElseThrow();
+        if (!dive.isManualEntryDive()) {
+            throw new IllegalArgumentException(
+                    "Only a manually-logged dive's date can be edited here - a dive with a real"
+                            + " dive-computer profile takes its time from the recording.");
+        }
+        final var profile = dive.getProfiles().getFirst();
+        if (!profile.getStart().equals(startTime)
+                && diveProfileRepository.existsByComputer_IdAndProfileStart(
+                        profile.getComputer().getId(), startTime.atOffset(ZoneOffset.UTC))) {
+            throw new IllegalArgumentException(
+                    "You already have a manually-logged dive that starts at that exact date and"
+                            + " time. Adjust the start time.");
+        }
+        profile.alignProfileManual(startTime);
+        diveProfileHistoryRepository
+                .findById(profile.getId())
+                .ifPresent(h -> h.updateOriginal(profile.getStart(), profile.getEnd()));
+        dive.updateDiveSummary();
+        return toRecord(diveRepository.save(dive));
+    }
+
     /** Set (or clear) a dive's "highlighted" star. Returns the updated simplified record. */
     @Transactional
     public SimplifiedDive setDiveHighlighted(final long diveId, final boolean highlighted) {

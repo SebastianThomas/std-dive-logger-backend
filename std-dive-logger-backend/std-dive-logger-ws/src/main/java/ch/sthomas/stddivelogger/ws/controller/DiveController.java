@@ -891,6 +891,23 @@ public class DiveController {
         return diveService.setHighlighted(user, diveId, body.highlighted());
     }
 
+    public record SetStartTimeBody(@NotNull Instant startTime) {}
+
+    @Operation(
+            summary =
+                    "Re-date a manually-logged dive. Only valid for a manual entry - a dive with a"
+                            + " real dive-computer profile takes its time from the recording.")
+    @PutMapping(path = "/{id}/start-time", consumes = APPLICATION_JSON_VALUE)
+    public Dive setManualDiveStartTime(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @NotNull @Valid @RequestBody final SetStartTimeBody body) {
+        if (user == null) {
+            throw new UnauthorizedException("Please log in to edit a dive.");
+        }
+        return diveService.setManualDiveStartTime(user, diveId, body.startTime());
+    }
+
     @Operation(
             summary =
                     "Refresh auto-detected tags and return the updated dive. Call this when opening the edit page.")

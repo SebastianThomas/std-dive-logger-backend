@@ -56,6 +56,10 @@ public class DiveComputerEntity {
         this.user = user;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public UserEntity getUser() {
         return user;
     }

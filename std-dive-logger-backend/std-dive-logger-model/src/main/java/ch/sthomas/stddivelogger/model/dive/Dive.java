@@ -51,7 +51,13 @@ public record Dive(
         @NotNull DiveLeader leader,
         @Nullable TeamTerminology teamTerminology,
         /** Diver-set "star" - see {@code DiveEntity.highlighted}. */
-        boolean highlighted) {
+        boolean highlighted,
+        /**
+         * A manually-logged dive (no dive-computer file) - its only profile is a synthetic
+         * surface/max-depth/surface placeholder, so the frontend shows no depth-time graph for it.
+         * See {@code DiveEntity.isManualEntryDive}.
+         */
+        boolean manualEntry) {
     @Override
     @NotNull
     public String toString() {

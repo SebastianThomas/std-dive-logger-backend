@@ -22,4 +22,9 @@ public record SimplifiedDive(
         @NotNull DiveSummary summary,
         @NotNull List<TagDefinition> tags,
         /** Diver-set "star" - see {@code DiveEntity.highlighted}. */
-        boolean highlighted) {}
+        boolean highlighted,
+        /**
+         * A manually-logged dive (no dive-computer file) - the list shows no synthetic-profile
+         * preview image for it. See {@code DiveEntity.isManualEntryDive}.
+         */
+        boolean manualEntry) {}

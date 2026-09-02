@@ -242,4 +242,86 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
 
         assertThat(afterUnrelatedEdit.summary().averageDepth()).isEqualTo(14.2);
     }
+
+    @Test
+    void setManualDiveStartTimeShiftsTheSyntheticProfileAndSummary() {
+        final var user =
+                userRepository
+                        .save(new UserEntity("manual-dive-redate-it@test.ch", "hash", "IT"))
+                        .toRecord();
+        final var site =
+                diveSiteRepository
+                        .save(
+                                new DiveSiteEntity(
+                                        "Manual Dive Redate IT Site",
+                                        new Location(47.0, 8.0).toPoint()))
+                        .toRecord();
+        final var originalStart = Instant.parse("2026-06-01T09:00:00Z");
+        final var savedDive =
+                diveService.createEmptyDive(
+                        user,
+                        new UploadDiveBody(
+                                null,
+                                "manual-dive-redate-it",
+                                site.id(),
+                                20.0,
+                                Duration.ofMinutes(30),
+                                originalStart));
+        assertThat(savedDive.summary().start()).isEqualTo(originalStart);
+
+        final var newStart = Instant.parse("2025-12-24T14:30:00Z");
+        final var redated = diveService.setManualDiveStartTime(user, savedDive.id(), newStart);
+
+        assertThat(redated.summary().start()).isEqualTo(newStart);
+        assertThat(redated.summary().end()).isEqualTo(newStart.plus(Duration.ofMinutes(30)));
+        assertThat(redated.profiles().getFirst().start()).isEqualTo(newStart);
+        assertThat(Objects.requireNonNull(redated.profiles().getFirst().measurements()).getFirst())
+                .satisfies(m -> assertThat(m.measurement().time()).isEqualTo(newStart));
+        // Max depth (the one real datum) survives the shift.
+        assertThat(redated.summary().maxDepth()).isEqualTo(20.0);
+    }
+
+    @Test
+    void setManualDiveStartTimeRejectsACollisionWithAnotherManualDive() {
+        final var user =
+                userRepository
+                        .save(
+                                new UserEntity(
+                                        "manual-dive-redate-collision-it@test.ch", "hash", "IT"))
+                        .toRecord();
+        final var site =
+                diveSiteRepository
+                        .save(
+                                new DiveSiteEntity(
+                                        "Manual Dive Redate Collision IT Site",
+                                        new Location(47.0, 8.0).toPoint()))
+                        .toRecord();
+        final var first =
+                diveService.createEmptyDive(
+                        user,
+                        new UploadDiveBody(
+                                null,
+                                "redate-collision-1",
+                                site.id(),
+                                20.0,
+                                Duration.ofMinutes(30),
+                                Instant.parse("2026-06-01T09:00:00Z")));
+        final var second =
+                diveService.createEmptyDive(
+                        user,
+                        new UploadDiveBody(
+                                null,
+                                "redate-collision-2",
+                                site.id(),
+                                18.0,
+                                Duration.ofMinutes(25),
+                                Instant.parse("2026-06-01T11:00:00Z")));
+
+        assertThatThrownBy(
+                        () ->
+                                diveService.setManualDiveStartTime(
+                                        user, second.id(), first.summary().start()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exact date and time");
+    }
 }

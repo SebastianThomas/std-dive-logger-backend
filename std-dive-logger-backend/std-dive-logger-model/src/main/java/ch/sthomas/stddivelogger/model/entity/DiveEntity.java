@@ -264,7 +264,8 @@ public class DiveEntity {
                         .orElse(null),
                 getLeader(),
                 teamTerminology,
-                highlighted);
+                highlighted,
+                isManualEntryDive());
     }
 
     /**
@@ -347,7 +348,8 @@ public class DiveEntity {
                 getNamedBuddiesModels(),
                 getSummary(),
                 getTags(),
-                highlighted);
+                highlighted,
+                isManualEntryDive());
     }
 
     /**
@@ -682,6 +684,18 @@ public class DiveEntity {
 
     public List<DiveProfileEntity> getProfiles() {
         return profiles;
+    }
+
+    /**
+     * A manually-entered dive (see {@code DiveService.createEmptyDive}) - its only profile is the
+     * synthetic surface/max-depth/surface curve on the shared "Manual" computer, not a real
+     * recording. Same duck-typed signal {@link DiveSummaryEntity} and the frontend already use;
+     * there's no dedicated DB column.
+     */
+    public boolean isManualEntryDive() {
+        return profiles != null
+                && profiles.size() == 1
+                && "Manual".equals(profiles.getFirst().getComputer().getManufacturer().getName());
     }
 
     public void addProfiles(final List<DiveProfileEntity> profiles) {
