@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.home.HomeBuddy;
+import ch.sthomas.stddivelogger.model.dive.home.HomeMonthlyCount;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecentDive;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -242,6 +243,26 @@ class HomeDataServiceIntegrationTest {
     }
 
     @Test
+    void divesByMonthGroupsThisUsersDivesByCalendarMonthAscending() {
+        final var other =
+                userRepository.save(new UserEntity("home-it-bymonth-other@test.ch", "h", "Other"));
+        dive(user, daysAgo(400), 30 * 60, 10.0, List.of());
+        dive(user, daysAgo(40), 30 * 60, 10.0, List.of());
+        dive(user, daysAgo(38), 30 * 60, 10.0, List.of());
+        dive(user, daysAgo(3), 30 * 60, 10.0, List.of());
+        dive(other, daysAgo(3), 30 * 60, 10.0, List.of()); // excluded
+
+        final var home = homeDataService.forUser(user.getId(), user.toRecord().name());
+
+        // ascending, only months with dives, this user only, and the counts sum to diveCount
+        final var months = home.divesByMonth().stream().map(HomeMonthlyCount::month).toList();
+        assertThat(months).isSorted().doesNotHaveDuplicates();
+        assertThat(months.getFirst()).matches("\\d{4}-\\d{2}");
+        assertThat(home.divesByMonth().stream().mapToInt(HomeMonthlyCount::count).sum())
+                .isEqualTo(4);
+    }
+
+    @Test
     void emptyLogbookReturnsZeroesAndNullsWithoutThrowing() {
         final var home = homeDataService.forUser(user.getId(), user.toRecord().name());
 
@@ -256,6 +277,7 @@ class HomeDataServiceIntegrationTest {
         assertThat(home.windows().last30Days().bottomTime()).isNull();
         assertThat(home.recentDives()).isEmpty();
         assertThat(home.highlightedDives()).isEmpty();
+        assertThat(home.divesByMonth()).isEmpty();
         assertThat(home.topBuddies()).isEmpty();
         assertThat(home.records().deepest()).isNull();
         assertThat(home.records().longest()).isNull();

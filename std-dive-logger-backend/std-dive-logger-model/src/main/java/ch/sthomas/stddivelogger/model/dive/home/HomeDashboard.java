@@ -27,6 +27,9 @@ public record HomeDashboard(
         @Nullable Instant lastDiveStart,
         long divesThisYear,
         HomeActivity windows,
+        // Dives per calendar month, ascending, months-with-dives only - the frontend derives a
+        // pause-aware "recent rate" from the gaps here rather than an all-time average.
+        List<HomeMonthlyCount> divesByMonth,
         List<HomeRecentDive> recentDives,
         // The user's highlighted ('starred') dives, most recent first (capped).
         List<HomeRecentDive> highlightedDives,
@@ -44,6 +47,7 @@ public record HomeDashboard(
                 null,
                 0,
                 HomeActivity.EMPTY,
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

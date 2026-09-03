@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.model.dive.home.HomeActivity;
 import ch.sthomas.stddivelogger.model.dive.home.HomeBuddy;
 import ch.sthomas.stddivelogger.model.dive.home.HomeDashboard;
+import ch.sthomas.stddivelogger.model.dive.home.HomeMonthlyCount;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecentDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecordDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecords;
@@ -24,8 +25,8 @@ import java.util.Objects;
 
 /**
  * The home dashboard's aggregation, in the raw-SQL / {@link NamedParameterJdbcTemplate} style of
- * {@link StatsDataService} (never entity graphs). Four small diver-scoped queries against {@code
- * t_dive_summary} (+ {@code t_dive_site} / {@code t_dive_buddy_name}); no {@code
+ * {@link StatsDataService} (never entity graphs). A handful of small diver-scoped queries against
+ * {@code t_dive_summary} (+ {@code t_dive_site} / {@code t_dive_buddy_name}); no {@code
  * t_dive_measurements}, no per-dive record hydration. Runs on nearly every page load - {@code
  * idx_dives_diver_id} (V0_4_11) keeps each one an index scan.
  */
@@ -113,6 +114,18 @@ public class HomeDataService {
             LIMIT 6
             """;
 
+    // Months with at least one dive, ascending - the frontend detects real pauses from the gaps.
+    private static final String Q_MONTHLY =
+            """
+            SELECT to_char(date_trunc('month', ds.dive_start), 'YYYY-MM') AS ym,
+                   COUNT(*) AS cnt
+            FROM t_dives d
+            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+            WHERE d.fk_diver_id = :userId
+            GROUP BY 1
+            ORDER BY 1
+            """;
+
     private static final String Q_BUDDIES =
             """
             SELECT b.name AS name, COUNT(*) AS dive_count
@@ -136,6 +149,11 @@ public class HomeDataService {
                 jdbc.query(Q_HIGHLIGHTED, params, HomeDataService::mapRecentDive);
         final var recordRows = jdbc.query(Q_RECORDS, params, HomeDataService::mapRecordRow);
         final var topBuddies = jdbc.query(Q_BUDDIES, params, HomeDataService::mapBuddy);
+        final var divesByMonth =
+                jdbc.query(
+                        Q_MONTHLY,
+                        params,
+                        (rs, rowNum) -> new HomeMonthlyCount(rs.getString("ym"), rs.getInt("cnt")));
 
         return new HomeDashboard(
                 userName,
@@ -150,6 +168,7 @@ public class HomeDataService {
                 summary.divesThisYear(),
                 new HomeActivity(
                         summary.window30(), summary.window365(), summary.windowPrevious365()),
+                divesByMonth,
                 recentDives,
                 highlightedDives,
                 topBuddies,
