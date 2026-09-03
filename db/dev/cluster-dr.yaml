@@ -37,8 +37,14 @@ spec:
     source: std-dive-logger-db-primary
 
   bootstrap:
+    # Must match the source. These do not affect the clone (a byte copy) - they
+    # name the "application" database the metrics exporter connects to. Unset,
+    # CNPG defaults to "app", which does not exist here, and every per-database
+    # collector fails - including cnpg_pg_replication_lag.
     pg_basebackup:
       source: std-dive-logger-db-primary
+      database: std_dive_logger
+      owner: std_dive_logger
 
   externalClusters:
     - name: std-dive-logger-db-primary
