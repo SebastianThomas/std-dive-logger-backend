@@ -254,6 +254,11 @@ public class DiveService {
 
     public @Nullable Dive createSaveDivePreview(final User user, final long diveId) {
         final var dive = getDiveById(user, diveId).orElseThrow();
+        // A manual dive genuinely has no preview to (re)generate - return it unchanged rather than
+        // null (which the controller would surface as a 500).
+        if (dive.manualEntry()) {
+            return dive;
+        }
         final var result = createSaveDivePreview(dive);
         if (result == null || result.previewImage() == null) {
             return null;

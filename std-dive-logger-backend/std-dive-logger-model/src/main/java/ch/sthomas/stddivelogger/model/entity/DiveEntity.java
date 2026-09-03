@@ -218,7 +218,10 @@ public class DiveEntity {
     }
 
     private @Nullable String getPreviewImage(@NotNull final String baseUrl) {
-        if (previewImage == null) {
+        // Never expose a preview for a manual dive - its only profile is a synthetic
+        // surface/max-depth/surface placeholder, so any rendered graph is a meaningless triangle.
+        // Covers stale rows written before createSaveDivePreview learned to skip manual dives.
+        if (previewImage == null || isManualEntryDive()) {
             return null;
         }
         return URI.create(baseUrl).resolve(previewImage).toString();

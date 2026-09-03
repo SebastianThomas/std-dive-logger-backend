@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
+import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
@@ -105,6 +106,16 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
         // The synthetic surface/max-depth/surface profile isn't a real depth-time curve -
         // averaging it (e.g. to maxDepth/3) would be a fabricated number, not a real average.
         assertThat(dive.summary().averageDepth()).isNull();
+        assertThat(dive.manualEntry()).isTrue();
+        // A manual dive never exposes a preview image - a graph of the synthetic profile is a
+        // meaningless triangle. An explicit regenerate request is a no-op (returns the dive
+        // unchanged, still with no preview) rather than generating one.
+        assertThat(dive.previewImage()).isNull();
+        final Dive regenerated =
+                Objects.requireNonNull(diveService.createSaveDivePreview(user, savedDive.id()));
+        assertThat(regenerated.previewImage()).isNull();
+        assertThat(diveService.getDiveById(user, savedDive.id()).orElseThrow().previewImage())
+                .isNull();
 
         try (final var writer = new StringWriter()) {
             GraphImageCreator.fromDive(
