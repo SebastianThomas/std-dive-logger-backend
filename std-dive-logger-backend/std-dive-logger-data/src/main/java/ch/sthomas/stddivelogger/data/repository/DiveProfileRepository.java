@@ -27,4 +27,12 @@ public interface DiveProfileRepository extends JpaRepository<DiveProfileEntity, 
      * otherwise violate it).
      */
     boolean existsByComputer_IdAndProfileStart(long computerId, OffsetDateTime profileStart);
+
+    /**
+     * Same collision check, but ignoring the profiles of one dive - used when re-dating a dive to
+     * reject a shift that would land a profile on the exact start of a <em>different</em> dive's
+     * profile on the same computer.
+     */
+    boolean existsByComputer_IdAndProfileStartAndDive_IdNot(
+            long computerId, OffsetDateTime profileStart, long diveId);
 }

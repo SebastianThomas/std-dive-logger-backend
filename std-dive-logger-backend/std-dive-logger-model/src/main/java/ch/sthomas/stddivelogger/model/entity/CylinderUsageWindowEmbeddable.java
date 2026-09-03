@@ -7,6 +7,7 @@ import jakarta.persistence.Embeddable;
 
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 
 /**
@@ -31,5 +32,17 @@ public class CylinderUsageWindowEmbeddable {
 
     public CylinderUsageWindow toRecord() {
         return new CylinderUsageWindow(windowStart, windowEnd);
+    }
+
+    /**
+     * Moves both bounds by {@code delta} - so a cylinder's timed stretches follow a re-dated dive.
+     */
+    public void shiftBy(final Duration delta) {
+        if (windowStart != null) {
+            this.windowStart = windowStart.plus(delta);
+        }
+        if (windowEnd != null) {
+            this.windowEnd = windowEnd.plus(delta);
+        }
     }
 }

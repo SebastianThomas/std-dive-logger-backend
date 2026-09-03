@@ -94,6 +94,11 @@ public class DiveConfigurationCylinderEntity {
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
+    /** Shifts every timed usage window by {@code delta} - for re-dating the whole dive. */
+    public void shiftUsageWindowsBy(final java.time.Duration delta) {
+        usageWindows.forEach(w -> w.shiftBy(delta));
+    }
+
     public DiveConfigurationCylinder toRecord() {
         return new DiveConfigurationCylinder(
                 id,

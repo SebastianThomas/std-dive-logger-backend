@@ -255,7 +255,7 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
     }
 
     @Test
-    void setManualDiveStartTimeShiftsTheSyntheticProfileAndSummary() {
+    void setDiveStartTimeShiftsTheSyntheticProfileAndSummary() {
         final var user =
                 userRepository
                         .save(new UserEntity("manual-dive-redate-it@test.ch", "hash", "IT"))
@@ -281,7 +281,7 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
         assertThat(savedDive.summary().start()).isEqualTo(originalStart);
 
         final var newStart = Instant.parse("2025-12-24T14:30:00Z");
-        final var redated = diveService.setManualDiveStartTime(user, savedDive.id(), newStart);
+        final var redated = diveService.setDiveStartTime(user, savedDive.id(), newStart);
 
         assertThat(redated.summary().start()).isEqualTo(newStart);
         assertThat(redated.summary().end()).isEqualTo(newStart.plus(Duration.ofMinutes(30)));
@@ -293,7 +293,7 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
     }
 
     @Test
-    void setManualDiveStartTimeRejectsACollisionWithAnotherManualDive() {
+    void setDiveStartTimeRejectsACollisionWithAnotherManualDive() {
         final var user =
                 userRepository
                         .save(
@@ -330,7 +330,7 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
 
         assertThatThrownBy(
                         () ->
-                                diveService.setManualDiveStartTime(
+                                diveService.setDiveStartTime(
                                         user, second.id(), first.summary().start()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exact date and time");

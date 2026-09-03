@@ -10,7 +10,9 @@ import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
@@ -1495,33 +1497,46 @@ public class DiveDataService {
     }
 
     /**
-     * Re-dates a manually-logged dive. Rejects a dive with a real dive-computer profile (its time
-     * comes from the recording, not a diver-picked value) and a start that would collide with
-     * another of this diver's manual dives on {@code t_dive_profiles}' {@code (fk_dive_computer,
-     * dive_profile_start)} unique constraint. Shifts the whole synthetic profile - and re-baselines
-     * the profile-history "original" so the shift isn't reverted by an alignment reset - then
-     * recomputes the summary.
+     * Re-dates a dive: shifts every profile (start/end + all measurements) and every cylinder usage
+     * window by the same delta so {@code startTime} becomes the earliest profile's start. Works for
+     * a manually-logged dive (the picked date) and for an imported one whose computer clock was
+     * wrong. The profile-history "original" is deliberately left untouched, so the shift reads back
+     * as a manual-alignment offset - it survives a reimport and can be undone via "reset
+     * alignment". Rejects a shift that would land a profile on the exact start of a different
+     * dive's profile on the same computer (the {@code (fk_dive_computer, dive_profile_start)}
+     * unique constraint).
      */
     @Transactional
-    public Dive setManualDiveStartTime(final long diveId, final Instant startTime) {
+    public Dive setDiveStartTime(final long diveId, final Instant startTime) {
         final var dive = diveRepository.findById(diveId).orElseThrow();
-        if (!dive.isManualEntryDive()) {
-            throw new IllegalArgumentException(
-                    "Only a manually-logged dive's date can be edited here - a dive with a real"
-                            + " dive-computer profile takes its time from the recording.");
+        final var profiles = dive.getProfiles();
+        if (profiles.isEmpty()) {
+            throw new IllegalArgumentException("This dive has no profile to re-date.");
         }
-        final var profile = dive.getProfiles().getFirst();
-        if (!profile.getStart().equals(startTime)
-                && diveProfileRepository.existsByComputer_IdAndProfileStart(
-                        profile.getComputer().getId(), startTime.atOffset(ZoneOffset.UTC))) {
-            throw new IllegalArgumentException(
-                    "You already have a manually-logged dive that starts at that exact date and"
-                            + " time. Adjust the start time.");
+        final var currentStart =
+                profiles.stream()
+                        .map(DiveProfileEntity::getStart)
+                        .min(Comparator.naturalOrder())
+                        .orElseThrow();
+        final var delta = Duration.between(currentStart, startTime);
+        if (delta.isZero()) {
+            return toRecord(dive);
         }
-        profile.alignProfileManual(startTime);
-        diveProfileHistoryRepository
-                .findById(profile.getId())
-                .ifPresent(h -> h.updateOriginal(profile.getStart(), profile.getEnd()));
+        for (final var profile : profiles) {
+            final var target = profile.getStart().plus(delta);
+            if (diveProfileRepository.existsByComputer_IdAndProfileStartAndDive_IdNot(
+                    profile.getComputer().getId(), target.atOffset(ZoneOffset.UTC), diveId)) {
+                throw new IllegalArgumentException(
+                        dive.isManualEntryDive()
+                                ? "You already have a manually-logged dive that starts at that exact"
+                                        + " date and time. Adjust the start time."
+                                : "Another dive recorded on this computer already starts at that"
+                                        + " exact time. Adjust the start time.");
+            }
+        }
+        profiles.forEach(profile -> profile.shiftBy(delta));
+        Optional.ofNullable(dive.getConfiguration())
+                .ifPresent(config -> config.shiftUsageWindowsBy(delta));
         dive.updateDiveSummary();
         return toRecord(diveRepository.save(dive));
     }
@@ -1757,6 +1772,51 @@ public class DiveDataService {
         return onlyOwn
                 ? diveRepository.findBasicDiveInfoByUserIdAndDiveSiteId(userId, siteId)
                 : readerViewRepository.findBasicDiveInfoByUserIdAndDiveSiteId(userId, siteId);
+    }
+
+    /**
+     * Every visibility reading (metres and/or feeling) the user has logged at one site, oldest
+     * first - backs the per-site visibility scatter view. Own dives only, raw-SQL in the {@link
+     * HomeDataService} style rather than hydrating dive graphs.
+     */
+    @Transactional(readOnly = true)
+    public List<SiteVisibilityLog> findSiteVisibilityLogs(
+            final long userId, final long siteId, final boolean lastYearOnly) {
+        final var sql =
+                """
+                SELECT d.pk_dive_id AS id, d.dive_number AS number, d.dive_identifier AS identifier,
+                       ds.dive_start AS dive_start,
+                       v.visibility_meters AS meters, v.visibility_feeling AS feeling
+                FROM t_dives d
+                JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                JOIN t_dive_visibility v ON v.fk_dive_id = d.pk_dive_id
+                WHERE d.fk_diver_id = :userId
+                  AND d.dive_site = :siteId
+                  AND (v.visibility_meters IS NOT NULL OR v.visibility_feeling IS NOT NULL)
+                """
+                        + (lastYearOnly ? " AND ds.dive_start >= now() - interval '12 months'" : "")
+                        + " ORDER BY ds.dive_start";
+        final var params =
+                new MapSqlParameterSource().addValue("userId", userId).addValue("siteId", siteId);
+        return namedParameterJdbcTemplate.query(sql, params, DiveDataService::mapSiteVisibilityLog);
+    }
+
+    private static SiteVisibilityLog mapSiteVisibilityLog(final ResultSet rs, final int rowNum)
+            throws SQLException {
+        final long id = rs.getLong("id");
+        final int number = rs.getInt("number");
+        final var identifier = rs.getString("identifier");
+        final var date = rs.getTimestamp("dive_start").toInstant();
+        final var meters = rs.getDouble("meters");
+        final Double metersOrNull = rs.wasNull() ? null : meters;
+        final var feelingRaw = rs.getString("feeling");
+        return new SiteVisibilityLog(
+                id,
+                number,
+                identifier,
+                date,
+                metersOrNull,
+                feelingRaw == null ? null : VisibilityFeeling.valueOf(feelingRaw));
     }
 
     @Transactional

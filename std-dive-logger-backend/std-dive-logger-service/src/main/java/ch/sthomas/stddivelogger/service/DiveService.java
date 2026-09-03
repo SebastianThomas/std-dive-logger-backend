@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.dive.*;
+import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
@@ -721,16 +722,15 @@ public class DiveService {
     }
 
     /**
-     * Re-dates a manually-logged dive. Only valid for a manual entry - a dive with a real
-     * dive-computer profile takes its time from the recording. Shifts the synthetic profile (and
-     * therefore the summary start/end) to the new start.
+     * Re-dates a dive - a manual entry (the picked date) or an import whose computer clock was
+     * wrong. Shifts every profile + cylinder usage window (and therefore the summary start/end) so
+     * {@code startTime} becomes the earliest profile's start.
      */
-    public Dive setManualDiveStartTime(
-            final User user, final long diveId, final Instant startTime) {
+    public Dive setDiveStartTime(final User user, final long diveId, final Instant startTime) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);
         }
-        return diveDataService.setManualDiveStartTime(diveId, startTime);
+        return diveDataService.setDiveStartTime(diveId, startTime);
     }
 
     public PagedResponse<User> getReaders(
@@ -874,6 +874,15 @@ public class DiveService {
     public List<BasicDiveInfo> getDivesAtSiteForUser(
             final User user, final long siteId, final boolean onlyOwn) {
         return diveDataService.findDivesAtSiteForUser(user.id(), siteId, onlyOwn);
+    }
+
+    /**
+     * The user's own visibility readings at one site, for the per-site visibility scatter view.
+     * {@code lastYearOnly} limits to the past 12 months; otherwise all time.
+     */
+    public List<SiteVisibilityLog> getSiteVisibilityLogs(
+            final User user, final long siteId, final boolean lastYearOnly) {
+        return diveDataService.findSiteVisibilityLogs(user.id(), siteId, lastYearOnly);
     }
 
     private boolean isSimilarName(final CharSequence a, final CharSequence b) {

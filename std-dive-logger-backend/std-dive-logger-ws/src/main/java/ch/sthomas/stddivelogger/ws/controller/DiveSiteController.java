@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
+import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
@@ -109,6 +110,24 @@ public class DiveSiteController {
             @RequestParam(value = "includeReader", defaultValue = "false")
                     final boolean includeReader) {
         return diveService.getDivesAtSiteForUser(user, siteId, !includeReader);
+    }
+
+    @Operation(
+            summary = "The user's own visibility readings at one site (for the visibility scatter)",
+            description =
+                    "Every dive the user logged here that has a visibility metres value and/or"
+                            + " feeling, oldest first. lastYearOnly=true limits to the past 12"
+                            + " months; default false is all time.")
+    @GetMapping(path = "/{id}/visibility")
+    public List<SiteVisibilityLog> getSiteVisibility(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long siteId,
+            @RequestParam(value = "lastYearOnly", defaultValue = "false")
+                    final boolean lastYearOnly) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to view a site's visibility history");
+        }
+        return diveService.getSiteVisibilityLogs(user, siteId, lastYearOnly);
     }
 
     @Operation(summary = "Find DiveSite by location")

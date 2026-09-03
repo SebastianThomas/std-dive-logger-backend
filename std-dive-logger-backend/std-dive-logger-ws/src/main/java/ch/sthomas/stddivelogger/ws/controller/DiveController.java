@@ -894,18 +894,20 @@ public class DiveController {
     public record SetStartTimeBody(@NotNull Instant startTime) {}
 
     @Operation(
-            summary =
-                    "Re-date a manually-logged dive. Only valid for a manual entry - a dive with a"
-                            + " real dive-computer profile takes its time from the recording.")
+            summary = "Re-date a dive",
+            description =
+                    "Shifts every profile and cylinder usage window by one delta so startTime"
+                            + " becomes the earliest profile's start. For a manual entry (the picked"
+                            + " date) or an import whose dive-computer clock was wrong.")
     @PutMapping(path = "/{id}/start-time", consumes = APPLICATION_JSON_VALUE)
-    public Dive setManualDiveStartTime(
+    public Dive setDiveStartTime(
             @AuthenticationPrincipal final @Nullable User user,
             @PathVariable("id") @Positive final long diveId,
             @NotNull @Valid @RequestBody final SetStartTimeBody body) {
         if (user == null) {
             throw new UnauthorizedException("Please log in to edit a dive.");
         }
-        return diveService.setManualDiveStartTime(user, diveId, body.startTime());
+        return diveService.setDiveStartTime(user, diveId, body.startTime());
     }
 
     @Operation(
