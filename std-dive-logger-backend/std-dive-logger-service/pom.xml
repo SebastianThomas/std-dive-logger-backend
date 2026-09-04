@@ -40,6 +40,22 @@
             <artifactId>passay</artifactId>
         </dependency>
 
+        <!-- Web Push - see VapidWebPushSender. jose4j + bcprov-jdk18on are web-push's own VAPID/
+             crypto deps, declared runtime-scope / optional in its POM so they don't come to us
+             transitively even though we reference them directly. -->
+        <dependency>
+            <groupId>nl.martijndwars</groupId>
+            <artifactId>web-push</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bitbucket.b_c</groupId>
+            <artifactId>jose4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.xmlgraphics</groupId>
             <artifactId>batik-svggen</artifactId>

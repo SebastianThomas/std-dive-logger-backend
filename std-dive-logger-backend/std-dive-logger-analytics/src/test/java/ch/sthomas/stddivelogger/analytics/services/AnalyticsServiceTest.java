@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.DiverActivityStatsDataService;
+import ch.sthomas.stddivelogger.data.service.DiverReminderDataService;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmentType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
@@ -14,6 +16,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.service.PushService;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +31,10 @@ class AnalyticsServiceTest {
             new AnalyticsService(
                     mock(AnalyticsDataService.class),
                     mock(AnalyticsSegmentService.class),
-                    mock(DiveDataService.class));
+                    mock(DiveDataService.class),
+                    mock(DiverActivityStatsDataService.class),
+                    mock(DiverReminderDataService.class),
+                    mock(PushService.class));
 
     private static DiveMeasurementWithId sample(final int offsetSeconds, final double depth) {
         return new DiveMeasurementWithId(

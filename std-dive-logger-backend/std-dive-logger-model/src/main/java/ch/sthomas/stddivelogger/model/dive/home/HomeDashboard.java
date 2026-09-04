@@ -9,9 +9,11 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Everything the logged-in home page shows, in one payload from {@code GET /v1/home}. Aggregated
- * live from {@code t_dive_summary} (+ small joins) on every request - four indexed queries, no
- * entity graphs, no {@code t_dive_measurements} - since the home page is hit on nearly every load.
+ * Everything the logged-in home page shows, in one payload from {@code GET /v1/home}. Most of it is
+ * aggregated live from {@code t_dive_summary} (+ small joins) on every request - a handful of
+ * indexed queries, no entity graphs, no {@code t_dive_measurements}. The heavier
+ * activity/trend/streak maths ({@link DiverActivityStats}) is precomputed by the analytics
+ * deployable and read from a cache row.
  *
  * <p>{@code userName} is included so the dashboard needs no separate {@code GET /v1/users/} call.
  */
@@ -27,9 +29,15 @@ public record HomeDashboard(
         @Nullable Instant lastDiveStart,
         long divesThisYear,
         HomeActivity windows,
-        // Dives per calendar month, ascending, months-with-dives only - the frontend derives a
-        // pause-aware "recent rate" from the gaps here rather than an all-time average.
-        List<HomeMonthlyCount> divesByMonth,
+        // Pause-aware activity rate, streaks, seasonality, depth trend, "time to dive again"
+        // nudge - recomputed by the analytics deployable only when the diver's dives change,
+        // cached in t_diver_activity_stats. See DiverActivityStats.
+        DiverActivityStats activityStats,
+        // Time-sensitive prompts: dive anniversaries ("3 years ago today ...") and the dynamic
+        // "time to go diving again" nudge. Computed + stored by the analytics deployable,
+        // recomputed daily; only the currently-relevant, not-dismissed ones are here. Empty list
+        // when there are none.
+        List<DiverReminder> reminders,
         List<HomeRecentDive> recentDives,
         // The user's highlighted ('starred') dives, most recent first (capped).
         List<HomeRecentDive> highlightedDives,
@@ -47,6 +55,7 @@ public record HomeDashboard(
                 null,
                 0,
                 HomeActivity.EMPTY,
+                DiverActivityStats.empty(),
                 List.of(),
                 List.of(),
                 List.of(),

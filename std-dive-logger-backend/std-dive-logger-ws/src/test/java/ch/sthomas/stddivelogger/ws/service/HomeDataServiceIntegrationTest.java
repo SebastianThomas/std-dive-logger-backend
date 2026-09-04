@@ -243,7 +243,7 @@ class HomeDataServiceIntegrationTest {
     }
 
     @Test
-    void divesByMonthGroupsThisUsersDivesByCalendarMonthAscending() {
+    void activityStatsDivesByMonthGroupsThisUsersDivesByCalendarMonthAscending() {
         final var other =
                 userRepository.save(new UserEntity("home-it-bymonth-other@test.ch", "h", "Other"));
         dive(user, daysAgo(400), 30 * 60, 10.0, List.of());
@@ -252,14 +252,17 @@ class HomeDataServiceIntegrationTest {
         dive(user, daysAgo(3), 30 * 60, 10.0, List.of());
         dive(other, daysAgo(3), 30 * 60, 10.0, List.of()); // excluded
 
-        final var home = homeDataService.forUser(user.getId(), user.toRecord().name());
+        final var byMonth =
+                homeDataService
+                        .forUser(user.getId(), user.toRecord().name())
+                        .activityStats()
+                        .divesByMonth();
 
         // ascending, only months with dives, this user only, and the counts sum to diveCount
-        final var months = home.divesByMonth().stream().map(HomeMonthlyCount::month).toList();
+        final var months = byMonth.stream().map(HomeMonthlyCount::month).toList();
         assertThat(months).isSorted().doesNotHaveDuplicates();
         assertThat(months.getFirst()).matches("\\d{4}-\\d{2}");
-        assertThat(home.divesByMonth().stream().mapToInt(HomeMonthlyCount::count).sum())
-                .isEqualTo(4);
+        assertThat(byMonth.stream().mapToInt(HomeMonthlyCount::count).sum()).isEqualTo(4);
     }
 
     @Test
@@ -277,7 +280,8 @@ class HomeDataServiceIntegrationTest {
         assertThat(home.windows().last30Days().bottomTime()).isNull();
         assertThat(home.recentDives()).isEmpty();
         assertThat(home.highlightedDives()).isEmpty();
-        assertThat(home.divesByMonth()).isEmpty();
+        assertThat(home.activityStats().divesByMonth()).isEmpty();
+        assertThat(home.activityStats().recentDivesPerYear()).isZero();
         assertThat(home.topBuddies()).isEmpty();
         assertThat(home.records().deepest()).isNull();
         assertThat(home.records().longest()).isNull();

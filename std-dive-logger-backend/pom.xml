@@ -339,6 +339,42 @@
                 <artifactId>spring-retry</artifactId>
                 <version>2.0.12</version>
             </dependency>
+
+            <!-- Web Push (VAPID + RFC 8291 payload encryption) - see VapidWebPushSender. We only
+                 use the library's crypto/JWT internals (via a thin AbstractPushService subclass)
+                 and send the resulting request ourselves with java.net.http.HttpClient, so its
+                 own HTTP transports (old Apache HttpClient 4 + Netty-based async-http-client) are
+                 excluded as dead weight. -->
+            <dependency>
+                <groupId>nl.martijndwars</groupId>
+                <artifactId>web-push</artifactId>
+                <version>5.1.2</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.httpcomponents</groupId>
+                        <artifactId>httpasyncclient</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.asynchttpclient</groupId>
+                        <artifactId>async-http-client</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!-- web-push declares its VAPID-JWT dep runtime-scope and its BouncyCastle dep both
+                 optional AND the old, deprecated bcprov-jdk15on artifact - neither propagates to
+                 us, and VapidWebPushSender references both directly at compile time (JoseException,
+                 BouncyCastleProvider). We pull them in ourselves, on the actively-maintained
+                 jdk18on BC artifact (API-compatible - same org.bouncycastle.jce.* classes). -->
+            <dependency>
+                <groupId>org.bitbucket.b_c</groupId>
+                <artifactId>jose4j</artifactId>
+                <version>0.7.9</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>1.78.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -42,6 +42,9 @@ spec:
             - { name: SPRING_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
             - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
+            - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_PUBLIC_KEY,  valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-public-key } } }
+            - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_PRIVATE_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-private-key } } }
+            - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_SUBJECT,     valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-subject } } }
 
           envFrom:
             - configMapRef: { name: std-dive-logger-env }

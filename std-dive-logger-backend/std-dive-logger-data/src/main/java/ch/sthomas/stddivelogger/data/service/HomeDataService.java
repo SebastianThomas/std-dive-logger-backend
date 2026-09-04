@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.model.dive.home.HomeActivity;
 import ch.sthomas.stddivelogger.model.dive.home.HomeBuddy;
 import ch.sthomas.stddivelogger.model.dive.home.HomeDashboard;
-import ch.sthomas.stddivelogger.model.dive.home.HomeMonthlyCount;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecentDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecordDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecords;
@@ -34,9 +33,16 @@ import java.util.Objects;
 public class HomeDataService {
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final DiverActivityStatsDataService activityStats;
+    private final DiverReminderDataService reminders;
 
-    public HomeDataService(final NamedParameterJdbcTemplate jdbc) {
+    public HomeDataService(
+            final NamedParameterJdbcTemplate jdbc,
+            final DiverActivityStatsDataService activityStats,
+            final DiverReminderDataService reminders) {
         this.jdbc = jdbc;
+        this.activityStats = activityStats;
+        this.reminders = reminders;
     }
 
     private static final String Q_SUMMARY =
@@ -114,18 +120,6 @@ public class HomeDataService {
             LIMIT 6
             """;
 
-    // Months with at least one dive, ascending - the frontend detects real pauses from the gaps.
-    private static final String Q_MONTHLY =
-            """
-            SELECT to_char(date_trunc('month', ds.dive_start), 'YYYY-MM') AS ym,
-                   COUNT(*) AS cnt
-            FROM t_dives d
-            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
-            WHERE d.fk_diver_id = :userId
-            GROUP BY 1
-            ORDER BY 1
-            """;
-
     private static final String Q_BUDDIES =
             """
             SELECT b.name AS name, COUNT(*) AS dive_count
@@ -137,7 +131,8 @@ public class HomeDataService {
             LIMIT 5
             """;
 
-    @Transactional(readOnly = true)
+    // Not read-only: on a cache miss this lazily computes + stores the DiverActivityStats row.
+    @Transactional
     public HomeDashboard forUser(final long userId, final String userName) {
         final var params = new MapSqlParameterSource("userId", userId);
 
@@ -149,11 +144,11 @@ public class HomeDataService {
                 jdbc.query(Q_HIGHLIGHTED, params, HomeDataService::mapRecentDive);
         final var recordRows = jdbc.query(Q_RECORDS, params, HomeDataService::mapRecordRow);
         final var topBuddies = jdbc.query(Q_BUDDIES, params, HomeDataService::mapBuddy);
-        final var divesByMonth =
-                jdbc.query(
-                        Q_MONTHLY,
-                        params,
-                        (rs, rowNum) -> new HomeMonthlyCount(rs.getString("ym"), rs.getInt("cnt")));
+        // Cached blob (see DiverActivityStatsDataService); computed + stored once here on a miss.
+        final var stats = activityStats.getOrCompute(userId);
+        // Anniversaries + the "dive again" nudge - recomputed here if the analytics job hasn't
+        // caught today yet.
+        final var reminderList = reminders.getActiveReminders(userId);
 
         return new HomeDashboard(
                 userName,
@@ -168,7 +163,8 @@ public class HomeDataService {
                 summary.divesThisYear(),
                 new HomeActivity(
                         summary.window30(), summary.window365(), summary.windowPrevious365()),
-                divesByMonth,
+                stats,
+                reminderList,
                 recentDives,
                 highlightedDives,
                 topBuddies,

@@ -33,4 +33,41 @@ public class AnalyticsJobs {
     public void computeDiveSummaries() {
         analyticsService.computeDiveSummaries();
     }
+
+    /** Refresh cached home-dashboard activity/trend stats for divers whose dives changed. */
+    @Schedules({
+        @Scheduled(cron = "30 * * * * *"),
+        @Scheduled(initialDelay = 15000),
+    })
+    public void recomputeDiverActivityStats() {
+        analyticsService.recomputeDiverActivityStats();
+    }
+
+    /**
+     * Recompute stored reminders (dive anniversaries + the dynamic "dive again" nudge). Runs often
+     * because "today" moves at midnight - every active diver needs a fresh set each day, walked
+     * through in batches.
+     */
+    @Schedules({
+        @Scheduled(cron = "0 */5 * * * *"),
+        @Scheduled(initialDelay = 20000),
+    })
+    public void recomputeDiverReminders() {
+        analyticsService.recomputeDiverReminders();
+    }
+
+    /** Web-push the reminders that are due and not yet pushed (TODO: real sender). */
+    @Schedules({
+        @Scheduled(cron = "0 2/5 * * * *"),
+        @Scheduled(initialDelay = 45000),
+    })
+    public void sendDueReminderPushes() {
+        analyticsService.sendDueReminderPushes();
+    }
+
+    /** Nightly cleanup of long-expired reminder rows. */
+    @Scheduled(cron = "0 30 3 * * *")
+    public void purgeExpiredReminders() {
+        analyticsService.purgeExpiredReminders();
+    }
 }

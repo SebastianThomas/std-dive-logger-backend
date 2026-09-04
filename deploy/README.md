@@ -31,12 +31,21 @@ The mounted file is fully templatized — every env-specific / secret value is
 `${...}`, resolved from **environment variables** at container start:
 
 - DB: `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` ← CNPG's `std-dive-logger-db-app`
-- secrets: `std-dive-logger-secrets` (kube-secret, from GH repo/env secrets) —
-  JWT ×2, R2 account/access/secret, email password
+- `std-dive-logger-secrets` (kube-secret, from GH env secrets + variables) —
+  JWT ×2, R2 account/access/secret, email password, VAPID public/private key +
+  subject (web push; `ws` only gets the public key, `analytics` gets all three).
+  Only the private key is a real GH *secret* (masked); the public key and
+  subject aren't sensitive, so they're GH *variables* instead — still not
+  committed anywhere, but visible/inspectable and rotatable without a release.
 - non-secret env-specific: `std-dive-logger-env` ConfigMap (per overlay) —
   frontend URL, CORS, R2 bucket + base-url, email address + host
 
-The same image serves dev and prod — only the env-var values differ.
+The same image serves dev and prod — only the env-var values differ. Most of
+these are explicit `${VAR}` placeholders in the baked properties file; the
+VAPID trio is the one exception — it relies on Spring's relaxed env-var
+binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
+`CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_...`), same as the feign autocomplete URL
+— so it needs no properties-file entry at all.
 
 ## Workflows
 

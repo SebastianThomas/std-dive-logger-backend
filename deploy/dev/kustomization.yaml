@@ -4,9 +4,9 @@ namespace: std-dive-logger-dev
 resources:
   - ../base
 
-# Env-specific, non-secret values the baked conf/dev/*.properties resolve as
-# ${...}. Secrets (jwt, r2 keys, email password) come from std-dive-logger-secrets
-# (kube-secret); DB creds from std-dive-logger-db-app (CNPG).
+# Env-specific, non-secret values. Secrets (jwt, r2 keys, email password, vapid
+# keys) come from std-dive-logger-secrets (kube-secret); DB creds from
+# std-dive-logger-db-app (CNPG).
 configMapGenerator:
   - name: std-dive-logger-env
     literals:

@@ -2,13 +2,18 @@ package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.DiverActivityStatsDataService;
+import ch.sthomas.stddivelogger.data.service.DiverReminderDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVarianceStats;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsResult;
 import ch.sthomas.stddivelogger.model.analytics.DiveGasCalculator;
 import ch.sthomas.stddivelogger.model.dive.Dive;
+import ch.sthomas.stddivelogger.model.dive.home.ReminderKind;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.push.WebPushMessage;
+import ch.sthomas.stddivelogger.service.PushService;
 
 import com.google.common.math.Stats;
 
@@ -37,17 +42,117 @@ public class AnalyticsService {
     private static final int MAX_DIVES_PER_RUN = 100;
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsService.class);
 
+    private static final int MAX_ACTIVITY_STATS_DIVERS_PER_RUN = 200;
+    private static final int MAX_REMINDER_DIVERS_PER_RUN = 200;
+
     private final AnalyticsDataService analyticsDataService;
     private final AnalyticsSegmentService analyticsSegmentService;
     private final DiveDataService diveDataService;
+    private final DiverActivityStatsDataService diverActivityStatsDataService;
+    private final DiverReminderDataService diverReminderDataService;
+    private final PushService pushService;
 
     public AnalyticsService(
             final AnalyticsDataService analyticsDataService,
             final AnalyticsSegmentService analyticsSegmentService,
-            DiveDataService diveDataService) {
+            DiveDataService diveDataService,
+            final DiverActivityStatsDataService diverActivityStatsDataService,
+            final DiverReminderDataService diverReminderDataService,
+            final PushService pushService) {
         this.analyticsDataService = analyticsDataService;
         this.analyticsSegmentService = analyticsSegmentService;
         this.diveDataService = diveDataService;
+        this.diverActivityStatsDataService = diverActivityStatsDataService;
+        this.diverReminderDataService = diverReminderDataService;
+        this.pushService = pushService;
+    }
+
+    /**
+     * Recompute the cached home-dashboard {@code DiverActivityStats} for every diver whose dives
+     * changed since the last run (or whose blob is missing / at an older version). One transaction
+     * per diver, so one bad row can't roll back the batch.
+     */
+    public void recomputeDiverActivityStats() {
+        final var diverIds =
+                diverActivityStatsDataService.findDiverIdsNeedingRecompute(
+                        MAX_ACTIVITY_STATS_DIVERS_PER_RUN);
+        int done = 0;
+        for (final var diverId : diverIds) {
+            try {
+                diverActivityStatsDataService.computeAndStore(diverId);
+                done++;
+            } catch (final RuntimeException e) {
+                logger.warn("Failed to recompute activity stats for diver {}", diverId, e);
+            }
+        }
+        if (done > 0) {
+            logger.info("Recomputed activity stats for {} diver(s).", done);
+        }
+    }
+
+    /**
+     * Recompute stored reminders for divers whose set is stale (day rolled over or dives changed).
+     */
+    public void recomputeDiverReminders() {
+        final var diverIds =
+                diverReminderDataService.findDiverIdsNeedingRecompute(MAX_REMINDER_DIVERS_PER_RUN);
+        int done = 0;
+        for (final var diverId : diverIds) {
+            try {
+                diverReminderDataService.computeAndStore(diverId);
+                done++;
+            } catch (final RuntimeException e) {
+                logger.warn("Failed to recompute reminders for diver {}", diverId, e);
+            }
+        }
+        if (done > 0) {
+            logger.info("Recomputed reminders for {} diver(s).", done);
+        }
+    }
+
+    /** Web-pushes reminders that are due and not yet pushed; marks them pushed either way. */
+    public void sendDueReminderPushes() {
+        final var due = diverReminderDataService.findDuePushes();
+        int pushed = 0;
+        for (final var reminder : due) {
+            try {
+                final var message =
+                        new WebPushMessage(
+                                reminder.title(),
+                                reminder.body(),
+                                targetUrl(reminder),
+                                reminder.kind().name());
+                pushService.sendToUser(reminder.userId(), message);
+                diverReminderDataService.markPushed(reminder.reminderId());
+                pushed++;
+            } catch (final RuntimeException e) {
+                logger.warn("Failed to push reminder {}", reminder.reminderId(), e);
+            }
+        }
+        if (pushed > 0) {
+            logger.info(
+                    "Processed {} due reminder push(es) (push {}).",
+                    pushed,
+                    pushService.isEnabled() ? "enabled" : "not configured");
+        }
+    }
+
+    private static String targetUrl(final DiverReminderDataService.PushableReminder reminder) {
+        if (reminder.kind() == ReminderKind.DIVE_ANNIVERSARY && reminder.diveId() != null) {
+            return "/dives/view/" + reminder.diveId();
+        }
+        if (reminder.kind() == ReminderKind.DIVE_AGAIN_NUDGE) {
+            return "/dives/map";
+        }
+        return "/";
+    }
+
+    /** Nightly: drop reminders that expired a couple of days ago. */
+    public void purgeExpiredReminders() {
+        final int deleted = diverReminderDataService.purgeExpired();
+        if (deleted > 0) {
+            logger.info("Purged {} expired reminder(s).", deleted);
+        }
     }
 
     public AnalyticsResult computeAnalytics() {

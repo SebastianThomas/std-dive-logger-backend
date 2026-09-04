@@ -48,6 +48,7 @@ spec:
             - { name: STD_DIVE_LOGGER_STORAGE_R2_ACCESS_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: r2-access-key } } }
             - { name: STD_DIVE_LOGGER_STORAGE_R2_SECRET_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: r2-secret-key } } }
             - { name: PASSWORD,                              valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: email-password } } }
+            - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_PUBLIC_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-public-key } } }
             - { name: CH_STHOMAS_STDDIVELOGGER_WS_SERVICES_FEIGN_AUTOCOMPLETE_URL, value: "http://std-dive-logger-autocomplete" }
           envFrom:
             - configMapRef: { name: std-dive-logger-env }

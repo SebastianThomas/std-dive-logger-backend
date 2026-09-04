@@ -116,6 +116,9 @@ jobs:
             r2-access-key=${{ secrets.R2_ACCESS_KEY }}
             r2-secret-key=${{ secrets.R2_SECRET_KEY }}
             email-password=${{ secrets.EMAIL_PASSWORD }}
+            vapid-public-key=${{ vars.VAPID_PUBLIC_KEY }}
+            vapid-private-key=${{ secrets.VAPID_PRIVATE_KEY }}
+            vapid-subject=${{ vars.VAPID_SUBJECT }}
 
       - uses: SebastianThomas/homelab-actions/kube-deploy@v1
         with:
