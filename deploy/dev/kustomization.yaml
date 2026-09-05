@@ -31,6 +31,14 @@ patches:
           requests: { cpu: 25m, memory: 192Mi }
           limits: { memory: 640Mi }
 
+  - target: { kind: Deployment, name: std-dive-logger-import-ws }
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 25m, memory: 192Mi }
+          limits: { memory: 1024Mi }
+
   # Hostnames are patched positionally - keep these indices in step with the
   # base HTTPRoutes' own hostname order.
   - target: { kind: HTTPRoute, name: std-dive-logger-ws }
