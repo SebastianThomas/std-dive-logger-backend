@@ -46,6 +46,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>ch.sthomas.stddivelogger</groupId>
+            <artifactId>std-dive-logger-import-service</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-restclient</artifactId>
             <scope>test</scope>

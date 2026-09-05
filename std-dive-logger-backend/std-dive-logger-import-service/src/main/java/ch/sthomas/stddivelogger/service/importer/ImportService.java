@@ -26,6 +26,7 @@ import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.divesoft.DivesoftReaderService;
 import ch.sthomas.stddivelogger.service.importer.dl7.Dl7ReaderService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
+import ch.sthomas.stddivelogger.service.importer.shearwater.ShearwaterDbReaderService;
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
 
 import org.jspecify.annotations.Nullable;
@@ -66,7 +67,8 @@ public class ImportService {
             EnumSet.of(
                     PendingImportSource.XML_SHEARWATER,
                     PendingImportSource.UDDF_SHEARWATER,
-                    PendingImportSource.DL7_SHEARWATER);
+                    PendingImportSource.DL7_SHEARWATER,
+                    PendingImportSource.DB_SHEARWATER);
 
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
@@ -74,6 +76,7 @@ public class ImportService {
     private final DivesoftReaderService divesoftReaderService;
     private final JsonReaderService jsonReaderService;
     private final Dl7ReaderService dl7ReaderService;
+    private final ShearwaterDbReaderService shearwaterDbReaderService;
     private final PendingImportDataService pendingImportDataService;
     private final DiveService diveService;
     private final LocationTimezoneResolver locationTimezoneResolver;
@@ -85,6 +88,7 @@ public class ImportService {
             final DivesoftReaderService divesoftReaderService,
             final JsonReaderService jsonReaderService,
             final Dl7ReaderService dl7ReaderService,
+            final ShearwaterDbReaderService shearwaterDbReaderService,
             final PendingImportDataService pendingImportDataService,
             final DiveService diveService,
             final LocationTimezoneResolver locationTimezoneResolver) {
@@ -94,6 +98,7 @@ public class ImportService {
         this.divesoftReaderService = divesoftReaderService;
         this.jsonReaderService = jsonReaderService;
         this.dl7ReaderService = dl7ReaderService;
+        this.shearwaterDbReaderService = shearwaterDbReaderService;
         this.pendingImportDataService = pendingImportDataService;
         this.diveService = diveService;
         this.locationTimezoneResolver = locationTimezoneResolver;
@@ -198,6 +203,9 @@ public class ImportService {
                                                     Objects.requireNonNull(filename),
                                                     inputStream.readAllBytes())),
                                     Stream.empty()));
+            case DB ->
+                    shearwaterDbReaderService.parse(
+                            user, Objects.requireNonNull(filename), inputStream);
         };
     }
 

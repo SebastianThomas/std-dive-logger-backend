@@ -3,9 +3,12 @@ package ch.sthomas.stddivelogger.importws.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
+import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.geometry.Location;
+import ch.sthomas.stddivelogger.service.importer.shearwater.ShearwaterDbTestDatabase;
+import ch.sthomas.stddivelogger.service.importer.shearwater.ShearwaterPnfTestLogs;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -16,6 +19,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -27,7 +31,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 import javax.crypto.SecretKey;
@@ -506,5 +515,199 @@ class ImportIntegrationTest {
         assertThat(summary.maxTimeToSurface()).isEqualTo(java.time.Duration.ofMinutes(12));
         assertThat(summary.maxDepth()).isGreaterThan(0.0);
         assertThat(nonNullCommitBody.tags()).anyMatch(t -> t.name().equals("Deco"));
+    }
+
+    private static final long SHEARWATER_CLOCK_READING = 1_732_874_281L; // 2024-11-29T09:58:01
+
+    private static final String TANK_PROFILE_DATA =
+            """
+            {"GasProfiles":[{"profileIndex":0,"O2Percent":21,"HePercent":0,"CircuitMode":1,\
+            "StartTimeInSeconds":0.0,"EndTimeInSeconds":400.0}],\
+            "TankData":[{"StartPressurePSI":"2900.75","EndPressurePSI":"1450.38",\
+            "GasProfile":{"profileIndex":0,"O2Percent":21,"HePercent":0,"CircuitMode":1}}]}\
+            """;
+
+    private static Path shearwaterDatabase(final String... diveNumbers) throws Exception {
+        final var blob =
+                ShearwaterPnfTestLogs.gzipWithLengthPrefix(
+                        ShearwaterPnfTestLogs.build(
+                                SHEARWATER_CLOCK_READING,
+                                400,
+                                18.4,
+                                14,
+                                1,
+                                5000,
+                                List.of(
+                                        ShearwaterPnfTestLogs.Sample.openCircuit(4.0, 14),
+                                        ShearwaterPnfTestLogs.Sample.openCircuit(18.4, 9),
+                                        ShearwaterPnfTestLogs.Sample.openCircuit(3.0, 13))));
+        final var dives =
+                java.util.Arrays.stream(diveNumbers)
+                        .map(
+                                number ->
+                                        new ShearwaterDbTestDatabase.Dive(
+                                                "dive-" + number,
+                                                number,
+                                                "Integration Test Quarry",
+                                                "Yancy Wolf",
+                                                "staged from the Shearwater Cloud database",
+                                                "4m",
+                                                "4kg",
+                                                "12l",
+                                                "Single Tank",
+                                                TANK_PROFILE_DATA,
+                                                blob))
+                        .toList();
+        final var file = Files.createTempFile("shearwater-integration", ".db");
+        file.toFile().deleteOnExit();
+        ShearwaterDbTestDatabase.write(file, dives);
+        return file;
+    }
+
+    private StageImportResult stageDatabase(final Path database) {
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add("file", new FileSystemResource(database));
+        return Objects.requireNonNull(
+                restTestClient
+                        .post()
+                        .uri("/v1/import")
+                        .headers(h -> h.addAll(authorizedHeaders()))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(multipartBody)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(StageImportResult.class)
+                        .returnResult()
+                        .getResponseBody());
+    }
+
+    @Test
+    void uploadingAShearwaterCloudDatabaseStagesEveryDiveInIt() throws Exception {
+        // The whole point of this source: one upload instead of one exported file per dive.
+        final var body = stageDatabase(shearwaterDatabase("81", "82", "83"));
+        assertThat(body.errors()).isEmpty();
+        assertThat(body.staged()).hasSize(3);
+        assertThat(body.staged())
+                .allSatisfy(
+                        staged -> {
+                            assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Quarry");
+                            assertThat(staged.computerSerial()).isEqualTo("A3B6F031");
+                            assertThat(staged.maxDepth()).isEqualTo(18.4);
+                            assertThat(staged.durationSeconds()).isNotNull().isPositive();
+                        });
+        assertThat(body.staged())
+                .extracting(PendingImportSummary::diveNumberGuess)
+                .containsExactlyInAnyOrder(81, 82, 83);
+    }
+
+    @Test
+    void committingADatabaseImportCorrectsTheTimezonelessDeviceClock() throws Exception {
+        // A Shearwater device stores a plain wall-clock reading with no timezone, the same as its
+        // XML/UDDF/DL7 exports - so committing against a real site must shift it into that site's
+        // zone. Male, Maldives is a fixed UTC+5 with no DST, so the expected result never depends
+        // on when this test runs.
+        final var staged = stageDatabase(shearwaterDatabase("90")).staged().getFirst();
+        assertThat(staged.startDate()).isEqualTo(Instant.ofEpochSecond(SHEARWATER_CLOCK_READING));
+
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Male, Maldives",
+                        new Location(4.1755, 73.5093),
+                        null,
+                        null);
+        final var committed =
+                Objects.requireNonNull(
+                        restTestClient
+                                .post()
+                                .uri("/v1/import/pending/" + staged.id() + "/commit")
+                                .headers(h -> h.addAll(authorizedJsonHeaders()))
+                                .body(commitRequest)
+                                .exchange()
+                                .expectStatus()
+                                .isOk()
+                                .expectBody(SimplifiedDive.class)
+                                .returnResult()
+                                .getResponseBody());
+
+        assertThat(committed.summary().start())
+                .isEqualTo(
+                        Instant.ofEpochSecond(SHEARWATER_CLOCK_READING).minus(5, ChronoUnit.HOURS));
+        // Real per-sample data made it through, not just a header row.
+        assertThat(committed.summary().maxDepth()).isEqualTo(18.4);
+        assertThat(committed.summary().bottomTime().toSeconds()).isPositive();
+    }
+
+    @Test
+    void committingAnImportThatCarriesCylindersSucceedsInsteadOf500ing() throws Exception {
+        // Regression: a cylinder created as part of a brand-new dive has no id until flush, but
+        // DiveSummaryEntity.update() calls DiveConfigurationEntity.toRecord() from inside
+        // DiveEntity's own constructor (to compute OC/bailout RMV from the cylinders) - which
+        // unboxed that null id and 500ed the commit of any import carrying cylinders. The
+        // Shearwater database is the first importer that supplies them, so nothing caught it
+        // before. The staged payload here has one tank with real start/end pressures.
+        final var staged = stageDatabase(shearwaterDatabase("91")).staged().getFirst();
+        final var commitRequest =
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Integration Test Cylinder Site",
+                        new Location(47.13, 8.78),
+                        null,
+                        null);
+        final var committed =
+                Objects.requireNonNull(
+                        restTestClient
+                                .post()
+                                .uri("/v1/import/pending/" + staged.id() + "/commit")
+                                .headers(h -> h.addAll(authorizedJsonHeaders()))
+                                .body(commitRequest)
+                                .exchange()
+                                .expectStatus()
+                                .isOk()
+                                .expectBody(SimplifiedDive.class)
+                                .returnResult()
+                                .getResponseBody());
+        // The summary is what the crashing code path produces, so a real one coming back is the
+        // proof it ran to completion.
+        assertThat(committed.summary().maxDepth()).isEqualTo(18.4);
+        assertThat(committed.summary().bottomTime().toSeconds()).isPositive();
+    }
+
+    @Test
+    void uploadingASqliteFileThatIsNotAShearwaterLogbookFailsWithAClearMessage() throws Exception {
+        final var file = Files.createTempFile("not-shearwater", ".db");
+        file.toFile().deleteOnExit();
+        try (final var connection =
+                        java.sql.DriverManager.getConnection(
+                                "jdbc:sqlite:" + file.toAbsolutePath());
+                final var statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE TABLE notes (id integer primary key, body varchar)");
+        }
+        final var multipartBody = new LinkedMultiValueMap<String, Object>();
+        multipartBody.add("file", new FileSystemResource(file));
+        restTestClient
+                .post()
+                .uri("/v1/import")
+                .headers(h -> h.addAll(authorizedHeaders()))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(multipartBody)
+                .exchange()
+                .expectStatus()
+                .isBadRequest()
+                .expectBody(String.class)
+                .value(
+                        response ->
+                                assertThat(response).contains("not a Shearwater Cloud database"));
     }
 }

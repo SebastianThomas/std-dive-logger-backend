@@ -142,7 +142,8 @@ public class DiveMeasurementEntity {
     }
 
     public DiveMeasurementWithId toRecordWithId() {
-        return new DiveMeasurementWithId(toRecord(), id);
+        // 0 until flushed - same not-yet-persisted case as DiveProfileEntity.toRecord above.
+        return new DiveMeasurementWithId(toRecord(), id == null ? 0L : id);
     }
 
     public DiveMeasurementEntity setProfile(final DiveProfileEntity diveProfileEntity) {

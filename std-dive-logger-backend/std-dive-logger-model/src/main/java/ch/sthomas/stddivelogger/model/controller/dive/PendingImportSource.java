@@ -9,5 +9,6 @@ public enum PendingImportSource {
     UDDF_SHEARWATER,
     XML_SUBSURFACE,
     XML_SHEARWATER,
-    DL7_SHEARWATER
+    DL7_SHEARWATER,
+    DB_SHEARWATER
 }

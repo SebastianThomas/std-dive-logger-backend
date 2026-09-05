@@ -101,7 +101,15 @@ public class DiveConfigurationCylinderEntity {
 
     public DiveConfigurationCylinder toRecord() {
         return new DiveConfigurationCylinder(
-                id,
+                // A cylinder created as part of a brand-new dive has no identity yet - its id is
+                // assigned on flush, but DiveSummaryEntity.update() already calls toRecord() (via
+                // the configuration) from inside DiveEntity's own constructor, to compute
+                // OC/bailout RMV. Unboxing a null there NPE'd every import that supplies cylinders.
+                // 0 is the "not persisted yet" stand-in: real ids are positive, and nothing reads
+                // this field for identity (CylinderConsumptionCalculator ignores it entirely) - it
+                // only travels out to the API, where the row is about to be re-read with a real id
+                // anyway.
+                id == null ? 0L : id,
                 cylinderSize.toRecord(),
                 material,
                 startBar,

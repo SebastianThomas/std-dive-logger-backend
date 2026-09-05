@@ -40,6 +40,12 @@
             <artifactId>timeshape</artifactId>
         </dependency>
 
+        <!-- Reading Shearwater Cloud's own SQLite logbook database -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+        </dependency>
+
         <!-- Storage -->
         <dependency>
             <groupId>io.minio</groupId>

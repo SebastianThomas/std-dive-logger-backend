@@ -18,7 +18,10 @@ public enum UploadFileType {
     // content (Subsurface vs. Shearwater's own native XML share this extension).
     XML("xml"),
     JSON("json"),
-    DL7("zxu");
+    DL7("zxu"),
+    // Shearwater Cloud's own SQLite database (a whole logbook in one file). Generic extension by
+    // necessity - ShearwaterDbReaderService checks for the app's tables before reading anything.
+    DB("db");
 
     public static final Map<String, UploadFileType> fileTypesByExtension =
             Arrays.stream(UploadFileType.values())

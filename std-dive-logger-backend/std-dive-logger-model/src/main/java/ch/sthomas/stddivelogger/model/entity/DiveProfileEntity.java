@@ -84,7 +84,12 @@ public class DiveProfileEntity {
 
     public DiveProfile toRecord(final boolean includeMeasurements) {
         return new DiveProfile(
-                id,
+                // 0 while this profile hasn't been flushed yet - see
+                // DiveConfigurationCylinderEntity.toRecord for why that happens (a brand-new dive
+                // converts its own graph to records inside DiveEntity's constructor, to compute
+                // cylinder-derived RMV). Real ids are positive, and this transient record is
+                // discarded right after; every other caller runs post-flush and is unaffected.
+                id == null ? 0L : id,
                 computer.toRecord(),
                 profileStart.toInstant(),
                 profileEnd.toInstant(),

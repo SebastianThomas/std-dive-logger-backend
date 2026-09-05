@@ -71,18 +71,17 @@ public class ImportWsSecurityConfig {
                                 ex.authenticationEntryPoint(
                                         (request, response, ex1) -> response.sendError(401)))
                 .authorizeHttpRequests(
-                        (auth) -> {
-                            auth.requestMatchers(HttpMethod.OPTIONS)
-                                    .permitAll()
-                                    .requestMatchers(HttpMethod.GET, "/v1/explore/**")
-                                    .permitAll()
-                                    .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
-                                    .authenticated()
-                                    .requestMatchers(HttpMethod.POST, "/api/auth/**")
-                                    .permitAll()
-                                    .anyRequest()
-                                    .authenticated();
-                        })
+                        auth ->
+                                auth.requestMatchers(HttpMethod.OPTIONS)
+                                        .permitAll()
+                                        .requestMatchers(HttpMethod.GET, "/v1/explore/**")
+                                        .permitAll()
+                                        .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
+                                        .authenticated()
+                                        .requestMatchers(HttpMethod.POST, "/api/auth/**")
+                                        .permitAll()
+                                        .anyRequest()
+                                        .authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
