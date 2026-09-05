@@ -51,6 +51,7 @@ class ReimportFieldMergeTest {
     void computeConflictsFlagsOnlyTheConflictingNotesField() {
         final var conflicts =
                 ReimportFieldMerge.computeConflicts(
+                        null,
                         "old notes",
                         Visibility.EMPTY,
                         List.of(),
@@ -73,6 +74,7 @@ class ReimportFieldMergeTest {
     void computeConflictsIsEmptyWhenNothingDisagrees() {
         final var conflicts =
                 ReimportFieldMerge.computeConflicts(
+                        null,
                         null,
                         null,
                         List.of(),

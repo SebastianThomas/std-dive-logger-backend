@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.model.dive.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
@@ -152,6 +153,100 @@ class ReimportSimilarityCheckTest {
 
         assertThat(result).isPresent();
         assertThat(result.get()).contains("shape");
+    }
+
+    @Test
+    void wholeHourClockOffsetIsDetectedWhenEverythingElseMatches() {
+        // Same dive, existing profile 2h "behind" the reimport - the UTC-vs-local-zone case
+        // (e.g. a Shearwater XML corrected to a real site, reimported with the naive-UTC UDDF).
+        final var existing = triangularProfile(START, Duration.ofMinutes(40), 30.0);
+        final var newStart = START.plus(Duration.ofHours(2)).plusSeconds(1);
+        final var newProfile = triangularProfile(newStart, Duration.ofMinutes(40), 30.2);
+
+        final var offset =
+                ReimportSimilarityCheck.wholeHourClockOffset(
+                        START,
+                        START.plus(Duration.ofMinutes(40)),
+                        existing,
+                        newStart,
+                        newStart.plus(Duration.ofMinutes(40)),
+                        newProfile);
+
+        assertThat(offset).contains(Duration.ofHours(2));
+    }
+
+    @Test
+    void wholeHourClockOffsetIsIgnoredWhenTheProfilesAlsoDisagreeOnShape() {
+        final var existing = triangularProfile(START, Duration.ofMinutes(40), 30.0);
+        final var newStart = START.plus(Duration.ofHours(2));
+        final var newProfile = triangularProfile(newStart, Duration.ofMinutes(12), 30.0);
+
+        final var offset =
+                ReimportSimilarityCheck.wholeHourClockOffset(
+                        START,
+                        START.plus(Duration.ofMinutes(40)),
+                        existing,
+                        newStart,
+                        newStart.plus(Duration.ofMinutes(12)),
+                        newProfile);
+
+        assertThat(offset).isEmpty();
+    }
+
+    @Test
+    void requirePlausibleReimportReturnsTheOffsetForAZoneArtefactAndThrowsForADifferentDive() {
+        final var existing = triangularProfile(START, Duration.ofMinutes(40), 30.0);
+
+        final var shifted = START.plus(Duration.ofHours(3));
+        assertThat(
+                        ReimportSimilarityCheck.requirePlausibleReimport(
+                                START,
+                                START.plus(Duration.ofMinutes(40)),
+                                existing,
+                                shifted,
+                                shifted.plus(Duration.ofMinutes(40)),
+                                triangularProfile(shifted, Duration.ofMinutes(40), 30.0)))
+                .contains(Duration.ofHours(3));
+
+        final var otherDive = START.plus(Duration.ofHours(2));
+        assertThatThrownBy(
+                        () ->
+                                ReimportSimilarityCheck.requirePlausibleReimport(
+                                        START,
+                                        START.plus(Duration.ofMinutes(40)),
+                                        existing,
+                                        otherDive,
+                                        otherDive.plus(Duration.ofMinutes(40)),
+                                        triangularProfile(otherDive, Duration.ofMinutes(40), 10.0)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("doesn't look like the same dive")
+                .hasMessageContaining("merge profiles");
+    }
+
+    @Test
+    void aStartGapLargerThanAnyRealTimezoneStaysAHardMismatch() {
+        final var existing = triangularProfile(START, Duration.ofMinutes(40), 30.0);
+        final var farOff = START.plus(Duration.ofHours(20));
+
+        assertThat(
+                        ReimportSimilarityCheck.wholeHourClockOffset(
+                                START,
+                                START.plus(Duration.ofMinutes(40)),
+                                existing,
+                                farOff,
+                                farOff.plus(Duration.ofMinutes(40)),
+                                triangularProfile(farOff, Duration.ofMinutes(40), 30.0)))
+                .isEmpty();
+        assertThatThrownBy(
+                        () ->
+                                ReimportSimilarityCheck.requirePlausibleReimport(
+                                        START,
+                                        START.plus(Duration.ofMinutes(40)),
+                                        existing,
+                                        farOff,
+                                        farOff.plus(Duration.ofMinutes(40)),
+                                        triangularProfile(farOff, Duration.ofMinutes(40), 30.0)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

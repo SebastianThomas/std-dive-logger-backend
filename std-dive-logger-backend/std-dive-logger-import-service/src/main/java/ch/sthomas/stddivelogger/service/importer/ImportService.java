@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service.importer;
 
+import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.PendingImportDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
@@ -7,7 +8,9 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.StageImportResult;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadFileType;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportConflicts;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResult;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.Dive;
@@ -580,26 +583,29 @@ public class ImportService {
         final var reimportedProfile = parsedImport.payload().profiles().getFirst();
 
         final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
-        final var mismatch =
-                ReimportSimilarityCheck.checkSameDive(
+        // Throws on a genuine "different dive"; returns a whole-hour offset when the clocks only
+        // differ by a timezone artefact, which becomes a resolvable conflict instead.
+        final var clockOffset =
+                ReimportSimilarityCheck.requirePlausibleReimport(
                         context.profileStart(),
                         context.profileEnd(),
                         context.profileMeasurements(),
                         reimportedProfile.start(),
                         reimportedProfile.end(),
                         reimportedProfile.measurements());
-        if (mismatch.isPresent()) {
-            throw new IllegalArgumentException(
-                    "The uploaded file doesn't look like the same dive as the profile you're "
-                            + "replacing ("
-                            + mismatch.get()
-                            + "). If this is meant to be a different dive computer's own "
-                            + "recording of the same dive, use \"merge profiles\" instead of "
-                            + "reimport.");
-        }
+        final var clockOffsetConflict =
+                clockOffset
+                        .map(
+                                off ->
+                                        new ReimportConflicts.ClockOffset(
+                                                context.profileStart(),
+                                                reimportedProfile.start(),
+                                                off.toMinutes()))
+                        .orElse(null);
 
         final var conflicts =
                 ReimportFieldMerge.computeConflicts(
+                        clockOffsetConflict,
                         context.dive().notes(),
                         context.dive().visibility(),
                         context.dive().namedBuddies().stream().map(NamedBuddy::name).toList(),
@@ -654,7 +660,10 @@ public class ImportService {
                             + profileId);
         }
         final var payload = pendingImport.getPayload();
-        final var reimportedProfile = payload.profiles().getFirst();
+        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
+        final var reimportedProfile =
+                resolveReimportClock(
+                        context, payload.profiles().getFirst(), resolution.startClock());
 
         diveService.reimportProfile(
                 user,
@@ -664,7 +673,6 @@ public class ImportService {
                 reimportedProfile.start(),
                 reimportedProfile.end());
 
-        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
         final var existingBuddyNames =
                 context.dive().namedBuddies().stream().map(NamedBuddy::name).toList();
         final var updated =
@@ -687,5 +695,38 @@ public class ImportService {
                                 resolution.gasConsumption()));
         pendingImportDataService.deleteById(pendingImportId);
         return updated;
+    }
+
+    /**
+     * When the reimport's clock is a whole number of hours off the existing profile (a UTC vs.
+     * local-zone artefact - {@link ReimportConflicts.ClockOffset}), apply the diver's choice:
+     * EXISTING re-aligns the parsed data onto the dive's current clock, NEW keeps the file's clock.
+     * A missing choice for a real offset is an error, mirroring the other conflict fields.
+     */
+    private static DiveProfileUpload resolveReimportClock(
+            final DiveDataService.ReimportPreviewContext context,
+            final DiveProfileUpload reimported,
+            final ReimportResolution.@Nullable Choice choice) {
+        final var offset =
+                ReimportSimilarityCheck.wholeHourClockOffset(
+                        context.profileStart(),
+                        context.profileEnd(),
+                        context.profileMeasurements(),
+                        reimported.start(),
+                        reimported.end(),
+                        reimported.measurements());
+        if (offset.isEmpty()) {
+            return reimported;
+        }
+        if (choice == null) {
+            throw new IllegalArgumentException(
+                    "The reimport's clock is "
+                            + Math.abs(offset.get().toHours())
+                            + "h off the existing profile - pick which start time to keep.");
+        }
+        return switch (choice) {
+            case EXISTING -> reimported.shifted(offset.get().negated());
+            case NEW -> reimported;
+        };
     }
 }

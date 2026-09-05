@@ -27,6 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -129,12 +130,127 @@ class ReimportProfileIntegrationTest {
                         committedDive.id(),
                         profileId,
                         preview.pendingImportId(),
-                        new ReimportResolution(null, null, null, null));
+                        new ReimportResolution(null, null, null, null, null));
 
         assertThat(updated.summary().maxTimeToSurface()).isEqualTo(Duration.ofSeconds(532));
         // The dive's identity/profile count is unchanged - reimport replaced, did not add.
         assertThat(updated.profiles()).hasSize(1);
         assertThat(updated.profiles().getFirst().id()).isEqualTo(profileId);
+    }
+
+    /**
+     * A Shearwater native XML import (naive-UTC clock, corrected to the dive site's real zone at
+     * commit time) reimported with the UDDF export of the same dive (also naive-UTC): the profiles
+     * match apart from a whole-hour clock gap, so instead of rejecting it the diver is asked which
+     * start time to keep. EXISTING keeps the corrected time; NEW adopts the file's raw clock.
+     */
+    @Test
+    void reimportingAcrossAWholeHourClockOffsetAsksWhichTimeToKeep() throws IOException {
+        final var user = createTestUser("reimport-tz-it@test.ch");
+        final var staged =
+                importService.stageUpload(user, List.of(fixture("shearwater-perdix2-native.xml")));
+        final var pendingId = staged.staged().getFirst().id();
+        // Male, Maldives - always UTC+5, no DST: the XML's raw "10:13:49" wall clock is corrected
+        // to 05:13:49Z on commit.
+        final var committedDive =
+                importService.commit(
+                        user,
+                        pendingId,
+                        new PendingImportCommitRequest(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "Male, Maldives",
+                                new Location(4.1755, 73.5093),
+                                null,
+                                null));
+        final var profileId =
+                diveService
+                        .getDiveById(user, committedDive.id())
+                        .orElseThrow()
+                        .profiles()
+                        .getFirst()
+                        .id();
+        final var correctedStart = Instant.parse("2026-08-22T05:13:49Z");
+        final var rawFileStart = Instant.parse("2026-08-22T10:13:49Z");
+
+        final var preview =
+                importService.previewReimportProfile(
+                        user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));
+        final var clockOffset = Objects.requireNonNull(preview.conflicts().clockOffset());
+        assertThat(clockOffset.existingStart()).isEqualTo(correctedStart);
+        assertThat(clockOffset.reimportedStart()).isEqualTo(rawFileStart);
+        assertThat(clockOffset.offsetMinutes()).isEqualTo(300);
+
+        // No choice for the offset -> refused, same as any other unresolved conflict.
+        assertThatThrownBy(
+                        () ->
+                                importService.commitReimportProfile(
+                                        user,
+                                        committedDive.id(),
+                                        profileId,
+                                        preview.pendingImportId(),
+                                        new ReimportResolution(null, null, null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("start time");
+
+        // EXISTING: the reimported profile is re-aligned onto the dive's corrected clock.
+        final var kept =
+                importService.commitReimportProfile(
+                        user,
+                        committedDive.id(),
+                        profileId,
+                        preview.pendingImportId(),
+                        new ReimportResolution(
+                                null, null, null, null, ReimportResolution.Choice.EXISTING));
+        assertThat(kept.profiles().getFirst().start()).isEqualTo(correctedStart);
+    }
+
+    @Test
+    void reimportingAcrossAWholeHourClockOffsetCanAdoptTheUploadedFilesClock() throws IOException {
+        final var user = createTestUser("reimport-tz-it-2@test.ch");
+        final var staged =
+                importService.stageUpload(user, List.of(fixture("shearwater-perdix2-native.xml")));
+        final var committedDive =
+                importService.commit(
+                        user,
+                        staged.staged().getFirst().id(),
+                        new PendingImportCommitRequest(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "Male, Maldives 2",
+                                new Location(4.1755, 73.5093),
+                                null,
+                                null));
+        final var profileId =
+                diveService
+                        .getDiveById(user, committedDive.id())
+                        .orElseThrow()
+                        .profiles()
+                        .getFirst()
+                        .id();
+
+        final var preview =
+                importService.previewReimportProfile(
+                        user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));
+
+        final var updated =
+                importService.commitReimportProfile(
+                        user,
+                        committedDive.id(),
+                        profileId,
+                        preview.pendingImportId(),
+                        new ReimportResolution(
+                                null, null, null, null, ReimportResolution.Choice.NEW));
+        assertThat(updated.profiles().getFirst().start())
+                .isEqualTo(Instant.parse("2026-08-22T10:13:49Z"));
     }
 
     @Test

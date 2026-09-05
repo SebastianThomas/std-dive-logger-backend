@@ -22,6 +22,15 @@ import java.util.Optional;
 public final class ReimportSimilarityCheck {
     private ReimportSimilarityCheck() {}
 
+    /** Largest real-world UTC offset (UTC+14) - a whole-hour start gap beyond this isn't a zone. */
+    public static final int MAX_PLAUSIBLE_TZ_OFFSET_HOURS = 14;
+
+    public static final String NOT_SAME_DIVE_MESSAGE_PREFIX =
+            "The uploaded file doesn't look like the same dive as the profile you're replacing (";
+    public static final String NOT_SAME_DIVE_MESSAGE_SUFFIX =
+            "). If this is meant to be a different dive computer's own recording of the same dive,"
+                    + " use \"merge profiles\" instead of reimport.";
+
     private static final Duration START_TOLERANCE = Duration.ofMinutes(2);
     private static final Duration MIN_DURATION_TOLERANCE = Duration.ofMinutes(2);
     private static final double DURATION_TOLERANCE_FRACTION = 0.10;
@@ -53,7 +62,100 @@ public final class ReimportSimilarityCheck {
                             + newStart
                             + ")");
         }
+        return shapeMismatch(
+                existingStart,
+                existingEnd,
+                existingMeasurements,
+                newStart,
+                newEnd,
+                newMeasurements);
+    }
 
+    /**
+     * Non-empty when the two profiles match apart from the start clock being off by a whole number
+     * of hours (1..{@value #MAX_PLAUSIBLE_TZ_OFFSET_HOURS}) - the fingerprint of a
+     * UTC-vs-local-zone artefact between two exports of one dive (Shearwater native XML is naive
+     * UTC; the UDDF export of the same dive carries the local offset). Returns {@code newStart -
+     * existingStart} rounded to that whole hour; the caller then asks the diver which clock to keep
+     * instead of rejecting.
+     */
+    public static Optional<Duration> wholeHourClockOffset(
+            final Instant existingStart,
+            final Instant existingEnd,
+            final List<DiveMeasurement> existingMeasurements,
+            final Instant newStart,
+            final Instant newEnd,
+            final List<DiveMeasurement> newMeasurements) {
+        final var diff = Duration.between(existingStart, newStart);
+        final long hours = Math.round(diff.toMinutes() / 60.0);
+        if (hours == 0 || Math.abs(hours) > MAX_PLAUSIBLE_TZ_OFFSET_HOURS) {
+            return Optional.empty();
+        }
+        final var rounded = Duration.ofHours(hours);
+        if (diff.minus(rounded).abs().compareTo(START_TOLERANCE) > 0) {
+            return Optional.empty();
+        }
+        if (shapeMismatch(
+                        existingStart,
+                        existingEnd,
+                        existingMeasurements,
+                        newStart,
+                        newEnd,
+                        newMeasurements)
+                .isPresent()) {
+            return Optional.empty();
+        }
+        return Optional.of(rounded);
+    }
+
+    /**
+     * Shared guard for both reimport entry points. Returns a whole-hour clock offset ({@code
+     * newStart - existingStart}) when that is the only difference (caller resolves which clock to
+     * keep), empty when the profiles match outright, and throws {@link IllegalArgumentException}
+     * when they genuinely don't look like the same dive.
+     */
+    public static Optional<Duration> requirePlausibleReimport(
+            final Instant existingStart,
+            final Instant existingEnd,
+            final List<DiveMeasurement> existingMeasurements,
+            final Instant newStart,
+            final Instant newEnd,
+            final List<DiveMeasurement> newMeasurements) {
+        final var clockOffset =
+                wholeHourClockOffset(
+                        existingStart,
+                        existingEnd,
+                        existingMeasurements,
+                        newStart,
+                        newEnd,
+                        newMeasurements);
+        if (clockOffset.isPresent()) {
+            return clockOffset;
+        }
+        checkSameDive(
+                        existingStart,
+                        existingEnd,
+                        existingMeasurements,
+                        newStart,
+                        newEnd,
+                        newMeasurements)
+                .ifPresent(
+                        reason -> {
+                            throw new IllegalArgumentException(
+                                    NOT_SAME_DIVE_MESSAGE_PREFIX
+                                            + reason
+                                            + NOT_SAME_DIVE_MESSAGE_SUFFIX);
+                        });
+        return Optional.empty();
+    }
+
+    private static Optional<String> shapeMismatch(
+            final Instant existingStart,
+            final Instant existingEnd,
+            final List<DiveMeasurement> existingMeasurements,
+            final Instant newStart,
+            final Instant newEnd,
+            final List<DiveMeasurement> newMeasurements) {
         final var existingDuration = Duration.between(existingStart, existingEnd);
         final var newDuration = Duration.between(newStart, newEnd);
         final var durationTolerance =

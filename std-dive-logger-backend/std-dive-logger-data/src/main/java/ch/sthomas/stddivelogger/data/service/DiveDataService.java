@@ -497,23 +497,15 @@ public class DiveDataService {
         final var dive = findDiveEntityById(diveId);
         final var profile = findProfileOnDive(dive, profileId);
 
-        final var mismatch =
-                ReimportSimilarityCheck.checkSameDive(
-                        profile.getStart(),
-                        profile.getEnd(),
-                        profile.toMeasurementRecords(),
-                        newStart,
-                        newEnd,
-                        newMeasurements);
-        if (mismatch.isPresent()) {
-            throw new IllegalArgumentException(
-                    "The uploaded file doesn't look like the same dive as the profile you're "
-                            + "replacing ("
-                            + mismatch.get()
-                            + "). If this is meant to be a different dive computer's own "
-                            + "recording of the same dive, use \"merge profiles\" instead of "
-                            + "reimport.");
-        }
+        // Throws on a genuine "different dive"; a whole-hour clock offset is let through (the
+        // import layer has already applied the diver's chosen start time by this point).
+        ReimportSimilarityCheck.requirePlausibleReimport(
+                profile.getStart(),
+                profile.getEnd(),
+                profile.toMeasurementRecords(),
+                newStart,
+                newEnd,
+                newMeasurements);
 
         // Looked up directly via the repository rather than profile.diveProfileHistory - that
         // mapped-by association is never explicitly back-filled on the in-memory entity right
@@ -545,30 +537,18 @@ public class DiveDataService {
         diveProfileHistoryRepository.save(history);
 
         dive.updateDiveSummary();
-        recomputeAutoTags(dive, dive.getUserEntity().getId());
-        return toRecord(diveRepository.save(dive));
+        final var userId = dive.getUserEntity().getId();
+        diveRepository.save(dive);
+        entityManager.flush();
+        // Auto-tags via the bulk-delete-then-reinsert path (see refreshAutoTags), not the in-entity
+        // collection edit - the latter's insert-before-delete flush ordering trips the (dive, tag)
+        // unique constraint when a reimport leaves an existing auto-tag still valid.
+        return refreshAutoTags(diveId, userId);
     }
 
     private static List<DiveMeasurement> shiftMeasurementTimes(
             final List<DiveMeasurement> measurements, final Duration offset) {
-        return measurements.stream()
-                .map(
-                        m ->
-                                new DiveMeasurement(
-                                        m.time().plus(offset),
-                                        m.temperature(),
-                                        m.depth(),
-                                        m.ndl(),
-                                        m.deco(),
-                                        m.gas(),
-                                        m.po2(),
-                                        m.rmvLiters(),
-                                        m.n2(),
-                                        m.o2Tox(),
-                                        m.cns(),
-                                        m.mode(),
-                                        m.timeToSurface()))
-                .toList();
+        return measurements.stream().map(m -> m.shifted(offset)).toList();
     }
 
     public record ReimportPreviewContext(

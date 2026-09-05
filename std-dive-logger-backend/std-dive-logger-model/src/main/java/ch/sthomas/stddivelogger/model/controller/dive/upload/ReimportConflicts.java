@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import org.jspecify.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -21,14 +22,23 @@ public record ReimportConflicts(
         @Nullable FieldConflict<String> notes,
         @Nullable FieldConflict<Visibility> visibility,
         @Nullable FieldConflict<List<String>> namedBuddies,
-        @Nullable FieldConflict<DiveGasConsumption> gasConsumption) {
+        @Nullable FieldConflict<DiveGasConsumption> gasConsumption,
+        @Nullable ClockOffset clockOffset) {
 
     public record FieldConflict<T>(T existing, T reimported) {}
+
+    /**
+     * The reimported file's clock is a whole number of hours off the existing profile's - almost
+     * certainly a UTC-vs-local-zone artefact, not a different dive. The diver picks which start
+     * time to keep via {@code ReimportResolution.startClock}.
+     */
+    public record ClockOffset(Instant existingStart, Instant reimportedStart, long offsetMinutes) {}
 
     public boolean hasAny() {
         return notes != null
                 || visibility != null
                 || namedBuddies != null
-                || gasConsumption != null;
+                || gasConsumption != null
+                || clockOffset != null;
     }
 }

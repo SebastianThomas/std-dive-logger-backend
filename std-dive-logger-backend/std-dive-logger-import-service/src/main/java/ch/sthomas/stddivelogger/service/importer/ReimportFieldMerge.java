@@ -22,6 +22,7 @@ final class ReimportFieldMerge {
     private ReimportFieldMerge() {}
 
     static ReimportConflicts computeConflicts(
+            final ReimportConflicts.@Nullable ClockOffset clockOffset,
             final @Nullable String existingNotes,
             final @Nullable Visibility existingVisibility,
             final List<String> existingNamedBuddies,
@@ -43,7 +44,8 @@ final class ReimportFieldMerge {
                         newGasConsumption,
                         existingGasConsumption == null
                                 || existingGasConsumption.equals(DiveGasConsumption.EMPTY),
-                        newGasConsumption.equals(DiveGasConsumption.EMPTY)));
+                        newGasConsumption.equals(DiveGasConsumption.EMPTY)),
+                clockOffset);
     }
 
     static @Nullable String resolveNotes(

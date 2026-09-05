@@ -53,25 +53,7 @@ public record DiveProfileUpload(
         if (offset.isZero()) {
             return this;
         }
-        final var shiftedMeasurements =
-                measurements.stream()
-                        .map(
-                                m ->
-                                        new DiveMeasurement(
-                                                m.time().plus(offset),
-                                                m.temperature(),
-                                                m.depth(),
-                                                m.ndl(),
-                                                m.deco(),
-                                                m.gas(),
-                                                m.po2(),
-                                                m.rmvLiters(),
-                                                m.n2(),
-                                                m.o2Tox(),
-                                                m.cns(),
-                                                m.mode(),
-                                                m.timeToSurface()))
-                        .toList();
+        final var shiftedMeasurements = measurements.stream().map(m -> m.shifted(offset)).toList();
         return new DiveProfileUpload(
                 diveComputerId, start.plus(offset), end.plus(offset), shiftedMeasurements);
     }

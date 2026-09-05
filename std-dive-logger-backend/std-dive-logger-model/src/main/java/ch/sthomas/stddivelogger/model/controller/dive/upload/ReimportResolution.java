@@ -14,7 +14,11 @@ public record ReimportResolution(
         @Nullable Choice notes,
         @Nullable Choice visibility,
         @Nullable BuddiesChoice namedBuddies,
-        @Nullable Choice gasConsumption) {
+        @Nullable Choice gasConsumption,
+        // Which start time to keep when the reimport's clock is a whole number of hours off the
+        // existing profile (see ReimportConflicts.ClockOffset). EXISTING re-aligns the freshly
+        // parsed data onto the dive's current clock; NEW adopts the uploaded file's clock.
+        @Nullable Choice startClock) {
 
     public enum Choice {
         EXISTING,

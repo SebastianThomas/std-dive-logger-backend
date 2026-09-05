@@ -28,6 +28,25 @@ public record DiveMeasurement(
         // not the same thing as being in mandatory deco: a plain ascent from 3m still reads as
         // ~20s-1min of this, with an empty deco list.
         @Nullable Duration timeToSurface) {
+
+    /** Same measurement with its timestamp moved by {@code offset} (everything else unchanged). */
+    public DiveMeasurement shifted(final Duration offset) {
+        return new DiveMeasurement(
+                time.plus(offset),
+                temperature,
+                depth,
+                ndl,
+                deco,
+                gas,
+                po2,
+                rmvLiters,
+                n2,
+                o2Tox,
+                cns,
+                mode,
+                timeToSurface);
+    }
+
     public enum DiveMeasurementProperty {
         TEMPERATURE,
         DEPTH,
