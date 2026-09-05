@@ -351,23 +351,19 @@ public class DiveTripDataService {
         final var trip = getTripEntity(tripId);
         diveTripDefaultTeamRepository.deleteByTrip_Id(tripId);
         diveTripDefaultTeamRepository.flush();
-        final var saved =
-                entries.stream()
-                        .map(
-                                e ->
-                                        diveTripDefaultTeamRepository.save(
-                                                new DiveTripDefaultTeamEntity(
-                                                        trip,
-                                                        e.buddyUserId() != null
-                                                                ? userRepository
-                                                                        .findById(e.buddyUserId())
-                                                                        .orElseThrow()
-                                                                : null,
-                                                        e.buddyName(),
-                                                        e.role())))
-                        .map(DiveTripDefaultTeamEntity::toRecord)
-                        .toList();
-        return saved;
+        return entries.stream()
+                .map(
+                        e ->
+                                diveTripDefaultTeamRepository.save(
+                                        new DiveTripDefaultTeamEntity(
+                                                trip,
+                                                Optional.ofNullable(e.buddyUserId())
+                                                        .flatMap(userRepository::findById)
+                                                        .orElse(null),
+                                                e.buddyName(),
+                                                e.role())))
+                .map(DiveTripDefaultTeamEntity::toRecord)
+                .toList();
     }
 
     /**
@@ -389,12 +385,12 @@ public class DiveTripDataService {
                 team.stream()
                         .map(DiveTripDefaultTeamEntity::toRecord)
                         .map(
-                                record -> {
+                                member -> {
                                     final var name =
-                                            record.buddyUser() != null
-                                                    ? record.buddyUser().name()
-                                                    : Objects.requireNonNull(record.buddyName());
-                                    return new DiveBuddyNameEntity(dive, name, record.role());
+                                            member.buddyUser() != null
+                                                    ? member.buddyUser().name()
+                                                    : Objects.requireNonNull(member.buddyName());
+                                    return new DiveBuddyNameEntity(dive, name, member.role());
                                 })
                         .toList();
         if (!entities.isEmpty()) {

@@ -228,7 +228,7 @@ public class DiveSiteController {
             Double maxDepth,
             DiveSiteType type,
             @NotNull WaterType waterType,
-            @Valid @NotNull List<UpdateDiveSiteLinkBody> links) {}
+            @NotNull List<@Valid UpdateDiveSiteLinkBody> links) {}
 
     @Operation(
             summary = "Update a DiveSite's community-editable metadata",

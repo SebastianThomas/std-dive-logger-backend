@@ -10,4 +10,4 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record DivesoftImportRequest(@NotEmpty @Valid List<DivesoftDiveDetailResponse> dives) {}
+public record DivesoftImportRequest(@NotEmpty List<@Valid DivesoftDiveDetailResponse> dives) {}

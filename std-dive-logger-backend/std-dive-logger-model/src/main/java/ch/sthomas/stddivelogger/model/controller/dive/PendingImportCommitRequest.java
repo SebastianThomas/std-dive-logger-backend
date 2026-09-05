@@ -18,6 +18,11 @@ import java.util.List;
  * Overrides applied when committing a staged import. When {@code linkToExistingDiveId} is set, the
  * parsed profile(s) are attached to that existing dive instead of creating a new one, and the
  * site/identity fields below are ignored.
+ *
+ * @param profileTrims Applies a trim to one or more profiles (by their index in {@code
+ *     PendingImportPayload#profiles()}, the same index the preview endpoint reports each profile
+ *     under) before the dive is created/attached - the pre-commit equivalent of {@code POST
+ *     /dives/{id}/profiles/{profileId}/trim} for an already-saved dive.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record PendingImportCommitRequest(
@@ -30,13 +35,7 @@ public record PendingImportCommitRequest(
         @Nullable String newSiteName,
         @Nullable Location newSiteLocation,
         @Nullable @Positive Long linkToExistingDiveId,
-        /**
-         * Applies a trim to one or more profiles (by their index in {@code
-         * PendingImportPayload#profiles()}, the same index the preview endpoint reports each
-         * profile under) before the dive is created/attached - the pre-commit equivalent of {@code
-         * POST /dives/{id}/profiles/{profileId}/trim} for an already-saved dive.
-         */
-        @Nullable @Valid List<ProfileTrim> profileTrims) {
+        @Nullable List<@Valid ProfileTrim> profileTrims) {
 
     public PendingImportCommitRequest {
         if (linkToExistingDiveId != null

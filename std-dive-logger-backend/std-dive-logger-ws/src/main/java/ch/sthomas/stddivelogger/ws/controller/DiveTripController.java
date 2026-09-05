@@ -180,7 +180,7 @@ public class DiveTripController {
     public List<DiveTripDefaultTeamMember> replaceDefaultTeam(
             @AuthenticationPrincipal final User user,
             @PathVariable("id") @Positive final long id,
-            @Valid @NotNull @RequestBody final List<DefaultTeamEntryBody> body) {
+            @NotNull @RequestBody final List<@Valid DefaultTeamEntryBody> body) {
         return diveTripService.replaceDefaultTeam(
                 user,
                 id,
