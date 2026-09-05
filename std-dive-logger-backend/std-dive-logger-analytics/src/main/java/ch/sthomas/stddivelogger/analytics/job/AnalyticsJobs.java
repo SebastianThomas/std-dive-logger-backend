@@ -56,7 +56,7 @@ public class AnalyticsJobs {
         analyticsService.recomputeDiverReminders();
     }
 
-    /** Web-push the reminders that are due and not yet pushed (TODO: real sender). */
+    /** Web-push the reminders that are due and not yet pushed. */
     @Schedules({
         @Scheduled(cron = "0 2/5 * * * *"),
         @Scheduled(initialDelay = 45000),
@@ -69,5 +69,14 @@ public class AnalyticsJobs {
     @Scheduled(cron = "0 30 3 * * *")
     public void purgeExpiredReminders() {
         analyticsService.purgeExpiredReminders();
+    }
+
+    /** Bulk-refresh the global per-site aggregates behind "suggest a dive site". */
+    @Schedules({
+        @Scheduled(cron = "0 4/15 * * * *"),
+        @Scheduled(initialDelay = 30000),
+    })
+    public void refreshDiveSiteStats() {
+        analyticsService.refreshDiveSiteStats();
     }
 }

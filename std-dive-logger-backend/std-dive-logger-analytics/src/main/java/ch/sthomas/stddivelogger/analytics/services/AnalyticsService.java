@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.analytics.services;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.DiveSiteStatsDataService;
 import ch.sthomas.stddivelogger.data.service.DiverActivityStatsDataService;
 import ch.sthomas.stddivelogger.data.service.DiverReminderDataService;
 import ch.sthomas.stddivelogger.model.analytics.AnalyticsDepthVariance;
@@ -51,6 +52,7 @@ public class AnalyticsService {
     private final DiverActivityStatsDataService diverActivityStatsDataService;
     private final DiverReminderDataService diverReminderDataService;
     private final PushService pushService;
+    private final DiveSiteStatsDataService diveSiteStatsDataService;
 
     public AnalyticsService(
             final AnalyticsDataService analyticsDataService,
@@ -58,13 +60,20 @@ public class AnalyticsService {
             DiveDataService diveDataService,
             final DiverActivityStatsDataService diverActivityStatsDataService,
             final DiverReminderDataService diverReminderDataService,
-            final PushService pushService) {
+            final PushService pushService,
+            final DiveSiteStatsDataService diveSiteStatsDataService) {
         this.analyticsDataService = analyticsDataService;
         this.analyticsSegmentService = analyticsSegmentService;
         this.diveDataService = diveDataService;
         this.diverActivityStatsDataService = diverActivityStatsDataService;
         this.diverReminderDataService = diverReminderDataService;
         this.pushService = pushService;
+        this.diveSiteStatsDataService = diveSiteStatsDataService;
+    }
+
+    /** Bulk-refreshes the global per-site aggregates behind "suggest a dive site". */
+    public void refreshDiveSiteStats() {
+        diveSiteStatsDataService.refreshAll();
     }
 
     /**

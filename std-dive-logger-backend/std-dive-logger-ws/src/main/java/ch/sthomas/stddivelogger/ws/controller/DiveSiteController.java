@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
+import ch.sthomas.stddivelogger.model.dive.DiveSiteSuggestion;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
 import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
@@ -14,6 +15,7 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.DiveSiteSuggestionService;
 import ch.sthomas.stddivelogger.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -43,10 +46,15 @@ public class DiveSiteController {
 
     private final DiveService diveService;
     private final UserService userService;
+    private final DiveSiteSuggestionService diveSiteSuggestionService;
 
-    public DiveSiteController(final DiveService diveService, final UserService userService) {
+    public DiveSiteController(
+            final DiveService diveService,
+            final UserService userService,
+            final DiveSiteSuggestionService diveSiteSuggestionService) {
         this.diveService = diveService;
         this.userService = userService;
+        this.diveSiteSuggestionService = diveSiteSuggestionService;
     }
 
     @Operation(
@@ -161,6 +169,33 @@ public class DiveSiteController {
                 .limit(limit)
                 .map(DiveSiteWithDives::site)
                 .toList();
+    }
+
+    @Operation(
+            summary = "Suggest dive sites for this diver",
+            description =
+                    "Scores every site with data against this diver's own history: worth a"
+                            + " revisit, better visibility than its neighbours, popular lately, an"
+                            + " underrated find, or a good depth match. lat/lon are optional and,"
+                            + " when given, add a proximity factor scored against maxDistanceKm (a"
+                            + " soft preference, not a hard cutoff - default 50km when omitted)."
+                            + " Not deterministic: a little randomness picks between near-tied"
+                            + " candidates, so a refresh can turn up a different mix. Can be slow -"
+                            + " it's meant to be called on demand, not eagerly.")
+    @GetMapping(path = "/suggestions")
+    public List<DiveSiteSuggestion> suggestDiveSites(
+            @AuthenticationPrincipal final @Nullable User user,
+            @RequestParam(value = "lat", required = false) @DecimalMin("-90") @DecimalMax("90")
+                    final Double lat,
+            @RequestParam(value = "lon", required = false) @DecimalMin("-180") @DecimalMax("180")
+                    final Double lon,
+            @RequestParam(value = "maxDistanceKm", required = false) @Positive
+                    final Double maxDistanceKm,
+            @RequestParam(value = "limit", defaultValue = "8") @Positive @Max(20) final int limit) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to get dive site suggestions");
+        }
+        return diveSiteSuggestionService.suggest(user, lat, lon, maxDistanceKm, limit);
     }
 
     public record CreateDiveSiteBody(

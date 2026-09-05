@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import ch.sthomas.stddivelogger.data.service.AnalyticsDataService;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.DiveSiteStatsDataService;
 import ch.sthomas.stddivelogger.data.service.DiverActivityStatsDataService;
 import ch.sthomas.stddivelogger.data.service.DiverReminderDataService;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmentType;
@@ -34,7 +35,8 @@ class AnalyticsServiceTest {
                     mock(DiveDataService.class),
                     mock(DiverActivityStatsDataService.class),
                     mock(DiverReminderDataService.class),
-                    mock(PushService.class));
+                    mock(PushService.class),
+                    mock(DiveSiteStatsDataService.class));
 
     private static DiveMeasurementWithId sample(final int offsetSeconds, final double depth) {
         return new DiveMeasurementWithId(
