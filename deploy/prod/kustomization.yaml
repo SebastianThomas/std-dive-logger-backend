@@ -5,8 +5,10 @@ resources:
   - ../base
 
 # Hostnames are the base ones, unpatched:
-#   std-dive-logger.sthomas.ch / std-dive-logger-importer.sthomas.ch /
-#   std-dive-logger-autocomplete.sthomas.ch
+#   ws.std-dive-logger.sthomas.ch
+#   std-dive-logger-importer.sthomas.ch + importer.std-dive-logger.sthomas.ch
+#   std-dive-logger-autocomplete.sthomas.ch + autocomplete.std-dive-logger.sthomas.ch
+# std-dive-logger.sthomas.ch itself belongs to the web frontend (separate repo).
 #
 # TODO before the first prod deploy: confirm the prod R2 bucket + base URL
 # (dev uses a throwaway bucket + the pub-*.r2.dev dev domain).
@@ -14,7 +16,9 @@ configMapGenerator:
   - name: std-dive-logger-env
     literals:
       - FRONTEND_BASE_URL=https://std-dive-logger-web.sthomas.ch
-      - EXTRA_CORS_URLS=https://std-dive-logger-web.sthomas.ch
+      # The frontend is served on BOTH hosts (see the web repo's HTTPRoute), so
+      # both are real browser Origins - every API host must trust both.
+      - EXTRA_CORS_URLS=https://std-dive-logger-web.sthomas.ch,https://std-dive-logger.sthomas.ch
       - EMAIL=std-dive-logger@sthomas.ch
       - HOST=ha01s012.org-dns.com
       - STD_DIVE_LOGGER_STORAGE_R2_BUCKET=std-dive-logger

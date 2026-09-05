@@ -11,7 +11,9 @@ configMapGenerator:
   - name: std-dive-logger-env
     literals:
       - FRONTEND_BASE_URL=https://std-dive-logger-web-dev.sthomas.ch
-      - EXTRA_CORS_URLS=https://std-dive-logger-web-dev.sthomas.ch
+      # The frontend is served on BOTH hosts (see the web repo's HTTPRoute), so
+      # both are real browser Origins - every API host must trust both.
+      - EXTRA_CORS_URLS=https://std-dive-logger-web-dev.sthomas.ch,https://std-dive-logger-dev.sthomas.ch
       - EMAIL=std-dive-logger@sthomas.ch
       - HOST=ha01s012.org-dns.com
       - STD_DIVE_LOGGER_STORAGE_R2_BUCKET=std-dive-logger-dev
@@ -29,18 +31,26 @@ patches:
           requests: { cpu: 25m, memory: 192Mi }
           limits: { memory: 640Mi }
 
+  # Hostnames are patched positionally - keep these indices in step with the
+  # base HTTPRoutes' own hostname order.
   - target: { kind: HTTPRoute, name: std-dive-logger-ws }
     patch: |
       - op: replace
         path: /spec/hostnames/0
-        value: std-dive-logger-dev.sthomas.ch
+        value: ws.std-dive-logger-dev.sthomas.ch
   - target: { kind: HTTPRoute, name: std-dive-logger-import-ws }
     patch: |
       - op: replace
         path: /spec/hostnames/0
         value: std-dive-logger-importer-dev.sthomas.ch
+      - op: replace
+        path: /spec/hostnames/1
+        value: importer.std-dive-logger-dev.sthomas.ch
   - target: { kind: HTTPRoute, name: std-dive-logger-autocomplete }
     patch: |
       - op: replace
         path: /spec/hostnames/0
         value: std-dive-logger-autocomplete-dev.sthomas.ch
+      - op: replace
+        path: /spec/hostnames/1
+        value: autocomplete.std-dive-logger-dev.sthomas.ch

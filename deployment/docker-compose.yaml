@@ -24,7 +24,7 @@ services:
             SPRING_DATASOURCE_USERNAME: std_dive_logger
             SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
             SPRING_CONFIG_LOCATION: /config/
-            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://std-dive-logger-dev.sthomas.ch,https://10.148.78.130:5173
         ports:
             - "8092:8080"
         healthcheck:
@@ -47,7 +47,7 @@ services:
             SPRING_DATASOURCE_USERNAME: std_dive_logger
             SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
             SPRING_CONFIG_LOCATION: /config/
-            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://std-dive-logger-dev.sthomas.ch,https://10.148.78.130:5173
         healthcheck:
             # No curl/wget in this image (Jib's default Temurin JRE base) - use bash's /dev/tcp instead.
             test: [ "CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8086; printf \"GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -1 <&3 | grep -q 200'" ]
@@ -70,7 +70,7 @@ services:
             SPRING_DATASOURCE_USERNAME: std_dive_logger
             SPRING_DATASOURCE_PASSWORD: {{INSERT_YOUR_SECRET}}
             SPRING_CONFIG_LOCATION: /config/
-            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://10.148.78.130:5173
+            EXTRA_CORS_URLS: https://std-dive-logger-web-dev.sthomas.ch,https://std-dive-logger-dev.sthomas.ch,https://10.148.78.130:5173
         healthcheck:
             # No curl/wget in this image (Jib's default Temurin JRE base) - use bash's /dev/tcp instead.
             test: [ "CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8086; printf \"GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -1 <&3 | grep -q 200'" ]

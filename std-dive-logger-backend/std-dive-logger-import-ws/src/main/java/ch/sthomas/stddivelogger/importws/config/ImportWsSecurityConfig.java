@@ -42,7 +42,7 @@ public class ImportWsSecurityConfig {
 
     @Bean
     @Profile("!no-security")
-    SecurityFilterChain swaggerFilterChain(final HttpSecurity http) throws Exception {
+    SecurityFilterChain swaggerFilterChain(final HttpSecurity http) {
         // swagger-ui
         http.securityMatcher("/docs/**", "/docs.yaml")
                 .authorizeHttpRequests(
@@ -58,8 +58,7 @@ public class ImportWsSecurityConfig {
     SecurityFilterChain importWsFilterChain(
             final HttpSecurity http,
             final AuthenticationManager applicationAuthenticationManager,
-            final JwtAuthFilter jwtAuthFilter)
-            throws Exception {
+            final JwtAuthFilter jwtAuthFilter) {
         http.cors(withDefaults())
                 .securityMatcher("/v1/import/**")
                 .authenticationManager(applicationAuthenticationManager)

@@ -6,15 +6,38 @@ only supplies the shared `app-deployer` identity (`KUBE_TOKEN`).
 | | dev | prod |
 |---|---|---|
 | namespace | `std-dive-logger-dev` | `std-dive-logger-prod` |
-| ws | `std-dive-logger-dev.sthomas.ch` | `std-dive-logger.sthomas.ch` |
-| import-ws | `std-dive-logger-importer-dev.sthomas.ch` | `std-dive-logger-importer.sthomas.ch` |
-| autocomplete | `std-dive-logger-autocomplete-dev.sthomas.ch` | `std-dive-logger-autocomplete.sthomas.ch` |
+| ws | `ws.std-dive-logger-dev.sthomas.ch` | `ws.std-dive-logger.sthomas.ch` |
+| import-ws | `std-dive-logger-importer-dev.sthomas.ch`<br>`importer.std-dive-logger-dev.sthomas.ch` | `std-dive-logger-importer.sthomas.ch`<br>`importer.std-dive-logger.sthomas.ch` |
+| autocomplete | `std-dive-logger-autocomplete-dev.sthomas.ch`<br>`autocomplete.std-dive-logger-dev.sthomas.ch` | `std-dive-logger-autocomplete.sthomas.ch`<br>`autocomplete.std-dive-logger.sthomas.ch` |
 | analytics | internal only (no route) | internal only |
-| frontend | `std-dive-logger-web-dev.sthomas.ch` (separate repo) | `std-dive-logger-web.sthomas.ch` |
+| frontend | `std-dive-logger-web-dev.sthomas.ch`<br>`std-dive-logger-dev.sthomas.ch` (separate repo) | `std-dive-logger-web.sthomas.ch`<br>`std-dive-logger.sthomas.ch` |
 
-All hostnames are one label deep, so the cluster `*.sthomas.ch` wildcard cert
-covers them — no per-service cert or acme-dns delegation. The dev overlay
-patches the base (prod) hostnames; `analytics` and every Deployment also gets a
+### Hostname scheme
+
+The readable scheme is **the bare project host is the app, services hang off it
+as subdomains**: `std-dive-logger[-dev].sthomas.ch` is the web frontend, and
+`ws.` / `importer.` / `autocomplete.` in front of it are the three public
+backends. `ws.` is the exact replacement for the bare host, which used to point
+at `ws` and is the one hostname this scheme took away from the backend.
+
+The older flat names (`std-dive-logger-importer[-dev]`,
+`std-dive-logger-autocomplete[-dev]`, `std-dive-logger-web[-dev]`) are kept as
+working aliases — each HTTPRoute simply lists both. Only the bare host moved.
+
+**TLS caveat:** the flat names are one label deep and are covered by the cluster
+`*.sthomas.ch` wildcard cert. The new `ws.` / `importer.` / `autocomplete.`
+names are **two** labels deep, and a wildcard matches exactly one label — so
+they need a `*.std-dive-logger.sthomas.ch` / `*.std-dive-logger-dev.sthomas.ch`
+cert (or per-host certs) on the Traefik `websecure` listener before they serve
+HTTPS. That lives in `homelab-infra`, not here.
+
+Frontend CORS: because the frontend answers on two hostnames, both are real
+browser `Origin` values, so `EXTRA_CORS_URLS` in each overlay lists both — `ws`,
+`import-ws` and `autocomplete` all read it.
+
+The dev overlay patches the base (prod) hostnames **positionally**
+(`/spec/hostnames/0`, `/1`) — keep the patch indices in step with the base
+HTTPRoutes' own ordering. `analytics` and every Deployment also gets a
 `wait-for-db` initContainer so a fresh namespace doesn't crash-loop while CNPG
 initialises.
 

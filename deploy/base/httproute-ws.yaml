@@ -1,7 +1,11 @@
 ---
 # Base hostname is the PROD one - the dev overlay patches it to
-# std-dive-logger-dev.sthomas.ch. TLS is the cluster *.sthomas.ch wildcard
-# cert on the Traefik websecure listener - nothing per-app.
+# ws.std-dive-logger-dev.sthomas.ch. The bare project host
+# (std-dive-logger[-dev].sthomas.ch) is NOT here any more: it serves the web
+# frontend now (separate repo), and ws. is its exact replacement.
+# TLS: the two-label names need a *.std-dive-logger[-dev].sthomas.ch cert on
+# the Traefik websecure listener - the *.sthomas.ch wildcard does not cover
+# them (a wildcard matches exactly one label).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -11,7 +15,7 @@ spec:
     - name: traefik-gateway
       namespace: kube-system
   hostnames:
-    - std-dive-logger.sthomas.ch
+    - ws.std-dive-logger.sthomas.ch
   rules:
     - backendRefs:
         - name: std-dive-logger-ws
