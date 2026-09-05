@@ -627,6 +627,7 @@ public class ImportService {
      * actually conflicting is fine (nothing to resolve there); a null choice for one that was
      * throws.
      */
+    @Transactional
     public Dive commitReimportProfile(
             final User user,
             final long diveId,

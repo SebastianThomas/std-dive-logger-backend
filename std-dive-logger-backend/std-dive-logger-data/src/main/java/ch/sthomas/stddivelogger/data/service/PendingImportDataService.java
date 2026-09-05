@@ -87,10 +87,12 @@ public class PendingImportDataService {
         return pendingImportRepository.findByIdAndUser_IdForUpdate(id, user.id());
     }
 
+    @Transactional
     public void deleteById(final long id) {
         pendingImportRepository.deleteById(id);
     }
 
+    @Transactional
     public int deleteOlderThan(final Instant cutoff) {
         return pendingImportRepository.deleteByCreatedAtBefore(cutoff);
     }
