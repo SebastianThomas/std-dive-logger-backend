@@ -3,14 +3,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: std-dive-logger-ws
-  labels: { app: std-dive-logger-ws, app.kubernetes.io/name: std-dive-logger-ws }
+  labels:
+    app: std-dive-logger-ws
+    app.kubernetes.io/name: std-dive-logger-ws
 spec:
   replicas: 1
   selector:
     matchLabels: { app: std-dive-logger-ws }
   template:
     metadata:
-      labels: { app: std-dive-logger-ws, app.kubernetes.io/name: std-dive-logger-ws }
+      labels:
+        app: std-dive-logger-ws
+        app.kubernetes.io/name: std-dive-logger-ws
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8086"
