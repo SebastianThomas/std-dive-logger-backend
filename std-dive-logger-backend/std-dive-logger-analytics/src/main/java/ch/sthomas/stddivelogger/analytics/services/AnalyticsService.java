@@ -222,8 +222,10 @@ public class AnalyticsService {
     AnalyticsDepthVariance createAnalytics(final DiveProfileSegmentWithId segmentWithId) {
         final var segment = segmentWithId.segment();
         Objects.requireNonNull(segment, "Segment must not be null");
-        Objects.requireNonNull(segment.measurements(), "Segment Measurements must not be null");
-        if (segment.measurements().isEmpty()) {
+        final var measurements =
+                Objects.requireNonNull(
+                        segment.measurements(), "Segment Measurements must not be null");
+        if (measurements.isEmpty()) {
             logger.info(
                     "Empty segment for profile: {} with start index {}",
                     segment.profile().id(),
@@ -234,7 +236,7 @@ public class AnalyticsService {
         // every stat computed below - summaryStatistics(), the deviation math, all of it - for
         // the whole segment. Same guard DiveGasCalculator.calculate applies for the same reason.
         final var finiteMeasurements =
-                segment.measurements().stream()
+                measurements.stream()
                         .map(DiveMeasurementWithId::measurement)
                         .filter(m -> Double.isFinite(m.depth()))
                         .toList();
@@ -288,7 +290,7 @@ public class AnalyticsService {
 
     private static double[] getDepthByTime(
             final List<Pair<Long, Double>> depthByTime, final long msDivider) {
-        final var start = depthByTime.getFirst().getLeft();
+        final long start = depthByTime.getFirst().getLeft();
         final var startSeconds = start / msDivider;
         final var end = depthByTime.getLast().getLeft();
         final var endSeconds = end / msDivider;
