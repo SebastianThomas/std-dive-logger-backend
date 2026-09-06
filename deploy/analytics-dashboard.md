@@ -33,7 +33,7 @@ permissions. Once, using an administrator kubeconfig (the dev namespace must
 already exist), run from the repository root:
 
 ```sh
-kubectl apply -f deploy/bootstrap/analytics-dev-rbac.yaml
+kubectl apply -k std-dive-logger-backend/std-dive-logger-analytics/manifests/bootstrap/dev
 ```
 
 This grants certificate management only in `std-dive-logger-dev`; it grants no

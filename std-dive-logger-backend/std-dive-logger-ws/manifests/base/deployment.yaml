@@ -42,7 +42,7 @@ spec:
             - { name: SPRING_CONFIG_NAME, value: std-dive-logger-ws-dev }
             - { name: LOGGING_CONFIG, value: "/config/std-dive-logger-ws-dev-logback.xml" }
             - { name: SPRING_APPLICATION_NAME, value: std-dive-logger-ws }
-            - { name: ADDITIONAL_JAVA_OPTS, value: "-XX:MaxRAMPercentage=70.0" }
+            - { name: ADDITIONAL_JAVA_OPTS, value: "-XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError" }
             - { name: SPRING_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
             - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
@@ -70,5 +70,5 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           resources:
-            requests: { cpu: 100m, memory: 384Mi }
-            limits: { memory: 896Mi }
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1280Mi }

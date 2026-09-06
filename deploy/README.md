@@ -35,11 +35,29 @@ Frontend CORS: because the frontend answers on two hostnames, both are real
 browser `Origin` values, so `EXTRA_CORS_URLS` in each overlay lists both — `ws`,
 `import-ws` and `autocomplete` all read it.
 
-The dev overlay patches the base (prod) hostnames **positionally**
+Each module's dev overlay patches its base (prod) hostnames **positionally**
 (`/spec/hostnames/0`, `/1`) — keep the patch indices in step with the base
 HTTPRoutes' own ordering. `analytics` and every Deployment also gets a
 `wait-for-db` initContainer so a fresh namespace doesn't crash-loop while CNPG
 initialises.
+
+## Manifest ownership
+
+Each Java application owns its Kubernetes resources under
+`std-dive-logger-backend/<module>/manifests/`:
+
+- `base/`: Deployment, Service and HTTPRoute (where applicable), plus the module's
+  `conf/dev` ConfigMap. Analytics also owns its private Tailnet sidecars and PVC.
+- `dev/`: base plus development resource limits and hostnames.
+- `prod/`: base with production defaults.
+- Analytics `setup/`: TLS certificate reconciled by the setup workflow;
+  `bootstrap/dev/`: administrator-applied certificate RBAC, kept out of app deploys.
+
+`deploy/dev` and `deploy/prod` compose the matching module overlays with the shared
+namespace, environment values and `deploy/components/wait-for-db` policy. The
+GitHub deployment workflow continues to use these top-level entry points. There
+are no duplicate module Deployment/Service/HTTPRoute definitions under `deploy/`.
+The old module `manifests/dev` nginx ingress and ExternalName files are retired.
 
 ## Config model
 
@@ -47,7 +65,7 @@ The jib images set `SPRING_CONFIG_LOCATION=/config/` but do **not** bake a confi
 file (the `-Dconfig.*` build args are dead — nothing in the poms reads them).
 Legacy docker-compose mounted `config/<svc>/application.properties`; here that
 file is a **ConfigMap** generated directly from each Maven module's `conf/dev/` directory.
-Each directory owns a small `kustomization.yaml`; `deploy/base` includes those resources.
+Each directory owns a small `kustomization.yaml`; its module's `manifests/base` includes it.
 There is no copied configuration under `deploy/`. Edit `conf/dev` once for both overlays;
 Kustomize hashes the contents and updates deployment references automatically.
 

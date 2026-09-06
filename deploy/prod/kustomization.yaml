@@ -3,6 +3,12 @@ kind: Kustomization
 namespace: std-dive-logger-prod
 resources:
   - ../base
+  - ../../std-dive-logger-backend/std-dive-logger-ws/manifests/prod
+  - ../../std-dive-logger-backend/std-dive-logger-import-ws/manifests/prod
+  - ../../std-dive-logger-backend/std-dive-logger-autocomplete/manifests/prod
+  - ../../std-dive-logger-backend/std-dive-logger-analytics/manifests/prod
+components:
+  - ../components/wait-for-db
 
 # Hostnames are the base ones, unpatched:
 #   ws.std-dive-logger.sthomas.ch

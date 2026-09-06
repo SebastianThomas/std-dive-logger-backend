@@ -70,10 +70,10 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(kubectl auth can-i create certificates.cert-manager.io -n std-dive-logger-dev)" != yes ]; then
-            echo '::error::Apply deploy/bootstrap/analytics-dev-rbac.yaml once as a cluster administrator.'
+            echo '::error::Apply std-dive-logger-backend/std-dive-logger-analytics/manifests/bootstrap/dev with kubectl apply -k once as a cluster administrator.'
             exit 1
           fi
-          kubectl -n std-dive-logger-dev apply -f deploy/analytics-tailnet-certificate.yaml
+          kubectl -n std-dive-logger-dev apply -k std-dive-logger-backend/std-dive-logger-analytics/manifests/setup
           kubectl -n std-dive-logger-dev wait --for=condition=Ready certificate/analytics-tailnet-tls --timeout=300s
           kubectl -n std-dive-logger-dev get secret analytics-tailnet-tls -o name
 
