@@ -51,7 +51,11 @@ public final class ReimportSimilarityCheck {
             final Instant newStart,
             final Instant newEnd,
             final List<DiveMeasurement> newMeasurements) {
-        final var startDiff = Duration.between(existingStart, newStart).abs();
+        final var startDiff =
+                Duration.between(
+                                activeStart(existingMeasurements, existingStart),
+                                activeStart(newMeasurements, newStart))
+                        .abs();
         if (startDiff.compareTo(START_TOLERANCE) > 0) {
             return Optional.of(
                     "start time differs by "
@@ -86,7 +90,10 @@ public final class ReimportSimilarityCheck {
             final Instant newStart,
             final Instant newEnd,
             final List<DiveMeasurement> newMeasurements) {
-        final var diff = Duration.between(existingStart, newStart);
+        final var diff =
+                Duration.between(
+                        activeStart(existingMeasurements, existingStart),
+                        activeStart(newMeasurements, newStart));
         final long hours = Math.round(diff.toMinutes() / 60.0);
         if (hours == 0 || Math.abs(hours) > MAX_PLAUSIBLE_TZ_OFFSET_HOURS) {
             return Optional.empty();
@@ -156,8 +163,12 @@ public final class ReimportSimilarityCheck {
             final Instant newStart,
             final Instant newEnd,
             final List<DiveMeasurement> newMeasurements) {
-        final var existingDuration = Duration.between(existingStart, existingEnd);
-        final var newDuration = Duration.between(newStart, newEnd);
+        final var existingActiveStart = activeStart(existingMeasurements, existingStart);
+        final var existingActiveEnd = activeEnd(existingMeasurements, existingEnd);
+        final var newActiveStart = activeStart(newMeasurements, newStart);
+        final var newActiveEnd = activeEnd(newMeasurements, newEnd);
+        final var existingDuration = Duration.between(existingActiveStart, existingActiveEnd);
+        final var newDuration = Duration.between(newActiveStart, newActiveEnd);
         final var durationTolerance =
                 maxDuration(
                         MIN_DURATION_TOLERANCE,
@@ -194,8 +205,10 @@ public final class ReimportSimilarityCheck {
 
         for (final var fraction : CURVE_SAMPLE_FRACTIONS) {
             final var existingDepth =
-                    depthAtFraction(existingMeasurements, existingStart, existingEnd, fraction);
-            final var newDepth = depthAtFraction(newMeasurements, newStart, newEnd, fraction);
+                    depthAtFraction(
+                            existingMeasurements, existingActiveStart, existingActiveEnd, fraction);
+            final var newDepth =
+                    depthAtFraction(newMeasurements, newActiveStart, newActiveEnd, fraction);
             if (existingDepth != null
                     && newDepth != null
                     && Math.abs(existingDepth - newDepth) > CURVE_TOLERANCE_METERS) {
@@ -211,6 +224,22 @@ public final class ReimportSimilarityCheck {
         }
 
         return Optional.empty();
+    }
+
+    public static Instant activeStart(final List<DiveMeasurement> samples, final Instant fallback) {
+        return samples.stream()
+                .filter(m -> m.depth() > 0.5)
+                .map(DiveMeasurement::time)
+                .min(Instant::compareTo)
+                .orElse(fallback);
+    }
+
+    private static Instant activeEnd(final List<DiveMeasurement> samples, final Instant fallback) {
+        return samples.stream()
+                .filter(m -> m.depth() > 0.5)
+                .map(DiveMeasurement::time)
+                .max(Instant::compareTo)
+                .orElse(fallback);
     }
 
     private static Duration maxDuration(final Duration a, final Duration b) {

@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface DiveMeasurementRepository extends JpaRepository<DiveMeasurementEntity, Long> {
-    List<DiveMeasurementEntity> findAllByProfile_IdOrderByTimeAsc(Long profileId);
+    List<DiveMeasurementEntity> findAllByProfile_IdOrderByElapsedAsc(Long profileId);
 
     void deleteAllByProfile_Id(long profileId);
 }

@@ -35,10 +35,7 @@
             <artifactId>fit</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>net.iakovlev</groupId>
-            <artifactId>timeshape</artifactId>
-        </dependency>
+
 
         <!-- Reading Shearwater Cloud's own SQLite logbook database -->
         <dependency>

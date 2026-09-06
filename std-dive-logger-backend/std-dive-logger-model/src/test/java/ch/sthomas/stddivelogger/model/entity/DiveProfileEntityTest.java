@@ -56,4 +56,25 @@ class DiveProfileEntityTest {
                         .map(DiveMeasurement::time)
                         .toList());
     }
+
+    @Test
+    void shiftingMovesOnlyTheAnchorAndTrimmingPreservesSampleInstants() {
+        final var start = Instant.parse("2026-01-01T10:00:00Z");
+        final var computer =
+                new DiveComputerEntity(
+                        "SN",
+                        "Computer",
+                        new DiveComputerManufacturerEntity("Test"),
+                        new UserEntity("a@b.ch", "hash", "Test"));
+        final var sample = measurementAt(start.plusMillis(1250), 10);
+        final var profile =
+                new DiveProfileEntity(computer, start, start.plusSeconds(100), List.of(sample));
+        profile.shiftBy(java.time.Duration.ofHours(2));
+        assertEquals(java.time.Duration.ofMillis(1250), sample.getElapsed());
+        assertEquals(start.plusSeconds(7200).plusMillis(1250), sample.toRecord().time());
+        final var absolute = sample.toRecord().time();
+        profile.updateBounds(absolute, profile.getEnd());
+        assertEquals(java.time.Duration.ZERO, sample.getElapsed());
+        assertEquals(absolute, sample.toRecord().time());
+    }
 }

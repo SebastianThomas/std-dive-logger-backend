@@ -264,4 +264,22 @@ class ReimportSimilarityCheckTest {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    void surfacePaddingDoesNotHideAClockConflict() {
+        final var existing = triangularProfile(START, Duration.ofMinutes(40), 30);
+        final var shifted = existing.stream().map(m -> m.shifted(Duration.ofHours(2))).toList();
+        final var padded = new ArrayList<>(shifted);
+        padded.addFirst(sample(START.plus(Duration.ofHours(2)).minusSeconds(600), 0));
+        padded.add(sample(START.plus(Duration.ofHours(2)).plusSeconds(3000), 0));
+        assertThat(
+                        ReimportSimilarityCheck.requirePlausibleReimport(
+                                START,
+                                START.plusSeconds(2400),
+                                existing,
+                                padded.getFirst().time(),
+                                padded.getLast().time(),
+                                padded))
+                .contains(Duration.ofHours(2));
+    }
 }

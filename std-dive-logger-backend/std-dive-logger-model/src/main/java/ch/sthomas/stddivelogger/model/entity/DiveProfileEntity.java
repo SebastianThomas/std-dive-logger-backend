@@ -138,7 +138,8 @@ public class DiveProfileEntity {
     }
 
     Stream<DiveMeasurementEntity> getMeasurementsStream() {
-        return measurements.stream().sorted(Comparator.comparing(DiveMeasurementEntity::getTime));
+        return measurements.stream()
+                .sorted(Comparator.comparing(DiveMeasurementEntity::getElapsed));
     }
 
     List<DiveMeasurementEntity> getMeasurements() {
@@ -158,33 +159,21 @@ public class DiveProfileEntity {
         final var diff = Duration.between(prevStart, alignToManualODT);
         this.profileStart = alignToManualODT;
         this.profileEnd = prevEnd.plus(diff);
-        measurements.forEach(measurement -> measurement.timePlus(diff));
     }
 
-    /**
-     * Shifts this profile's start/end and every measurement time by {@code delta} (positive =
-     * later). Used to re-date a whole dive - e.g. an import whose computer clock was wrong - while
-     * keeping every profile's relative offset intact. Does not touch {@link
-     * DiveProfileHistoryEntity} so the shift still reads back as a manual-alignment offset
-     * (survives reimport, undoable via "reset alignment").
-     */
+    /** Moves the absolute anchor; persisted measurement offsets stay unchanged. */
     public void shiftBy(final Duration delta) {
         if (delta.isZero()) {
             return;
         }
         this.profileStart = profileStart.plus(delta);
         this.profileEnd = profileEnd.plus(delta);
-        measurements.forEach(measurement -> measurement.timePlus(delta));
     }
 
-    /**
-     * Updates just the profile's own start/end bounds, without touching its measurements collection
-     * at all - for callers that changed which rows exist via a separate repository call (e.g.
-     * trimming) rather than by replacing the whole list, where reassigning every surviving
-     * measurement through {@link #replaceMeasurements} would be pure overhead (a redundant merge of
-     * every unchanged row) just to update two fields.
-     */
+    /** Changes the bounds after trimming while retaining every surviving sample instant. */
     public void updateBounds(final Instant start, final Instant end) {
+        final var delta = Duration.between(start, getStart());
+        measurements.forEach(m -> m.rebase(delta));
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
     }

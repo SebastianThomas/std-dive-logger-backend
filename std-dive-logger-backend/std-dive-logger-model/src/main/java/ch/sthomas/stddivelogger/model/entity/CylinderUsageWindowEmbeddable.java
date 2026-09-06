@@ -5,10 +5,11 @@ import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
-import java.time.Instant;
 
 /**
  * One row of {@code t_dive_configuration_cylinder_usage_window} - see {@link CylinderUsageWindow}.
@@ -17,11 +18,13 @@ import java.time.Instant;
 @SuppressWarnings("NullAway.Init")
 public class CylinderUsageWindowEmbeddable {
 
-    @Column(name = "window_start")
-    private @Nullable Instant windowStart;
+    @JdbcTypeCode(SqlTypes.INTERVAL_SECOND)
+    @Column(name = "start_offset")
+    private @Nullable Duration windowStart;
 
-    @Column(name = "window_end")
-    private @Nullable Instant windowEnd;
+    @JdbcTypeCode(SqlTypes.INTERVAL_SECOND)
+    @Column(name = "end_offset")
+    private @Nullable Duration windowEnd;
 
     public CylinderUsageWindowEmbeddable() {}
 
@@ -34,15 +37,8 @@ public class CylinderUsageWindowEmbeddable {
         return new CylinderUsageWindow(windowStart, windowEnd);
     }
 
-    /**
-     * Moves both bounds by {@code delta} - so a cylinder's timed stretches follow a re-dated dive.
-     */
-    public void shiftBy(final Duration delta) {
-        if (windowStart != null) {
-            this.windowStart = windowStart.plus(delta);
-        }
-        if (windowEnd != null) {
-            this.windowEnd = windowEnd.plus(delta);
-        }
+    public void rebaseUsageWindows(final java.time.Duration delta) {
+        if (windowStart != null) windowStart = windowStart.plus(delta);
+        if (windowEnd != null) windowEnd = windowEnd.plus(delta);
     }
 }

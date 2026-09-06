@@ -84,7 +84,7 @@ public class AnalyticsDataService {
         final var firstIdx = entity.getFirstMeasurementIdx();
         final var lastIdx = entity.getLastMeasurementIdx();
         final var allMeasurements =
-                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profile.getId());
+                diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(profile.getId());
         final var measurements =
                 IntStream.rangeClosed(firstIdx, lastIdx)
                         .mapToObj(allMeasurements::get)
@@ -234,7 +234,7 @@ public class AnalyticsDataService {
 
     private DiveProfileRatesResponse ratesForProfile(final long profileId) {
         final var measurements =
-                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId).stream()
+                diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(profileId).stream()
                         .map(DiveMeasurementEntity::toRecordWithId)
                         .toList();
         // smoothedRates() itself is now robust to a corrupted depth in the input (see
@@ -313,7 +313,7 @@ public class AnalyticsDataService {
                         .map(
                                 g ->
                                         new DiveProfileGasResponse.GasPoint(
-                                                g.getMeasurement().getTime().toInstant(),
+                                                g.getMeasurement().getTime(),
                                                 g.getCalculatedPo2(),
                                                 g.getCalculatedFo2()))
                         .toList();

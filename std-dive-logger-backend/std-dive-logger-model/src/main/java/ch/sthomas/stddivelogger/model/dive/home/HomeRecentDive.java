@@ -20,4 +20,5 @@ public record HomeRecentDive(
         @Nullable String siteName,
         @Nullable Instant start,
         @Nullable Double maxDepth,
-        @Nullable Duration bottomTime) {}
+        @Nullable Duration bottomTime,
+        @Nullable String zoneId) {}

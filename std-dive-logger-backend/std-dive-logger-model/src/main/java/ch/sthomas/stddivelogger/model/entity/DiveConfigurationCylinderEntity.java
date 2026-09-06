@@ -95,10 +95,6 @@ public class DiveConfigurationCylinderEntity {
     }
 
     /** Shifts every timed usage window by {@code delta} - for re-dating the whole dive. */
-    public void shiftUsageWindowsBy(final java.time.Duration delta) {
-        usageWindows.forEach(w -> w.shiftBy(delta));
-    }
-
     public DiveConfigurationCylinder toRecord() {
         return new DiveConfigurationCylinder(
                 // A cylinder created as part of a brand-new dive has no identity yet - its id is
@@ -118,5 +114,9 @@ public class DiveConfigurationCylinderEntity {
                 new Gas(gasO2, gasHe),
                 role,
                 usageWindows.stream().map(CylinderUsageWindowEmbeddable::toRecord).toList());
+    }
+
+    public void rebaseUsageWindows(final java.time.Duration delta) {
+        usageWindows.forEach(w -> w.rebaseUsageWindows(delta));
     }
 }

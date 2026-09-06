@@ -513,30 +513,24 @@ public class DiveDataService {
         // it here could see a stale null within the same persistence context/transaction.
         final var history = diveProfileHistoryRepository.findById(profileId).orElseThrow();
 
-        // A prior manual time-alignment (see alignProfileManual) is preserved by applying the same
-        // offset to the freshly re-parsed data, rather than silently reverting to the file's own
-        // raw (unaligned) timestamp - reimport should only ever change what the parser produced.
-        final var manualOffset = Duration.between(history.getOriginalStart(), profile.getStart());
-        final var alignedStart = newStart.plus(manualOffset);
-        final var alignedEnd = newEnd.plus(manualOffset);
-        final var alignedMeasurements =
-                manualOffset.isZero()
-                        ? newMeasurements
-                        : shiftMeasurementTimes(newMeasurements, manualOffset);
+        final var oldActiveStart =
+                ReimportSimilarityCheck.activeStart(
+                        profile.toMeasurementRecords(), profile.getStart());
+        final var newActiveStart = ReimportSimilarityCheck.activeStart(newMeasurements, newStart);
+        final var eventShift = Duration.between(oldActiveStart, newActiveStart);
 
         // Replace all existing rows atomically: delete then insert via repository,
         // completely bypassing the entity's managed measurements collection (no orphanRemoval).
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
         diveMeasurementRepository.flush();
-        profile.replaceMeasurements(
-                toMeasurementEntities(alignedMeasurements), alignedStart, alignedEnd);
+        profile.replaceMeasurements(toMeasurementEntities(newMeasurements), newStart, newEnd);
         // The manual-alignment reset target re-baselines to the newly reimported raw times too -
         // "reset alignment" should undo drift relative to the file just reimported, not a stale
         // pre-reimport one.
         history.updateOriginal(newStart, newEnd);
         diveProfileHistoryRepository.save(history);
 
-        dive.updateDiveSummary();
+        dive.updateDiveSummary(dive.getProfiles().size() == 1 ? eventShift : Duration.ZERO);
         final var userId = dive.getUserEntity().getId();
         diveRepository.save(dive);
         entityManager.flush();
@@ -544,11 +538,6 @@ public class DiveDataService {
         // collection edit - the latter's insert-before-delete flush ordering trips the (dive, tag)
         // unique constraint when a reimport leaves an existing auto-tag still valid.
         return refreshAutoTags(diveId, userId);
-    }
-
-    private static List<DiveMeasurement> shiftMeasurementTimes(
-            final List<DiveMeasurement> measurements, final Duration offset) {
-        return measurements.stream().map(m -> m.shifted(offset)).toList();
     }
 
     public record ReimportPreviewContext(
@@ -1086,15 +1075,14 @@ public class DiveDataService {
         findProfileOnDive(dive, profileId);
 
         final var measurements =
-                diveMeasurementRepository.findAllByProfile_IdOrderByTimeAsc(profileId);
+                diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(profileId);
         if (measurements.isEmpty()) {
             throw new IllegalStateException(
                     "Profile " + profileId + " has no measurements to trim.");
         }
         final var effectiveStart =
-                trimStart != null ? trimStart : measurements.getFirst().getTime().toInstant();
-        final var effectiveEnd =
-                trimEnd != null ? trimEnd : measurements.getLast().getTime().toInstant();
+                trimStart != null ? trimStart : measurements.getFirst().getTime();
+        final var effectiveEnd = trimEnd != null ? trimEnd : measurements.getLast().getTime();
         if (!effectiveStart.isBefore(effectiveEnd)) {
             throw new IllegalArgumentException("Trim start must be before trim end.");
         }
@@ -1102,7 +1090,7 @@ public class DiveDataService {
         final var survivors = new ArrayList<DiveMeasurementEntity>();
         final var toDelete = new ArrayList<DiveMeasurementEntity>();
         for (final var m : measurements) {
-            final var t = m.getTime().toInstant();
+            final var t = m.getTime();
             (t.isBefore(effectiveStart) || t.isAfter(effectiveEnd) ? toDelete : survivors).add(m);
         }
         if (survivors.size() < 2) {
@@ -1114,8 +1102,8 @@ public class DiveDataService {
             return toRecord(dive);
         }
 
-        final var newStart = survivors.getFirst().getTime().toInstant();
-        final var newEnd = survivors.getLast().getTime().toInstant();
+        final var newStart = survivors.getFirst().getTime();
+        final var newEnd = survivors.getLast().getTime();
 
         diveMeasurementRepository.deleteAll(toDelete);
         diveMeasurementRepository.flush();
@@ -1515,9 +1503,7 @@ public class DiveDataService {
             }
         }
         profiles.forEach(profile -> profile.shiftBy(delta));
-        Optional.ofNullable(dive.getConfiguration())
-                .ifPresent(config -> config.shiftUsageWindowsBy(delta));
-        dive.updateDiveSummary();
+        dive.updateDiveSummary(delta);
         return toRecord(diveRepository.save(dive));
     }
 
@@ -2086,7 +2072,17 @@ public class DiveDataService {
                             profiles.size(),
                             profiles.stream().map(DiveProfileEntity::getId).toList()));
         }
+        final var oldStart =
+                dive.getProfiles().stream()
+                        .map(DiveProfileEntity::getStart)
+                        .min(Instant::compareTo)
+                        .orElseThrow();
         profiles.forEach(p -> p.alignProfileManual(alignToManual));
+        dive.updateDiveSummary(
+                profiles.size() == dive.getProfiles().size()
+                        ? Duration.between(oldStart, alignToManual)
+                        : Duration.ZERO);
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
         return toRecord(diveRepository.save(dive));
     }
 
@@ -2097,7 +2093,28 @@ public class DiveDataService {
                 dive.getProfiles().stream()
                         .filter(profile -> profileIds.contains(profile.getId()))
                         .toList();
-        profiles.forEach(DiveProfileEntity::resetAlignProfileManual);
+        final var oldStart =
+                dive.getProfiles().stream()
+                        .map(DiveProfileEntity::getStart)
+                        .min(Instant::compareTo)
+                        .orElseThrow();
+        profiles.forEach(
+                p ->
+                        p.alignProfileManual(
+                                diveProfileHistoryRepository
+                                        .findById(p.getId())
+                                        .orElseThrow()
+                                        .getOriginalStart()));
+        final var newStart =
+                dive.getProfiles().stream()
+                        .map(DiveProfileEntity::getStart)
+                        .min(Instant::compareTo)
+                        .orElseThrow();
+        dive.updateDiveSummary(
+                profiles.size() == dive.getProfiles().size()
+                        ? Duration.between(oldStart, newStart)
+                        : Duration.ZERO);
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
         return toRecord(diveRepository.save(dive));
     }
 

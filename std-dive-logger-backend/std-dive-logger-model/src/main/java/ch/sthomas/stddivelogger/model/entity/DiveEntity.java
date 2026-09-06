@@ -408,7 +408,8 @@ public class DiveEntity {
                 diveSite.getId(),
                 diveSite.getName(),
                 missing,
-                dismissed);
+                dismissed,
+                diveSite.toRecord().zoneId());
     }
 
     /** Reasons the user has explicitly marked "no more info to add" for this dive. */
@@ -582,6 +583,19 @@ public class DiveEntity {
     }
 
     public DiveEntity updateDiveSummary() {
+        return updateDiveSummary(Duration.ZERO);
+    }
+
+    public DiveEntity updateDiveSummary(final Duration eventShift) {
+        if (diveSummary != null && configuration != null && !profiles.isEmpty()) {
+            final var nextStart =
+                    profiles.stream()
+                            .map(DiveProfileEntity::getStart)
+                            .min(java.time.Instant::compareTo)
+                            .orElseThrow();
+            configuration.rebaseUsageWindows(
+                    Duration.between(nextStart, diveSummary.toRecord().start().plus(eventShift)));
+        }
         if (diveSummary != null) {
             diveSummary.update(this);
         } else {

@@ -129,10 +129,6 @@ public class DiveConfigurationEntity {
      * Shifts every cylinder's timed usage windows by {@code delta} - so they still line up with the
      * profile after re-dating the dive.
      */
-    public void shiftUsageWindowsBy(final java.time.Duration delta) {
-        cylinders.forEach(c -> c.shiftUsageWindowsBy(delta));
-    }
-
     public DiveConfiguration toRecord() {
         return new DiveConfiguration(
                 suit.toRecord(),
@@ -190,5 +186,9 @@ public class DiveConfigurationEntity {
 
     public @Nullable BaseConfiguration getBaseConfiguration() {
         return baseConfiguration;
+    }
+
+    public void rebaseUsageWindows(final java.time.Duration delta) {
+        cylinders.forEach(c -> c.rebaseUsageWindows(delta));
     }
 }

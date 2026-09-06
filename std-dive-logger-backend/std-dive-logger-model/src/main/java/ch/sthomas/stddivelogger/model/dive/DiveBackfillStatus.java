@@ -24,7 +24,8 @@ public record DiveBackfillStatus(
         long siteId,
         String siteName,
         List<DiveBackfillField> missingFields,
-        List<DiveBackfillField> dismissedFields) {
+        List<DiveBackfillField> dismissedFields,
+        @Nullable String zoneId) {
 
     public int missingCount() {
         return missingFields.size();

@@ -20,6 +20,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -179,8 +180,11 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC,
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(),
-                                        m1.measurement().time()))); // 600L, only the first half
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(
+                                                START,
+                                                m1.measurement()
+                                                        .time())))); // 600L, only the first half
 
         final var result =
                 CylinderConsumptionCalculator.calculate(
@@ -259,7 +263,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC,
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time())));
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time()))));
         final var cylinderB =
                 new DiveConfigurationCylinder(
                         2,
@@ -272,7 +277,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC,
                         List.of(
                                 new CylinderUsageWindow(
-                                        m1.measurement().time(), m2.measurement().time())));
+                                        Duration.between(START, m1.measurement().time()),
+                                        Duration.between(START, m2.measurement().time()))));
 
         final var result =
                 CylinderConsumptionCalculator.calculate(
@@ -351,9 +357,11 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC,
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time()),
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time())),
                                 new CylinderUsageWindow(
-                                        m1.measurement().time(), m2.measurement().time())));
+                                        Duration.between(START, m1.measurement().time()),
+                                        Duration.between(START, m2.measurement().time()))));
 
         final var result =
                 CylinderConsumptionCalculator.calculate(List.of(profile), List.of(cylinder));
@@ -380,7 +388,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 600L
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time())));
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time()))));
         final var b =
                 windowedCylinder(
                         12,
@@ -389,7 +398,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 1200L
                         List.of(
                                 new CylinderUsageWindow(
-                                        m1.measurement().time(), m2.measurement().time())));
+                                        Duration.between(START, m1.measurement().time()),
+                                        Duration.between(START, m2.measurement().time()))));
         final var c =
                 windowedCylinder(
                         12,
@@ -398,7 +408,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 1200L
                         List.of(
                                 new CylinderUsageWindow(
-                                        m2.measurement().time(), m3.measurement().time())));
+                                        Duration.between(START, m2.measurement().time()),
+                                        Duration.between(START, m3.measurement().time()))));
         final var d = cylinder(12, 210, 200, CylinderRole.OC); // 120L, unwindowed
         final var e = cylinder(10, 200, 190, CylinderRole.OC); // 100L, unwindowed
 
@@ -426,9 +437,11 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 1800L over the whole dive
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time()),
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time())),
                                 new CylinderUsageWindow(
-                                        m1.measurement().time(), m2.measurement().time())));
+                                        Duration.between(START, m1.measurement().time()),
+                                        Duration.between(START, m2.measurement().time()))));
         final var unwindowed = cylinder(12, 200, 100, CylinderRole.OC); // 1200L, contradictory
 
         final var result =
@@ -456,7 +469,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 600L over [0m,10m] -> 1.5 p-min -> RMV 400
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time())));
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time()))));
         final var deco =
                 windowedCylinder(
                         7,
@@ -465,7 +479,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC, // 700L over [10m,20m] -> 2.5 p-min -> RMV 280
                         List.of(
                                 new CylinderUsageWindow(
-                                        m1.measurement().time(), m2.measurement().time())));
+                                        Duration.between(START, m1.measurement().time()),
+                                        Duration.between(START, m2.measurement().time()))));
 
         final var result =
                 CylinderConsumptionCalculator.calculate(List.of(profile), List.of(bottom, deco));
@@ -524,7 +539,8 @@ class CylinderConsumptionCalculatorTest {
                         CylinderRole.OC,
                         List.of(
                                 new CylinderUsageWindow(
-                                        m0.measurement().time(), m1.measurement().time())));
+                                        Duration.between(START, m0.measurement().time()),
+                                        Duration.between(START, m1.measurement().time()))));
         final var unwindowed = cylinder(7, 200, 120, CylinderRole.OC);
 
         final var result =
@@ -534,8 +550,12 @@ class CylinderConsumptionCalculatorTest {
         final var complement = result.contributions().get(1);
         assertThat(complement.coversWholeDive()).isFalse();
         assertEquals(1, complement.effectiveWindows().size());
-        assertEquals(m1.measurement().time(), complement.effectiveWindows().getFirst().start());
-        assertEquals(m2.measurement().time(), complement.effectiveWindows().getFirst().end());
+        assertEquals(
+                Duration.between(START, m1.measurement().time()),
+                complement.effectiveWindows().getFirst().start());
+        assertEquals(
+                Duration.between(START, m2.measurement().time()),
+                complement.effectiveWindows().getFirst().end());
         assertThat(complement.rmvLiters()).isNotNull();
     }
 
@@ -570,8 +590,12 @@ class CylinderConsumptionCalculatorTest {
         // Only [m2, m3] is open-circuit: 1 minute at 20 m -> 3.0 pressure-minutes.
         assertEquals(3.0, notNull(result.bailoutPressureMinutes()), 1e-9);
         assertEquals(1, result.openCircuitWindows().size());
-        assertEquals(m2.measurement().time(), result.openCircuitWindows().getFirst().start());
-        assertEquals(m3.measurement().time(), result.openCircuitWindows().getFirst().end());
+        assertEquals(
+                Duration.between(START, m2.measurement().time()),
+                result.openCircuitWindows().getFirst().start());
+        assertEquals(
+                Duration.between(START, m3.measurement().time()),
+                result.openCircuitWindows().getFirst().end());
     }
 
     @Test
@@ -606,8 +630,8 @@ class CylinderConsumptionCalculatorTest {
                         List.of(rebreather, decoComputer), List.of(bailout));
 
         assertEquals(1, result.openCircuitWindows().size());
-        assertEquals(START.plusSeconds(60), result.openCircuitWindows().getFirst().start());
-        assertEquals(START.plusSeconds(240), result.openCircuitWindows().getFirst().end());
+        assertEquals(Duration.ofSeconds(60), result.openCircuitWindows().getFirst().start());
+        assertEquals(Duration.ofSeconds(240), result.openCircuitWindows().getFirst().end());
         // 3 minutes open-circuit at a constant 20 m -> 3.0 bar ambient -> 9.0 pressure-minutes.
         assertEquals(9.0, notNull(result.bailoutPressureMinutes()), 1e-9);
     }

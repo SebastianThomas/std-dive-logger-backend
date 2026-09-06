@@ -18,6 +18,13 @@ public interface IllegalArgumentAdviceTrait {
                 request.getDescription(false),
                 exception);
         final var detail = exception.getMessage() != null ? exception.getMessage() : "Bad request";
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        final var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        if (exception
+                instanceof
+                ch.sthomas.stddivelogger.model.exception.ReimportClockConflictException conflict) {
+            problem.setProperty("code", "REIMPORT_CLOCK_CONFLICT");
+            problem.setProperty("clockOffset", conflict.getClockOffset());
+        }
+        return problem;
     }
 }

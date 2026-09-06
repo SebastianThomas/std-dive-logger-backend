@@ -1,7 +1,5 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import static java.time.ZoneOffset.UTC;
-
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
@@ -18,7 +16,7 @@ import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,8 +30,11 @@ public class DiveMeasurementEntity {
     @Column(name = "pk_dive_measurement_id", nullable = false)
     private Long id;
 
-    @Column(name = "time", nullable = false)
-    private OffsetDateTime time;
+    @JdbcTypeCode(SqlTypes.INTERVAL_SECOND)
+    @Column(name = "elapsed", nullable = false)
+    private Duration elapsed;
+
+    @Transient private @Nullable Instant unanchoredTime;
 
     @Column(name = "depth", nullable = false)
     private double depth;
@@ -87,7 +88,8 @@ public class DiveMeasurementEntity {
 
     public DiveMeasurementEntity(
             final DiveMeasurement diveMeasurement, @Nullable final GasEntity gas) {
-        this.time = diveMeasurement.time().atOffset(UTC);
+        this.unanchoredTime = diveMeasurement.time();
+        this.elapsed = Duration.ZERO;
         this.depth = diveMeasurement.depth();
         this.temperatureCelsius =
                 Optional.ofNullable(diveMeasurement.temperature())
@@ -124,7 +126,7 @@ public class DiveMeasurementEntity {
 
     public DiveMeasurement toRecord() {
         return new DiveMeasurement(
-                time.toInstant(),
+                getTime(),
                 Optional.ofNullable(temperatureCelsius)
                         .map(t -> new Temperature(t, Temperature.TemperatureUnit.CELSIUS))
                         .orElse(null),
@@ -147,6 +149,10 @@ public class DiveMeasurementEntity {
     }
 
     public DiveMeasurementEntity setProfile(final DiveProfileEntity diveProfileEntity) {
+        if (unanchoredTime != null) {
+            elapsed = Duration.between(diveProfileEntity.getStart(), unanchoredTime);
+            unanchoredTime = null;
+        }
         this.profile = diveProfileEntity;
         return this;
     }
@@ -167,11 +173,15 @@ public class DiveMeasurementEntity {
         return timeToSurfaceSeconds;
     }
 
-    public OffsetDateTime getTime() {
-        return time;
+    public Instant getTime() {
+        return unanchoredTime != null ? unanchoredTime : profile.getStart().plus(elapsed);
     }
 
-    public void timePlus(final Duration diff) {
-        this.time = time.plus(diff);
+    public Duration getElapsed() {
+        return elapsed;
+    }
+
+    public void rebase(final Duration delta) {
+        elapsed = elapsed.plus(delta);
     }
 }

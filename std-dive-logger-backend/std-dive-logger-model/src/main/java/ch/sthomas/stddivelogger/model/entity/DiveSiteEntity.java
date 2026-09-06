@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.Point;
 import java.util.List;
 
 @Entity
+@EntityListeners(DiveSiteTimezoneListener.class)
 @Table(name = "t_dive_site")
 @SqlResultSetMapping(
         name = "DiveSiteWithIdsMapping",
@@ -35,6 +36,17 @@ public class DiveSiteEntity {
 
     @Column(name = "location", nullable = false)
     private Point location;
+
+    @Column(name = "zone_id")
+    private @Nullable String zoneId;
+
+    public void setZoneId(final @Nullable String zoneId) {
+        this.zoneId = zoneId;
+    }
+
+    public Location getLocation() {
+        return new Location(location.getCoordinate());
+    }
 
     @Column(name = "description")
     private @Nullable String description;
@@ -102,8 +114,8 @@ public class DiveSiteEntity {
     public DiveSite toRecord() {
         final var loc = new Location(location.getCoordinate());
         return new DiveSite(
-                id, name, loc.lat(), loc.lon(), null, null, null, null, waterType, List.of(),
-                false);
+                id, name, loc.lat(), loc.lon(), null, null, null, null, waterType, List.of(), false,
+                zoneId);
     }
 
     public DiveSite toRecordWithLinks(final boolean canEdit) {
@@ -119,6 +131,7 @@ public class DiveSiteEntity {
                 siteType,
                 waterType,
                 links.stream().map(DiveSiteLinkEntity::toRecord).toList(),
-                canEdit);
+                canEdit,
+                zoneId);
     }
 }

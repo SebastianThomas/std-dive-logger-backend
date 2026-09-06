@@ -1,4 +1,4 @@
-package ch.sthomas.stddivelogger.service.importer;
+package ch.sthomas.stddivelogger.data.location;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

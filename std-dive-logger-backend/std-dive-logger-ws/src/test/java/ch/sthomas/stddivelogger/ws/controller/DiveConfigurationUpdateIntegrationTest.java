@@ -55,6 +55,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -180,6 +181,8 @@ class DiveConfigurationUpdateIntegrationTest {
                                     "no cylinders in this test fixture");
                         });
         diveId = diveRepository.save(dive).getId();
+        entityManager.persist(
+                new ch.sthomas.stddivelogger.model.entity.DiveProfileHistoryEntity(profile));
     }
 
     private static DiveConfigurationCylinder cylinder(final double liters, final String notes) {
@@ -500,10 +503,10 @@ class DiveConfigurationUpdateIntegrationTest {
 
     @Test
     void cylinderUsageWindowsRoundTripInOrder() {
-        final var w1Start = Instant.parse("2026-01-01T10:00:00Z");
-        final var w1End = Instant.parse("2026-01-01T10:10:00Z");
-        final var w2Start = Instant.parse("2026-01-01T10:20:00Z");
-        final var w2End = Instant.parse("2026-01-01T10:30:00Z");
+        final var w1Start = Duration.ofMinutes(0);
+        final var w1End = Duration.ofMinutes(10).plusMillis(1250);
+        final var w2Start = Duration.ofMinutes(20);
+        final var w2End = Duration.ofMinutes(30);
 
         diveService.updateDive(
                 userEntity.toRecord(),
@@ -531,6 +534,73 @@ class DiveConfigurationUpdateIntegrationTest {
                 .containsExactly(
                         new CylinderUsageWindow(w1Start, w1End),
                         new CylinderUsageWindow(w2Start, w2End));
+        final var shifted =
+                diveService.setDiveStartTime(
+                        userEntity.toRecord(),
+                        diveId,
+                        reloaded.summary().start().plusSeconds(7200));
+        assertThat(
+                        Objects.requireNonNull(shifted.configuration())
+                                .cylinders()
+                                .getFirst()
+                                .usageWindows())
+                .isEqualTo(windows);
+        final var profile = shifted.profiles().getFirst();
+        final var refined =
+                diveService.reimportProfile(
+                        userEntity.toRecord(),
+                        diveId,
+                        profile.id(),
+                        Objects.requireNonNull(profile.measurements()).stream()
+                                .map(m -> m.measurement().shifted(Duration.ofHours(1)))
+                                .toList(),
+                        profile.start().plusSeconds(3600),
+                        profile.end().plusSeconds(3600));
+        assertThat(refined.profiles().getFirst().start())
+                .isEqualTo(profile.start().plusSeconds(3600));
+        assertThat(
+                        Objects.requireNonNull(refined.configuration())
+                                .cylinders()
+                                .getFirst()
+                                .usageWindows())
+                .isEqualTo(windows);
+        final var refinedProfile = refined.profiles().getFirst();
+        final var paddedSamples =
+                new java.util.ArrayList<>(
+                        Objects.requireNonNull(refinedProfile.measurements()).stream()
+                                .map(m -> m.measurement())
+                                .toList());
+        paddedSamples.addFirst(
+                new DiveMeasurement(
+                        refinedProfile.start().minusSeconds(600),
+                        null,
+                        0,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null));
+        final var padded =
+                diveService.reimportProfile(
+                        userEntity.toRecord(),
+                        diveId,
+                        refinedProfile.id(),
+                        paddedSamples,
+                        refinedProfile.start().minusSeconds(600),
+                        refinedProfile.end());
+        assertThat(
+                        Objects.requireNonNull(padded.configuration())
+                                .cylinders()
+                                .getFirst()
+                                .usageWindows()
+                                .getFirst()
+                                .start())
+                .isEqualTo(w1Start.plusSeconds(600));
     }
 
     private CcrUnitEntity ccrUnit(final String name, final CcrMountPosition mountPosition) {

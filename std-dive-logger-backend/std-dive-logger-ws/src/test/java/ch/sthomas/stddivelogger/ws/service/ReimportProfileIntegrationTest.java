@@ -177,6 +177,8 @@ class ReimportProfileIntegrationTest {
         final var correctedStart = Instant.parse("2026-08-22T05:13:49Z");
         final var rawFileStart = Instant.parse("2026-08-22T10:13:49Z");
 
+        diveService.setDiveStartTime(
+                user, committedDive.id(), Instant.parse("2026-08-22T05:13:49Z"));
         final var preview =
                 importService.previewReimportProfile(
                         user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));
@@ -237,6 +239,8 @@ class ReimportProfileIntegrationTest {
                         .getFirst()
                         .id();
 
+        diveService.setDiveStartTime(
+                user, committedDive.id(), Instant.parse("2026-08-22T05:13:49Z"));
         final var preview =
                 importService.previewReimportProfile(
                         user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));

@@ -28,12 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Real end-to-end check that a Shearwater native XML import's timestamps land in the dive site's
- * real timezone rather than the literal (and almost always wrong) UTC the raw file's plain
- * wall-clock reading gets parsed as at stage time - the concrete motivating gap this covers, since
- * this format carries no GPS/timezone of its own (see ImportService.correctForUnknownTimezone).
- */
+/** Shearwater XML records UTC; the site zone only controls local display. */
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional
@@ -84,16 +79,13 @@ class ShearwaterTimezoneCorrectionIntegrationTest {
     }
 
     @Test
-    void shearwaterXmlImportIsCorrectedToTheDiveSiteRealTimezoneNotLeftAsRawUtc()
-            throws IOException {
+    void shearwaterXmlPreservesUtcAndExposesTheSiteZone() throws IOException {
         final var user = createTestUser("shearwater-tz-it-1@test.ch");
         final var staged =
                 importService.stageUpload(user, List.of(fixture("shearwater-perdix2-native.xml")));
         assertThat(staged.errors()).isEmpty();
         final var pendingId = staged.staged().getFirst().id();
 
-        // Malé, Maldives - a real, always-UTC+5, no-DST location, chosen so the expected
-        // correction is unambiguous and doesn't depend on the test's own run date.
         final var commitRequest =
                 new PendingImportCommitRequest(
                         null,
@@ -110,15 +102,9 @@ class ShearwaterTimezoneCorrectionIntegrationTest {
         final var fullDive = diveService.getDiveById(user, committedDive.id()).orElseThrow();
         final var profile = fullDive.profiles().getFirst();
 
-        // The raw file's own startDate is "8/22/2026 10:13:49 AM" with no timezone of its own -
-        // naively parsed as UTC at stage time (a placeholder), the wrong answer for a dive
-        // actually made in the Maldives (UTC+5). The corrected instant is that same wall-clock
-        // reading, in UTC+5.
-        final var expectedStart = Instant.parse("2026-08-22T05:13:49Z");
+        final var expectedStart = Instant.parse("2026-08-22T10:13:49Z");
         assertThat(profile.start()).isEqualTo(expectedStart);
-        assertThat(profile.start()).isNotEqualTo(Instant.parse("2026-08-22T10:13:49Z"));
-        // The last raw record's currentTime is 4025000ms (4025s) after start - duration itself
-        // must be unchanged by the correction, only the absolute placement shifts.
+        assertThat(Objects.requireNonNull(fullDive.site()).zoneId()).isEqualTo("Indian/Maldives");
         assertThat(profile.end()).isEqualTo(expectedStart.plusSeconds(4025));
     }
 }

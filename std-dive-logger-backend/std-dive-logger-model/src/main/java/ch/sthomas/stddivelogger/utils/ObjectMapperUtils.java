@@ -25,7 +25,7 @@ public class ObjectMapperUtils {
                         .enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
                         .disable(DateTimeFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS)
                         .disable(DateTimeFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
-                        .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
+                        .enable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
                         .enable(EnumFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
 
         customizer.accept(jsonMapperBuilder);

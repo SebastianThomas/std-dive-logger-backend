@@ -32,6 +32,7 @@ import java.util.Objects;
 @Service
 public class HomeDataService {
 
+    private final ch.sthomas.stddivelogger.data.location.LocationTimezoneResolver timezones;
     private final NamedParameterJdbcTemplate jdbc;
     private final DiverActivityStatsDataService activityStats;
     private final DiverReminderDataService reminders;
@@ -39,7 +40,9 @@ public class HomeDataService {
     public HomeDataService(
             final NamedParameterJdbcTemplate jdbc,
             final DiverActivityStatsDataService activityStats,
-            final DiverReminderDataService reminders) {
+            final DiverReminderDataService reminders,
+            final ch.sthomas.stddivelogger.data.location.LocationTimezoneResolver timezones) {
+        this.timezones = timezones;
         this.jdbc = jdbc;
         this.activityStats = activityStats;
         this.reminders = reminders;
@@ -74,7 +77,7 @@ public class HomeDataService {
     private static final String Q_RECENT =
             """
             SELECT d.pk_dive_id AS id, d.dive_number AS number, d.dive_identifier AS identifier,
-                   s.name AS site_name, ds.dive_start AS dive_start,
+                   s.name AS site_name, ST_Y(s.location) AS latitude, ST_X(s.location) AS longitude, ds.dive_start AS dive_start,
                    ds.max_depth AS max_depth, ds.duration_seconds AS bottom_seconds
             FROM t_dives d
             JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
@@ -110,7 +113,7 @@ public class HomeDataService {
     private static final String Q_HIGHLIGHTED =
             """
             SELECT d.pk_dive_id AS id, d.dive_number AS number, d.dive_identifier AS identifier,
-                   s.name AS site_name, ds.dive_start AS dive_start,
+                   s.name AS site_name, ST_Y(s.location) AS latitude, ST_X(s.location) AS longitude, ds.dive_start AS dive_start,
                    ds.max_depth AS max_depth, ds.duration_seconds AS bottom_seconds
             FROM t_dives d
             JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
@@ -139,9 +142,8 @@ public class HomeDataService {
         final var summary =
                 Objects.requireNonNull(
                         jdbc.queryForObject(Q_SUMMARY, params, HomeDataService::mapSummary));
-        final var recentDives = jdbc.query(Q_RECENT, params, HomeDataService::mapRecentDive);
-        final var highlightedDives =
-                jdbc.query(Q_HIGHLIGHTED, params, HomeDataService::mapRecentDive);
+        final var recentDives = jdbc.query(Q_RECENT, params, this::mapRecentDive);
+        final var highlightedDives = jdbc.query(Q_HIGHLIGHTED, params, this::mapRecentDive);
         final var recordRows = jdbc.query(Q_RECORDS, params, HomeDataService::mapRecordRow);
         final var topBuddies = jdbc.query(Q_BUDDIES, params, HomeDataService::mapBuddy);
         // Cached blob (see DiverActivityStatsDataService); computed + stored once here on a miss.
@@ -204,8 +206,7 @@ public class HomeDataService {
         return new HomeWindow(count, seconds == null ? null : Duration.ofSeconds(seconds));
     }
 
-    private static HomeRecentDive mapRecentDive(final ResultSet rs, final int rowNum)
-            throws SQLException {
+    private HomeRecentDive mapRecentDive(final ResultSet rs, final int rowNum) throws SQLException {
         final var bottom = nullableLong(rs, "bottom_seconds");
         return new HomeRecentDive(
                 rs.getLong("id"),
@@ -214,7 +215,8 @@ public class HomeDataService {
                 rs.getString("site_name"),
                 nullableInstant(rs, "dive_start"),
                 nullableDouble(rs, "max_depth"),
-                bottom == null ? null : Duration.ofSeconds(bottom));
+                bottom == null ? null : Duration.ofSeconds(bottom),
+                timezones.resolveZone(rs.getDouble("latitude"), rs.getDouble("longitude")));
     }
 
     private static RecordRow mapRecordRow(final ResultSet rs, final int rowNum)

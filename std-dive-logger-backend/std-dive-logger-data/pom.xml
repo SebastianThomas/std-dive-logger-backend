@@ -13,6 +13,10 @@
     <name>Std Dive Logger Data</name>
 
     <dependencies>
+        <dependency>
+            <groupId>net.iakovlev</groupId>
+            <artifactId>timeshape</artifactId>
+        </dependency>
         <!-- Module dependencies -->
         <dependency>
             <groupId>ch.sthomas.stddivelogger</groupId>

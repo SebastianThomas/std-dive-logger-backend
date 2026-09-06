@@ -348,7 +348,8 @@ public class DiveSiteSuggestionDataService {
                         c.siteType() != null ? DiveSiteType.valueOf(c.siteType()) : null,
                         c.waterType() != null ? WaterType.valueOf(c.waterType()) : null,
                         List.of(),
-                        false);
+                        false,
+                        null);
         return new DiveSiteSuggestion(
                 site,
                 Math.round(s.score() * 10) / 10.0,

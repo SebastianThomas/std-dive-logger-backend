@@ -94,8 +94,16 @@ public class DiveSummaryEntity {
         // set one via setAverageDepth()) - the synthetic surface/max-depth/surface profile has no
         // real depth-time curve to average, so computing a number from it would be a fabricated
         // guess, not a real average.
-        this.start = profiles.getFirst().getStart();
-        this.end = profiles.getLast().getEnd();
+        this.start =
+                profiles.stream()
+                        .map(DiveProfileEntity::getStart)
+                        .min(Instant::compareTo)
+                        .orElseThrow();
+        this.end =
+                profiles.stream()
+                        .map(DiveProfileEntity::getEnd)
+                        .max(Instant::compareTo)
+                        .orElseThrow();
         this.durationSeconds = getBottomTime(profiles).toSeconds();
         // Across every profile's measurements, regardless of which profile it came from - a
         // twin-computer dive's real TTS peak is whichever profile happened to record the highest

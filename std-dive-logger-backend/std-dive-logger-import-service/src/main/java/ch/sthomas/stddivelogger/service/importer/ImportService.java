@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.service.importer;
 
+import ch.sthomas.stddivelogger.data.location.LocationTimezoneResolver;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.PendingImportDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
@@ -61,17 +62,10 @@ import java.util.stream.Stream;
 public class ImportService {
     private static final Duration PENDING_IMPORT_EXPIRY = Duration.ofHours(48);
 
-    // Shearwater's own export formats carry a plain wall-clock reading with no timezone of their
-    // own - every reader for these three sources parses it as if it were UTC (see e.g.
-    // ShearwaterXmlReaderService.parseStartDate's own doc comment). See
-    // correctForUnknownTimezone's doc comment for how that guess gets corrected once a real
-    // dive-site location is known.
+    // Native XML is UTC; UDDF has already been parsed into Instants. Only naive sources
+    // need a site-zone correction at commit.
     private static final Set<PendingImportSource> SOURCES_WITH_UNKNOWN_TIMEZONE =
-            EnumSet.of(
-                    PendingImportSource.XML_SHEARWATER,
-                    PendingImportSource.UDDF_SHEARWATER,
-                    PendingImportSource.DL7_SHEARWATER,
-                    PendingImportSource.DB_SHEARWATER);
+            EnumSet.of(PendingImportSource.DL7_SHEARWATER, PendingImportSource.DB_SHEARWATER);
 
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
@@ -709,24 +703,29 @@ public class ImportService {
             final DiveProfileUpload reimported,
             final ReimportResolution.@Nullable Choice choice) {
         final var offset =
-                ReimportSimilarityCheck.wholeHourClockOffset(
+                ReimportSimilarityCheck.requirePlausibleReimport(
                         context.profileStart(),
                         context.profileEnd(),
                         context.profileMeasurements(),
                         reimported.start(),
                         reimported.end(),
                         reimported.measurements());
+        final var retainExistingClock =
+                Duration.between(
+                        ReimportSimilarityCheck.activeStart(
+                                reimported.measurements(), reimported.start()),
+                        ReimportSimilarityCheck.activeStart(
+                                context.profileMeasurements(), context.profileStart()));
         if (offset.isEmpty()) {
-            return reimported;
+            return reimported.shifted(retainExistingClock);
         }
         if (choice == null) {
-            throw new IllegalArgumentException(
-                    "The reimport's clock is "
-                            + Math.abs(offset.get().toHours())
-                            + "h off the existing profile - pick which start time to keep.");
+            throw new ch.sthomas.stddivelogger.model.exception.ReimportClockConflictException(
+                    new ReimportConflicts.ClockOffset(
+                            context.profileStart(), reimported.start(), offset.get().toMinutes()));
         }
         return switch (choice) {
-            case EXISTING -> reimported.shifted(offset.get().negated());
+            case EXISTING -> reimported.shifted(retainExistingClock);
             case NEW -> reimported;
         };
     }

@@ -13,6 +13,7 @@ import ch.sthomas.stddivelogger.model.dive.stats.CylinderContribution;
 
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,11 @@ public final class CylinderConsumptionCalculator {
         if (cylinders.isEmpty()) {
             return CylinderConsumptionResult.EMPTY;
         }
+        final var diveStart =
+                profiles.stream()
+                        .map(DiveProfile::start)
+                        .min(Instant::compareTo)
+                        .orElse(Instant.EPOCH);
         final var depthTimeline = timeline(profiles, m -> m.measurement().depth());
         final var modeTimeline = timeline(profiles, m -> m.measurement().mode());
         final var isCcrDive = modeTimeline.stream().anyMatch(tv -> tv.value() == DiveMode.CC);
@@ -80,23 +86,28 @@ public final class CylinderConsumptionCalculator {
                     null,
                     null,
                     List.of(),
-                    contributionsFor(cylinders, List.of(), null, isCcrDive));
+                    contributionsFor(cylinders, List.of(), null, isCcrDive, diveStart));
         }
 
         final var ocRmv =
                 isCcrDive
                         ? RoleRmv.NONE
-                        : combinedRmv(cylinders, CylinderRole.OC, depthTimeline, null);
+                        : combinedRmv(cylinders, CylinderRole.OC, depthTimeline, null, diveStart);
         final var bailoutRmv =
                 isCcrDive
-                        ? combinedRmv(cylinders, CylinderRole.BAILOUT, depthTimeline, modeTimeline)
+                        ? combinedRmv(
+                                cylinders,
+                                CylinderRole.BAILOUT,
+                                depthTimeline,
+                                modeTimeline,
+                                diveStart)
                         : RoleRmv.NONE;
         final var o2Liters = sumConsumedLiters(cylinders, CylinderRole.O2);
         final var diluentLiters = sumConsumedLiters(cylinders, CylinderRole.DILUENT);
         final var ocConsumedLiters = sumConsumedLiters(cylinders, CylinderRole.OC);
         final var openCircuitWindows =
                 isCcrDive
-                        ? complementIntervals(depthTimeline, modeTimeline, List.of())
+                        ? complementIntervals(depthTimeline, modeTimeline, List.of(), diveStart)
                         : List.<CylinderUsageWindow>of();
 
         return new CylinderConsumptionResult(
@@ -108,7 +119,7 @@ public final class CylinderConsumptionCalculator {
                 ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes(),
                 bailoutRmv.rmvLiters() == null ? null : bailoutRmv.pressureMinutes(),
                 openCircuitWindows,
-                contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive));
+                contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive, diveStart));
     }
 
     /**
@@ -123,9 +134,18 @@ public final class CylinderConsumptionCalculator {
             final List<DiveConfigurationCylinder> cylinders,
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline,
-            final boolean isCcrDive) {
+            final boolean isCcrDive,
+            final Instant diveStart) {
         return cylinders.stream()
-                .map(c -> contributionFor(c, cylinders, depthTimeline, modeTimeline, isCcrDive))
+                .map(
+                        c ->
+                                contributionFor(
+                                        c,
+                                        cylinders,
+                                        depthTimeline,
+                                        modeTimeline,
+                                        isCcrDive,
+                                        diveStart))
                 .toList();
     }
 
@@ -134,7 +154,8 @@ public final class CylinderConsumptionCalculator {
             final List<DiveConfigurationCylinder> allCylinders,
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline,
-            final boolean isCcrDive) {
+            final boolean isCcrDive,
+            final Instant diveStart) {
         final var consumed = consumedLiters(cylinder);
         final var role = cylinder.role();
         final var breathesOpenCircuit =
@@ -149,10 +170,13 @@ public final class CylinderConsumptionCalculator {
         if (breathesOpenCircuit && consumed != null && !depthTimeline.isEmpty()) {
             final var modeGate = role == CylinderRole.BAILOUT ? modeTimeline : null;
             if (!cylinder.usageWindows().isEmpty()) {
-                final var own = cylinder.usageWindows().stream().map(UsageWindow::of).toList();
+                final var own =
+                        cylinder.usageWindows().stream()
+                                .map(w -> UsageWindow.of(w, diveStart))
+                                .toList();
                 pressureMinutes = pressureMinutesCovered(depthTimeline, modeGate, own);
             } else {
-                final var sameRoleExplicit = explicitWindowsForRole(allCylinders, role);
+                final var sameRoleExplicit = explicitWindowsForRole(allCylinders, role, diveStart);
                 pressureMinutes =
                         pressureMinutesNotCovered(depthTimeline, modeGate, sameRoleExplicit);
                 if (sameRoleExplicit.isEmpty()) {
@@ -160,7 +184,8 @@ public final class CylinderConsumptionCalculator {
                     effectiveWindows = List.of();
                 } else {
                     effectiveWindows =
-                            complementIntervals(depthTimeline, modeGate, sameRoleExplicit);
+                            complementIntervals(
+                                    depthTimeline, modeGate, sameRoleExplicit, diveStart);
                 }
             }
             if (pressureMinutes > 0) {
@@ -186,7 +211,9 @@ public final class CylinderConsumptionCalculator {
 
     /** Every explicit usage window across the windowed, pressure-usable cylinders of one role. */
     private static List<UsageWindow> explicitWindowsForRole(
-            final List<DiveConfigurationCylinder> cylinders, final CylinderRole role) {
+            final List<DiveConfigurationCylinder> cylinders,
+            final CylinderRole role,
+            final Instant diveStart) {
         return cylinders.stream()
                 .filter(
                         c ->
@@ -194,7 +221,7 @@ public final class CylinderConsumptionCalculator {
                                         && consumedLiters(c) != null
                                         && !c.usageWindows().isEmpty())
                 .flatMap(c -> c.usageWindows().stream())
-                .map(UsageWindow::of)
+                .map(w -> UsageWindow.of(w, diveStart))
                 .toList();
     }
 
@@ -207,7 +234,8 @@ public final class CylinderConsumptionCalculator {
     private static List<CylinderUsageWindow> complementIntervals(
             final List<TimedValue<Double>> depthTimeline,
             final @Nullable List<TimedValue<DiveMode>> modeTimeline,
-            final List<UsageWindow> windows) {
+            final List<UsageWindow> windows,
+            final Instant diveStart) {
         final var result = new ArrayList<CylinderUsageWindow>();
         Instant runStart = null;
         Instant runEnd = null;
@@ -234,12 +262,18 @@ public final class CylinderConsumptionCalculator {
                 }
                 runEnd = b.time();
             } else if (runStart != null) {
-                result.add(new CylinderUsageWindow(runStart, runEnd));
+                result.add(
+                        new CylinderUsageWindow(
+                                Duration.between(diveStart, runStart),
+                                runEnd == null ? null : Duration.between(diveStart, runEnd)));
                 runStart = null;
             }
         }
         if (runStart != null) {
-            result.add(new CylinderUsageWindow(runStart, runEnd));
+            result.add(
+                    new CylinderUsageWindow(
+                            Duration.between(diveStart, runStart),
+                            runEnd == null ? null : Duration.between(diveStart, runEnd)));
         }
         return result;
     }
@@ -275,8 +309,10 @@ public final class CylinderConsumptionCalculator {
 
     /** A cylinder's usage window - either bound {@code null} means unbounded on that side. */
     private record UsageWindow(@Nullable Instant start, @Nullable Instant end) {
-        static UsageWindow of(final CylinderUsageWindow w) {
-            return new UsageWindow(w.start(), w.end());
+        static UsageWindow of(final CylinderUsageWindow w, final Instant diveStart) {
+            return new UsageWindow(
+                    w.start() == null ? null : diveStart.plus(w.start()),
+                    w.end() == null ? null : diveStart.plus(w.end()));
         }
     }
 
@@ -305,7 +341,8 @@ public final class CylinderConsumptionCalculator {
             final List<DiveConfigurationCylinder> cylinders,
             final CylinderRole role,
             final List<TimedValue<Double>> depthTimeline,
-            final @Nullable List<TimedValue<DiveMode>> modeTimeline) {
+            final @Nullable List<TimedValue<DiveMode>> modeTimeline,
+            final Instant diveStart) {
         final var windowed = new ArrayList<DiveConfigurationCylinder>();
         final var unwindowed = new ArrayList<DiveConfigurationCylinder>();
         for (final var cylinder : cylinders) {
@@ -321,7 +358,7 @@ public final class CylinderConsumptionCalculator {
         final var explicitWindows =
                 windowed.stream()
                         .flatMap(c -> c.usageWindows().stream())
-                        .map(UsageWindow::of)
+                        .map(w -> UsageWindow.of(w, diveStart))
                         .toList();
         // Every (mode-gated) profile segment not inside any windowed cylinder's window. Empty
         // explicitWindows => the whole (mode-gated) profile.
@@ -335,7 +372,10 @@ public final class CylinderConsumptionCalculator {
             if (liters == null) {
                 continue;
             }
-            final var ownWindows = cylinder.usageWindows().stream().map(UsageWindow::of).toList();
+            final var ownWindows =
+                    cylinder.usageWindows().stream()
+                            .map(w -> UsageWindow.of(w, diveStart))
+                            .toList();
             // Same gate as before: a windowed cylinder whose own windows cover no pressure-minutes
             // (doesn't overlap the profile) contributes nothing.
             if (pressureMinutesCovered(depthTimeline, modeTimeline, ownWindows) <= 0) {

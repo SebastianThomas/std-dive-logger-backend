@@ -41,7 +41,8 @@ public record DiveSite(
                         description =
                                 "Whether the requesting user is allowed to edit this site's metadata"
                                         + " - true once they've logged at least one dive here.")
-                boolean canEdit) {
+                boolean canEdit,
+        @Nullable String zoneId) {
     @JsonIgnore
     public Coordinate getCoordinate() {
         return new Coordinate(longitude, latitude);
@@ -59,12 +60,13 @@ public record DiveSite(
                 null,
                 null,
                 List.of(),
-                false);
+                false,
+                null);
     }
 
     public DiveSite(
             final long id, final String name, final double latitude, final double longitude) {
-        this(id, name, latitude, longitude, null, null, null, null, null, List.of(), false);
+        this(id, name, latitude, longitude, null, null, null, null, null, List.of(), false, null);
     }
 
     public DiveSite withCanEdit(final boolean canEdit) {
@@ -79,6 +81,7 @@ public record DiveSite(
                 type,
                 waterType,
                 links,
-                canEdit);
+                canEdit,
+                zoneId);
     }
 }

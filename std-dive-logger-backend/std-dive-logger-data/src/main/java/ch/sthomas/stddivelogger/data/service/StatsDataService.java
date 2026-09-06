@@ -689,7 +689,7 @@ public class StatsDataService {
                     JOIN t_dive_profiles dp ON dm.fk_dive_profile_id = dp.pk_dive_profile_id
                     WHERE dm.cns IS NOT NULL
                       AND dp.fk_dive_id IN (SELECT dive_id FROM filtered_dives)
-                    ORDER BY dp.fk_dive_id, dp.dive_profile_end DESC, dm.time DESC
+                    ORDER BY dp.fk_dive_id, dp.dive_profile_end DESC, dm.elapsed DESC
                 ),
                 avg_temp AS (
                     SELECT dp.fk_dive_id AS dive_id, AVG(dm.temperature_celsius) AS avg_temp_celsius
