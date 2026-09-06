@@ -40,6 +40,10 @@ public class DiveSiteEntity {
     @Column(name = "zone_id")
     private @Nullable String zoneId;
 
+    public @Nullable String getZoneId() {
+        return zoneId;
+    }
+
     public void setZoneId(final @Nullable String zoneId) {
         this.zoneId = zoneId;
     }

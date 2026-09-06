@@ -97,4 +97,61 @@ class AutocompleteControllerIntegrationTest {
                 .expectStatus()
                 .isBadRequest();
     }
+
+    @Autowired org.springframework.context.ApplicationContext context;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired ch.sthomas.stddivelogger.autocomplete.services.AutocompleteQueries queries;
+
+    @Test
+    void autocompleteDoesNotBootTheWriteServiceOrHibernate() {
+        assertThat(context.getBeanNamesForType(jakarta.persistence.EntityManagerFactory.class))
+                .isEmpty();
+        assertThat(context.getBeanNamesForType(ch.sthomas.stddivelogger.service.DiveService.class))
+                .isEmpty();
+    }
+
+    @Test
+    void jdbcSearchPreservesPaginationCoordinatesAndPrivateTagIsolation() {
+        final long userId =
+                java.util.Objects.requireNonNull(
+                        jdbc.queryForObject(
+                                "INSERT INTO t_users(email, password, name, verified, custom_icon_url, created_at, updated_at) VALUES ('autocomplete-fixture@example.test', 'unused', 'AutocompleteFixture00', true, 'icon', now(), now()) RETURNING pk_user_id",
+                                Long.class));
+        try {
+            for (int i = 1; i < 11; i++)
+                jdbc.update(
+                        "INSERT INTO t_users(email, password, name, verified, created_at, updated_at) VALUES (?, 'unused', ?, true, now(), now())",
+                        "autocomplete-fixture" + i + "@example.test",
+                        "AutocompleteFixture" + String.format("%02d", i));
+            jdbc.update("INSERT INTO t_groups(group_name) VALUES ('AutocompleteFixtureClub')");
+            jdbc.update(
+                    "INSERT INTO t_dive_site(name, location, water_type, zone_id) VALUES ('AutocompleteFixtureSite', ST_SetSRID(ST_MakePoint(8.5, 47.3), 4326), 'FRESH', 'Europe/Zurich')");
+            jdbc.update(
+                    "INSERT INTO t_tag_definitions(name, fk_user_id) VALUES ('AutocompleteFixturePrivate', ?)",
+                    userId);
+            jdbc.update("INSERT INTO t_tag_definitions(name) VALUES ('AutocompleteFixturePublic')");
+            final var first = queries.users("AutocompleteFixture", 0);
+            assertThat(first.totalElements()).isEqualTo(11);
+            assertThat(first.totalPages()).isEqualTo(2);
+            assertThat(first.result()).hasSize(10);
+            assertThat(queries.users("AutocompleteFixture", 1).result()).hasSize(1);
+            assertThat(queries.groups("AutocompleteFixture", 0)).hasSize(1);
+            final var site = queries.sites("AutocompleteFixture", 0).result().getFirst();
+            assertThat(site.latitude()).isEqualTo(47.3);
+            assertThat(site.longitude()).isEqualTo(8.5);
+            assertThat(site.zoneId()).isEqualTo("Europe/Zurich");
+            assertThat(site.waterType())
+                    .isEqualTo(ch.sthomas.stddivelogger.model.dive.conditions.WaterType.FRESH);
+            assertThat(queries.tags("AutocompleteFixture", null))
+                    .extracting(ch.sthomas.stddivelogger.model.dive.TagDefinition::name)
+                    .containsExactly("AutocompleteFixturePublic");
+            assertThat(queries.tags("AutocompleteFixture", userId)).hasSize(2);
+            assertThat(queries.users("' OR 1=1 --", 0).result()).isEmpty();
+        } finally {
+            jdbc.update("DELETE FROM t_tag_definitions WHERE name LIKE 'AutocompleteFixture%'");
+            jdbc.update("DELETE FROM t_dive_site WHERE name LIKE 'AutocompleteFixture%'");
+            jdbc.update("DELETE FROM t_groups WHERE group_name LIKE 'AutocompleteFixture%'");
+            jdbc.update("DELETE FROM t_users WHERE name LIKE 'AutocompleteFixture%'");
+        }
+    }
 }

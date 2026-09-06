@@ -1,14 +1,12 @@
 package ch.sthomas.stddivelogger.autocomplete.controller;
 
+import ch.sthomas.stddivelogger.autocomplete.services.AutocompleteQueries;
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.TagDefinition;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.Group;
 import ch.sthomas.stddivelogger.model.user.User;
-import ch.sthomas.stddivelogger.service.DiveService;
-import ch.sthomas.stddivelogger.service.TagService;
-import ch.sthomas.stddivelogger.service.UserService;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -28,49 +26,37 @@ import java.util.List;
 public class AutocompleteController {
 
     private static final Logger logger = LoggerFactory.getLogger(AutocompleteController.class);
-    private final DiveService diveService;
-    private final UserService userService;
-    private final TagService tagService;
+    private final AutocompleteQueries queries;
 
-    public AutocompleteController(
-            final DiveService diveService,
-            final UserService userService,
-            final TagService tagService) {
-        this.diveService = diveService;
-        this.userService = userService;
-        this.tagService = tagService;
+    public AutocompleteController(final AutocompleteQueries queries) {
+        this.queries = queries;
     }
 
     @GetMapping("/user")
     public PagedResponse<FrontendUser> user(
             @RequestParam(name = "query") @NotBlank final String query,
             @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
-        return userService.getUsersByPartialName(query, page).map(User::toFrontendModel);
+        return queries.users(query, page);
     }
 
     @GetMapping("/site")
     public PagedResponse<DiveSite> location(
             @RequestParam(name = "query") @NotBlank final String query,
             @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
-        return diveService.getSiteByPartialName(query, page);
+        return queries.sites(query, page);
     }
 
     @GetMapping("/group")
     public List<Group> group(
             @RequestParam(name = "query") @NotBlank final String query,
             @RequestParam(name = "page", defaultValue = "0") @PositiveOrZero final int page) {
-        return userService.getGroupsByPartialName(query, page);
+        return queries.groups(query, page);
     }
 
     @GetMapping("/tag")
     public List<TagDefinition> tag(
             @AuthenticationPrincipal final @Nullable User user,
             @RequestParam(name = "query") @NotBlank final String query) {
-        // The autocomplete service has no JWT filter, so user may be null.
-        // Fall back to system-wide tags only in that case.
-        if (user == null) {
-            return tagService.getSystemTagsByPartialName(query);
-        }
-        return tagService.getTagsByPartialName(user, query);
+        return queries.tags(query, user == null ? null : user.id());
     }
 }

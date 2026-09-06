@@ -42,7 +42,7 @@ spec:
             - { name: SPRING_CONFIG_NAME, value: std-dive-logger-autocomplete-dev }
             - { name: LOGGING_CONFIG, value: "/config/std-dive-logger-autocomplete-dev-logback.xml" }
             - { name: SPRING_APPLICATION_NAME, value: std-dive-logger-autocomplete }
-            - { name: ADDITIONAL_JAVA_OPTS, value: "-XX:MaxRAMPercentage=70.0" }
+            - { name: ADDITIONAL_JAVA_OPTS, value: "-Xms32m -XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC -XX:G1PeriodicGCInterval=120000 -XX:G1PeriodicGCSystemLoadThreshold=0 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+UseCompactObjectHeaders" }
             - { name: SPRING_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
             - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }

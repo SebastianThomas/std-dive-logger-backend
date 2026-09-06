@@ -18,6 +18,10 @@ public class DiveSiteTimezoneListener {
     }
 
     @PostLoad
+    public void resolveMissingZone(final DiveSiteEntity site) {
+        if (site.getZoneId() == null) resolve(site);
+    }
+
     @PrePersist
     @PreUpdate
     public void resolve(final DiveSiteEntity site) {
