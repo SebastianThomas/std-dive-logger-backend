@@ -15,15 +15,10 @@
     <springProperty scope="context" name="springAppName" source="spring.application.name"/>
     <property name="LOG_FILE" value="${springAppName}"/>
 
-    <!-- You can override this to have a custom pattern -->
-    <!-- Make sure not to remove LOG_LEVEL_PATTERN, as it's needed by Sleuth -->
-    <property name="CONSOLE_LOG_PATTERN"
-        value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %clr(%marker){green} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
-
     <!-- Appender to log to console -->
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
             <charset>utf8</charset>
         </encoder>
     </appender>
@@ -37,8 +32,8 @@
             <maxIndex>9</maxIndex>
         </rollingPolicy>
 
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
             <charset>utf8</charset>
         </encoder>
 

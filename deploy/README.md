@@ -46,9 +46,10 @@ initialises.
 The jib images set `SPRING_CONFIG_LOCATION=/config/` but do **not** bake a config
 file (the `-Dconfig.*` build args are dead — nothing in the poms reads them).
 Legacy docker-compose mounted `config/<svc>/application.properties`; here that
-file is a **ConfigMap** (`deploy/base/config/<svc>.properties`, copied verbatim
-from `std-dive-logger-<svc>/conf/dev/…-dev.properties`) mounted at
-`/config/application.properties`. Re-copy those when the `conf/dev` files change.
+file is a **ConfigMap** generated directly from each Maven module's `conf/dev/` directory.
+Each directory owns a small `kustomization.yaml`; `deploy/base` includes those resources.
+There is no copied configuration under `deploy/`. Edit `conf/dev` once for both overlays;
+Kustomize hashes the contents and updates deployment references automatically.
 
 The mounted file is fully templatized — every env-specific / secret value is
 `${...}`, resolved from **environment variables** at container start:

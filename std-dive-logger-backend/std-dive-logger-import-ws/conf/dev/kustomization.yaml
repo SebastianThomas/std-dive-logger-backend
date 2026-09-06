@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+configMapGenerator:
+  - name: std-dive-logger-import-ws-config
+    files:
+      - std-dive-logger-import-ws-dev.properties
+      - std-dive-logger-import-ws-dev-logback.xml

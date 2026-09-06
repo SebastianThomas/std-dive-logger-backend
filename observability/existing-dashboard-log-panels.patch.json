@@ -1,0 +1,17 @@
+[
+  {
+    "op": "replace",
+    "path": "/panels/9/targets/0/expr",
+    "value": "app_name:~\"^std-dive-logger-.*$\"\n| $log_keyword\n| stats by (level) rate()"
+  },
+  {
+    "op": "replace",
+    "path": "/panels/9/targets/0/legendFormat",
+    "value": "{{level}}"
+  },
+  {
+    "op": "replace",
+    "path": "/panels/10/targets/0/expr",
+    "value": "app_name:~\"^std-dive-logger-.*$\"\n| $log_keyword\n| format \"<app_name>\\t<level>\\t<message>\" as _msg"
+  }
+]

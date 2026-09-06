@@ -1,46 +1,38 @@
 package ch.sthomas.stddivelogger.analytics.job;
 
-import ch.sthomas.stddivelogger.analytics.services.AnalyticsService;
-import ch.sthomas.stddivelogger.model.exception.AnalyticsException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AnalyticsJobs {
-    private static final Logger logger = LoggerFactory.getLogger(AnalyticsJobs.class);
-    private final AnalyticsService analyticsService;
+    private final AnalyticsJobQueue queue;
 
-    public AnalyticsJobs(final AnalyticsService analyticsService) {
-        this.analyticsService = analyticsService;
+    public AnalyticsJobs(final AnalyticsJobQueue queue) {
+        this.queue = queue;
     }
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "0 * * * * *", zone = "UTC")
     public void computeAnalytics() {
-        final var result = analyticsService.computeAnalytics();
-        if (!result.successful()) {
-            throw new AnalyticsException(result);
-        }
+        queue.enqueue(JobKind.PROFILES, false);
     }
 
     @Schedules({
-        @Scheduled(cron = "0 0 3 * * *"),
+        @Scheduled(cron = "0 0 3 * * *", zone = "UTC"),
         @Scheduled(initialDelay = 10000),
     })
     public void computeDiveSummaries() {
-        analyticsService.computeDiveSummaries();
+        queue.enqueue(JobKind.SUMMARIES, false);
     }
 
     /** Refresh cached home-dashboard activity/trend stats for divers whose dives changed. */
     @Schedules({
-        @Scheduled(cron = "30 * * * * *"),
+        @Scheduled(cron = "30 * * * * *", zone = "UTC"),
         @Scheduled(initialDelay = 15000),
     })
     public void recomputeDiverActivityStats() {
-        analyticsService.recomputeDiverActivityStats();
+        queue.enqueue(JobKind.ACTIVITY, false);
     }
 
     /**
@@ -49,34 +41,34 @@ public class AnalyticsJobs {
      * through in batches.
      */
     @Schedules({
-        @Scheduled(cron = "0 */5 * * * *"),
+        @Scheduled(cron = "0 */5 * * * *", zone = "UTC"),
         @Scheduled(initialDelay = 20000),
     })
     public void recomputeDiverReminders() {
-        analyticsService.recomputeDiverReminders();
+        queue.enqueue(JobKind.REMINDERS, false);
     }
 
     /** Web-push the reminders that are due and not yet pushed. */
     @Schedules({
-        @Scheduled(cron = "0 2/5 * * * *"),
+        @Scheduled(cron = "0 2/5 * * * *", zone = "UTC"),
         @Scheduled(initialDelay = 45000),
     })
     public void sendDueReminderPushes() {
-        analyticsService.sendDueReminderPushes();
+        queue.enqueue(JobKind.PUSH, false);
     }
 
     /** Nightly cleanup of long-expired reminder rows. */
-    @Scheduled(cron = "0 30 3 * * *")
+    @Scheduled(cron = "0 30 3 * * *", zone = "UTC")
     public void purgeExpiredReminders() {
-        analyticsService.purgeExpiredReminders();
+        queue.enqueue(JobKind.CLEANUP, false);
     }
 
     /** Bulk-refresh the global per-site aggregates behind "suggest a dive site". */
     @Schedules({
-        @Scheduled(cron = "0 4/15 * * * *"),
+        @Scheduled(cron = "0 4/15 * * * *", zone = "UTC"),
         @Scheduled(initialDelay = 30000),
     })
     public void refreshDiveSiteStats() {
-        analyticsService.refreshDiveSiteStats();
+        queue.enqueue(JobKind.SITES, false);
     }
 }

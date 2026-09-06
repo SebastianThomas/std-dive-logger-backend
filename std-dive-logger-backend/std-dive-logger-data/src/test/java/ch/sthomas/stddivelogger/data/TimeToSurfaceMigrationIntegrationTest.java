@@ -89,15 +89,16 @@ class TimeToSurfaceMigrationIntegrationTest {
             }
         }
 
-        final var fullMigration =
+        final var ttsMigration =
                 Flyway.configure()
                         .dataSource(
                                 postgres.getJdbcUrl(),
                                 postgres.getUsername(),
                                 postgres.getPassword())
                         .locations("classpath:db/migration/postgresql")
+                        .target(MigrationVersion.fromVersion("0.4.3"))
                         .load();
-        final var result = fullMigration.migrate();
+        final var result = ttsMigration.migrate();
 
         assertThat(result.success).isTrue();
         assertThat(result.migrationsExecuted).isGreaterThan(0);
