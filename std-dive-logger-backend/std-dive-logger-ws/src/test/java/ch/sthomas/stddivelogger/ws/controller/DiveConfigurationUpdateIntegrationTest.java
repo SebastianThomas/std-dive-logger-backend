@@ -70,6 +70,7 @@ import java.util.Objects;
  * A pure-Mockito unit test can't catch this - it only surfaces on a real Hibernate flush against a
  * real persistence context, hence the full {@code @SpringBootTest} + Testcontainers Postgres setup.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

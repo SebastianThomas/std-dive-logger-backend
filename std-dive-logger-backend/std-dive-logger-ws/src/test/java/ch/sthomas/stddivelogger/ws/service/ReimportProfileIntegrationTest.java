@@ -37,6 +37,7 @@ import java.util.Objects;
  * backfill actually lands - the concrete motivating use case for this whole feature. Also covers
  * the safety check rejecting an unrelated dive.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

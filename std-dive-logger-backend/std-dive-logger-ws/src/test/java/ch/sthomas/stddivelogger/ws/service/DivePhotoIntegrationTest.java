@@ -43,6 +43,7 @@ import java.util.NoSuchElementException;
  * authorization-gated streaming endpoint this app didn't have precedent for: a user with no read
  * access to the dive must not be able to fetch a photo through the download proxy.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

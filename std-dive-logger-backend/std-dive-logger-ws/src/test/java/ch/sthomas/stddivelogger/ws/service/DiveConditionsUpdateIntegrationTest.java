@@ -34,6 +34,7 @@ import java.util.Objects;
  * are optional, created lazily on first edit (mirroring {@code VisibilityEntity}'s own
  * lazy-creation pattern), so this exercises both the "not yet set" and "set then updated" paths.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

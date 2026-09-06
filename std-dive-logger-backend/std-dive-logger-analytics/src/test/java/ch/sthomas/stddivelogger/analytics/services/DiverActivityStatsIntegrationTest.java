@@ -47,6 +47,7 @@ import java.util.List;
  * asserts the era rate excludes it, the streak / seasonality / cadence maths, the "overdue" nudge,
  * and that {@code findDiverIdsNeedingRecompute} only returns divers whose dives changed.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

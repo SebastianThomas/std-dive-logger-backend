@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Shearwater XML records UTC; the site zone only controls local display. */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

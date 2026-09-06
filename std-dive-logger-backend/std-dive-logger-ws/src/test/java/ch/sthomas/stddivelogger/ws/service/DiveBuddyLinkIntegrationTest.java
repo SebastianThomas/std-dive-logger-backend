@@ -35,6 +35,7 @@ import java.util.List;
  * order-sensitive), per-side directional role, unlinking, and the bulk "set this buddy's role
  * everywhere" operation across every dive pair shared with a given user.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

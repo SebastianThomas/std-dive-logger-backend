@@ -51,6 +51,7 @@ import java.util.List;
  * the global per-site aggregates, then {@link DiveSiteSuggestionDataService#suggest} scores every
  * site with data against one diver's own history and location.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

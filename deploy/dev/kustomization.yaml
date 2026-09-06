@@ -10,6 +10,7 @@ resources:
 configMapGenerator:
   - name: std-dive-logger-env
     literals:
+      - ANALYTICS_TAILNET_HOSTNAME=std-dive-analytics-dev
       - FRONTEND_BASE_URL=https://std-dive-logger-web-dev.sthomas.ch
       # The frontend is served on BOTH hosts (see the web repo's HTTPRoute), so
       # both are real browser Origins - every API host must trust both.

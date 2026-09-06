@@ -9,7 +9,7 @@ only supplies the shared `app-deployer` identity (`KUBE_TOKEN`).
 | ws | `ws.std-dive-logger-dev.sthomas.ch` | `ws.std-dive-logger.sthomas.ch` |
 | import-ws | `std-dive-logger-importer-dev.sthomas.ch`<br>`importer.std-dive-logger-dev.sthomas.ch` | `std-dive-logger-importer.sthomas.ch`<br>`importer.std-dive-logger.sthomas.ch` |
 | autocomplete | `std-dive-logger-autocomplete-dev.sthomas.ch`<br>`autocomplete.std-dive-logger-dev.sthomas.ch` | `std-dive-logger-autocomplete.sthomas.ch`<br>`autocomplete.std-dive-logger.sthomas.ch` |
-| analytics | internal only (no route) | internal only |
+| analytics | Tailnet `/ops` (no public route) | Tailnet `/ops` (no public route) |
 | frontend | `std-dive-logger-web-dev.sthomas.ch`<br>`std-dive-logger-dev.sthomas.ch` (separate repo) | `std-dive-logger-web.sthomas.ch`<br>`std-dive-logger.sthomas.ch` |
 
 ### Hostname scheme
@@ -80,3 +80,6 @@ binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
   Registry* succeeds for a `v*` tag reachable from `main`; manual dispatch
   (`target` + `tag`) for prod or a redeploy.
 - **`mvn_docker_image.yml`** (existing) — builds the 4 Jib images on a `v*` tag.
+
+See [Private analytics dashboard](analytics-dashboard.md) for the automatic dev
+setup workflow, one-time RBAC grant, required dev secrets and private URL.

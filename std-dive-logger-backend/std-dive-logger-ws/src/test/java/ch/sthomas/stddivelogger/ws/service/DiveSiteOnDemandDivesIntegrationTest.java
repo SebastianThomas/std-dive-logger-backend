@@ -47,6 +47,7 @@ import java.util.Set;
  * sites. Since this is a new access-controlled surface, this specifically checks it can't leak a
  * dive at a shared site to a user who isn't its owner and hasn't been granted read access.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

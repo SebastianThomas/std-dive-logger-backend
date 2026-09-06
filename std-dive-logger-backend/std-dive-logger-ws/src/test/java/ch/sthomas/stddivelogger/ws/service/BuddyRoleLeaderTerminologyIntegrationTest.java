@@ -38,6 +38,7 @@ import java.util.List;
  * Coverage for Workstream 9: named-buddy roles, dive-leader resolution (self/named/linked), and the
  * dive-level buddy/team terminology override.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

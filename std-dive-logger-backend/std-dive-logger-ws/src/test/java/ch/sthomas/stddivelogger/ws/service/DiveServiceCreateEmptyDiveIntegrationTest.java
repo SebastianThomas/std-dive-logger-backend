@@ -41,6 +41,7 @@ import java.util.Objects;
  * profiles.getFirst()}/{@code getLast()} on an empty list). Fixed by building a synthetic 3-point
  * profile (surface/max-depth/surface) from the required {@code maxDepth}/{@code duration} fields.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

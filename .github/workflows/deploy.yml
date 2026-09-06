@@ -86,9 +86,19 @@ jobs:
             echo "::notice::$REF is not reachable from main - not deploying to dev"
           fi
 
-  deploy:
+  analytics-setup:
     needs: gate
-    if: needs.gate.outputs.proceed == 'true'
+    if: needs.gate.outputs.proceed == 'true' && needs.gate.outputs.target == 'dev'
+    uses: ./.github/workflows/analytics-setup.yml
+    with:
+      ref: ${{ needs.gate.outputs.ref }}
+    secrets: inherit
+
+  deploy:
+    needs: [gate, analytics-setup]
+    if: >-
+      always() && !cancelled() && needs.gate.outputs.proceed == 'true' &&
+      (needs.gate.outputs.target == 'prod' || needs.analytics-setup.result == 'success')
     runs-on: ubuntu-latest
     environment: ${{ needs.gate.outputs.target }}
     steps:

@@ -40,6 +40,7 @@ import java.time.Instant;
  * (visibility, gas consumption, water type, leader, notes), ordered most-incomplete/oldest first,
  * plus the per-(dive, reason) "no more info to add" dismissal that removes a gap from the queue.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

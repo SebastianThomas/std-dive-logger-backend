@@ -21,24 +21,13 @@ public class LocationTimezoneResolver implements DiveSiteTimezoneListener.Resolv
         return resolve(latitude, longitude).map(ZoneId::getId).orElse(null);
     }
 
-    private volatile @Nullable TimeZoneEngine engine;
+    private static final class EngineHolder {
+        private static final TimeZoneEngine INSTANCE = TimeZoneEngine.initialize();
+    }
 
     public Optional<ZoneId> resolve(final double latitude, final double longitude) {
         return cache.computeIfAbsent(
-                latitude + "," + longitude, ignored -> engine().query(latitude, longitude));
-    }
-
-    private TimeZoneEngine engine() {
-        var loaded = engine;
-        if (loaded == null) {
-            synchronized (this) {
-                loaded = engine;
-                if (loaded == null) {
-                    loaded = TimeZoneEngine.initialize();
-                    engine = loaded;
-                }
-            }
-        }
-        return loaded;
+                latitude + "," + longitude,
+                ignored -> EngineHolder.INSTANCE.query(latitude, longitude));
     }
 }

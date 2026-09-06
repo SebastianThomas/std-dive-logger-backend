@@ -1,0 +1,87 @@
+name: Analytics setup (dev)
+run-name: "Analytics setup dev @ ${{ inputs.ref || 'main' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref containing the analytics setup manifests
+        type: string
+        default: main
+        required: true
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: analytics-setup-dev
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Check dev setup secrets
+        env:
+          ANALYTICS_KEY: ${{ secrets.ANALYTICS_TS_AUTHKEY }}
+          RUNNER_KEY: ${{ secrets.TS_AUTHKEY }}
+          HEADSCALE_URL: ${{ secrets.HEADSCALE_URL }}
+          KUBE_API: ${{ secrets.KUBE_API }}
+          KUBE_CA: ${{ secrets.KUBE_CA }}
+          KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in ANALYTICS_KEY RUNNER_KEY HEADSCALE_URL KUBE_API KUBE_CA KUBE_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing dev setup value: $name. See deploy/analytics-dashboard.md."
+              exit 1
+            fi
+          done
+
+      - uses: SebastianThomas/homelab-actions/headscale-connect@v1
+        with:
+          auth-key: ${{ secrets.TS_AUTHKEY }}
+          login-server: ${{ secrets.HEADSCALE_URL }}
+          ping: kube-cp-01
+
+      - name: Reconcile persistent analytics node key
+        uses: SebastianThomas/homelab-actions/kube-secret@v1
+        with:
+          server: ${{ secrets.KUBE_API }}
+          ca: ${{ secrets.KUBE_CA }}
+          token: ${{ secrets.KUBE_TOKEN }}
+          namespace: std-dive-logger-dev
+          name: analytics-tailnet-authkey
+          literals: |
+            authkey=${{ secrets.ANALYTICS_TS_AUTHKEY }}
+
+      - name: Reconcile analytics certificate and wait for TLS
+        run: |
+          set -euo pipefail
+          if [ "$(kubectl auth can-i create certificates.cert-manager.io -n std-dive-logger-dev)" != yes ]; then
+            echo '::error::Apply deploy/bootstrap/analytics-dev-rbac.yaml once as a cluster administrator.'
+            exit 1
+          fi
+          kubectl -n std-dive-logger-dev apply -f deploy/analytics-tailnet-certificate.yaml
+          kubectl -n std-dive-logger-dev wait --for=condition=Ready certificate/analytics-tailnet-tls --timeout=300s
+          kubectl -n std-dive-logger-dev get secret analytics-tailnet-tls -o name
+
+      - name: Setup summary
+        run: |
+          echo 'Dev analytics Headscale key and TLS certificate reconciled. The node identity PVC is preserved.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'After deployment: https://std-dive-analytics-dev.ts.homelab.sthomas.ch/ops (Tailnet only).' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove runner kubeconfig
+        if: always()
+        run: rm -f "$HOME/.kube/config"

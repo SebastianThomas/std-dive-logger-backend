@@ -56,6 +56,7 @@ import java.util.List;
  * generic {@code Pageable}-sort mechanism (see {@code
  * DiveRepository.findByGroupPrivilegeOrderByDiveStart}'s own doc comment).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

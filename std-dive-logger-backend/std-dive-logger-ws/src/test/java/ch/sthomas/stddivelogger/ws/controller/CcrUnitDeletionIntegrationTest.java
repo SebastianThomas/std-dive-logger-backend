@@ -55,6 +55,7 @@ import java.util.NoSuchElementException;
  * DiveService#deleteCcrUnitAndAllDives} is the separate, explicitly destructive operation that does
  * delete every dive using the unit.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

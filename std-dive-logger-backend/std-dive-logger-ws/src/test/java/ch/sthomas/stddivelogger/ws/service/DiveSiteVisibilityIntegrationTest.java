@@ -35,6 +35,7 @@ import java.time.Instant;
 /**
  * Coverage for the per-site visibility scatter feed ({@code GET /v1/dives/sites/{id}/visibility}).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

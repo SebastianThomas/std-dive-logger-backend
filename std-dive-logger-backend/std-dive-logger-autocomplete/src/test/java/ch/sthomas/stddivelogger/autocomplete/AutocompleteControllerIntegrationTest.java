@@ -27,6 +27,7 @@ import org.testcontainers.utility.DockerImageName;
  * logged-in user (the controller's own comment notes {@code /tag} explicitly falls back to
  * system-wide tags when there's no authenticated principal).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureRestTestClient
 @Testcontainers

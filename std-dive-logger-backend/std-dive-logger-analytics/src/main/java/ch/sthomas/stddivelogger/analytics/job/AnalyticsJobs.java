@@ -1,6 +1,5 @@
 package ch.sthomas.stddivelogger.analytics.job;
 
-
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
 import org.springframework.stereotype.Component;

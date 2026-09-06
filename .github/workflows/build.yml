@@ -34,5 +34,5 @@ jobs:
                 # tearing down and re-starting an equivalent container per module.
                 run: echo "testcontainers.reuse.enable=true" > ~/.testcontainers.properties
 
-            -   name: Build with Maven
+            -   name: Build with Maven (fast suite; slow integration tests opt-in)
                 run: mvn --batch-mode --update-snapshots install -DskipTests=false -f std-dive-logger-backend/pom.xml

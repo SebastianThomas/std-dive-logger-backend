@@ -36,6 +36,7 @@ import java.util.List;
  * Coverage for the buddy-role stats breakdown (overall/by-buddy/by-site/by-year/by-month), computed
  * over each dive's already-resolved per-viewpoint buddy roles (named and linked).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

@@ -37,6 +37,7 @@ import java.time.Instant;
  * itself would correctly reject as a private/loopback address - the guard and a same-host test
  * fixture are fundamentally in tension.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

@@ -5,3 +5,4 @@ configMapGenerator:
     files:
       - std-dive-logger-analytics-dev.properties
       - std-dive-logger-analytics-dev-logback.xml
+      - nginx-tailnet.conf

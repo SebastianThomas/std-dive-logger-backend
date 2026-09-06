@@ -38,6 +38,7 @@ import java.time.ZoneOffset;
  * CleanupJob}). Backdates a pending row's {@code created_at} directly (it's a
  * {@code @CreationTimestamp}, not otherwise settable) to simulate one old enough to expire.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

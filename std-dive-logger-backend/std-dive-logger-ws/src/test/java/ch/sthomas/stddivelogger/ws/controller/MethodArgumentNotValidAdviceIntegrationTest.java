@@ -35,6 +35,7 @@ import javax.crypto.SecretKey;
  * own final dispatch, the same mistake {@code HttpMessageNotReadableAdviceTrait} had to work
  * around).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "scheduling.enabled=false")

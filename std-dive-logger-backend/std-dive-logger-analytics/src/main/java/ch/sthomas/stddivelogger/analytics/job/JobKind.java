@@ -15,6 +15,9 @@ public enum JobKind {
     public final int startupDelaySeconds;
 
     JobKind(String label, String description, String cron, int startupDelaySeconds) {
-        this.label = label; this.description = description; this.cron = cron; this.startupDelaySeconds = startupDelaySeconds;
+        this.label = label;
+        this.description = description;
+        this.cron = cron;
+        this.startupDelaySeconds = startupDelaySeconds;
     }
 }

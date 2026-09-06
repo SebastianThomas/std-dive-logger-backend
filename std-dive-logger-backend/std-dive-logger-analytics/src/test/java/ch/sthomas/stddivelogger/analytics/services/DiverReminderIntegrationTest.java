@@ -52,6 +52,7 @@ import java.util.List;
  * overdue diver gets a "dive again" nudge tuned to their own cadence, dismissing sticks across a
  * recompute, and the push queue is drained by {@code markPushed}.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

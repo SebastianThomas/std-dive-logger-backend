@@ -35,6 +35,7 @@ import java.util.List;
  * Coverage for community-editable dive site metadata (WS6): only a user who's logged at least one
  * dive at a site may edit its description/links/type/maxDepth/countryRegion.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

@@ -28,6 +28,7 @@
 
         <explicit-null-marking-level>ERROR</explicit-null-marking-level>
         <spotless.version>3.4.0</spotless.version>
+        <test.excludedGroups>slow</test.excludedGroups>
     </properties>
 
     <modules>
@@ -399,19 +400,14 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <!-- version managed by spring-boot-starter-parent -->
                 <configuration>
-                    <!-- Integration tests boot a real Spring context against a Testcontainers
-                         Postgres. Container/DB startup occasionally fails transiently ("Could not
-                         get Connection for extracting meta-data", context-load timeouts) - most
-                         often under Docker's amd64-on-arm64 emulation. Re-run a failed test up to
-                         twice so an environmental flake never reds the pipeline; a real failure
-                         still fails every attempt and breaks the build. Flaky (passed-on-rerun)
-                         tests are reported separately, not counted as failures. -->
-                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
+                    <excludedGroups>${test.excludedGroups}</excludedGroups>
+                    <rerunFailingTestsCount>0</rerunFailingTestsCount>
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>-Xmx1024m -XX:+ExitOnOutOfMemoryError</argLine>
                     <systemPropertyVariables>
-                        <!-- Default is 1: after one context-load failure Spring refuses to retry
-                             within the JVM ("failure threshold exceeded"), which would make the
-                             rerun above pointless for context-load flakes. Allow a few attempts. -->
-                        <spring.test.context.failure.threshold>4</spring.test.context.failure.threshold>
+                        <spring.test.context.cache.maxSize>2</spring.test.context.cache.maxSize>
+                        <spring.test.context.failure.threshold>1</spring.test.context.failure.threshold>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -516,4 +512,12 @@
             </plugins>
         </pluginManagement>
     </build>
+    <profiles>
+        <profile>
+            <id>full-tests</id>
+            <properties>
+                <test.excludedGroups>none</test.excludedGroups>
+            </properties>
+        </profile>
+    </profiles>
 </project>

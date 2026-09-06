@@ -55,6 +55,7 @@ import java.util.List;
  * NULLIF(gc.rmv_liters, 0)} in the shared {@code filtered_dives} CTE, since an RMV of exactly 0.0
  * l/min isn't a physically meaningful reading for an actual dive either.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

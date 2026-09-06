@@ -44,6 +44,7 @@ import javax.crypto.SecretKey;
  * machinery; and (2) the bug this fixes only manifests at the Jackson/HTTP-message-conversion
  * boundary, before a JSON body ever becomes a real Java object.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "scheduling.enabled=false")

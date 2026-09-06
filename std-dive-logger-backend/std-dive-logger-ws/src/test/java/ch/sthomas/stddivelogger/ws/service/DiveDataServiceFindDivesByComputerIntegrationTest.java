@@ -56,6 +56,7 @@ import java.util.List;
  * id in its own WHERE clause, relying entirely on the caller (DiveService.getDivesByComputer)
  * having already checked computer ownership first.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

@@ -32,6 +32,7 @@ import org.testcontainers.utility.DockerImageName;
  * separate DiveComputer rows created for it. Fixed by falling back to a fuzzy manufacturer-name
  * match (still requiring an exact serial number) before ever creating a new computer.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

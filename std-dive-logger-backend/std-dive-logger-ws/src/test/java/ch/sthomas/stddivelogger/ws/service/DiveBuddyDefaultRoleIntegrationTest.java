@@ -40,6 +40,7 @@ import java.util.Optional;
  * added to a dive (manually or via import), but never re-applied over an explicit choice - see
  * DiveDataService#applyDefaultBuddyRoles and #getOldOrNewBuddy.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

@@ -39,6 +39,7 @@ import java.util.List;
  * cycle rejection when nesting would close a loop, transitive dive listing through 2+ nested trips,
  * and default-team seeding when a dive is added to a course-type trip.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

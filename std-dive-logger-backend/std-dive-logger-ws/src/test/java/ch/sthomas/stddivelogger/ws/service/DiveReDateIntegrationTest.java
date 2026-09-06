@@ -35,6 +35,7 @@ import java.util.Objects;
  * profile + measurement by one delta, keeps max depth / duration, and still rejects a shift that
  * would collide with another dive on the same computer.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

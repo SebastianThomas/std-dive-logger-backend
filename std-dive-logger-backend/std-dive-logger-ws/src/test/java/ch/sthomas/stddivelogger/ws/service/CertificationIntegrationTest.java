@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
  * agency lookup list (see V0_4_2__certification.sql's own doc comment for why agencies are a
  * closed, search-first list rather than free text on each certification).
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

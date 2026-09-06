@@ -7,6 +7,7 @@ kind: Kustomization
 # `std-dive-logger-secrets` is created by the deploy workflow (kube-secret);
 # `std-dive-logger-db-app` is CNPG's generated secret.
 resources:
+  - analytics-tailnet.yaml
   - ../../std-dive-logger-backend/std-dive-logger-ws/conf/dev
   - ../../std-dive-logger-backend/std-dive-logger-import-ws/conf/dev
   - ../../std-dive-logger-backend/std-dive-logger-analytics/conf/dev
@@ -27,6 +28,7 @@ resources:
 # on a fresh namespace CNPG is still initialising, so they'd crash-loop until it
 # catches up. Gate every Deployment on the DB primary accepting connections.
 patches:
+  - path: analytics-tailnet-patch.yaml
   - target: { kind: Deployment }
     patch: |
       - op: add

@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "scheduling.enabled=false")

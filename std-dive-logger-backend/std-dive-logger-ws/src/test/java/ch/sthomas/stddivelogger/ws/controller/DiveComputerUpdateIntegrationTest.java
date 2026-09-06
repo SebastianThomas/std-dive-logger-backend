@@ -35,6 +35,7 @@ import org.testcontainers.utility.DockerImageName;
  * (to their own CCR unit) a dive computer owned by someone else, simply by guessing/ enumerating
  * computer ids. Fixed by scoping the lookup with {@code findByIdAndUser_Id}.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

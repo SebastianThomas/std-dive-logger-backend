@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
+
 import javax.sql.DataSource;
 
 @Service
@@ -20,8 +21,11 @@ public class AnalyticsJobQueue {
     private final AnalyticsJobRunStore runs;
     private final AnalyticsService analytics;
 
-    public AnalyticsJobQueue(DataSource dataSource, AnalyticsJobRunStore runs, AnalyticsService analytics) {
-        this.dataSource = dataSource; this.runs = runs; this.analytics = analytics;
+    public AnalyticsJobQueue(
+            DataSource dataSource, AnalyticsJobRunStore runs, AnalyticsService analytics) {
+        this.dataSource = dataSource;
+        this.runs = runs;
+        this.analytics = analytics;
     }
 
     public boolean enqueue(final JobKind job, final boolean manual) {
@@ -30,8 +34,10 @@ public class AnalyticsJobQueue {
 
     @Scheduled(fixedDelay = 1000)
     public void processNext() throws SQLException {
-        try (final var connection = dataSource.getConnection(); final var statement = connection.createStatement()) {
-            try (final var result = statement.executeQuery("SELECT pg_try_advisory_lock(" + LOCK_ID + ")")) {
+        try (final var connection = dataSource.getConnection();
+                final var statement = connection.createStatement()) {
+            try (final var result =
+                    statement.executeQuery("SELECT pg_try_advisory_lock(" + LOCK_ID + ")")) {
                 result.next();
                 if (!result.getBoolean(1)) return;
             }

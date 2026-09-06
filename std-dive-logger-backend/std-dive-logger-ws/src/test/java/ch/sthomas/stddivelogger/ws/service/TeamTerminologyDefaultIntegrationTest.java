@@ -31,6 +31,7 @@ import java.time.Instant;
  * Coverage for WS9's "smart terminology default" - the user's own most recent explicit BUDDY/TEAM
  * choice, used to prefill a new/unset dive's terminology picker.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional

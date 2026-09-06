@@ -51,6 +51,7 @@ import java.util.List;
  * one search-and-click per dive, reusing the existing {@code /v1/dives/filtered} endpoint rather
  * than a new one.
  */
+@org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
 @Transactional
