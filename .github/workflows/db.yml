@@ -29,45 +29,12 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
 
-      - name: Configure Headscale TLS compatibility for the runner
-        # Some network paths drop the larger ML-KEM ClientHello (tailscale/tailscale#20777).
-        # Set this on the systemd daemon; an environment variable on the CLI does not reach it.
-        run: |
-          sudo mkdir -p /etc/systemd/system/tailscaled.service.d
-          printf '%s\n' '[Service]' 'Environment="GODEBUG=tlsmlkem=0"' \
-            | sudo tee /etc/systemd/system/tailscaled.service.d/90-headscale-tls.conf >/dev/null
-          sudo systemctl daemon-reload
-          if sudo systemctl is-active --quiet tailscaled; then
-            sudo systemctl restart tailscaled
-          fi
-
-      - id: tailnet
-        uses: SebastianThomas/homelab-actions/headscale-connect@v1
+      - uses: SebastianThomas/homelab-actions/headscale-connect@v1
         with:
           auth-key: ${{ secrets.TS_AUTHKEY }}
           login-server: ${{ secrets.HEADSCALE_URL }}
           ping: kube-cp-01
           hostname: gha-dive-db-${{ github.run_id }}-${{ github.run_attempt }}
-
-      - name: Diagnose Tailnet login failure
-        if: failure() && steps.tailnet.outcome == 'failure'
-        env:
-          HEADSCALE_URL: ${{ secrets.HEADSCALE_URL }}
-        run: |
-          if command -v tailscale >/dev/null; then
-            sudo tailscale status --json | jq '{BackendState, Health}' || true
-          fi
-          for endpoint in health 'key?v=142'; do
-            for family in -4 -6; do
-              printf 'Headscale %s %s: ' "$endpoint" "$family"
-              curl "$family" --silent --show-error --connect-timeout 5 --max-time 10 \
-                --output /dev/null --write-out 'HTTP=%{http_code} peer=%{remote_ip} total=%{time_total}s\n' \
-                "${HEADSCALE_URL%/}/$endpoint" || true
-            done
-          done
-          sudo journalctl -u tailscaled --since '-4 minutes' --no-pager -o cat \
-            | grep -Ei 'fetch control key|dial tcp|lookup .*:|network is unreachable|no route to host|TLS handshake|x509:|proxyconnect|connection refused|i/o timeout' \
-            | tail -30 || true
 
       - name: "${{ inputs.environment }} Cluster"
         uses: SebastianThomas/homelab-actions/cnpg-cluster@v1
@@ -78,15 +45,3 @@ jobs:
           namespace: std-dive-logger-${{ inputs.environment }}
           manifests: db/${{ inputs.environment }}
           timeout: 900s
-
-      - name: Disconnect runner from Tailnet
-        if: always() && steps.tailnet.outcome != 'skipped'
-        continue-on-error: true
-        timeout-minutes: 1
-        run: |
-          if command -v tailscale >/dev/null; then
-            if ! sudo -n timeout --kill-after=5s 15s tailscale logout; then
-              echo '::warning::Tailnet logout failed or timed out; stopping the temporary runner daemon.'
-              sudo -n timeout --kill-after=5s 10s systemctl stop tailscaled || true
-            fi
-          fi

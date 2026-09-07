@@ -83,39 +83,13 @@ no public route. Check the Tailscale sidecar registration if DNS is unavailable.
 After certificate renewal, restart the analytics Deployment so nginx reloads
 the renewed certificate.
 
-## Diagnosing CI Tailnet joins
+## CI Tailnet connection
 
-Run 34057016996 timed out in `tailscale up`, before any Kubernetes manifests were
-read. The previous release's setup and deploy both joined successfully using the
-same Tailscale 1.102.3 client. The manifest relocation therefore did not cause
-that connection-stage failure; the precise login/control-plane failure was not
-included in the old action log.
+All workflows use `SebastianThomas/homelab-actions/headscale-connect@v1`, which
+now configures TLS compatibility on the runner's daemon. Callers need no local
+TLS workaround, diagnostic steps or logout cleanup. GitHub-hosted runners are
+disposable; keep `TS_AUTHKEY` reusable and ephemeral. Setup/deploy use distinct
+runner hostnames because they are separate jobs within the same workflow run.
 
-Setup, deployment and DB jobs now use separate runner hostnames, log out on exit,
-and on failure report Tailscale backend state/health plus the Headscale `/health`
-HTTP status. These diagnostics omit auth URLs, key values and peer listings.
-A failed join uses `TS_AUTHKEY` (the runner key), not `ANALYTICS_TS_AUTHKEY` (the
-persistent app node). Do not rotate the app key to fix a runner login timeout.
-
-The subsequent diagnostics showed IPv4 HTTP 200 for both `/health` and
-`/key?v=142`, while the daemon still timed out fetching the control key. An absent
-IPv6 DNS record does not explain the working IPv4 request. This matches the
-network-dependent ML-KEM TLS ClientHello failure reported in
-[tailscale/tailscale#20777](https://github.com/tailscale/tailscale/issues/20777).
-It is a working hypothesis, not yet a confirmed packet-level diagnosis here.
-
-The three CI workflows now install a runner-local systemd drop-in setting
-`GODEBUG=tlsmlkem=0` for **tailscaled**, before the shared connection action starts
-it. Setting this only in the CLI step's environment would not affect the daemon.
-This disables the post-quantum key-exchange option for the temporary runner's Go
-TLS connections; HTTPS and certificate verification remain enabled. Persistent
-app nodes and the Headscale server are unchanged. Verify a successful join in the
-next workflow run; remove this compatibility setting when the underlying network
-path or client compatibility issue is resolved. No secret rotation is required.
-
-Run 34092379065 successfully joined the Tailnet with the TLS compatibility setting
-and reconciled the node key and Ready certificate. It then stalled in runner
-logout from 06:47:40Z until cancellation at 07:02:25Z, preventing the deploy job
-from starting. Cleanup now allows 15 seconds for logout, then a bounded daemon
-stop if logout fails; the cleanup step is non-fatal and has a one-minute outer
-limit. This affects only the temporary CI runner, not the analytics pod.
+The runner uses `TS_AUTHKEY`; the persistent analytics pod uses
+`ANALYTICS_TS_AUTHKEY`. No changes to either secret are needed for the shared fix.
