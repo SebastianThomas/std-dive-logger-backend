@@ -122,9 +122,17 @@ jobs:
           if command -v tailscale >/dev/null; then
             sudo tailscale status --json | jq '{BackendState, Health}' || true
           fi
-          curl --silent --show-error --connect-timeout 5 --max-time 15 \
-            --output /dev/null --write-out 'Headscale health HTTP status: %{http_code}\n' \
-            "${HEADSCALE_URL%/}/health" || true
+          for endpoint in health 'key?v=142'; do
+            for family in -4 -6; do
+              printf 'Headscale %s %s: ' "$endpoint" "$family"
+              curl "$family" --silent --show-error --connect-timeout 5 --max-time 10 \
+                --output /dev/null --write-out 'HTTP=%{http_code} peer=%{remote_ip} total=%{time_total}s\n' \
+                "${HEADSCALE_URL%/}/$endpoint" || true
+            done
+          done
+          sudo journalctl -u tailscaled --since '-4 minutes' --no-pager -o cat \
+            | grep -Ei 'fetch control key|dial tcp|lookup .*:|network is unreachable|no route to host|TLS handshake|x509:|proxyconnect|connection refused|i/o timeout' \
+            | tail -30 || true
 
       - uses: SebastianThomas/homelab-actions/kube-secret@v1
         with:
