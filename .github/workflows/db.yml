@@ -81,7 +81,12 @@ jobs:
 
       - name: Disconnect runner from Tailnet
         if: always() && steps.tailnet.outcome != 'skipped'
+        continue-on-error: true
+        timeout-minutes: 1
         run: |
           if command -v tailscale >/dev/null; then
-            sudo tailscale logout || true
+            if ! sudo -n timeout --kill-after=5s 15s tailscale logout; then
+              echo '::warning::Tailnet logout failed or timed out; stopping the temporary runner daemon.'
+              sudo -n timeout --kill-after=5s 10s systemctl stop tailscaled || true
+            fi
           fi

@@ -112,3 +112,10 @@ TLS connections; HTTPS and certificate verification remain enabled. Persistent
 app nodes and the Headscale server are unchanged. Verify a successful join in the
 next workflow run; remove this compatibility setting when the underlying network
 path or client compatibility issue is resolved. No secret rotation is required.
+
+Run 34092379065 successfully joined the Tailnet with the TLS compatibility setting
+and reconciled the node key and Ready certificate. It then stalled in runner
+logout from 06:47:40Z until cancellation at 07:02:25Z, preventing the deploy job
+from starting. Cleanup now allows 15 seconds for logout, then a bounded daemon
+stop if logout fails; the cleanup step is non-fatal and has a one-minute outer
+limit. This affects only the temporary CI runner, not the analytics pod.
