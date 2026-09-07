@@ -101,3 +101,6 @@ binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
 
 See [Private analytics dashboard](analytics-dashboard.md) for the automatic dev
 setup workflow, one-time RBAC grant, required dev secrets and private URL.
+
+See [Service memory investigation](memory-footprint.md) for measured memory costs
+and the idle-memory changes.

@@ -29,11 +29,25 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
 
-      - uses: SebastianThomas/homelab-actions/headscale-connect@v1
+      - id: tailnet
+        uses: SebastianThomas/homelab-actions/headscale-connect@v1
         with:
           auth-key: ${{ secrets.TS_AUTHKEY }}
           login-server: ${{ secrets.HEADSCALE_URL }}
           ping: kube-cp-01
+          hostname: gha-dive-db-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Diagnose Tailnet login failure
+        if: failure() && steps.tailnet.outcome == 'failure'
+        env:
+          HEADSCALE_URL: ${{ secrets.HEADSCALE_URL }}
+        run: |
+          if command -v tailscale >/dev/null; then
+            sudo tailscale status --json | jq '{BackendState, Health}' || true
+          fi
+          curl --silent --show-error --connect-timeout 5 --max-time 15 \
+            --output /dev/null --write-out 'Headscale health HTTP status: %{http_code}\n' \
+            "${HEADSCALE_URL%/}/health" || true
 
       - name: "${{ inputs.environment }} Cluster"
         uses: SebastianThomas/homelab-actions/cnpg-cluster@v1
@@ -44,3 +58,10 @@ jobs:
           namespace: std-dive-logger-${{ inputs.environment }}
           manifests: db/${{ inputs.environment }}
           timeout: 900s
+
+      - name: Disconnect runner from Tailnet
+        if: always() && steps.tailnet.outcome != 'skipped'
+        run: |
+          if command -v tailscale >/dev/null; then
+            sudo tailscale logout || true
+          fi

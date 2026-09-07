@@ -82,3 +82,17 @@ Verify the private URL from an authorized Tailnet client and confirm there is
 no public route. Check the Tailscale sidecar registration if DNS is unavailable.
 After certificate renewal, restart the analytics Deployment so nginx reloads
 the renewed certificate.
+
+## Diagnosing CI Tailnet joins
+
+Run 34057016996 timed out in `tailscale up`, before any Kubernetes manifests were
+read. The previous release's setup and deploy both joined successfully using the
+same Tailscale 1.102.3 client. The manifest relocation therefore did not cause
+that connection-stage failure; the precise login/control-plane failure was not
+included in the old action log.
+
+Setup, deployment and DB jobs now use separate runner hostnames, log out on exit,
+and on failure report Tailscale backend state/health plus the Headscale `/health`
+HTTP status. These diagnostics omit auth URLs, key values and peer listings.
+A failed join uses `TS_AUTHKEY` (the runner key), not `ANALYTICS_TS_AUTHKEY` (the
+persistent app node). Do not rotate the app key to fix a runner login timeout.
