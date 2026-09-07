@@ -129,13 +129,15 @@ public class DiverActivityStatsDataService {
         return repo.findDiverIdsNeedingRecompute(DiverActivityStats.VERSION, limit);
     }
 
-    /**
-     * The cached blob if it's at the current version; empty otherwise (missing or stale version).
-     */
+    /** The cached blob if its version, source dives and UTC date are still current. */
     @Transactional(readOnly = true)
     public Optional<DiverActivityStats> findCached(final long userId) {
+        final var fingerprint = fingerprint(userId);
+        final var today = LocalDate.now(ZoneOffset.UTC);
         return repo.findByDiverId(userId)
                 .filter(e -> e.getComputedVersion() == DiverActivityStats.VERSION)
+                .filter(e -> e.getSourceFingerprint().equals(fingerprint))
+                .filter(e -> LocalDate.ofInstant(e.getComputedAt(), ZoneOffset.UTC).equals(today))
                 .map(DiverActivityStatsEntity::getStats);
     }
 

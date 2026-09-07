@@ -122,6 +122,16 @@ public class DiverReminderDataService {
         anniversaryReminder(userId, today).ifPresent(desired::add);
         nudgeReminder(userId, today).ifPresent(desired::add);
 
+        final var now = Instant.now();
+        reminderRepo
+                .findByDiverIdAndKindAndExpiresAtAfter(userId, ReminderKind.DIVE_AGAIN_NUDGE, now)
+                .stream()
+                .filter(
+                        r ->
+                                desired.stream()
+                                        .noneMatch(d -> d.dedupeKey().equals(r.getDedupeKey())))
+                .forEach(r -> r.expire(now));
+
         for (final var d : desired) {
             reminderRepo
                     .findByDiverIdAndDedupeKey(userId, d.dedupeKey())
@@ -138,14 +148,19 @@ public class DiverReminderDataService {
 
     /**
      * A diver's live, not-dismissed reminders - recomputing first if the stored set is from an
-     * earlier day (the analytics job normally keeps it current; this covers a diver who loads the
-     * page before the job gets to them). Writes, so the caller's transaction must not be read-only.
+     * earlier day or its source dives changed (the analytics job normally keeps it current; this
+     * covers a diver who loads the page before the job gets to them). Writes, so the caller's
+     * transaction must not be read-only.
      */
     @Transactional
     public List<DiverReminder> getActiveReminders(final long userId) {
         final boolean stale =
                 runRepo.findByDiverId(userId)
-                        .map(r -> !today().equals(r.getComputedOn()))
+                        .map(
+                                r ->
+                                        !today().equals(r.getComputedOn())
+                                                || !fingerprint(userId)
+                                                        .equals(r.getSourceFingerprint()))
                         .orElse(true);
         if (stale) {
             computeAndStore(userId);

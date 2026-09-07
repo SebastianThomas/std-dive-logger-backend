@@ -73,6 +73,10 @@ public class DiverActivityStatsEntity {
         return stats;
     }
 
+    public Instant getComputedAt() {
+        return computedAt;
+    }
+
     public int getComputedVersion() {
         return computedVersion;
     }

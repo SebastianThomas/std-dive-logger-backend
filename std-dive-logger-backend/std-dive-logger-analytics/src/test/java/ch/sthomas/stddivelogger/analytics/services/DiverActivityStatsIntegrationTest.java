@@ -149,6 +149,27 @@ class DiverActivityStatsIntegrationTest {
     }
 
     @Test
+    void previousDayCacheIsRefreshedEvenWithoutDiveChanges() {
+        dive(daysAgo(14), 20.0, siteA);
+        entityManager.flush();
+        statsService.computeAndStore(user.getId());
+        entityManager.flush();
+        entityManager
+                .createNativeQuery(
+                        "UPDATE t_diver_activity_stats SET computed_at = now() - interval '1 day' WHERE fk_diver_id = :id")
+                .setParameter("id", user.getId())
+                .executeUpdate();
+        entityManager.clear();
+
+        assertThat(statsService.findCached(user.getId())).isEmpty();
+        assertThat(statsService.findDiverIdsNeedingRecompute(100)).contains(user.getId());
+        assertThat(statsService.getOrCompute(user.getId()).daysSinceLastDive()).isEqualTo(14);
+        entityManager.flush();
+        assertThat(statsService.findCached(user.getId())).isPresent();
+        assertThat(statsService.findDiverIdsNeedingRecompute(100)).doesNotContain(user.getId());
+    }
+
+    @Test
     void computesAPauseAwareRateStreaksSeasonalityAndAnOverdueNudge() {
         // 3 dives ~4 years ago, a long gap, then one dive every 14 days for the last ~13 months,
         // with the most recent one ~52 days ago (well past this diver's 2-week cadence).

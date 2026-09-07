@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.data.repository;
 
+import ch.sthomas.stddivelogger.model.dive.home.ReminderKind;
 import ch.sthomas.stddivelogger.model.entity.DiverReminderEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,9 @@ import java.util.Optional;
 public interface DiverReminderRepository extends JpaRepository<DiverReminderEntity, Long> {
 
     Optional<DiverReminderEntity> findByDiverIdAndDedupeKey(long diverId, String dedupeKey);
+
+    List<DiverReminderEntity> findByDiverIdAndKindAndExpiresAtAfter(
+            long diverId, ReminderKind kind, Instant now);
 
     /** A diver's live, not-dismissed reminders, freshest last-relevant first. */
     List<DiverReminderEntity>

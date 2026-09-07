@@ -115,6 +115,10 @@ public class DiverReminderEntity {
         this.body = body;
     }
 
+    public void expire(final Instant now) {
+        this.expiresAt = now;
+    }
+
     public void dismiss() {
         this.dismissedAt = Instant.now();
     }

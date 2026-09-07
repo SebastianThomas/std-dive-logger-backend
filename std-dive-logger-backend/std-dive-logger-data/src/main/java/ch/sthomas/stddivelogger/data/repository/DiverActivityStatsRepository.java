@@ -42,6 +42,8 @@ public interface DiverActivityStatsRepository
                     WHERE s.fk_diver_id IS NULL
                        OR s.computed_version <> :version
                        OR s.source_fingerprint <> fp.fingerprint
+                       OR (s.computed_at AT TIME ZONE 'UTC')::date
+                          <> (now() AT TIME ZONE 'UTC')::date
                     ORDER BY s.computed_at ASC NULLS FIRST
                     LIMIT :limit
                     """)

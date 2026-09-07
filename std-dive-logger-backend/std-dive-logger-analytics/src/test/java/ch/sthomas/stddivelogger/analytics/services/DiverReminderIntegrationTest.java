@@ -8,6 +8,7 @@ import ch.sthomas.stddivelogger.data.repository.DiveRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveSiteRepository;
 import ch.sthomas.stddivelogger.data.repository.PushSubscriptionRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
+import ch.sthomas.stddivelogger.data.service.DiverActivityStatsDataService;
 import ch.sthomas.stddivelogger.data.service.DiverReminderDataService;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -73,6 +74,7 @@ class DiverReminderIntegrationTest {
 
     @Autowired private EntityManager entityManager;
     @Autowired private DiverReminderDataService reminders;
+    @Autowired private DiverActivityStatsDataService activityStats;
     @Autowired private PushSubscriptionRepository pushSubscriptions;
     @Autowired private UserRepository userRepository;
     @Autowired private DiveSiteRepository diveSiteRepository;
@@ -197,6 +199,63 @@ class DiverReminderIntegrationTest {
                         .orElseThrow();
         assertThat(nudge.body()).contains("weeks since your last dive");
         assertThat(nudge.diveId()).isNull();
+    }
+
+    @Test
+    void newDiveRemovesTheTwoWeekNudgeOnTheNextReadWithoutWaitingForAnalytics() {
+        for (long d = 140; d >= 14; d -= 7) {
+            dive(daysAgo(d), 20.0);
+        }
+        entityManager.flush();
+        pushSubscriptions.save(
+                new PushSubscriptionEntity(
+                        user.getId(), "https://push.example/nudge", "key", "auth", "UA"));
+        final var nudge =
+                reminders.getActiveReminders(user.getId()).stream()
+                        .filter(r -> r.kind() == ReminderKind.DIVE_AGAIN_NUDGE)
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(nudge.title()).isEqualTo("Been a little while");
+        assertThat(nudge.body()).contains("2 weeks since your last dive");
+        entityManager.flush();
+        assertThat(reminders.findDuePushes()).anyMatch(p -> p.reminderId() == nudge.id());
+
+        dive(daysAgo(2), 20.0);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(reminders.getActiveReminders(user.getId()))
+                .noneMatch(r -> r.kind() == ReminderKind.DIVE_AGAIN_NUDGE);
+        assertThat(activityStats.getOrCompute(user.getId()).daysSinceLastDive()).isEqualTo(2);
+        entityManager.flush();
+        assertThat(reminders.findDuePushes()).noneMatch(p -> p.reminderId() == nudge.id());
+    }
+
+    @Test
+    void recomputeReplacesAnOutdatedNudgeWithoutResurrectingDismissal() {
+        for (long d = 210; d >= 28; d -= 7) {
+            dive(daysAgo(d), 20.0);
+        }
+        entityManager.flush();
+        final var previous =
+                reminders.getActiveReminders(user.getId()).stream()
+                        .filter(r -> r.kind() == ReminderKind.DIVE_AGAIN_NUDGE)
+                        .findFirst()
+                        .orElseThrow();
+
+        dive(daysAgo(21), 20.0);
+        entityManager.flush();
+        reminders.computeAndStore(user.getId());
+        final var nudges =
+                reminders.getActiveReminders(user.getId()).stream()
+                        .filter(r -> r.kind() == ReminderKind.DIVE_AGAIN_NUDGE)
+                        .toList();
+        assertThat(nudges).hasSize(1);
+        assertThat(nudges.getFirst().id()).isNotEqualTo(previous.id());
+        reminders.dismiss(user.getId(), nudges.getFirst().id());
+        reminders.computeAndStore(user.getId());
+        assertThat(reminders.getActiveReminders(user.getId()))
+                .noneMatch(r -> r.kind() == ReminderKind.DIVE_AGAIN_NUDGE);
     }
 
     @Test
