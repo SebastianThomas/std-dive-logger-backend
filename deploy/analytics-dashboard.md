@@ -96,3 +96,19 @@ and on failure report Tailscale backend state/health plus the Headscale `/health
 HTTP status. These diagnostics omit auth URLs, key values and peer listings.
 A failed join uses `TS_AUTHKEY` (the runner key), not `ANALYTICS_TS_AUTHKEY` (the
 persistent app node). Do not rotate the app key to fix a runner login timeout.
+
+The subsequent diagnostics showed IPv4 HTTP 200 for both `/health` and
+`/key?v=142`, while the daemon still timed out fetching the control key. An absent
+IPv6 DNS record does not explain the working IPv4 request. This matches the
+network-dependent ML-KEM TLS ClientHello failure reported in
+[tailscale/tailscale#20777](https://github.com/tailscale/tailscale/issues/20777).
+It is a working hypothesis, not yet a confirmed packet-level diagnosis here.
+
+The three CI workflows now install a runner-local systemd drop-in setting
+`GODEBUG=tlsmlkem=0` for **tailscaled**, before the shared connection action starts
+it. Setting this only in the CLI step's environment would not affect the daemon.
+This disables the post-quantum key-exchange option for the temporary runner's Go
+TLS connections; HTTPS and certificate verification remain enabled. Persistent
+app nodes and the Headscale server are unchanged. Verify a successful join in the
+next workflow run; remove this compatibility setting when the underlying network
+path or client compatibility issue is resolved. No secret rotation is required.
