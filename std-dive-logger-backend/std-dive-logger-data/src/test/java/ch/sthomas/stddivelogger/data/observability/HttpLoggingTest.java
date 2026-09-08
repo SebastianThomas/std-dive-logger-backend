@@ -143,6 +143,47 @@ class HttpLoggingTest {
     }
 
     @Test
+    void verboseSinkDumpsHeadersAndQueryButMasksCredentials() throws Exception {
+        final var config = new HttpLoggingConfiguration();
+        final var logger = (Logger) org.slf4j.LoggerFactory.getLogger("org.zalando.logbook");
+        final var previous = logger.getLevel();
+        logger.setLevel(ch.qos.logback.classic.Level.TRACE);
+        final var verbose =
+                Logbook.builder()
+                        .strategy(new SafeBodyStrategy())
+                        .headerFilter(config.sensitiveHeaderFilter())
+                        .bodyFilter(config.credentialBodyFilter())
+                        .pathFilter(path -> "/auth/{id}")
+                        .sink(config.requestLogSink())
+                        .build();
+        try {
+            final var request =
+                    request("application/json", "{\"email\":\"a@b.ch\",\"password\":\"hunter2\"}");
+            request.addHeader("Authorization", "Bearer topsecret");
+            request.addHeader("Cookie", "refreshToken=topsecret");
+            request.setQueryString("page=1");
+            new LogbookFilter(verbose)
+                    .doFilter(
+                            request,
+                            new MockHttpServletResponse(),
+                            (req, res) -> {
+                                req.getInputStream().readAllBytes();
+                                ((jakarta.servlet.http.HttpServletResponse) res).setStatus(200);
+                            });
+            final var lines =
+                    events.list.stream()
+                            .map(ILoggingEvent::getFormattedMessage)
+                            .toList()
+                            .toString();
+            assertThat(lines)
+                    .contains("origin=remote", "method=POST", "remote=", "page=1", "headers={");
+            assertThat(lines).doesNotContain("hunter2", "topsecret");
+        } finally {
+            logger.setLevel(previous);
+        }
+    }
+
+    @Test
     void routeTemplatesRemovePathCredentialsAndUnknownPaths() throws Exception {
         final var mapping =
                 new org.springframework.web.servlet.mvc.method.annotation

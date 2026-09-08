@@ -43,6 +43,9 @@
     </appender>
 
     <logger name="ch.sthomas.stddivelogger" level="DEBUG"/>
+    <!-- Full per-request dump (method, URI, headers, query, remote IP) via Logbook.
+         Dial to INFO here or at /actuator/loggers/org.zalando.logbook to quiet it. -->
+    <logger name="org.zalando.logbook" level="TRACE"/>
     <logger name="org.springframework.web.servlet.PageNotFound" level="OFF"/>
     <logger name="org.springframework.web" level="WARN"/>
     <logger name="org.springframework.security" level="WARN"/>
