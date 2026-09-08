@@ -40,6 +40,16 @@ public class DiveSiteSuggestionDataService {
     private static final double VISIBILITY_EDGE_CAP = 4.0;
     private static final double VISIBILITY_EDGE_FLOOR = -1.5;
     private static final double VISIBILITY_EDGE_MENTION_DELTA_M = 2.0;
+    // Plain bad visibility (regardless of the neighbourhood): sites averaging below this lose
+    // points on a sliding scale down to POOR_VISIBILITY_FLOOR_M.
+    private static final double POOR_VISIBILITY_M = 6.0;
+    private static final double POOR_VISIBILITY_FLOOR_M = 2.0;
+    private static final double POOR_VISIBILITY_PENALTY = -3.0;
+    // A site whose visibility around this time of year has been meaningfully worse than its own
+    // all-year average, or just poor outright.
+    private static final double SEASONAL_VISIBILITY_WORSE_DELTA_M = 3.0;
+    private static final double SEASONAL_VISIBILITY_PENALTY = -2.5;
+    private static final int SEASONAL_VISIBILITY_MIN_SAMPLES = 3;
     private static final double POPULARITY_CAP = 5.0;
     private static final int UNDERRATED_MAX_TOTAL_DIVES = 3;
     private static final double UNDERRATED_MIN_HIGHLIGHT_RATE = 0.3;
@@ -52,6 +62,10 @@ public class DiveSiteSuggestionDataService {
     private static final double DEPTH_MATCH_BONUS = 2.0;
     private static final double DEPTH_MISMATCH_PENALTY = -4.0;
     private static final double DEPTH_MILD_CAUTION_PENALTY = -1.0;
+    // An experienced diver being pointed at a site that never gets more than a fraction of the
+    // depth they usually dive - not dangerous, just unlikely to be what they're after.
+    private static final double DEPTH_TOO_SHALLOW_FRACTION = 0.4;
+    private static final double DEPTH_TOO_SHALLOW_PENALTY = -1.5;
     private static final int EXPERIENCED_CERT_COUNT = 2;
     private static final double EXPERIENCED_DEPTH_M = 30.0;
     private static final double DEFAULT_MAX_DISTANCE_KM = 50.0;
@@ -103,12 +117,23 @@ public class DiveSiteSuggestionDataService {
                      AND st2.avg_visibility_m IS NOT NULL
                      AND ST_DWithin(s2.location::geography, s.location::geography, :neighborhoodMeters)
                 ) AS neighborhood_avg_visibility_m,
+                season.avg_visibility_m AS seasonal_visibility_m,
+                season.samples          AS seasonal_visibility_samples,
                 CASE WHEN :hasLocation THEN
                     ST_Distance(s.location::geography,
                         ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography) / 1000.0
                 END AS distance_km
             FROM t_dive_site s
             JOIN t_dive_site_stats st ON st.fk_dive_site_id = s.pk_dive_site_id
+            LEFT JOIN LATERAL (
+                SELECT avg(v3.visibility_meters) AS avg_visibility_m,
+                       count(v3.visibility_meters) AS samples
+                FROM t_dives d3
+                JOIN t_dive_summary ds3 ON ds3.fk_dive_id = d3.pk_dive_id
+                JOIN t_dive_visibility v3 ON v3.fk_dive_id = d3.pk_dive_id
+                WHERE d3.dive_site = s.pk_dive_site_id
+                  AND extract(month FROM ds3.dive_start) IN (:seasonMonths)
+            ) season ON true
             LIMIT :maxCandidates
             """;
 
@@ -157,6 +182,7 @@ public class DiveSiteSuggestionDataService {
                         .addValue("hasLocation", lat != null && lon != null)
                         .addValue("lat", lat != null ? lat : 0.0)
                         .addValue("lon", lon != null ? lon : 0.0)
+                        .addValue("seasonMonths", seasonMonths())
                         .addValue("maxCandidates", MAX_CANDIDATES);
         final var candidates =
                 jdbc.query(
@@ -168,6 +194,14 @@ public class DiveSiteSuggestionDataService {
                                 && profile.maxDepthEver() >= EXPERIENCED_DEPTH_M);
         final double effectiveMaxDistanceKm =
                 maxDistanceKm != null ? maxDistanceKm : DEFAULT_MAX_DISTANCE_KM;
+        // "Only ~Xkm" should only be said when this site really is near - closer than the typical
+        // suggested site - otherwise it's just "~Xkm away".
+        final Double medianDistanceKm =
+                median(
+                        candidates.stream()
+                                .map(Candidate::distanceKm)
+                                .filter(d -> d != null)
+                                .toList());
         final var now = Instant.now();
 
         final var scored = new ArrayList<Scored>();
@@ -209,6 +243,39 @@ public class DiveSiteSuggestionDataService {
                                     "Visibility here averages ~%.0fm, better than the ~%.0fm average"
                                             + " nearby.",
                                     c.avgVisibilityM(), c.neighborhoodAvgVisibilityM()));
+                }
+            }
+
+            // Plain poor visibility, neighbours aside - a site that's just murky ranks lower.
+            if (c.avgVisibilityM() != null && c.avgVisibilityM() < POOR_VISIBILITY_M) {
+                final double howBad =
+                        clamp(
+                                (POOR_VISIBILITY_M - c.avgVisibilityM())
+                                        / (POOR_VISIBILITY_M - POOR_VISIBILITY_FLOOR_M),
+                                0.0,
+                                1.0);
+                score += POOR_VISIBILITY_PENALTY * howBad;
+                reasons.add(
+                        String.format(
+                                "Visibility here has averaged only ~%.0fm.", c.avgVisibilityM()));
+            }
+
+            // Seasonal visibility: worse than this site's own all-year average around now, or poor
+            // outright for the season.
+            if (c.seasonalVisibilityM() != null
+                    && c.seasonalVisibilitySamples() >= SEASONAL_VISIBILITY_MIN_SAMPLES) {
+                final boolean worseThanUsual =
+                        c.avgVisibilityM() != null
+                                && c.avgVisibilityM() - c.seasonalVisibilityM()
+                                        >= SEASONAL_VISIBILITY_WORSE_DELTA_M;
+                final boolean poorForSeason = c.seasonalVisibilityM() < POOR_VISIBILITY_M;
+                if (worseThanUsual || poorForSeason) {
+                    score += SEASONAL_VISIBILITY_PENALTY;
+                    reasons.add(
+                            String.format(
+                                    "Visibility around this time of year has averaged ~%.0fm here%s.",
+                                    c.seasonalVisibilityM(),
+                                    worseThanUsual ? ", below its usual" : ""));
                 }
             }
 
@@ -267,6 +334,17 @@ public class DiveSiteSuggestionDataService {
                     // rather than silently contributing nothing.
                     score += DEPTH_MILD_CAUTION_PENALTY;
                 }
+
+                // An experienced diver pointed at a site that never gets much past ankle-deep
+                // relative to what they usually do - rank it down a touch.
+                if (experienced && siteMax < profile.maxDepthEver() * DEPTH_TOO_SHALLOW_FRACTION) {
+                    score += DEPTH_TOO_SHALLOW_PENALTY;
+                    reasons.add(
+                            String.format(
+                                    "Dives here top out around ~%.0fm - shallower than your usual"
+                                            + " range.",
+                                    siteMax));
+                }
             }
 
             if (c.distanceKm() != null) {
@@ -279,8 +357,17 @@ public class DiveSiteSuggestionDataService {
                                 PROXIMITY_FLOOR,
                                 PROXIMITY_CAP);
                 if (distance <= effectiveMaxDistanceKm) {
+                    final boolean genuinelyClose =
+                            (medianDistanceKm != null && distance <= medianDistanceKm * 0.6)
+                                    || distance <= effectiveMaxDistanceKm * 0.35;
                     reasons.add(
-                            String.format("Only ~%.0fkm from your current location.", distance));
+                            genuinelyClose
+                                    ? String.format(
+                                            "Only ~%.0fkm from your current location - one of the"
+                                                    + " closest options.",
+                                            distance)
+                                    : String.format(
+                                            "~%.0fkm from your current location.", distance));
                 }
             }
 
@@ -362,6 +449,31 @@ public class DiveSiteSuggestionDataService {
                 topPick);
     }
 
+    /** This calendar month plus the one either side, for the seasonal-visibility lookup. */
+    private static List<Integer> seasonMonths() {
+        final int m = java.time.LocalDate.now(java.time.ZoneOffset.UTC).getMonthValue();
+        return List.of(prevMonth(m), m, nextMonth(m));
+    }
+
+    private static int prevMonth(final int m) {
+        return m == 1 ? 12 : m - 1;
+    }
+
+    private static int nextMonth(final int m) {
+        return m == 12 ? 1 : m + 1;
+    }
+
+    private static @Nullable Double median(final List<Double> values) {
+        if (values.isEmpty()) {
+            return null;
+        }
+        final var sorted = values.stream().sorted().toList();
+        final int mid = sorted.size() / 2;
+        return sorted.size() % 2 == 1
+                ? sorted.get(mid)
+                : (sorted.get(mid - 1) + sorted.get(mid)) / 2.0;
+    }
+
     private static String friendlyDuration(final int days) {
         return days < 100
                 ? Math.round(days / 7.0) + " weeks"
@@ -397,6 +509,8 @@ public class DiveSiteSuggestionDataService {
             @Nullable Double maxMaxDepth,
             int highlightedDives,
             @Nullable Double neighborhoodAvgVisibilityM,
+            @Nullable Double seasonalVisibilityM,
+            int seasonalVisibilitySamples,
             @Nullable Double distanceKm) {}
 
     private record Scored(
@@ -430,6 +544,8 @@ public class DiveSiteSuggestionDataService {
                 dbl(rs, "max_max_depth"),
                 rs.getInt("highlighted_dives"),
                 dbl(rs, "neighborhood_avg_visibility_m"),
+                dbl(rs, "seasonal_visibility_m"),
+                rs.getInt("seasonal_visibility_samples"),
                 dbl(rs, "distance_km"));
     }
 

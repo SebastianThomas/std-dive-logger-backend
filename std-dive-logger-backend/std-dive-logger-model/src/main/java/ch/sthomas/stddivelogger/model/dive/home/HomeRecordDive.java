@@ -13,6 +13,8 @@ public record HomeRecordDive(
         long diveId,
         int diveNumber,
         @Nullable String identifier,
+        @Nullable String siteName,
         @Nullable Instant diveStart,
+        @Nullable String zoneId,
         @Nullable Double maxDepth,
         @Nullable Duration bottomTime) {}

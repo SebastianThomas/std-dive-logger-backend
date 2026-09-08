@@ -92,17 +92,25 @@ public class HomeDataService {
     private static final String Q_RECORDS =
             """
             (SELECT 'DEEPEST' AS kind, d.pk_dive_id AS dive_id, d.dive_number AS dive_number,
-                    d.dive_identifier AS identifier, ds.dive_start AS dive_start,
+                    d.dive_identifier AS identifier, s.name AS site_name,
+                    ST_Y(s.location) AS latitude, ST_X(s.location) AS longitude,
+                    ds.dive_start AS dive_start,
                     ds.max_depth AS max_depth, ds.duration_seconds AS bottom_seconds
-             FROM t_dives d JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+             FROM t_dives d
+             JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+             LEFT JOIN t_dive_site s ON s.pk_dive_site_id = d.dive_site
              WHERE d.fk_diver_id = :userId
              ORDER BY ds.max_depth DESC, d.dive_number DESC
              LIMIT 1)
             UNION ALL
             (SELECT 'LONGEST', d.pk_dive_id, d.dive_number,
-                    d.dive_identifier, ds.dive_start,
+                    d.dive_identifier, s.name,
+                    ST_Y(s.location), ST_X(s.location),
+                    ds.dive_start,
                     ds.max_depth, ds.duration_seconds
-             FROM t_dives d JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+             FROM t_dives d
+             JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+             LEFT JOIN t_dive_site s ON s.pk_dive_site_id = d.dive_site
              WHERE d.fk_diver_id = :userId
              ORDER BY ds.duration_seconds DESC, d.dive_number DESC
              LIMIT 1)
@@ -123,14 +131,22 @@ public class HomeDataService {
             LIMIT 6
             """;
 
+    // "Regular" is recency-weighted, not a raw count: each shared dive counts 0.5^(years ago), so
+    // a 1-year-old dive is worth half a fresh one and a buddy from 3+ years back barely registers.
+    // A steady recent buddy therefore outranks someone with more dives that were all long ago.
     private static final String Q_BUDDIES =
             """
-            SELECT b.name AS name, COUNT(*) AS dive_count
+            SELECT b.name AS name,
+                   COUNT(*) AS dive_count,
+                   MAX(ds.dive_start) AS last_dived_at,
+                   SUM(power(0.5, EXTRACT(EPOCH FROM (now() - ds.dive_start)) / (365.25 * 86400)))
+                       AS recency_score
             FROM t_dive_buddy_name b
-            JOIN t_dives d ON d.pk_dive_id = b.fk_dive_id
+            JOIN t_dives d        ON d.pk_dive_id = b.fk_dive_id
+            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
             WHERE d.fk_diver_id = :userId
             GROUP BY b.name
-            ORDER BY COUNT(*) DESC, b.name
+            ORDER BY recency_score DESC, COUNT(*) DESC, b.name
             LIMIT 5
             """;
 
@@ -144,7 +160,7 @@ public class HomeDataService {
                         jdbc.queryForObject(Q_SUMMARY, params, HomeDataService::mapSummary));
         final var recentDives = jdbc.query(Q_RECENT, params, this::mapRecentDive);
         final var highlightedDives = jdbc.query(Q_HIGHLIGHTED, params, this::mapRecentDive);
-        final var recordRows = jdbc.query(Q_RECORDS, params, HomeDataService::mapRecordRow);
+        final var recordRows = jdbc.query(Q_RECORDS, params, this::mapRecordRow);
         final var topBuddies = jdbc.query(Q_BUDDIES, params, HomeDataService::mapBuddy);
         // Cached blob (see DiverActivityStatsDataService); computed + stored once here on a miss.
         final var stats = activityStats.getOrCompute(userId);
@@ -219,22 +235,28 @@ public class HomeDataService {
                 timezones.resolveZone(rs.getDouble("latitude"), rs.getDouble("longitude")));
     }
 
-    private static RecordRow mapRecordRow(final ResultSet rs, final int rowNum)
-            throws SQLException {
+    private RecordRow mapRecordRow(final ResultSet rs, final int rowNum) throws SQLException {
         final var bottom = nullableLong(rs, "bottom_seconds");
+        final var lat = nullableDouble(rs, "latitude");
+        final var lon = nullableDouble(rs, "longitude");
         return new RecordRow(
                 rs.getString("kind"),
                 new HomeRecordDive(
                         rs.getLong("dive_id"),
                         rs.getInt("dive_number"),
                         rs.getString("identifier"),
+                        rs.getString("site_name"),
                         nullableInstant(rs, "dive_start"),
+                        lat == null || lon == null ? null : timezones.resolveZone(lat, lon),
                         nullableDouble(rs, "max_depth"),
                         bottom == null ? null : Duration.ofSeconds(bottom)));
     }
 
     private static HomeBuddy mapBuddy(final ResultSet rs, final int rowNum) throws SQLException {
-        return new HomeBuddy(rs.getString("name"), rs.getLong("dive_count"));
+        return new HomeBuddy(
+                rs.getString("name"),
+                rs.getLong("dive_count"),
+                nullableInstant(rs, "last_dived_at"));
     }
 
     // --- SQL-NULL helpers (same shape as StatsDataService's private ones) ---

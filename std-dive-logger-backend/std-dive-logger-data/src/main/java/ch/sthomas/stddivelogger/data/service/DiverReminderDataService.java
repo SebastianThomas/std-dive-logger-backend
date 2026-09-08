@@ -55,14 +55,13 @@ public class DiverReminderDataService {
             """;
 
     // One row per "years ago" bucket for dives whose month+day match today. The representative
-    // ("best") dive is the highlighted one, else the deepest, else the lowest id.
-    // TODO(tz): month/day are compared in the DB session timezone; a dive logged just before
-    // local midnight in a far-away timezone could land its anniversary a day off. Fine for a
-    // sentimental nudge; revisit if we ever store a per-user timezone.
+    // ("best") dive is the highlighted one, else the deepest, else the lowest id. "Today" and each
+    // dive's date are both read in UTC (via the caller's :today param), not the DB session
+    // timezone, so the anniversary lands on a stable day regardless of where the JVM/DB run.
     private static final String Q_ANNIVERSARIES =
             """
             SELECT
-              date_part('year', age(current_date, ds.dive_start::date))::int          AS years_ago,
+              date_part('year', age(:today, (ds.dive_start AT TIME ZONE 'UTC')::date))::int AS years_ago,
               count(*)                                                                 AS dives_that_day,
               count(DISTINCT d.dive_site)                                              AS distinct_sites,
               bool_or(d.highlighted)                                                   AS any_highlighted,
@@ -74,9 +73,9 @@ public class DiverReminderDataService {
             JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
             JOIN t_dive_site s     ON s.pk_dive_site_id = d.dive_site
             WHERE d.fk_diver_id = :userId
-              AND extract(month FROM ds.dive_start) = extract(month FROM current_date)
-              AND extract(day   FROM ds.dive_start) = extract(day   FROM current_date)
-              AND ds.dive_start < date_trunc('year', current_date)
+              AND extract(month FROM ds.dive_start AT TIME ZONE 'UTC') = extract(month FROM :today)
+              AND extract(day   FROM ds.dive_start AT TIME ZONE 'UTC') = extract(day   FROM :today)
+              AND (ds.dive_start AT TIME ZONE 'UTC')::date < date_trunc('year', :today)
             GROUP BY 1
             ORDER BY 1
             """;
@@ -232,7 +231,7 @@ public class DiverReminderDataService {
         final var rows =
                 jdbc.query(
                         Q_ANNIVERSARIES,
-                        new MapSqlParameterSource("userId", userId),
+                        new MapSqlParameterSource("userId", userId).addValue("today", today),
                         DiverReminderDataService::anniversaryRow);
         if (rows.isEmpty()) {
             return Optional.empty();
@@ -384,11 +383,10 @@ public class DiverReminderDataService {
         return ts == null ? null : ts.toInstant();
     }
 
+    // UTC, to match DiverActivityStatsDataService and the anniversary query - so "today" means the
+    // same calendar day no matter the JVM or DB session timezone.
     private LocalDate today() {
-        return Objects.requireNonNull(
-                        jdbc.getJdbcTemplate()
-                                .queryForObject("SELECT current_date", java.sql.Date.class))
-                .toLocalDate();
+        return LocalDate.now(ZoneOffset.UTC);
     }
 
     private String fingerprint(final long userId) {

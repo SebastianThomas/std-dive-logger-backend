@@ -360,4 +360,36 @@ class DiveSiteSuggestionIntegrationTest {
         assertThat(sizes).allMatch(s -> s >= 4 && s <= 8);
         assertThat(sizes.size()).isGreaterThan(1);
     }
+
+    @Test
+    void penalisesAndCallsOutPlainPoorVisibility() {
+        final var murkySite = site("Murky Quarry", 30.0, 30.0);
+        dive(otherDiver, murkySite, daysAgo(90), 20.0, new Visibility(3.0, "", null));
+        final var clearSite = site("Clear Lagoon", 31.0, 31.0);
+        dive(otherDiver, clearSite, daysAgo(90), 20.0, new Visibility(25.0, "", null));
+
+        final var all = suggest();
+        final var murky = find(all, "Murky Quarry");
+
+        assertThat(murky.reasons()).anyMatch(r -> r.contains("averaged only ~3m"));
+        assertThat(murky.score()).isLessThan(find(all, "Clear Lagoon").score());
+    }
+
+    @Test
+    void onlySaysOneOfTheClosestForAGenuinelyNearbySite() {
+        final var right = site("Right Here", 0.01, 0.0);
+        final var aBitOut = site("A Bit Out", 0.16, 0.0);
+        dive(otherDiver, right, daysAgo(90), 22.0, new Visibility(20.0, "", null));
+        dive(otherDiver, aBitOut, daysAgo(90), 22.0, new Visibility(20.0, "", null));
+
+        entityManager.flush();
+        statsService.refreshAll();
+        final var all = suggestionService.suggest(user.getId(), 0.0, 0.0, 50.0, 20);
+
+        assertThat(find(all, "Right Here").reasons())
+                .anyMatch(r -> r.contains("one of the closest options"));
+        assertThat(find(all, "A Bit Out").reasons())
+                .noneMatch(r -> r.contains("one of the closest options"))
+                .anyMatch(r -> r.contains("from your current location"));
+    }
 }

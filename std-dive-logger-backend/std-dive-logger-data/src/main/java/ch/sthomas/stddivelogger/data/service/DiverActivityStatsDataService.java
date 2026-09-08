@@ -77,6 +77,10 @@ public class DiverActivityStatsDataService {
               max(ds.dive_start)                                                        AS last_start,
               count(*) FILTER (WHERE date_trunc('year', ds.dive_start)
                                    = date_trunc('year', now()))                         AS dives_this_year,
+              count(*) FILTER (WHERE ds.dive_start >= date_trunc('year', now()) - interval '1 year'
+                                 AND ds.dive_start <  date_trunc('year', now()))         AS last_year_total,
+              count(*) FILTER (WHERE ds.dive_start >= date_trunc('year', now()) - interval '1 year'
+                                 AND ds.dive_start <  now() - interval '1 year')          AS last_year_to_date,
               count(DISTINCT d.dive_site)                                               AS distinct_sites,
               count(*) FILTER (WHERE ds.dive_start >= now() - interval '30 days')        AS w30,
               count(*) FILTER (WHERE ds.dive_start >= now() - interval '90 days')        AS w90,
@@ -309,10 +313,7 @@ public class DiverActivityStatsDataService {
         // --- this year / projection / milestone ---
         final int divesThisYear = (int) summary.divesThisYear();
         final double yearFraction = fractionOfYearElapsed(now);
-        final Integer projected =
-                (yearFraction >= 0.15 && divesThisYear >= 1)
-                        ? (int) Math.round(divesThisYear / yearFraction)
-                        : null;
+        final Integer projected = projectYearEnd(divesThisYear, summary, yearFraction);
         final Integer nextMilestone = nextMilestone(diveCount);
         final Integer toMilestone =
                 (nextMilestone != null && nextMilestone - diveCount <= 10)
@@ -343,6 +344,7 @@ public class DiverActivityStatsDataService {
                 (int) summary.distinctSites(),
                 newSitesThisYear,
                 divesThisYear,
+                (int) summary.lastYearToDate(),
                 projected,
                 toMilestone != null ? nextMilestone : null,
                 toMilestone);
@@ -530,6 +532,31 @@ public class DiverActivityStatsDataService {
         return Integer.parseInt(parts[0]) * 12 + (Integer.parseInt(parts[1]) - 1);
     }
 
+    /**
+     * Year-end dive count. Prefers a seasonal estimate - this year's count so far plus however many
+     * more the diver logged over the same remaining stretch of last year - so a winter-only /
+     * summer-heavy diver isn't projected as if they dived at a flat rate. Scales last year's
+     * remainder by how this year's pace-so-far compares (clamped 0.5x-2x) once there's enough of
+     * last year to compare against. Falls back to the old flat extrapolation when last year has too
+     * little data, and to null very early in a first year of diving.
+     */
+    private static @Nullable Integer projectYearEnd(
+            final int divesThisYear, final SummaryRow s, final double yearFraction) {
+        if (s.lastYearTotal() >= 3) {
+            final double remaining = Math.max(0, s.lastYearTotal() - s.lastYearToDate());
+            final double paceRatio =
+                    s.lastYearToDate() >= 3
+                            ? Math.max(
+                                    0.5, Math.min(2.0, (double) divesThisYear / s.lastYearToDate()))
+                            : 1.0;
+            return (int) Math.round(divesThisYear + remaining * paceRatio);
+        }
+        if (yearFraction >= 0.15 && divesThisYear >= 1) {
+            return (int) Math.round(divesThisYear / yearFraction);
+        }
+        return null;
+    }
+
     private static double fractionOfYearElapsed(final Instant now) {
         final var date = LocalDate.ofInstant(now, ZoneOffset.UTC);
         final int daysInYear = date.isLeapYear() ? 366 : 365;
@@ -548,6 +575,8 @@ public class DiverActivityStatsDataService {
             long n,
             @Nullable Instant lastStart,
             long divesThisYear,
+            long lastYearTotal,
+            long lastYearToDate,
             long distinctSites,
             long w30,
             long w90,
@@ -563,6 +592,8 @@ public class DiverActivityStatsDataService {
                 rs.getLong("n"),
                 ts(rs, "last_start"),
                 rs.getLong("dives_this_year"),
+                rs.getLong("last_year_total"),
+                rs.getLong("last_year_to_date"),
                 rs.getLong("distinct_sites"),
                 rs.getLong("w30"),
                 rs.getLong("w90"),

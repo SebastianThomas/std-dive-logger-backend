@@ -157,7 +157,15 @@ class HomeControllerIntegrationTest {
                 .jsonPath("$.records.deepest.diveNumber")
                 .isEqualTo(2)
                 .jsonPath("$.recentDives.length()")
-                .isEqualTo(2);
+                .isEqualTo(2)
+                // Duration fields go over the wire as numeric milliseconds (the frontend parses
+                // them as numbers) - not an ISO-8601 "PT..." string.
+                .jsonPath("$.totalBottomTime")
+                .isNumber()
+                .jsonPath("$.totalBottomTime")
+                .isEqualTo((int) Duration.ofMinutes(95).toMillis())
+                .jsonPath("$.records.longest.bottomTime")
+                .isNumber();
     }
 
     @Test

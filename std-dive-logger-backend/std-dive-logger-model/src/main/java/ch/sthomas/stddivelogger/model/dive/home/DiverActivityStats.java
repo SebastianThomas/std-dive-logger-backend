@@ -65,7 +65,13 @@ public record DiverActivityStats(
 
         // --- this year / milestones ---
         int divesThisYear,
-        // this year's count extrapolated to year-end at the current pace; null early in the year.
+        // how many dives the diver had logged by this same day of last year - for a "+3 vs this
+        // point last year" like-for-like comparison that respects seasonality.
+        int divesByThisPointLastYear,
+        // projected year-end count: this year so far + however many more the diver logged over the
+        // same remaining stretch last year (scaled by this year's pace-so-far vs last year's),
+        // falling back to a flat extrapolation when last year has too little data; null very early
+        // in a first year of diving. Seasonal, so a winter-only diver isn't over-projected.
         @Nullable Integer projectedDivesThisYear,
         // the next round number of dives (25/50/100/...), and how many to go.
         @Nullable Integer nextMilestone,
@@ -74,9 +80,10 @@ public record DiverActivityStats(
     /**
      * Bump when the computation changes, to re-run it for every diver on the next analytics sweep.
      * v2: dynamic per-diver cadence + nudge level ({@link #recentCadenceDays}, {@link
-     * #cadenceTrend}, {@link #nudgeThresholdDays}, {@link #nudgeLevel}).
+     * #cadenceTrend}, {@link #nudgeThresholdDays}, {@link #nudgeLevel}). v3: seasonal projection +
+     * {@link #divesByThisPointLastYear}.
      */
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
 
     public static DiverActivityStats empty() {
         return new DiverActivityStats(
@@ -100,6 +107,7 @@ public record DiverActivityStats(
                 DepthTrend.UNKNOWN,
                 null,
                 null,
+                0,
                 0,
                 0,
                 0,
