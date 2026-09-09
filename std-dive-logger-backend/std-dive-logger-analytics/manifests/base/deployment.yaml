@@ -20,11 +20,14 @@ spec:
         prometheus.io/port: "8088"
         prometheus.io/path: /actuator/prometheus
     spec:
+      serviceAccountName: std-dive-logger-analytics
       volumes:
         - name: config
           configMap: { name: std-dive-logger-analytics-config }
         - name: logs
           emptyDir: { sizeLimit: 200Mi }
+        - name: maps-import-config
+          configMap: { name: std-dive-logger-osm-import }
       containers:
         - name: analytics
           image: ${ANALYTICS_IMAGE}
@@ -37,6 +40,7 @@ spec:
             # from the env below). SPRING_CONFIG_NAME picks it by its real name.
             - { name: config, mountPath: /config, readOnly: true }
             - { name: logs, mountPath: /logs }
+            - { name: maps-import-config, mountPath: /maps-import-config, readOnly: true }
           env:
             - { name: SPRING_CONFIG_LOCATION, value: "/config/" }
             - { name: SPRING_CONFIG_NAME, value: std-dive-logger-analytics-dev }
@@ -46,6 +50,15 @@ spec:
             - { name: SPRING_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
             - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
+            # Initial rollout deliberately reuses the application DB credential. Replace these
+            # three refs with a maps_migrator/maps_reader Secret once CNPG provisions those roles.
+            - { name: MAPS_ENABLED, value: "true" }
+            - { name: MAPS_IMPORT_KUBERNETES_ENABLED, value: "true" }
+            - { name: MAPS_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
+            - { name: MAPS_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }
+            - { name: MAPS_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
+            - name: MAPS_IMPORT_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
             - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_PUBLIC_KEY,  valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-public-key } } }
             - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_PRIVATE_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-private-key } } }
             - { name: CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_SUBJECT,     valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: vapid-subject } } }

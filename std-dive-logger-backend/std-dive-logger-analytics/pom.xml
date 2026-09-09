@@ -28,6 +28,11 @@
             <artifactId>std-dive-logger-service</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-client</artifactId>
+            <version>7.8.0</version>
+        </dependency>
 
         <!-- Spring Boot -->
         <dependency>

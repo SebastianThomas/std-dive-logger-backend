@@ -4,5 +4,7 @@ resources:
   - ../../conf/dev
   - deployment.yaml
   - analytics-tailnet.yaml
+  - maps-rbac.yaml
+  - osm-import-config.yaml
 patches:
   - path: analytics-tailnet-patch.yaml

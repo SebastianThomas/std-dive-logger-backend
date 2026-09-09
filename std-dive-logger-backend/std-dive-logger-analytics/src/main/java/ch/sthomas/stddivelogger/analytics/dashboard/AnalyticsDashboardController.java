@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.analytics.job.AnalyticsJobQueue;
 import ch.sthomas.stddivelogger.analytics.job.JobKind;
 import ch.sthomas.stddivelogger.data.service.AnalyticsJobRunStore;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -67,18 +68,7 @@ public class AnalyticsDashboardController {
                 Arrays.stream(JobKind.values())
                         .map(
                                 job -> {
-                                    var next =
-                                            Objects.requireNonNull(
-                                                            CronExpression.parse(job.cron)
-                                                                    .next(
-                                                                            now.atZone(
-                                                                                    ZoneOffset
-                                                                                            .UTC)))
-                                                    .toInstant();
-                                    final var first = startup.plusSeconds(job.startupDelaySeconds);
-                                    if (job.startupDelaySeconds > 0
-                                            && first.isAfter(now)
-                                            && first.isBefore(next)) next = first;
+                                    final Instant next = nextRun(job, now);
                                     return new Job(
                                             job.name(), job.label, job.description, job.cron, next);
                                 })
@@ -97,7 +87,23 @@ public class AnalyticsDashboardController {
                         .body(Map.of("message", "This job is already queued or running."));
     }
 
-    public record Job(String id, String label, String description, String cron, Instant nextRun) {}
+    private @Nullable Instant nextRun(final JobKind job, final Instant now) {
+        if (job.cron == null) return null;
+        var next =
+                Objects.requireNonNull(
+                                CronExpression.parse(job.cron).next(now.atZone(ZoneOffset.UTC)))
+                        .toInstant();
+        final var first = startup.plusSeconds(job.startupDelaySeconds);
+        if (job.startupDelaySeconds > 0 && first.isAfter(now) && first.isBefore(next)) next = first;
+        return next;
+    }
+
+    public record Job(
+            String id,
+            String label,
+            String description,
+            @Nullable String cron,
+            @Nullable Instant nextRun) {}
 
     public record Status(
             Instant now,

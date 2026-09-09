@@ -108,9 +108,18 @@ class AnalyticsDashboardIntegrationTest {
     @Test
     void dashboardExposesFutureSchedulesAndProtectsManualActions() {
         final var status = controller.status();
-        assertThat(status.jobs()).hasSize(7);
+        assertThat(status.jobs()).hasSize(8);
         assertThat(status.jobs())
+                .filteredOn(job -> job.nextRun() != null)
                 .allSatisfy(job -> assertThat(job.nextRun()).isAfter(status.now()));
+        assertThat(status.jobs())
+                .filteredOn(job -> job.id().equals("MAPS_IMPORT"))
+                .singleElement()
+                .satisfies(
+                        job -> {
+                            assertThat(job.cron()).isEqualTo("0 0 2 * * SUN");
+                            assertThat(job.nextRun()).isNotNull();
+                        });
         client.get().uri("/ops").exchange().expectStatus().isOk();
         client.get().uri("/ops/app.js").exchange().expectStatus().isOk();
         client.get().uri("/ops/style.css").exchange().expectStatus().isOk();

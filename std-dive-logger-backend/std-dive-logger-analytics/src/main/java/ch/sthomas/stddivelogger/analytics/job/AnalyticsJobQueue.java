@@ -1,9 +1,11 @@
 package ch.sthomas.stddivelogger.analytics.job;
 
+import ch.sthomas.stddivelogger.analytics.maps.MapsImportJobLauncher;
 import ch.sthomas.stddivelogger.analytics.services.AnalyticsService;
 import ch.sthomas.stddivelogger.data.service.AnalyticsJobRunStore;
 import ch.sthomas.stddivelogger.model.exception.AnalyticsException;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,12 +22,17 @@ public class AnalyticsJobQueue {
     private final DataSource dataSource;
     private final AnalyticsJobRunStore runs;
     private final AnalyticsService analytics;
+    private final @Nullable MapsImportJobLauncher mapsImportJobLauncher;
 
     public AnalyticsJobQueue(
-            DataSource dataSource, AnalyticsJobRunStore runs, AnalyticsService analytics) {
+            final DataSource dataSource,
+            final AnalyticsJobRunStore runs,
+            final AnalyticsService analytics,
+            final @Nullable MapsImportJobLauncher mapsImportJobLauncher) {
         this.dataSource = dataSource;
         this.runs = runs;
         this.analytics = analytics;
+        this.mapsImportJobLauncher = mapsImportJobLauncher;
     }
 
     public boolean enqueue(final JobKind job, final boolean manual) {
@@ -70,6 +77,12 @@ public class AnalyticsJobQueue {
             case PUSH -> analytics.sendDueReminderPushes();
             case CLEANUP -> analytics.purgeExpiredReminders();
             case SITES -> analytics.refreshDiveSiteStats();
+            case MAPS_IMPORT -> {
+                if (mapsImportJobLauncher == null) {
+                    throw new IllegalStateException("Kubernetes maps imports are disabled");
+                }
+                mapsImportJobLauncher.launchConfiguredImport();
+            }
         }
     }
 }

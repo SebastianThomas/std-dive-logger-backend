@@ -38,7 +38,12 @@ async function refresh() {
     byId('updated').textContent = new Date(snapshot.now).toLocaleTimeString();
     byId('jobs').replaceChildren(...snapshot.jobs.map(job => {
       const card = node('article', null, 'job');
-      card.append(node('h3', job.label), node('p', job.description), node('p', snapshot.schedulingEnabled ? `Next scheduled: ${time(job.nextRun)}` : 'Scheduling and worker disabled', 'next'));
+      const schedule = !snapshot.schedulingEnabled
+        ? 'Scheduling and worker disabled'
+        : job.nextRun
+          ? `Next scheduled: ${time(job.nextRun)}`
+          : 'Manual only';
+      card.append(node('h3', job.label), node('p', job.description), node('p', schedule, 'next'));
       const busy = snapshot.runs.some(run => run.job === job.id && active(run));
       const button = node('button', busy ? 'Already queued / running' : 'Run now');
       button.disabled = busy || !snapshot.schedulingEnabled;
