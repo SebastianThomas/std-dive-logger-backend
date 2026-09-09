@@ -10,6 +10,10 @@ public class MapsImportProperties {
     private String sourceChecksum = "";
     private String databaseSecretName = "std-dive-logger-db-app";
     private String configPath = "/maps-import-config";
+    private String cgazAdm0Url =
+            "https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/CGAZ/geoBoundariesCGAZ_ADM0.gpkg";
+    private String cgazAdm1Url =
+            "https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/CGAZ/geoBoundariesCGAZ_ADM1.gpkg";
 
     public boolean isKubernetesEnabled() {
         return kubernetesEnabled;
@@ -49,6 +53,22 @@ public class MapsImportProperties {
 
     public void setDatabaseSecretName(final String databaseSecretName) {
         this.databaseSecretName = databaseSecretName;
+    }
+
+    public String getCgazAdm0Url() {
+        return cgazAdm0Url;
+    }
+
+    public void setCgazAdm0Url(final String cgazAdm0Url) {
+        this.cgazAdm0Url = cgazAdm0Url;
+    }
+
+    public String getCgazAdm1Url() {
+        return cgazAdm1Url;
+    }
+
+    public void setCgazAdm1Url(final String cgazAdm1Url) {
+        this.cgazAdm1Url = cgazAdm1Url;
     }
 
     public String getConfigPath() {

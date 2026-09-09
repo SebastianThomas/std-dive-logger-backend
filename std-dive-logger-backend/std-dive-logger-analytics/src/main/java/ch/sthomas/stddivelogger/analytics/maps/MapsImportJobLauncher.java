@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.analytics.maps;
 
+import ch.sthomas.stddivelogger.data.service.MapsImportKind;
 import ch.sthomas.stddivelogger.data.service.MapsImportRunStore;
 
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -44,15 +46,23 @@ public class MapsImportJobLauncher {
         this.runs = runs;
     }
 
-    public synchronized long launchConfiguredImport() {
-        return launchConfiguredImport(stateCalculator.calculate());
+    /** Launches an import for every boundary source that has no active Job. */
+    public synchronized void launchConfiguredImport() {
+        for (final MapsImportKind kind : MapsImportKind.values()) {
+            if (hasActiveImport(kind)) continue;
+            launchConfiguredImport(kind, stateCalculator.calculate(kind));
+        }
     }
 
     public synchronized boolean launchIfStateChanged() {
-        final String state = stateCalculator.calculate();
-        if (state.equals(runs.latestSuccessfulState()) || hasActiveImport()) return false;
-        launchConfiguredImport(state);
-        return true;
+        boolean launched = false;
+        for (final MapsImportKind kind : MapsImportKind.values()) {
+            final String state = stateCalculator.calculate(kind);
+            if (state.equals(runs.latestSuccessfulState(kind)) || hasActiveImport(kind)) continue;
+            launchConfiguredImport(kind, state);
+            launched = true;
+        }
+        return launched;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -68,33 +78,46 @@ public class MapsImportJobLauncher {
         }
     }
 
-    private long launchConfiguredImport(final String state) {
-        if (hasActiveImport()) {
-            throw new IllegalStateException("A maps import Kubernetes Job is already active");
+    private long launchConfiguredImport(final MapsImportKind kind, final String state) {
+        if (hasActiveImport(kind)) {
+            throw new IllegalStateException(
+                    "A " + kind + " boundary import Kubernetes Job is already active");
         }
 
         final Instant sourceTimestamp = Instant.now();
         final String jobName =
                 "maps-import-"
+                        + kind.name().toLowerCase(Locale.ROOT)
+                        + "-"
                         + NAME_TIME.format(sourceTimestamp)
                         + "-"
                         + UUID.randomUUID().toString().substring(0, 6);
         final String checksum = properties.getSourceChecksum().trim();
         final long runId =
                 runs.plan(
-                        properties.getSourceUrl(),
-                        checksum.isEmpty() ? null : checksum,
+                        kind,
+                        sourceUrl(kind),
+                        kind == MapsImportKind.OSM && !checksum.isEmpty() ? checksum : null,
                         sourceTimestamp,
                         jobName,
                         state);
         final Job job =
-                factory.create(
-                        jobName,
-                        runId,
-                        properties.getSourceUrl(),
-                        checksum,
-                        sourceTimestamp,
-                        properties.getDatabaseSecretName());
+                switch (kind) {
+                    case OSM ->
+                            factory.createOsmImport(
+                                    jobName,
+                                    runId,
+                                    properties.getSourceUrl(),
+                                    checksum,
+                                    properties.getDatabaseSecretName());
+                    case CGAZ ->
+                            factory.createCgazImport(
+                                    jobName,
+                                    runId,
+                                    properties.getCgazAdm0Url(),
+                                    properties.getCgazAdm1Url(),
+                                    properties.getDatabaseSecretName());
+                };
         try {
             kubernetes
                     .batch()
@@ -124,13 +147,22 @@ public class MapsImportJobLauncher {
                 .forEach(this::reconcile);
     }
 
-    private boolean hasActiveImport() {
+    /** CGAZ downloads both levels in one Job, so both URLs together are the run's source. */
+    private String sourceUrl(final MapsImportKind kind) {
+        return switch (kind) {
+            case OSM -> properties.getSourceUrl();
+            case CGAZ -> properties.getCgazAdm0Url() + " " + properties.getCgazAdm1Url();
+        };
+    }
+
+    private boolean hasActiveImport(final MapsImportKind kind) {
         return kubernetes
                 .batch()
                 .v1()
                 .jobs()
                 .inNamespace(properties.getNamespace())
                 .withLabels(MapsImportJobFactory.LABELS)
+                .withLabel(MapsImportJobFactory.KIND_LABEL, kind.name())
                 .list()
                 .getItems()
                 .stream()
@@ -146,9 +178,35 @@ public class MapsImportJobLauncher {
             runs.markFailed(runId, "KubernetesJobFailed");
         } else if (isActive(job)) {
             runs.markRunning(runId);
+        } else {
+            promote(runId, kindOf(job));
         }
-        // A successful promotion updates maps.import_run in the same transaction as the boundary
-        // swap. The reconciler deliberately does not claim success independently of that commit.
+    }
+
+    /**
+     * Promotes the staged boundaries of a completed Job. The promotion is idempotent, so the
+     * repeated reconciliations of a completed Job that lingers until its TTL are no-ops.
+     */
+    private void promote(final long runId, final MapsImportKind kind) {
+        try {
+            if (runs.promote(runId, kind)) {
+                LOG.info("Promoted the staged {} boundaries of maps import run {}", kind, runId);
+            }
+        } catch (RuntimeException exception) {
+            LOG.error(
+                    "Could not promote the staged boundaries of maps import run {}",
+                    runId,
+                    exception);
+            runs.markFailed(runId, "BoundaryPromotionFailed");
+        }
+    }
+
+    /**
+     * Jobs from before the CGAZ source existed carry no source label and are all osm2pgsql runs.
+     */
+    private static MapsImportKind kindOf(final Job job) {
+        final String label = job.getMetadata().getLabels().get(MapsImportJobFactory.KIND_LABEL);
+        return label == null ? MapsImportKind.OSM : MapsImportKind.valueOf(label);
     }
 
     private static boolean isActive(final Job job) {

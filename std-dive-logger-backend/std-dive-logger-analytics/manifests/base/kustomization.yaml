@@ -17,4 +17,3 @@ configMapGenerator:
       disableNameSuffixHash: true
     files:
       - osm-import/boundaries.lua
-      - osm-import/promote-boundaries.sql

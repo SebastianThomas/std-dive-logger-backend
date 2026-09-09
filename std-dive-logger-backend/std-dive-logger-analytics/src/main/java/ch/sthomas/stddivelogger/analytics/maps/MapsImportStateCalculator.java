@@ -1,5 +1,7 @@
 package ch.sthomas.stddivelogger.analytics.maps;
 
+import ch.sthomas.stddivelogger.data.service.MapsImportKind;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -12,12 +14,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 
-/** Calculates the durable state of everything that controls an OSM boundary import. */
+/** Calculates the durable state of everything that controls a boundary import. */
 @Component
 @ConditionalOnProperty(name = "maps.import.kubernetes.enabled", havingValue = "true")
 public class MapsImportStateCalculator {
-    private static final List<String> CONFIG_FILES =
-            List.of("boundaries.lua", "promote-boundaries.sql");
+    private static final List<String> CONFIG_FILES = List.of("boundaries.lua");
 
     private final MapsImportProperties properties;
 
@@ -25,21 +26,29 @@ public class MapsImportStateCalculator {
         this.properties = properties;
     }
 
-    public String calculate() {
+    public String calculate(final MapsImportKind kind) {
         try {
             final MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            update(digest, "source-url", properties.getSourceUrl());
-            update(digest, "source-checksum", properties.getSourceChecksum());
+            update(digest, "kind", kind.name());
             update(digest, "database-secret", properties.getDatabaseSecretName());
-            update(digest, "osm2pgsql-image", MapsImportJobFactory.OSM2PGSQL_IMAGE);
-            update(digest, "download-image", MapsImportJobFactory.DOWNLOAD_IMAGE);
-            update(digest, "promotion-image", MapsImportJobFactory.PROMOTION_IMAGE);
-            final Path configDirectory = Path.of(properties.getConfigPath());
-            for (final String fileName : CONFIG_FILES) {
-                digest.update(fileName.getBytes(StandardCharsets.UTF_8));
-                digest.update((byte) 0);
-                digest.update(Files.readAllBytes(configDirectory.resolve(fileName)));
-                digest.update((byte) 0);
+            switch (kind) {
+                case OSM -> {
+                    update(digest, "source-url", properties.getSourceUrl());
+                    update(digest, "source-checksum", properties.getSourceChecksum());
+                    update(digest, "osm2pgsql-image", MapsImportJobFactory.OSM2PGSQL_IMAGE);
+                    final Path configDirectory = Path.of(properties.getConfigPath());
+                    for (final String fileName : CONFIG_FILES) {
+                        digest.update(fileName.getBytes(StandardCharsets.UTF_8));
+                        digest.update((byte) 0);
+                        digest.update(Files.readAllBytes(configDirectory.resolve(fileName)));
+                        digest.update((byte) 0);
+                    }
+                }
+                case CGAZ -> {
+                    update(digest, "cgaz-adm0-url", properties.getCgazAdm0Url());
+                    update(digest, "cgaz-adm1-url", properties.getCgazAdm1Url());
+                    update(digest, "gdal-image", MapsImportJobFactory.GDAL_IMAGE);
+                }
             }
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException exception) {

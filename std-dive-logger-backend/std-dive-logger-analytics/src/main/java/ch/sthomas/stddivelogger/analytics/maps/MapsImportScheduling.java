@@ -17,7 +17,7 @@ public class MapsImportScheduling {
         this.queue = queue;
     }
 
-    /** Refresh the OSM administrative boundaries at 02:00 UTC every Sunday. */
+    /** Refresh the administrative boundaries of every source at 02:00 UTC every Sunday. */
     @Scheduled(cron = "0 0 2 * * SUN", zone = "UTC")
     public void importMapsBoundaries() {
         queue.enqueue(JobKind.MAPS_IMPORT, false);

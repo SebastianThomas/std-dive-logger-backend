@@ -11,8 +11,8 @@ public enum JobKind {
     CLEANUP("Reminder cleanup", "Remove expired reminders", "0 30 3 * * *", 0),
     SITES("Dive site statistics", "Refresh shared site aggregates", "0 4/15 * * * *", 30),
     MAPS_IMPORT(
-            "OSM boundary import",
-            "Launch a country and regional-boundary import in Kubernetes",
+            "Boundary import",
+            "Launch the OSM and geoBoundaries CGAZ boundary imports in Kubernetes",
             "0 0 2 * * SUN",
             0);
 

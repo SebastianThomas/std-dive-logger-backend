@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.data;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.sthomas.stddivelogger.data.service.MapsBoundaryDataService;
+import ch.sthomas.stddivelogger.data.service.MapsImportKind;
 import ch.sthomas.stddivelogger.data.service.MapsImportRunStore;
 
 import org.flywaydb.core.Flyway;
@@ -38,7 +39,7 @@ class MapsFlywayMigrationIntegrationTest {
         assertThat(mapsFlyway.migrate().success).isTrue();
         assertThat(mapsFlyway.migrate().migrationsExecuted).isZero();
 
-        assertThat(mapsFlyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(mapsFlyway.info().current().getVersion().getVersion()).isEqualTo("3");
         assertThat(publicFlyway.info().current().getVersion().getVersion()).startsWith("0.4.");
     }
 
@@ -89,7 +90,145 @@ class MapsFlywayMigrationIntegrationTest {
         assertThat(inland.boundaryImportVersion()).isEqualTo(importId);
         assertThat(offshore.countryName()).isNull();
         assertThat(offshore.status()).isEqualTo("NO_COUNTRY");
-        assertThat(runStore.latestSuccessfulState()).isEqualTo("test-state");
+        assertThat(runStore.latestSuccessfulState(MapsImportKind.OSM)).isEqualTo("test-state");
+    }
+
+    @Test
+    void promotesStagedCgazBoundariesAndPrefersOsmWhereBothCover() {
+        flyway("public", "classpath:db/migration/postgresql").migrate();
+        flyway("maps", "classpath:db/migration/maps").migrate();
+        final var dataSource =
+                new DriverManagerDataSource(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+        final var jdbc = new JdbcTemplate(dataSource);
+        final var namedJdbc = new NamedParameterJdbcTemplate(dataSource);
+        final var runStore = new MapsImportRunStore(namedJdbc);
+        final var service = new MapsBoundaryDataService(namedJdbc);
+        jdbc.execute(
+                """
+                CREATE TABLE maps_cgaz_stage.adm0 (
+                    "shapeGroup" text, "shapeName" text,
+                    geometry geometry(MultiPolygon, 4326)
+                );
+                """);
+        jdbc.execute(
+                """
+                CREATE TABLE maps_cgaz_stage.adm1 (
+                    "shapeID" text, "shapeGroup" text, "shapeName" text,
+                    geometry geometry(MultiPolygon, 4326)
+                );
+                """);
+        // Overlaps the OSM boundaries of the fixture below and stretches further east.
+        jdbc.update(
+                """
+                INSERT INTO maps_cgaz_stage.adm0 VALUES
+                    ('TLD', 'Testland (CGAZ)',
+                     ST_GeomFromText('MULTIPOLYGON(((50 50,80 50,80 80,50 80,50 50)))', 4326))
+                """);
+        jdbc.update(
+                """
+                INSERT INTO maps_cgaz_stage.adm1 VALUES
+                    ('TLD-1', 'TLD', 'East Testland',
+                     ST_GeomFromText('MULTIPOLYGON(((65 50,80 50,80 80,65 80,65 50)))', 4326))
+                """);
+        final long osmRun = insertRun(jdbc, MapsImportKind.OSM, "osm");
+        jdbc.update(
+                """
+                INSERT INTO maps.admin_boundary
+                    (osm_relation_id, admin_level, name, iso3166_1, geometry, fk_import_run_id)
+                VALUES (300, 2, 'Testland (OSM)', 'TL',
+                        ST_GeomFromText('MULTIPOLYGON(((50 50,60 50,60 60,50 60,50 50)))', 4326), ?)
+                """,
+                osmRun);
+        final long cgazRun = insertRun(jdbc, MapsImportKind.CGAZ, "cgaz");
+
+        assertThat(runStore.promote(cgazRun, MapsImportKind.CGAZ)).isTrue();
+        // Promoting the same run twice must not duplicate or re-stage anything.
+        assertThat(runStore.promote(cgazRun, MapsImportKind.CGAZ)).isFalse();
+
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM maps.import_run WHERE pk_import_run_id = ?",
+                                String.class,
+                                cgazRun))
+                .isEqualTo("SUCCEEDED");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM maps.admin_boundary WHERE source = 'CGAZ'",
+                                Integer.class))
+                .isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT to_regclass('maps_cgaz_stage.adm0')", String.class))
+                .isNull();
+
+        final var overlapping =
+                service.resolveSite(insertSite(jdbc, "Overlap", 55, 55)).orElseThrow();
+        final var worldwide =
+                service.resolveSite(insertSite(jdbc, "Worldwide", 70, 70)).orElseThrow();
+
+        assertThat(overlapping.countryName()).isEqualTo("Testland (OSM)");
+        assertThat(worldwide.countryName()).isEqualTo("Testland (CGAZ)");
+        assertThat(worldwide.countryCode()).isEqualTo("TLD");
+        assertThat(worldwide.regionName()).isEqualTo("East Testland");
+        assertThat(worldwide.status()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    void promotesStagedOsmBoundaries() {
+        flyway("public", "classpath:db/migration/postgresql").migrate();
+        flyway("maps", "classpath:db/migration/maps").migrate();
+        final var dataSource =
+                new DriverManagerDataSource(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+        final var jdbc = new JdbcTemplate(dataSource);
+        final var runStore = new MapsImportRunStore(new NamedParameterJdbcTemplate(dataSource));
+        jdbc.execute(
+                """
+                CREATE TABLE maps_osm_stage.admin_boundary (
+                    osm_relation_id bigint, admin_level int, name text, name_en text,
+                    iso3166_1 text, iso3166_2 text, geometry geometry(MultiPolygon, 4326)
+                );
+                """);
+        jdbc.update(
+                """
+                INSERT INTO maps_osm_stage.admin_boundary VALUES
+                    (900, 2, 'Stagedland', 'Stagedland', 'SL', NULL,
+                     ST_GeomFromText('MULTIPOLYGON(((-30 -30,-20 -30,-20 -20,-30 -20,-30 -30)))',
+                                     4326))
+                """);
+        final long runId = insertRun(jdbc, MapsImportKind.OSM, "osm-stage");
+
+        assertThat(runStore.promote(runId, MapsImportKind.OSM)).isTrue();
+
+        assertThat(
+                        jdbc.queryForObject(
+                                """
+                                SELECT name FROM maps.admin_boundary
+                                WHERE source = 'OSM' AND osm_relation_id = 900
+                                """,
+                                String.class))
+                .isEqualTo("Stagedland");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM maps.import_run WHERE pk_import_run_id = ?",
+                                String.class,
+                                runId))
+                .isEqualTo("SUCCEEDED");
+    }
+
+    private static long insertRun(
+            final JdbcTemplate jdbc, final MapsImportKind kind, final String name) {
+        return Objects.requireNonNull(
+                jdbc.queryForObject(
+                        """
+                        INSERT INTO maps.import_run
+                            (source_url, source_timestamp, kubernetes_job_name, status, state, kind)
+                        VALUES ('test://boundaries', now(), ?, 'SUBMITTED', ?, ?)
+                        RETURNING pk_import_run_id
+                        """,
+                        Long.class,
+                        "maps-test-" + name,
+                        "state-" + name,
+                        kind.name()));
     }
 
     private static long insertSite(

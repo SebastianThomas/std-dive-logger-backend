@@ -1,13 +1,17 @@
-local boundaries = osm2pgsql.define_area_table('admin_boundary', {
-    { column = 'admin_level', type = 'int' },
-    { column = 'name', type = 'text' },
-    { column = 'name_en', type = 'text' },
-    { column = 'iso3166_1', type = 'text' },
-    { column = 'iso3166_2', type = 'text' },
-    { column = 'geometry', type = 'multipolygon', projection = 4326, not_null = true },
-}, {
+-- define_table (not the define_*_table helpers) is what honours a custom `ids` config: the
+-- helpers force their own id column, which for areas is a signed `area_id`.
+local boundaries = osm2pgsql.define_table({
+    name = 'admin_boundary',
     schema = 'maps_osm_stage',
     ids = { type = 'relation', id_column = 'osm_relation_id' },
+    columns = {
+        { column = 'admin_level', type = 'int' },
+        { column = 'name', type = 'text' },
+        { column = 'name_en', type = 'text' },
+        { column = 'iso3166_1', type = 'text' },
+        { column = 'iso3166_2', type = 'text' },
+        { column = 'geometry', type = 'multipolygon', projection = 4326, not_null = true },
+    }
 })
 
 function osm2pgsql.process_relation(object)

@@ -35,10 +35,10 @@ public class MapsBoundaryDataService {
             SELECT site.pk_dive_site_id,
                    country.pk_admin_boundary_id,
                    country.name,
-                   country.iso3166_1,
+                   COALESCE(country.iso3166_1, country.iso3166_1_alpha3),
                    region.pk_admin_boundary_id,
                    region.name,
-                   COALESCE(region.iso3166_2, region.iso3166_1),
+                   COALESCE(region.iso3166_2, region.iso3166_1, region.iso3166_1_alpha3),
                    CASE WHEN country.pk_admin_boundary_id IS NULL THEN 'NO_COUNTRY' ELSE 'RESOLVED' END,
                    now(),
                    version.pk_import_run_id
@@ -48,7 +48,11 @@ public class MapsBoundaryDataService {
                 FROM maps.admin_boundary boundary
                 WHERE boundary.admin_level = 2
                   AND ST_Covers(boundary.geometry, site.location)
-                ORDER BY ST_Area(boundary.geometry::geography), boundary.osm_relation_id
+                -- OSM only covers its configured extract but is the more precise geometry there,
+                -- so it wins over the worldwide CGAZ boundaries wherever both cover the site.
+                ORDER BY (boundary.source <> 'OSM'),
+                         ST_Area(boundary.geometry::geography),
+                         boundary.pk_admin_boundary_id
                 LIMIT 1
             ) country ON true
             LEFT JOIN LATERAL (
@@ -56,7 +60,9 @@ public class MapsBoundaryDataService {
                 FROM maps.admin_boundary boundary
                 WHERE boundary.admin_level = 4
                   AND ST_Covers(boundary.geometry, site.location)
-                ORDER BY ST_Area(boundary.geometry::geography), boundary.osm_relation_id
+                ORDER BY (boundary.source <> 'OSM'),
+                         ST_Area(boundary.geometry::geography),
+                         boundary.pk_admin_boundary_id
                 LIMIT 1
             ) region ON true
             LEFT JOIN LATERAL (
