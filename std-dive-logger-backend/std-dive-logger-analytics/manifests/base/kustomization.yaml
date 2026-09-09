@@ -5,6 +5,16 @@ resources:
   - deployment.yaml
   - analytics-tailnet.yaml
   - maps-rbac.yaml
-  - osm-import-config.yaml
 patches:
   - path: analytics-tailnet-patch.yaml
+configMapGenerator:
+  # Consumed by the osm2pgsql import Job (MapsImportJobFactory mounts it by name),
+  # so the name must stay stable - no content hash suffix.
+  - name: std-dive-logger-osm-import
+    options:
+      labels:
+        app.kubernetes.io/name: osm2pgsql-import
+      disableNameSuffixHash: true
+    files:
+      - osm-import/boundaries.lua
+      - osm-import/promote-boundaries.sql
