@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 /** Durable state for asynchronous osm2pgsql Kubernetes imports. */
 @Service
@@ -32,7 +33,7 @@ public class MapsImportRunStore {
                 new MapSqlParameterSource()
                         .addValue("sourceUrl", sourceUrl)
                         .addValue("checksum", checksum)
-                        .addValue("sourceTimestamp", sourceTimestamp)
+                        .addValue("sourceTimestamp", sourceTimestamp.atOffset(ZoneOffset.UTC))
                         .addValue("jobName", jobName)
                         .addValue("state", state);
         final Long id =
