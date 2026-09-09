@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.dive.BasicDiveInfo;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteLink;
+import ch.sthomas.stddivelogger.model.dive.DiveSiteStats;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteSuggestion;
 import ch.sthomas.stddivelogger.model.dive.DiveSiteType;
 import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
@@ -15,6 +16,7 @@ import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.DiveSiteStatsService;
 import ch.sthomas.stddivelogger.service.DiveSiteSuggestionService;
 import ch.sthomas.stddivelogger.service.UserService;
 
@@ -47,14 +49,17 @@ public class DiveSiteController {
     private final DiveService diveService;
     private final UserService userService;
     private final DiveSiteSuggestionService diveSiteSuggestionService;
+    private final DiveSiteStatsService diveSiteStatsService;
 
     public DiveSiteController(
             final DiveService diveService,
             final UserService userService,
-            final DiveSiteSuggestionService diveSiteSuggestionService) {
+            final DiveSiteSuggestionService diveSiteSuggestionService,
+            final DiveSiteStatsService diveSiteStatsService) {
         this.diveService = diveService;
         this.userService = userService;
         this.diveSiteSuggestionService = diveSiteSuggestionService;
+        this.diveSiteStatsService = diveSiteStatsService;
     }
 
     @Operation(
@@ -136,6 +141,17 @@ public class DiveSiteController {
             throw new UnauthorizedException("Log in to view a site's visibility history");
         }
         return diveService.getSiteVisibilityLogs(user, siteId, lastYearOnly);
+    }
+
+    @Operation(
+            summary = "Get global, anonymous dive activity for one site",
+            description =
+                    "Uses the same cached aggregate row as site suggestions, plus monthly buckets"
+                            + " across all logged dives at this site. No diver identities or"
+                            + " individual dive records are returned.")
+    @GetMapping(path = "/{id}/stats")
+    public DiveSiteStats getSiteStats(@PathVariable("id") @Positive final long siteId) {
+        return diveSiteStatsService.getForSite(siteId);
     }
 
     @Operation(summary = "Find DiveSite by location")
@@ -224,7 +240,6 @@ public class DiveSiteController {
 
     public record UpdateDiveSiteBody(
             @Size(max = 2000) String description,
-            @Size(max = 128) String countryRegion,
             Double maxDepth,
             DiveSiteType type,
             @NotNull WaterType waterType,
@@ -235,7 +250,8 @@ public class DiveSiteController {
             description =
                     "Requires the requesting user to have logged at least one dive at this site -"
                             + " site name/coordinates are not editable here, only"
-                            + " description/country/maxDepth/type/waterType/links. waterType is"
+                            + " description/maxDepth/type/waterType/links. Country and region are"
+                            + " derived from geographic boundary data rather than entered by users. waterType is"
                             + " required - the site cannot be saved without a valid one.")
     @PutMapping(path = "/{id}")
     public DiveSite updateDiveSite(
@@ -249,7 +265,6 @@ public class DiveSiteController {
                 user,
                 id,
                 body.description,
-                body.countryRegion,
                 body.maxDepth,
                 body.type,
                 body.waterType,

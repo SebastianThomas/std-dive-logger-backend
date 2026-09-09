@@ -1566,7 +1566,6 @@ public class DiveDataService {
     public DiveSite updateDiveSite(
             final long siteId,
             @Nullable final String description,
-            @Nullable final String countryRegion,
             @Nullable final Double maxDepth,
             @Nullable final DiveSiteType type,
             final WaterType waterType,
@@ -1579,7 +1578,6 @@ public class DiveDataService {
                                         new NoSuchElementException(
                                                 "Could not find dive site by id " + siteId));
         entity.setDescription(description);
-        entity.setCountryRegion(countryRegion);
         entity.setMaxDepth(maxDepth);
         entity.setSiteType(type);
         entity.setWaterType(waterType);

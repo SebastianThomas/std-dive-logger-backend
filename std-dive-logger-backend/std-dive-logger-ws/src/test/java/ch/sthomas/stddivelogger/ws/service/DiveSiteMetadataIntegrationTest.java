@@ -33,7 +33,7 @@ import java.util.List;
 
 /**
  * Coverage for community-editable dive site metadata (WS6): only a user who's logged at least one
- * dive at a site may edit its description/links/type/maxDepth/countryRegion.
+ * dive at a site may edit its description/links/type/maxDepth, while derived geography is kept.
  */
 @org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
@@ -85,7 +85,6 @@ class DiveSiteMetadataIntegrationTest {
                                         user,
                                         site.id(),
                                         "desc",
-                                        "region",
                                         30.0,
                                         DiveSiteType.WRECK,
                                         WaterType.SALT,
@@ -99,12 +98,10 @@ class DiveSiteMetadataIntegrationTest {
     void userWithALoggedDiveCanEditTheSiteAndLinksArePersisted() {
         final var user =
                 userRepository.save(new UserEntity("site-meta-b@test.ch", "hash", "B")).toRecord();
-        final var site =
-                diveSiteRepository
-                        .save(
-                                new DiveSiteEntity(
-                                        "Site Meta IT B", new Location(2.0, 2.0).toPoint()))
-                        .toRecord();
+        final var siteEntity =
+                new DiveSiteEntity("Site Meta IT B", new Location(2.0, 2.0).toPoint());
+        siteEntity.setCountryRegion("Automatically derived");
+        final var site = diveSiteRepository.save(siteEntity).toRecord();
         diveService.createEmptyDive(
                 user,
                 new UploadDiveBody(
@@ -115,14 +112,13 @@ class DiveSiteMetadataIntegrationTest {
                         user,
                         site.id(),
                         "A nice wreck",
-                        "Red Sea",
                         35.5,
                         DiveSiteType.WRECK,
                         WaterType.SALT,
                         List.of(new DiveSiteLink(0, "https://example.com", "Info")));
 
         assertThat(updated.description()).isEqualTo("A nice wreck");
-        assertThat(updated.countryRegion()).isEqualTo("Red Sea");
+        assertThat(updated.countryRegion()).isEqualTo("Automatically derived");
         assertThat(updated.maxDepth()).isEqualTo(35.5);
         assertThat(updated.type()).isEqualTo(DiveSiteType.WRECK);
         assertThat(updated.waterType()).isEqualTo(WaterType.SALT);

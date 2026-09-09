@@ -683,7 +683,6 @@ public class DiveService {
             final User user,
             final long siteId,
             final @Nullable String description,
-            final @Nullable String countryRegion,
             final @Nullable Double maxDepth,
             final @Nullable DiveSiteType type,
             final WaterType waterType,
@@ -692,7 +691,7 @@ public class DiveService {
             throw ForbiddenException.forDiveSiteId(user, siteId);
         }
         return diveDataService.updateDiveSite(
-                siteId, description, countryRegion, maxDepth, type, waterType, links);
+                siteId, description, maxDepth, type, waterType, links);
     }
 
     public void deleteDiveById(final User user, final long diveId) {
