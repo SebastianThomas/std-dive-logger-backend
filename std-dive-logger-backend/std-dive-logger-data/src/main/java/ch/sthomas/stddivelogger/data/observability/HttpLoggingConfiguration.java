@@ -33,11 +33,9 @@ public class HttpLoggingConfiguration {
     }
 
     /**
-     * Two sinks: the terse structured access record ({@link RequestLogSink}, always at
-     * INFO/WARN/ERROR) and Logbook's full per-request dump - method, URI, every header, query,
-     * remote IP. The verbose one is written only when the {@code org.zalando.logbook} logger is at
-     * TRACE, so it toggles per environment (its logback config) or at runtime via {@code
-     * /actuator/loggers/org.zalando.logbook}.
+     * A terse structured access record ({@link RequestLogSink}) is retained for client/server
+     * failures, while Logbook's full per-request dump is written only when the {@code
+     * org.zalando.logbook} logger is at TRACE.
      */
     @Bean
     Sink requestLogSink() {

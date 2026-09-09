@@ -40,6 +40,8 @@ spec:
         - CREATE EXTENSION IF NOT EXISTS postgis
         - CREATE EXTENSION IF NOT EXISTS pg_trgm
         - CREATE EXTENSION IF NOT EXISTS fuzzystrmatch
+        - CREATE SCHEMA IF NOT EXISTS maps AUTHORIZATION std_dive_logger
+        - CREATE SCHEMA IF NOT EXISTS maps_osm_stage AUTHORIZATION std_dive_logger
   resources:
     requests: { cpu: 50m, memory: 256Mi }
     limits: { memory: 640Mi }

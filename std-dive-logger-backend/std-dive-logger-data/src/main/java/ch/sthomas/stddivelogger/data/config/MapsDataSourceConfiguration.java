@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
@@ -18,11 +17,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
-/**
- * Independent maps-schema connection and migration lifecycle. Disabled unless explicitly opted in.
- */
+/** Independent maps-schema connection and migration lifecycle. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = "maps.enabled", havingValue = "true")
 public class MapsDataSourceConfiguration {
 
     @Bean(name = "mapsDataSourceProperties", defaultCandidate = false)
@@ -34,7 +30,13 @@ public class MapsDataSourceConfiguration {
     @Bean(name = "mapsDataSource", destroyMethod = "close", defaultCandidate = false)
     @ConfigurationProperties("maps.datasource.hikari")
     HikariDataSource mapsDataSource(
-            @Qualifier("mapsDataSourceProperties") final DataSourceProperties properties) {
+            @Qualifier("mapsDataSourceProperties") final DataSourceProperties properties,
+            @Qualifier("dataSource") final DataSource primaryDataSource) {
+        if (properties.getUrl() == null && primaryDataSource instanceof HikariDataSource primary) {
+            properties.setUrl(primary.getJdbcUrl());
+            properties.setUsername(primary.getUsername());
+            properties.setPassword(primary.getPassword());
+        }
         final HikariDataSource dataSource =
                 properties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
         dataSource.setPoolName("maps-db-pool");

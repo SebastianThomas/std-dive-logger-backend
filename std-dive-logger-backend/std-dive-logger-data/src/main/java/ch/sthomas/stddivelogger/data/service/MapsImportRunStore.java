@@ -2,7 +2,6 @@ package ch.sthomas.stddivelogger.data.service;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -12,7 +11,6 @@ import java.time.Instant;
 
 /** Durable state for asynchronous osm2pgsql Kubernetes imports. */
 @Service
-@ConditionalOnProperty(name = "maps.enabled", havingValue = "true")
 public class MapsImportRunStore {
 
     private final NamedParameterJdbcTemplate mapsJdbc;

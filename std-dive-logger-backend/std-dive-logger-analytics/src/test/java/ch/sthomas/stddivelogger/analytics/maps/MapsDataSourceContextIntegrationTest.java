@@ -22,7 +22,7 @@ import javax.sql.DataSource;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"scheduling.enabled=false", "maps.enabled=true"})
+        properties = {"scheduling.enabled=false"})
 @Testcontainers
 @ActiveProfiles("local-output")
 class MapsDataSourceContextIntegrationTest {

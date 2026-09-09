@@ -96,11 +96,12 @@ binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
   from a `pg_dump -n public` (see the migration hand-off / repo history).
 - **`deploy.yml`** — auto-deploys **dev** after *Build and push to Image
   Registry* succeeds for a `v*` tag reachable from `main`; manual dispatch
-  (`target` + `tag`) for prod or a redeploy.
+  (`target` + `tag`) for prod or a redeploy. The dev job also reconciles the
+  private analytics Tailnet key and TLS certificate before application rollout.
 - **`mvn_docker_image.yml`** (existing) — builds the 4 Jib images on a `v*` tag.
 
-See [Private analytics dashboard](analytics-dashboard.md) for the automatic dev
-setup workflow, one-time RBAC grant, required dev secrets and private URL.
+See [Private analytics dashboard](analytics-dashboard.md) for the integrated dev
+setup, one-time RBAC grant, required dev secrets and private URL.
 
 See [Service memory investigation](memory-footprint.md) for measured memory costs
 and the idle-memory changes.

@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.data.service;
 import ch.sthomas.stddivelogger.model.dive.DerivedSiteLocation;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import java.util.Optional;
 
 /** Point-in-polygon lookups backed exclusively by the named maps JDBC connection. */
 @Service
-@ConditionalOnProperty(name = "maps.enabled", havingValue = "true")
 public class MapsBoundaryDataService {
 
     private static final String READ_LOCATION_SQL =

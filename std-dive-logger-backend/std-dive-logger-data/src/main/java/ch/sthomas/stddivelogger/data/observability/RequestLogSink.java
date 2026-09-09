@@ -25,13 +25,7 @@ final class RequestLogSink implements Sink {
     @Override
     public void write(final Precorrelation correlation, final HttpRequest request)
             throws IOException {
-        LOGGER.atInfo()
-                .addKeyValue("log_type", "http_request")
-                .addKeyValue("correlation_id", correlation.getId())
-                .addKeyValue("method", request.getMethod())
-                .addKeyValue("uri", request.getPath())
-                .addKeyValue("request_body", preview(request.getBodyAsString()))
-                .log("HTTP request received");
+        // Successful request-start events are intentionally not emitted.
     }
 
     @Override
@@ -39,6 +33,7 @@ final class RequestLogSink implements Sink {
             final Correlation correlation, final HttpRequest request, final HttpResponse response)
             throws IOException {
         final var status = response.getStatus();
+        if (status < 400) return;
         LOGGER.atLevel(level(status))
                 .addKeyValue("log_type", "http_access")
                 .addKeyValue("correlation_id", correlation.getId())
@@ -46,7 +41,7 @@ final class RequestLogSink implements Sink {
                 .addKeyValue("uri", request.getPath())
                 .addKeyValue("status", status)
                 .addKeyValue("duration_ms", correlation.getDuration().toNanos() / 1_000_000.0)
-                .log("HTTP request completed");
+                .log("HTTP request failed");
     }
 
     static Level level(final int status) {

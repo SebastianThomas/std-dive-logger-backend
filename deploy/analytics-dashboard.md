@@ -15,16 +15,20 @@ warnings from existing workflows; inspect Grafana for those details.
 
 ## Automated dev setup
 
-The `Analytics setup (dev)` GitHub Action runs automatically before each accepted
-**dev** deployment, using the same manifest ref as the release. It can also run
-manually from Actions, with `main` or another ref containing these files. Failed
-setup blocks the dev deployment. It does not provision prod.
+The regular deployment workflow reconciles the private analytics prerequisites
+inside its existing **dev** deployment job, using the same manifest ref as the
+release. Failed setup blocks the application rollout. Production behavior remains
+unchanged because its certificate permissions and secrets have not been provisioned.
 
-Each run updates `analytics-tailnet-authkey`, applies the certificate and waits
-up to five minutes for TLS readiness. It preserves the PVC and registered node
-identity. The existing `letsencrypt-prod` ClusterIssuer performs the DNS challenge
-for `*.ts.homelab.sthomas.ch`; its name is the issuer name, not a prod deployment.
-No DNS-provider credentials belong in this application's GitHub secrets.
+Every accepted dev deployment updates `analytics-tailnet-authkey`, applies the
+certificate and waits up to five minutes for TLS readiness. These operations are
+idempotent and inexpensive when the resources are current. They intentionally are
+not gated on a Git diff: the auth key can rotate and cluster resources can drift
+without a repository change. Running them in the deployment job also avoids a
+second checkout, runner, and Tailnet connection. The PVC and registered node
+identity are preserved. The existing `letsencrypt-prod` ClusterIssuer performs the
+DNS challenge for `*.ts.homelab.sthomas.ch`; its name is the issuer name, not a prod
+deployment. No DNS-provider credentials belong in this application's GitHub secrets.
 
 ### One administrator step
 
@@ -64,9 +68,9 @@ persisted identity. Rotate the GitHub secret before using an expired/revoked key
 for a new registration; setup only stores the key and does not validate it against
 Headscale. Never delete the PVC as part of routine deployment.
 
-After the administrator grant and secret configuration, run **Analytics setup
-(dev)** once or let the next dev deployment call it. The workflow files must first
-be committed/pushed (and included in the release ref used for deployment).
+After the administrator grant and secret configuration, run the next dev deployment.
+The workflow files must first be committed/pushed and included in the release ref
+used for deployment.
 
 Dev URL after deployment:
 `https://std-dive-analytics-dev.ts.homelab.sthomas.ch/ops`
@@ -85,11 +89,11 @@ the renewed certificate.
 
 ## CI Tailnet connection
 
-All workflows use `SebastianThomas/homelab-actions/headscale-connect@v1`, which
+Cluster-facing workflows use `SebastianThomas/homelab-actions/headscale-connect@v1`, which
 now configures TLS compatibility on the runner's daemon. Callers need no local
 TLS workaround, diagnostic steps or logout cleanup. GitHub-hosted runners are
 disposable; keep `TS_AUTHKEY` reusable and ephemeral. Setup/deploy use distinct
 runner hostnames because they are separate jobs within the same workflow run.
 
-The runner uses `TS_AUTHKEY`; the persistent analytics pod uses
-`ANALYTICS_TS_AUTHKEY`. No changes to either secret are needed for the shared fix.
+The deployment runner uses `TS_AUTHKEY`; the persistent analytics pod uses
+`ANALYTICS_TS_AUTHKEY`. Both are reconciled during the same dev deployment job.

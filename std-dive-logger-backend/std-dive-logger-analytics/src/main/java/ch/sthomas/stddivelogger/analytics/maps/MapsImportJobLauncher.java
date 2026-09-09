@@ -19,9 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Service
-@ConditionalOnProperty(
-        name = {"maps.enabled", "maps.import.kubernetes.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(name = "maps.import.kubernetes.enabled", havingValue = "true")
 public class MapsImportJobLauncher {
     private static final Logger LOG = LoggerFactory.getLogger(MapsImportJobLauncher.class);
     private static final DateTimeFormatter NAME_TIME =

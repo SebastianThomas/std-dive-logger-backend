@@ -52,7 +52,6 @@ spec:
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: password } } }
             # Initial rollout deliberately reuses the application DB credential. Replace these
             # three refs with a maps_migrator/maps_reader Secret once CNPG provisions those roles.
-            - { name: MAPS_ENABLED, value: "true" }
             - { name: MAPS_IMPORT_KUBERNETES_ENABLED, value: "true" }
             - { name: MAPS_DATASOURCE_URL,      valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: jdbc-uri } } }
             - { name: MAPS_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-logger-db-app, key: username } } }

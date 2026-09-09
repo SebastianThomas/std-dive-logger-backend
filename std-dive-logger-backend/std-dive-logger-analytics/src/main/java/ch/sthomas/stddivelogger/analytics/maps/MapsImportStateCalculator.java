@@ -14,9 +14,7 @@ import java.util.List;
 
 /** Calculates the durable state of everything that controls an OSM boundary import. */
 @Component
-@ConditionalOnProperty(
-        name = {"maps.enabled", "maps.import.kubernetes.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(name = "maps.import.kubernetes.enabled", havingValue = "true")
 public class MapsImportStateCalculator {
     private static final List<String> CONFIG_FILES =
             List.of("boundaries.lua", "promote-boundaries.sql");

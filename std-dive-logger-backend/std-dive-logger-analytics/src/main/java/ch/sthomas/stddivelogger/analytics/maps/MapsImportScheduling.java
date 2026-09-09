@@ -9,9 +9,7 @@ import org.springframework.stereotype.Component;
 
 /** Scheduled trigger kept separate so disabled environments never queue doomed import runs. */
 @Component
-@ConditionalOnProperty(
-        name = {"maps.enabled", "maps.import.kubernetes.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(name = "maps.import.kubernetes.enabled", havingValue = "true")
 public class MapsImportScheduling {
     private final AnalyticsJobQueue queue;
 

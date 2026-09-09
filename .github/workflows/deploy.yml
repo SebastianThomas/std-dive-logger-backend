@@ -86,19 +86,9 @@ jobs:
             echo "::notice::$REF is not reachable from main - not deploying to dev"
           fi
 
-  analytics-setup:
-    needs: gate
-    if: needs.gate.outputs.proceed == 'true' && needs.gate.outputs.target == 'dev'
-    uses: ./.github/workflows/analytics-setup.yml
-    with:
-      ref: ${{ needs.gate.outputs.ref }}
-    secrets: inherit
-
   deploy:
-    needs: [gate, analytics-setup]
-    if: >-
-      always() && !cancelled() && needs.gate.outputs.proceed == 'true' &&
-      (needs.gate.outputs.target == 'prod' || needs.analytics-setup.result == 'success')
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     environment: ${{ needs.gate.outputs.target }}
     steps:
@@ -130,6 +120,25 @@ jobs:
             vapid-public-key=${{ vars.VAPID_PUBLIC_KEY }}
             vapid-private-key=${{ secrets.VAPID_PRIVATE_KEY }}
             vapid-subject=${{ vars.VAPID_SUBJECT }}
+
+      - name: Reconcile persistent analytics node key
+        if: needs.gate.outputs.target == 'dev'
+        uses: SebastianThomas/homelab-actions/kube-secret@v1
+        with:
+          server: ${{ secrets.KUBE_API }}
+          ca: ${{ secrets.KUBE_CA }}
+          token: ${{ secrets.KUBE_TOKEN }}
+          namespace: std-dive-logger-dev
+          name: analytics-tailnet-authkey
+          literals: |
+            authkey=${{ secrets.ANALYTICS_TS_AUTHKEY }}
+
+      - name: Reconcile analytics certificate and wait for TLS
+        if: needs.gate.outputs.target == 'dev'
+        run: |
+          set -euo pipefail
+          kubectl -n std-dive-logger-dev apply -k std-dive-logger-backend/std-dive-logger-analytics/manifests/setup
+          kubectl -n std-dive-logger-dev wait --for=condition=Ready certificate/analytics-tailnet-tls --timeout=300s
 
       - uses: SebastianThomas/homelab-actions/kube-deploy@v1
         with:
