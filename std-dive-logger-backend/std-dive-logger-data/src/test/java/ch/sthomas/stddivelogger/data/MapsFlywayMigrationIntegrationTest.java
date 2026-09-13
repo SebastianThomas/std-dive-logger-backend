@@ -107,17 +107,18 @@ class MapsFlywayMigrationIntegrationTest {
         jdbc.execute(
                 """
                 CREATE TABLE maps_cgaz_stage.adm0 (
-                    "shapeGroup" text, "shapeName" text,
+                    shapegroup text, shapename text,
                     geometry geometry(MultiPolygon, 4326)
                 );
                 """);
         jdbc.execute(
                 """
                 CREATE TABLE maps_cgaz_stage.adm1 (
-                    "shapeID" text, "shapeGroup" text, "shapeName" text,
+                    shapeid text, shapegroup text, shapename text,
                     geometry geometry(MultiPolygon, 4326)
                 );
                 """);
+        // Column names as ogr2ogr creates them from the GeoPackages: laundered to lower case.
         // Overlaps the OSM boundaries of the fixture below and stretches further east.
         jdbc.update(
                 """

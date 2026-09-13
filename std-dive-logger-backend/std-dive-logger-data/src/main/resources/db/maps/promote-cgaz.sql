@@ -1,4 +1,5 @@
--- Promotes the ogr2pgsql-loaded geoBoundaries CGAZ staging tables into the live maps schema.
+-- Promotes the ogr2ogr-loaded geoBoundaries CGAZ staging tables into the live maps schema.
+-- ogr2ogr launders the GeoPackages' column names to lower case (shapeGroup -> shapegroup).
 --
 -- Executed by MapsImportRunStore#promote in a single transaction once the import Job completed.
 -- Statements are separated by a "--;;" line because they are bound as prepared statements, which
@@ -38,17 +39,17 @@ INSERT INTO maps.admin_boundary (
     geometry, source_timestamp, imported_at, fk_import_run_id
 )
 SELECT 'CGAZ',
-       "shapeGroup",
+       shapegroup,
        2,
-       "shapeName",
-       "shapeGroup",
+       shapename,
+       shapegroup,
        ST_Multi(ST_CollectionExtract(ST_MakeValid(geometry), 3)),
        (SELECT source_timestamp FROM maps.import_run WHERE pk_import_run_id = :importRunId),
        now(),
        :importRunId
 FROM maps_cgaz_stage.adm0
-WHERE "shapeGroup" IS NOT NULL
-  AND "shapeName" IS NOT NULL
+WHERE shapegroup IS NOT NULL
+  AND shapename IS NOT NULL
 ON CONFLICT (admin_level, source_shape_id) WHERE source = 'CGAZ' DO UPDATE SET
     name = EXCLUDED.name,
     iso3166_1_alpha3 = EXCLUDED.iso3166_1_alpha3,
@@ -64,17 +65,17 @@ INSERT INTO maps.admin_boundary (
     geometry, source_timestamp, imported_at, fk_import_run_id
 )
 SELECT 'CGAZ',
-       "shapeID",
+       shapeid,
        4,
-       "shapeName",
-       "shapeGroup",
+       shapename,
+       shapegroup,
        ST_Multi(ST_CollectionExtract(ST_MakeValid(geometry), 3)),
        (SELECT source_timestamp FROM maps.import_run WHERE pk_import_run_id = :importRunId),
        now(),
        :importRunId
 FROM maps_cgaz_stage.adm1
-WHERE "shapeID" IS NOT NULL
-  AND "shapeName" IS NOT NULL
+WHERE shapeid IS NOT NULL
+  AND shapename IS NOT NULL
 ON CONFLICT (admin_level, source_shape_id) WHERE source = 'CGAZ' DO UPDATE SET
     name = EXCLUDED.name,
     iso3166_1_alpha3 = EXCLUDED.iso3166_1_alpha3,
