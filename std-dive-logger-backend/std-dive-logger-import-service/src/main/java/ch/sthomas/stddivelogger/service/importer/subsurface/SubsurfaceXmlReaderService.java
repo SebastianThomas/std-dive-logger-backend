@@ -11,6 +11,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.GasContent;
@@ -41,9 +42,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -284,7 +287,91 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
                 computer.id(),
                 log.start(),
                 log.end(),
-                applyEndOfDiveTotals(getMeasurements(gasChanges, log), cns, otu));
+                applyEndOfDiveTotals(getMeasurements(gasChanges, log), cns, otu),
+                decoSettings(log, computer, cns, otu));
+    }
+
+    private static final Pattern NUMBER = Pattern.compile("[-+]?\\d+(?:\\.\\d+)?");
+    private static final Pattern GRADIENT_FACTORS =
+            Pattern.compile("GF\\s*(\\d+)\\s*/\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VPM =
+            Pattern.compile("VPM[-\\s]?B?(/GFS)?\\s*([+-]\\d+)?", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Every {@code <extradata>} Subsurface kept for this computer (libdivecomputer's "Deco model",
+     * firmware, ...) plus its surface pressure / salinity and the dive's CNS / OTU. The "Deco
+     * model" text ("GF 30/70", "VPM-B +3", ...) is also parsed into the typed fields.
+     */
+    static DecoSettings decoSettings(
+            final SubsurfaceXmlFile.SubsurfaceDiveComputer log,
+            final DiveComputer computer,
+            final @Nullable Double cns,
+            final @Nullable Double otu) {
+        final var details = new DecoSettings.Details().put("model", log.model());
+        String decoModel = null;
+        String firmware = null;
+        for (final var extra : Optional.ofNullable(log.extraData()).orElse(List.of())) {
+            details.put(extra.key(), extra.value());
+            final var key = extra.key() == null ? "" : extra.key().toLowerCase(Locale.ROOT);
+            if (key.replace(" ", "").equals("decomodel")) {
+                decoModel = extra.value();
+            } else if (key.contains("firmware") && firmware == null) {
+                firmware = extra.value();
+            }
+        }
+        String algorithm = null;
+        Integer gfLow = null;
+        Integer gfHigh = null;
+        String conservatism = null;
+        if (decoModel != null) {
+            final var gf = GRADIENT_FACTORS.matcher(decoModel);
+            final var vpm = VPM.matcher(decoModel);
+            if (gf.find()) {
+                algorithm = "Bühlmann ZHL-16C";
+                gfLow = Integer.parseInt(gf.group(1));
+                gfHigh = Integer.parseInt(gf.group(2));
+            } else if (vpm.find()) {
+                algorithm = vpm.group(1) != null ? "VPM-B/GFS" : "VPM-B";
+                conservatism = vpm.group(2);
+            } else {
+                algorithm = DecoSettings.normalize(decoModel);
+            }
+        }
+        final var surface = log.surface() != null ? log.surface().pressure() : null;
+        final var salinity = log.water() != null ? log.water().salinity() : null;
+        details.put("surfacePressure", surface).put("salinity", salinity);
+        final var pressure = leadingNumber(surface);
+        final var density = leadingNumber(salinity);
+        return new DecoSettings(
+                algorithm,
+                computer.manufacturer().name(),
+                gfLow,
+                gfHigh,
+                conservatism,
+                // "0.985 bar" / "985 mbar" - Subsurface writes bar.
+                pressure == null
+                        ? null
+                        : surface != null && surface.toLowerCase(Locale.ROOT).contains("mbar")
+                                ? pressure
+                                : pressure < 10 ? pressure * 1000 : pressure,
+                // Subsurface's salinity is in 0.1 g/l ("10300 g/l" = 1030 kg/m³).
+                density == null ? null : density > 2000 ? density / 10 : density,
+                null,
+                cns,
+                null,
+                otu,
+                null,
+                null,
+                firmware,
+                details.build());
+    }
+
+    private static @Nullable Double leadingNumber(final @Nullable String text) {
+        if (text == null) {
+            return null;
+        }
+        final var matcher = NUMBER.matcher(text);
+        return matcher.find() ? Double.parseDouble(matcher.group()) : null;
     }
 
     /**

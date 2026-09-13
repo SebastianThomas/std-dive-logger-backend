@@ -96,12 +96,15 @@ public class MapsImportJobFactory {
             final String adm1Url,
             final String databaseSecretName) {
         // The GeoPackages declare an undefined SRS although their coordinates are WGS 84 degrees,
-        // so the CRS has to be assigned rather than reprojected.
+        // so the CRS has to be assigned rather than reprojected. The layer name is
+        // schema-qualified instead of -lco SCHEMA: -overwrite only finds (and replaces) a
+        // staging table left over from an earlier failed run under that qualified name, and
+        // OVERWRITE=YES covers creating it regardless.
         final String load =
                 "ogr2ogr -f PostgreSQL \"PG:$DATABASE_URL\" \"$1\" \"$2\" -a_srs EPSG:4326 "
-                        + "-nlt MULTIPOLYGON -nln \"$3\" -lco SCHEMA=maps_cgaz_stage "
-                        + "-lco GEOMETRY_NAME=geometry -lco SPATIAL_INDEX=NONE -overwrite "
-                        + "--config PG_USE_COPY YES";
+                        + "-nlt MULTIPOLYGON -nln \"maps_cgaz_stage.$3\" "
+                        + "-lco GEOMETRY_NAME=geometry -lco SPATIAL_INDEX=NONE -lco OVERWRITE=YES "
+                        + "-overwrite --config PG_USE_COPY YES";
         final var container =
                 new ContainerBuilder()
                         .withName("import-boundaries")

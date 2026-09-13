@@ -21,7 +21,19 @@ public record DiveProfile(
         Instant start,
         Instant end,
         @Nullable List<DiveMeasurementWithId> measurements,
-        @Nullable DiveProfileSummary summary) {
+        @Nullable DiveProfileSummary summary,
+        // How the device computed this profile's deco / CNS / OTU figures, when the source says.
+        @Nullable DecoSettings decoSettings) {
+    public DiveProfile(
+            final long id,
+            final DiveComputer diveComputer,
+            final Instant start,
+            final Instant end,
+            final @Nullable List<DiveMeasurementWithId> measurements,
+            final @Nullable DiveProfileSummary summary) {
+        this(id, diveComputer, start, end, measurements, summary, null);
+    }
+
     public DiveProfile(
             final long id,
             final DiveComputer diveComputer,
@@ -29,13 +41,25 @@ public record DiveProfile(
             final Instant end,
             final List<DiveMeasurementWithId> measurements,
             final boolean includeMeasurements) {
+        this(id, diveComputer, start, end, measurements, includeMeasurements, null);
+    }
+
+    public DiveProfile(
+            final long id,
+            final DiveComputer diveComputer,
+            final Instant start,
+            final Instant end,
+            final List<DiveMeasurementWithId> measurements,
+            final boolean includeMeasurements,
+            final @Nullable DecoSettings decoSettings) {
         this(
                 id,
                 diveComputer,
                 start,
                 end,
                 includeMeasurements ? measurements : null,
-                getSummary(start, end, measurements));
+                getSummary(start, end, measurements),
+                decoSettings);
     }
 
     public static DiveProfileSummary getSummary(

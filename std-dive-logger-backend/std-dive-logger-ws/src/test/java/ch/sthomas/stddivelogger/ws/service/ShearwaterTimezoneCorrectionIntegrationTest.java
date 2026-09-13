@@ -113,5 +113,11 @@ class ShearwaterTimezoneCorrectionIntegrationTest {
         assertThat(profile.start()).isEqualTo(expectedStart);
         assertThat(Objects.requireNonNull(fullDive.site()).zoneId()).isEqualTo("Indian/Maldives");
         assertThat(profile.end()).isEqualTo(expectedStart.plusSeconds(4025));
+        // How the device calculated deco survives the round trip through the database.
+        final var settings = Objects.requireNonNull(profile.decoSettings());
+        assertThat(settings.algorithm()).isEqualTo("Bühlmann ZHL-16C");
+        assertThat(settings.gfLow()).isEqualTo(50);
+        assertThat(settings.gfHigh()).isEqualTo(85);
+        assertThat(settings.endCns()).isEqualTo(6.0);
     }
 }

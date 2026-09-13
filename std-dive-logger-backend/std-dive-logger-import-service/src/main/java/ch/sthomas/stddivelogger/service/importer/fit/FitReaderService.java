@@ -9,6 +9,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSummary;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
@@ -22,6 +23,7 @@ import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
 import ch.sthomas.stddivelogger.service.importer.ParsedImport;
 
 import com.garmin.fit.*;
+import com.garmin.fit.DeviceInfoMesg;
 import com.google.common.base.CaseFormat;
 
 import org.jspecify.annotations.NonNull;
@@ -80,13 +82,20 @@ public class FitReaderService extends BaseReaderService {
                 computer.manufacturer().name().equalsIgnoreCase("Suunto")
                         ? PendingImportSource.FIT_SUUNTO
                         : PendingImportSource.FIT_GARMIN;
-        final var profile =
+        final var parsedProfile =
                 getDiveProfile(
                         messages.getRecordMesgs(),
                         messages.getEventMesgs(),
                         gases,
                         computer,
                         summary);
+        final var profile =
+                new DiveProfileUpload(
+                        parsedProfile.diveComputerId(),
+                        parsedProfile.start(),
+                        parsedProfile.end(),
+                        parsedProfile.measurements(),
+                        getDecoSettings(messages, computer));
 
         final var payload =
                 new PendingImportPayload(
@@ -222,6 +231,94 @@ public class FitReaderService extends BaseReaderService {
                 summary.map(DiveProfileSummary::start).orElseThrow(),
                 summary.map(DiveProfileSummary::end).orElseThrow(),
                 measurements);
+    }
+
+    /**
+     * The dive_settings message (tissue model, gradient factors, water density / type, PO2 limits,
+     * safety stop, ...), the dive summary's CNS / OTU and the device's software version. Every
+     * setting without a typed field is kept in {@code details}.
+     */
+    static @Nullable DecoSettings getDecoSettings(
+            final FitMessages messages, final DiveComputer computer) {
+        final var details = new DecoSettings.Details();
+        String algorithm = null;
+        Integer gfLow = null;
+        Integer gfHigh = null;
+        Double waterDensity = null;
+        if (!messages.getDiveSettingsMesgs().isEmpty()) {
+            final var settings = messages.getDiveSettingsMesgs().getFirst();
+            algorithm =
+                    settings.getModel() != null
+                            ? DecoSettings.normalize(settings.getModel().name())
+                            : null;
+            gfLow = settings.getGfLow() != null ? settings.getGfLow().intValue() : null;
+            gfHigh = settings.getGfHigh() != null ? settings.getGfHigh().intValue() : null;
+            waterDensity = toDouble(settings.getWaterDensity());
+            details.put("name", settings.getName())
+                    .put("model", settings.getModel())
+                    .put("waterType", settings.getWaterType())
+                    .put("po2Warn", settings.getPo2Warn())
+                    .put("po2Critical", settings.getPo2Critical())
+                    .put("po2Deco", settings.getPo2Deco())
+                    .put("safetyStopEnabled", settings.getSafetyStopEnabled())
+                    .put("safetyStopTime", settings.getSafetyStopTime())
+                    .put("bottomDepth", settings.getBottomDepth())
+                    .put("bottomTime", settings.getBottomTime())
+                    .put("lastStopMultiple", settings.getLastStopMultiple())
+                    .put("repeatDiveInterval", settings.getRepeatDiveInterval())
+                    .put("travelGas", settings.getTravelGas())
+                    .put("noFlyTimeMode", settings.getNoFlyTimeMode())
+                    .put("ccrLowSetpoint", settings.getCcrLowSetpoint())
+                    .put("ccrLowSetpointDepth", settings.getCcrLowSetpointDepth())
+                    .put("ccrHighSetpoint", settings.getCcrHighSetpoint())
+                    .put("ccrHighSetpointDepth", settings.getCcrHighSetpointDepth())
+                    .put("gasConsumptionDisplay", settings.getGasConsumptionDisplay());
+        }
+        Double startCns = null;
+        Double endCns = null;
+        Double endOtu = null;
+        if (!messages.getDiveSummaryMesgs().isEmpty()) {
+            final var last = messages.getDiveSummaryMesgs().getLast();
+            startCns = toDouble(last.getStartCns());
+            endCns = toDouble(last.getEndCns());
+            endOtu = toDouble(last.getO2Toxicity());
+            details.put("startN2", last.getStartN2()).put("endN2", last.getEndN2());
+        }
+        final var firmware =
+                messages.getDeviceInfoMesgs().stream()
+                        .map(DeviceInfoMesg::getSoftwareVersion)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .map(String::valueOf)
+                        .orElse(null);
+        if (algorithm == null
+                && gfLow == null
+                && startCns == null
+                && endCns == null
+                && firmware == null
+                && details.isEmpty()) {
+            return null;
+        }
+        return new DecoSettings(
+                algorithm,
+                computer.manufacturer().name(),
+                gfLow,
+                gfHigh,
+                null,
+                null,
+                waterDensity,
+                startCns,
+                endCns,
+                null,
+                endOtu,
+                null,
+                null,
+                firmware,
+                details.build());
+    }
+
+    private static @Nullable Double toDouble(final @Nullable Number value) {
+        return value == null ? null : value.doubleValue();
     }
 
     @Nullable

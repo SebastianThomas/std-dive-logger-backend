@@ -712,7 +712,8 @@ public class ImportService {
                 profileId,
                 ProfileMeasurementMerge.merge(existing, reimported.measurements()),
                 existingStart.isBefore(reimported.start()) ? existingStart : reimported.start(),
-                existingEnd.isAfter(reimported.end()) ? existingEnd : reimported.end());
+                existingEnd.isAfter(reimported.end()) ? existingEnd : reimported.end(),
+                reimported.decoSettings());
 
         final var existingBuddyNames =
                 context.dive().namedBuddies().stream().map(NamedBuddy::name).toList();

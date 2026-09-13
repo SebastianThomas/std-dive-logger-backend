@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayloa
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
@@ -166,7 +167,54 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
         }
         final var end =
                 records.isEmpty() ? start : start.plusMillis(records.getLast().currentTime());
-        return new DiveProfileUpload(computer.id(), start, end, measurements);
+        return new DiveProfileUpload(
+                computer.id(), start, end, measurements, decoSettings(computer, log));
+    }
+
+    /**
+     * Shearwater's deco model numbers, as libdivecomputer's Shearwater parser reads them: 0 is
+     * Bühlmann ZHL-16C with gradient factors, 1 VPM-B, 2 VPM-B/GFS, 3 DCIEM. The raw number is kept
+     * in {@code details} either way.
+     */
+    static DecoSettings decoSettings(final DiveComputer computer, final ShearwaterDiveLog log) {
+        final var model = log.decoModel();
+        final var algorithm =
+                model == null
+                        ? null
+                        : switch (model) {
+                            case 0 -> "Bühlmann ZHL-16C";
+                            case 1 -> "VPM-B";
+                            case 2 -> "VPM-B/GFS";
+                            case 3 -> "DCIEM";
+                            default -> "Shearwater deco model " + model;
+                        };
+        final var vpm = model != null && (model == 1 || model == 2);
+        final var details =
+                new DecoSettings.Details()
+                        .put("decoModel", model)
+                        .put("vpmbConservatism", log.vpmbConservatism())
+                        .put("computerModel", log.computerModel())
+                        .put("computerSoftwareVersion", log.computerSoftwareVersion())
+                        .put("endSurfacePressureMbar", log.endSurfacePressure())
+                        .put("logVersion", log.logVersion())
+                        .put("product", log.product())
+                        .put("features", log.features());
+        return new DecoSettings(
+                algorithm,
+                computer.manufacturer().name(),
+                log.gfMin(),
+                log.gfMax(),
+                vpm && log.vpmbConservatism() != null ? "+" + log.vpmbConservatism() : null,
+                log.startSurfacePressure(),
+                null,
+                log.startCns(),
+                log.endCns(),
+                null,
+                null,
+                null,
+                null,
+                log.computerFirmware(),
+                details.build());
     }
 
     private static @Nullable DiveMode toMode(final String circuitSetting) {

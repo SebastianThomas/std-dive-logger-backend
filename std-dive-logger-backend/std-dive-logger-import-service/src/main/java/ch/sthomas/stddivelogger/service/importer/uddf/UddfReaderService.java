@@ -163,7 +163,8 @@ public class UddfReaderService extends BaseReaderService {
                 diveComputer.id(),
                 uddfFile.exportStart(entry),
                 uddfFile.exportEnd(entry),
-                uddfFile.exportMeasurements(entry));
+                uddfFile.exportMeasurements(entry),
+                uddfFile.exportDecoSettings(entry));
     }
 
     private DiveComputer getOrCreateDiveComputer(final User user, final UddfFile uddfFile) {

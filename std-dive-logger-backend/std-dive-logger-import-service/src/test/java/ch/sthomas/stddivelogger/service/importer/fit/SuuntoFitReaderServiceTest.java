@@ -185,4 +185,53 @@ class SuuntoFitReaderServiceTest {
         // for either dive" is therefore a real format gap, not a fixture that never had any.
         assertThat(true).isTrue();
     }
+
+    /**
+     * Suunto's FIT export writes the gradient factors into dive_settings but no tissue model (nor
+     * any firmware / CNS) - the algorithm is left unknown rather than guessed, since Suunto also
+     * ships RGBM. Merging in the same dive's JSON export (see DecoSettings.merge) fills it in.
+     */
+    @Test
+    void keepsTheGradientFactorsButNotAGuessedAlgorithm() throws IOException {
+        final var settings =
+                Objects.requireNonNull(
+                        parseFixture(FIXTURE_1_DECO)
+                                .payload()
+                                .profiles()
+                                .getFirst()
+                                .decoSettings());
+
+        assertThat(settings.implementation()).isEqualTo("Suunto");
+        assertThat(settings.gfLow()).isEqualTo(50);
+        assertThat(settings.gfHigh()).isEqualTo(85);
+        assertThat(settings.algorithm()).isNull();
+    }
+
+    /**
+     * The Garmin fixtures, for contrast: a full dive_settings message plus summary and firmware.
+     */
+    @Test
+    void keepsAGarminFitsFullDiveSettings() throws IOException {
+        final var settings =
+                Objects.requireNonNull(
+                        parseFixture("36 Malapascua Bugtong Bato.fit")
+                                .payload()
+                                .profiles()
+                                .getFirst()
+                                .decoSettings());
+
+        assertThat(settings.algorithm()).isEqualTo("Bühlmann ZHL-16C");
+        assertThat(settings.implementation()).isEqualTo("Garmin");
+        assertThat(settings.gfLow()).isEqualTo(35);
+        assertThat(settings.gfHigh()).isEqualTo(75);
+        assertThat(settings.waterDensity()).isEqualTo(1025.0);
+        assertThat(settings.startCns()).isEqualTo(3.0);
+        assertThat(settings.endCns()).isEqualTo(7.0);
+        assertThat(settings.endOtu()).isEqualTo(10.0);
+        assertThat(settings.firmware()).isEqualTo("26.3");
+        assertThat(settings.details())
+                .containsEntry("waterType", "SALT")
+                .containsEntry("po2Deco", "1.4")
+                .containsEntry("safetyStopTime", "180");
+    }
 }

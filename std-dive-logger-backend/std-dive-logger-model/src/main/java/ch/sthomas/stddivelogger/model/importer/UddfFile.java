@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
@@ -631,6 +632,78 @@ public record UddfFile(
             return "Unknown Dive Computer";
         }
         return diver.owner.equipment.diveComputer.name;
+    }
+
+    /**
+     * The file's {@code <decomodel>} (algorithm + gradient factors), the dive's surface pressure
+     * and the device's CNS / OTU. UDDF's per-waypoint CNS/OTU are plain numbers that read as 0 when
+     * a waypoint omits them, so the end figures are each series' maximum - both only ever grow
+     * during a dive.
+     */
+    public @Nullable DecoSettings exportDecoSettings(final int entry) {
+        final var details = new DecoSettings.Details();
+        String algorithm = null;
+        Integer gfLow = null;
+        Integer gfHigh = null;
+        if (decoModel != null) {
+            for (final var model : decoModel.entrySet()) {
+                final var value = model.getValue();
+                final var id = value != null && value.id() != null ? value.id() : null;
+                algorithm = DecoSettings.normalize(id != null ? id : model.getKey());
+                details.put("decomodel", id != null ? model.getKey() + ":" + id : model.getKey());
+                if (value != null) {
+                    gfLow = value.gfLow();
+                    gfHigh = value.gfHigh();
+                }
+            }
+        }
+        final var data = profileData;
+        if (data == null || data.repetitionGroup == null) {
+            return null;
+        }
+        final var dive = Objects.requireNonNull(data.repetitionGroup.get(entry)).dive;
+        final Double surfaceMbar =
+                dive.infoBeforeDive != null && dive.infoBeforeDive.surfacepressure > 0
+                        ? dive.infoBeforeDive.surfacepressure / 100.0
+                        : null;
+        final var waypoints = dive.samples.waypoint();
+        Double startCns = null;
+        Double endCns = null;
+        Double startOtu = null;
+        Double endOtu = null;
+        if (!waypoints.isEmpty()) {
+            startCns = (double) waypoints.getFirst().cns();
+            endCns = waypoints.stream().mapToDouble(UddfSample::cns).max().orElse(0);
+            startOtu = waypoints.getFirst().otu();
+            endOtu = waypoints.stream().mapToDouble(UddfSample::otu).max().orElse(0);
+        }
+        String implementation = null;
+        if (diver != null && diver.owner != null && diver.owner.equipment != null) {
+            final var computer = diver.owner.equipment.diveComputer;
+            if (computer != null) {
+                implementation = computer.manufacturer != null ? computer.manufacturer.name : null;
+                details.put("diveComputerModel", computer.model);
+            }
+        }
+        if (generator != null) {
+            details.put("generator", generator.name).put("generatorVersion", generator.version);
+        }
+        return new DecoSettings(
+                algorithm,
+                implementation,
+                gfLow,
+                gfHigh,
+                null,
+                surfaceMbar,
+                null,
+                startCns,
+                endCns,
+                startOtu,
+                endOtu,
+                null,
+                null,
+                null,
+                details.build());
     }
 
     public String exportDiveComputerSerialNumber() {

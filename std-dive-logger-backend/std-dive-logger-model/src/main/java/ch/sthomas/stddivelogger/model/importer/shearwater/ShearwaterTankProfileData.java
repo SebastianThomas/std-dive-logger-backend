@@ -37,7 +37,12 @@ public record ShearwaterTankProfileData(
     public record TankData(
             @JsonProperty("StartPressurePSI") @Nullable String startPressurePsi,
             @JsonProperty("EndPressurePSI") @Nullable String endPressurePsi,
-            @JsonProperty("GasProfile") @Nullable GasProfile gasProfile) {
+            @JsonProperty("GasProfile") @Nullable GasProfile gasProfile,
+            // The surface pressure / water salinity the device dived with - the same on every
+            // tank of a dive. Salinity is a density in kg/m³ (1000 fresh, 1020 EN13319, ~1030
+            // salt).
+            @JsonProperty("SurfacePressureMBar") @Nullable Double surfacePressureMbar,
+            @JsonProperty("Salinity") @Nullable Double salinity) {
 
         /** A tank the diver actually filled in - the app writes a full set of blank ones. */
         public boolean hasPressure() {

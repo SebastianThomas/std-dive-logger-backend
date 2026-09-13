@@ -17,6 +17,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
@@ -986,11 +987,22 @@ public class DiveService {
             final List<DiveMeasurement> newMeasurements,
             final Instant start,
             final Instant end) {
+        return reimportProfile(user, diveId, profileId, newMeasurements, start, end, null);
+    }
+
+    public Dive reimportProfile(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final List<DiveMeasurement> newMeasurements,
+            final Instant start,
+            final Instant end,
+            final @Nullable DecoSettings decoSettings) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);
         }
         return diveDataService.reimportProfileMeasurements(
-                diveId, profileId, newMeasurements, start, end);
+                diveId, profileId, newMeasurements, start, end, decoSettings);
     }
 
     public DiveDataService.ReimportPreviewContext getReimportPreviewContext(

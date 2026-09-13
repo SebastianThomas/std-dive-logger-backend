@@ -1,5 +1,6 @@
 package ch.sthomas.stddivelogger.model.controller.dive.upload;
 
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import org.jspecify.annotations.Nullable;
@@ -9,7 +10,20 @@ import java.time.Instant;
 import java.util.List;
 
 public record DiveProfileUpload(
-        long diveComputerId, Instant start, Instant end, List<DiveMeasurement> measurements) {
+        long diveComputerId,
+        Instant start,
+        Instant end,
+        List<DiveMeasurement> measurements,
+        // How the device computed the profile's deco / CNS / OTU figures, when the source says.
+        @Nullable DecoSettings decoSettings) {
+
+    public DiveProfileUpload(
+            final long diveComputerId,
+            final Instant start,
+            final Instant end,
+            final List<DiveMeasurement> measurements) {
+        this(diveComputerId, start, end, measurements, null);
+    }
 
     /**
      * Returns a copy with only the measurements inside {@code [trimStart, trimEnd]} (either bound
@@ -40,7 +54,7 @@ public record DiveProfileUpload(
                     "Trimming this range would leave fewer than 2 measurements on the profile.");
         }
         return new DiveProfileUpload(
-                diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept);
+                diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept, decoSettings);
     }
 
     /**
@@ -55,6 +69,10 @@ public record DiveProfileUpload(
         }
         final var shiftedMeasurements = measurements.stream().map(m -> m.shifted(offset)).toList();
         return new DiveProfileUpload(
-                diveComputerId, start.plus(offset), end.plus(offset), shiftedMeasurements);
+                diveComputerId,
+                start.plus(offset),
+                end.plus(offset),
+                shiftedMeasurements,
+                decoSettings);
     }
 }

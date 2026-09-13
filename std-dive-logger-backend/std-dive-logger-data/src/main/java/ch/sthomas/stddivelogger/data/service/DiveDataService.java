@@ -16,6 +16,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindows;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -460,10 +461,11 @@ public class DiveDataService {
         final var computer =
                 diveComputerRepository.findById(diveProfileUpload.diveComputerId()).orElseThrow();
         return new DiveProfileEntity(
-                computer,
-                diveProfileUpload.start(),
-                diveProfileUpload.end(),
-                toMeasurementEntities(diveProfileUpload.measurements()));
+                        computer,
+                        diveProfileUpload.start(),
+                        diveProfileUpload.end(),
+                        toMeasurementEntities(diveProfileUpload.measurements()))
+                .mergeDecoSettings(diveProfileUpload.decoSettings());
     }
 
     private List<DiveMeasurementEntity> toMeasurementEntities(
@@ -495,8 +497,25 @@ public class DiveDataService {
             final List<DiveMeasurement> newMeasurements,
             final Instant newStart,
             final Instant newEnd) {
+        return reimportProfileMeasurements(
+                diveId, profileId, newMeasurements, newStart, newEnd, null);
+    }
+
+    /**
+     * As above, also adding what the reimported file says about how the device computed the profile
+     * (see {@link DecoSettings#merge}) to what the profile already has.
+     */
+    @Transactional
+    public Dive reimportProfileMeasurements(
+            final long diveId,
+            final long profileId,
+            final List<DiveMeasurement> newMeasurements,
+            final Instant newStart,
+            final Instant newEnd,
+            final @Nullable DecoSettings newDecoSettings) {
         final var dive = findDiveEntityById(diveId);
         final var profile = findProfileOnDive(dive, profileId);
+        profile.mergeDecoSettings(newDecoSettings);
 
         // Throws on a genuine "different dive"; a whole-hour clock offset is let through (the
         // import layer has already applied the diver's chosen start time by this point).

@@ -186,4 +186,23 @@ class ShearwaterXmlReaderServiceTest {
         assertThat(measurements.get(0).cns()).isNull();
         assertThat(measurements.getLast().cns()).isEqualTo(6.0);
     }
+
+    @Test
+    void keepsHowTheDeviceCalculatedDecoAndCns() throws IOException {
+        final var settings =
+                Objects.requireNonNull(
+                        parseFixture().payload().profiles().getFirst().decoSettings());
+
+        assertThat(settings.algorithm()).isEqualTo("Bühlmann ZHL-16C");
+        assertThat(settings.implementation()).isEqualTo("Shearwater");
+        assertThat(settings.gfLow()).isEqualTo(50);
+        assertThat(settings.gfHigh()).isEqualTo(85);
+        // VPM-B conservatism is a setting of a model this dive didn't use - kept, but only raw.
+        assertThat(settings.conservatism()).isNull();
+        assertThat(settings.details()).containsEntry("vpmbConservatism", "3");
+        assertThat(settings.surfacePressureMbar()).isEqualTo(978.0);
+        assertThat(settings.startCns()).isEqualTo(0.0);
+        assertThat(settings.endCns()).isEqualTo(6.0);
+        assertThat(settings.firmware()).isEqualTo("66");
+    }
 }

@@ -2,6 +2,8 @@ package ch.sthomas.stddivelogger.model.importer.shearwater;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import org.jspecify.annotations.Nullable;
+
 import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
@@ -21,6 +23,54 @@ public record ShearwaterDiveLog(
         double endCns,
         String computerSerial,
         String computerModel,
+        // How the device calculated deco / CNS - see ShearwaterXmlReaderService#decoSettings.
+        @Nullable Integer gfMin,
+        @Nullable Integer gfMax,
+        @Nullable Integer decoModel,
+        @Nullable Integer vpmbConservatism,
+        @Nullable Double startCns,
+        @Nullable String computerFirmware,
+        @Nullable String computerSoftwareVersion,
+        @Nullable Double startSurfacePressure,
+        @Nullable Double endSurfacePressure,
+        @Nullable Integer logVersion,
+        @Nullable Integer product,
+        @Nullable Long features,
         @JacksonXmlElementWrapper(localName = "diveLogRecords")
                 @JacksonXmlProperty(localName = "diveLogRecord")
-                List<ShearwaterDiveLogRecord> diveLogRecords) {}
+                List<ShearwaterDiveLogRecord> diveLogRecords) {
+
+    public ShearwaterDiveLog(
+            final int number,
+            final String startDate,
+            final String endDate,
+            final double maxDepth,
+            final long maxTime,
+            final double endCns,
+            final String computerSerial,
+            final String computerModel,
+            final List<ShearwaterDiveLogRecord> diveLogRecords) {
+        this(
+                number,
+                startDate,
+                endDate,
+                maxDepth,
+                maxTime,
+                endCns,
+                computerSerial,
+                computerModel,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                diveLogRecords);
+    }
+}

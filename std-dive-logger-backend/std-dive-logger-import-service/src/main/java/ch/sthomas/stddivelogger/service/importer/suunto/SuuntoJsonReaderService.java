@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayloa
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
@@ -17,6 +18,7 @@ import ch.sthomas.stddivelogger.model.importer.suunto.SuuntoDiveExport;
 import ch.sthomas.stddivelogger.model.importer.suunto.SuuntoDiving;
 import ch.sthomas.stddivelogger.model.importer.suunto.SuuntoHeader;
 import ch.sthomas.stddivelogger.model.importer.suunto.SuuntoSample;
+import ch.sthomas.stddivelogger.model.importer.suunto.SuuntoTissue;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.BaseReaderService;
@@ -36,6 +38,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -179,7 +182,69 @@ public class SuuntoJsonReaderService extends BaseReaderService {
                                     ? Duration.ofSeconds(sample.timeToSurface())
                                     : null));
         }
-        return new DiveProfileUpload(computer.id(), start, end, measurements);
+        return new DiveProfileUpload(
+                computer.id(), start, end, measurements, decoSettings(computer, header));
+    }
+
+    /**
+     * Header.Diving's algorithm settings and the device's own start / end tissue state. Suunto
+     * reports CNS as a fraction and pressures in pascal; stored as percent and millibar.
+     */
+    static @Nullable DecoSettings decoSettings(
+            final DiveComputer computer, final SuuntoHeader header) {
+        final var diving = header.diving();
+        if (diving == null) {
+            return null;
+        }
+        final var start = diving.startTissue();
+        final var end = diving.endTissue();
+        final var info = header.device().info();
+        final var details =
+                new DecoSettings.Details()
+                        .put("algorithm", diving.algorithm())
+                        .put("conservatism", diving.conservatism())
+                        .put("altitude", diving.altitude())
+                        .put("ascentMode", diving.ascentMode())
+                        .put("deepStopEnabled", diving.deepStopEnabled())
+                        .put("diveMode", diving.diveMode())
+                        .put("lastDecoStopDepth", diving.lastDecoStopDepth())
+                        .put("safetyStopTime", diving.safetyStopTime())
+                        .put("noFlyTime", diving.noFlyTime())
+                        .put("desaturationTime", diving.desaturationTime())
+                        .put("startOlf", start != null ? start.olf() : null)
+                        .put("endOlf", end != null ? end.olf() : null)
+                        .put("hardware", info != null ? info.hw() : null)
+                        .put("bootloader", info != null ? info.bsl() : null);
+        return new DecoSettings(
+                DecoSettings.normalize(diving.algorithm()),
+                computer.manufacturer().name(),
+                percent(diving.minGF()),
+                percent(diving.maxGF()),
+                diving.conservatism(),
+                diving.surfacePressure() != null ? diving.surfacePressure() / 100.0 : null,
+                null,
+                start != null && start.cns() != null ? start.cns() * 100 : null,
+                end != null && end.cns() != null ? end.cns() * 100 : null,
+                start != null ? start.otu() : null,
+                end != null ? end.otu() : null,
+                tissues(start),
+                tissues(end),
+                info != null ? info.sw() : null,
+                details.build());
+    }
+
+    private static @Nullable Integer percent(final @Nullable Double fraction) {
+        return fraction == null ? null : (int) Math.round(fraction * 100);
+    }
+
+    private static DecoSettings.@Nullable TissueLoading tissues(
+            final @Nullable SuuntoTissue tissue) {
+        if (tissue == null || (tissue.nitrogen() == null && tissue.helium() == null)) {
+            return null;
+        }
+        return new DecoSettings.TissueLoading(
+                Objects.requireNonNullElse(tissue.nitrogen(), List.of()),
+                Objects.requireNonNullElse(tissue.helium(), List.of()));
     }
 
     /** GasNumber is 1-based (index into Diving.Gases). Last gas-switch event in a sample wins. */

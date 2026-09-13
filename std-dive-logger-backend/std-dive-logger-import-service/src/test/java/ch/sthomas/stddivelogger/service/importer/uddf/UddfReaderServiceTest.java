@@ -1,10 +1,12 @@
 package ch.sthomas.stddivelogger.service.importer.uddf;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import ch.sthomas.stddivelogger.model.importer.UddfFile;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.importer.ParsedImportResultStreaming;
@@ -18,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Objects;
 
 class UddfReaderServiceTest {
     private static final XmlMapper xmlMapper = ObjectMapperUtils.xmlMapperBuilder(c -> {}).build();
@@ -63,6 +66,26 @@ class UddfReaderServiceTest {
             assertEquals(0, result.parsed().size());
             assertEquals(1, result.errors().size());
             assertTrue(result.errors().getFirst().contains("no-profiledata.uddf"));
+        }
+    }
+
+    @Test
+    void keepsTheFilesDecoModelAndSurfacePressure() throws IOException {
+        try (final var inputStream =
+                UddfReaderServiceTest.class
+                        .getClassLoader()
+                        .getResourceAsStream("shearwater-perdix2.uddf")) {
+            final var settings =
+                    Objects.requireNonNull(
+                            xmlMapper
+                                    .readValue(Objects.requireNonNull(inputStream), UddfFile.class)
+                                    .exportDecoSettings(0));
+
+            assertThat(settings.algorithm()).isEqualTo("Bühlmann ZHL-16C");
+            assertThat(settings.gfLow()).isEqualTo(50);
+            assertThat(settings.gfHigh()).isEqualTo(85);
+            assertThat(settings.surfacePressureMbar()).isEqualTo(978.0);
+            assertThat(settings.details()).containsEntry("decomodel", "buehlmann:zhl16c");
         }
     }
 }

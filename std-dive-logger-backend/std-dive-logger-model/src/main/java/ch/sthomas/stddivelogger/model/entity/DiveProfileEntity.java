@@ -2,13 +2,19 @@ package ch.sthomas.stddivelogger.model.entity;
 
 import static java.time.ZoneOffset.UTC;
 
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.entity.converter.DecoSettingsToStringConverter;
 
 import jakarta.persistence.*;
+import jakarta.persistence.Convert;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -46,6 +52,11 @@ public class DiveProfileEntity {
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = DecoSettingsToStringConverter.class)
+    @Column(name = "deco_settings")
+    private @Nullable DecoSettings decoSettings;
 
     @OneToOne(
             cascade = CascadeType.ALL,
@@ -94,7 +105,21 @@ public class DiveProfileEntity {
                 profileStart.toInstant(),
                 profileEnd.toInstant(),
                 getMeasurementsStream().map(DiveMeasurementEntity::toRecordWithId).toList(),
-                includeMeasurements);
+                includeMeasurements,
+                decoSettings);
+    }
+
+    public @Nullable DecoSettings getDecoSettings() {
+        return decoSettings;
+    }
+
+    /**
+     * Adds what {@code settings} knows to what this profile already has - see {@link
+     * DecoSettings#merge}.
+     */
+    public DiveProfileEntity mergeDecoSettings(final @Nullable DecoSettings settings) {
+        this.decoSettings = DecoSettings.merge(decoSettings, settings);
+        return this;
     }
 
     public DiveProfileEntity setDive(final DiveEntity diveEntity) {

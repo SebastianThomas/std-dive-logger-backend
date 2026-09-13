@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.service.importer.suunto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -581,4 +582,27 @@ class SuuntoJsonReaderServiceTest {
 
     // Brand-detection ("is this even a Suunto export") lives in JsonReaderService now - see
     // JsonReaderServiceTest.
+
+    @Test
+    void keepsHowTheDeviceCalculatedDecoCnsAndOtu() throws IOException {
+        final var settings =
+                Objects.requireNonNull(
+                        parseFixture().payload().profiles().getFirst().decoSettings());
+
+        assertThat(settings.algorithm()).isEqualTo("Bühlmann ZHL-16C");
+        assertThat(settings.implementation()).isEqualTo("Suunto");
+        assertThat(settings.gfLow()).isEqualTo(50);
+        assertThat(settings.gfHigh()).isEqualTo(85);
+        assertThat(settings.surfacePressureMbar()).isEqualTo(985.0);
+        assertThat(settings.startCns()).isEqualTo(0.0);
+        assertThat(settings.endCns()).isCloseTo(6.9, within(0.001));
+        assertThat(settings.endOtu()).isCloseTo(17.79, within(0.01));
+        assertThat(Objects.requireNonNull(settings.endTissues()).nitrogen()).hasSize(16);
+        assertThat(settings.firmware()).isEqualTo("4.0.1131");
+        assertThat(settings.details())
+                .containsEntry("algorithm", "Buhlmann")
+                .containsEntry("ascentMode", "Follow ceiling")
+                .containsEntry("deepStopEnabled", "true")
+                .containsEntry("hardware", "70.6.0");
+    }
 }

@@ -66,7 +66,9 @@ class MapsImportJobFactoryTest {
                         "wget -q -O /work/adm0.gpkg",
                         "load /work/adm1.gpkg globalADM1 adm1",
                         "-a_srs EPSG:4326",
-                        "-lco SCHEMA=maps_cgaz_stage");
+                        "-nln \"maps_cgaz_stage.$3\"",
+                        "-lco OVERWRITE=YES",
+                        "-overwrite");
         assertThat(container.getEnv())
                 .extracting("name")
                 .containsExactly("DATABASE_URL", "ADM0_URL", "ADM1_URL");

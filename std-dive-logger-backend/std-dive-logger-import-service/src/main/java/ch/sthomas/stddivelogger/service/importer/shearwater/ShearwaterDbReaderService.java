@@ -10,6 +10,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
+import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSizeUnit;
@@ -21,6 +22,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterDbDive;
 import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterPnfLog;
+import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterPnfSample;
 import ch.sthomas.stddivelogger.model.importer.shearwater.ShearwaterTankProfileData;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
@@ -49,6 +51,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -241,8 +244,15 @@ public class ShearwaterDbReaderService extends BaseReaderService {
     ParsedImport parseOne(final User user, final String filename, final ShearwaterDbDive dive) {
         final var log = ShearwaterPnfParser.parseCompressed(dive.logData());
         final var computer = getOrCreateComputer(user, dive, log);
-        final var profile = toProfile(computer, log);
         final var tankProfile = parseTankProfile(dive);
+        final var parsedProfile = toProfile(computer, log);
+        final var profile =
+                new DiveProfileUpload(
+                        parsedProfile.diveComputerId(),
+                        parsedProfile.start(),
+                        parsedProfile.end(),
+                        parsedProfile.measurements(),
+                        decoSettings(computer, log, tankProfile));
         final var payload =
                 new PendingImportPayload(
                         List.of(profile),
@@ -290,6 +300,55 @@ public class ShearwaterDbReaderService extends BaseReaderService {
                 "Shearwater",
                 serial,
                 log.model() == null ? "Shearwater" : "Shearwater model " + log.model());
+    }
+
+    /**
+     * What the backup says about how the device calculated. The PNF log's own deco-model / GF
+     * settings aren't decoded (see ShearwaterPnfParser), so the algorithm stays unknown here; the
+     * device's CNS comes from its samples, surface pressure and salinity from the tank data.
+     */
+    static DecoSettings decoSettings(
+            final DiveComputer computer,
+            final ShearwaterPnfLog log,
+            final @Nullable ShearwaterTankProfileData tankProfile) {
+        final var tank =
+                tankProfile == null || tankProfile.tankData() == null
+                        ? null
+                        : tankProfile.tankData().stream()
+                                .filter(
+                                        t ->
+                                                t.surfacePressureMbar() != null
+                                                        || t.salinity() != null)
+                                .findFirst()
+                                .orElse(null);
+        final var cns =
+                log.samples().stream()
+                        .map(ShearwaterPnfSample::cns)
+                        .filter(Objects::nonNull)
+                        .toList();
+        final var details =
+                new DecoSettings.Details()
+                        .put("logVersion", log.logVersion())
+                        .put("model", log.model())
+                        .put("mode", log.mode())
+                        .put("sampleIntervalSeconds", log.sampleInterval().toSeconds())
+                        .put("imperialUnits", log.imperialUnits());
+        return new DecoSettings(
+                null,
+                computer.manufacturer().name(),
+                null,
+                null,
+                null,
+                tank != null ? tank.surfacePressureMbar() : null,
+                tank != null ? tank.salinity() : null,
+                cns.isEmpty() ? null : cns.getFirst(),
+                cns.isEmpty() ? null : cns.getLast(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                details.build());
     }
 
     private static DiveProfileUpload toProfile(
