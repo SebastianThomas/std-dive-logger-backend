@@ -15,6 +15,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindows;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -519,8 +520,10 @@ public class DiveDataService {
         final var newActiveStart = ReimportSimilarityCheck.activeStart(newMeasurements, newStart);
         final var eventShift = Duration.between(oldActiveStart, newActiveStart);
 
-        // Replace all existing rows atomically: delete then insert via repository,
-        // completely bypassing the entity's managed measurements collection (no orphanRemoval).
+        // Replace all existing rows atomically: delete then insert via repository. The old rows
+        // must leave the profile's cascading collection first - otherwise the flush below
+        // re-persists them and the reimport silently appends a second copy of the profile.
+        profile.clearMeasurements();
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
         diveMeasurementRepository.flush();
         profile.replaceMeasurements(toMeasurementEntities(newMeasurements), newStart, newEnd);
@@ -534,6 +537,8 @@ public class DiveDataService {
         final var userId = dive.getUserEntity().getId();
         diveRepository.save(dive);
         entityManager.flush();
+        // Stored segments index into the replaced measurements - recompute them.
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
         // Auto-tags via the bulk-delete-then-reinsert path (see refreshAutoTags), not the in-entity
         // collection edit - the latter's insert-before-delete flush ordering trips the (dive, tag)
         // unique constraint when a reimport leaves an existing auto-tag still valid.
@@ -786,7 +791,10 @@ public class DiveDataService {
                 updateBody.leaderBuddyDiveId(),
                 updateBody.leaderSelfExplicit(),
                 updateBody.teamTerminology());
-        return toRecord(diveRepository.save(existingDive));
+        final var saved = diveRepository.save(existingDive);
+        // A computation already running for this dive must not record it as done.
+        analyticsDataService.markDiveChanged(saved.getId());
+        return toRecord(saved);
     }
 
     /**
@@ -2075,6 +2083,17 @@ public class DiveDataService {
                         .map(DiveProfileEntity::getStart)
                         .min(Instant::compareTo)
                         .orElseThrow();
+        // Aligning only some profiles: the cylinder windows taken from a moved profile's gas
+        // switches must move with that profile instead of staying pinned to the dive's clock.
+        if (profiles.size() != dive.getProfiles().size()) {
+            profiles.forEach(
+                    p ->
+                            moveUsageWindowsWithProfile(
+                                    dive,
+                                    p,
+                                    oldStart,
+                                    Duration.between(p.getStart(), alignToManual)));
+        }
         profiles.forEach(p -> p.alignProfileManual(alignToManual));
         dive.updateDiveSummary(
                 profiles.size() == dive.getProfiles().size()
@@ -2082,6 +2101,28 @@ public class DiveDataService {
                         : Duration.ZERO);
         analyticsDataService.invalidateAnalyticsForDive(diveId);
         return toRecord(diveRepository.save(dive));
+    }
+
+    /**
+     * Moves the cylinder usage windows that start at one of {@code profile}'s gas switches by
+     * {@code delta} (see {@link CylinderUsageWindows}); the windows stay relative to {@code
+     * diveStart}, which updateDiveSummary then rebases onto the dive's new start as usual.
+     */
+    private static void moveUsageWindowsWithProfile(
+            final DiveEntity dive,
+            final DiveProfileEntity profile,
+            final Instant diveStart,
+            final Duration delta) {
+        final var configuration = dive.getConfiguration();
+        if (configuration == null || delta.isZero()) {
+            return;
+        }
+        final var measurements = profile.toMeasurementRecords();
+        configuration.shiftUsageWindows(
+                (gas, window) ->
+                        CylinderUsageWindows.startsAtGasSwitch(
+                                gas, window, diveStart, measurements),
+                delta);
     }
 
     @Transactional
@@ -2096,6 +2137,20 @@ public class DiveDataService {
                         .map(DiveProfileEntity::getStart)
                         .min(Instant::compareTo)
                         .orElseThrow();
+        if (profiles.size() != dive.getProfiles().size()) {
+            profiles.forEach(
+                    p ->
+                            moveUsageWindowsWithProfile(
+                                    dive,
+                                    p,
+                                    oldStart,
+                                    Duration.between(
+                                            p.getStart(),
+                                            diveProfileHistoryRepository
+                                                    .findById(p.getId())
+                                                    .orElseThrow()
+                                                    .getOriginalStart())));
+        }
         profiles.forEach(
                 p ->
                         p.alignProfileManual(

@@ -2,6 +2,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.sthomas.stddivelogger.data.repository.CcrUnitRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerManufacturerRepository;
@@ -36,6 +37,7 @@ import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
+import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.service.DiveService;
 
@@ -197,6 +199,32 @@ class DiveConfigurationUpdateIntegrationTest {
                 Gas.AIR,
                 CylinderRole.OC,
                 List.of());
+    }
+
+    @Test
+    void previewingCylinderConsumptionUsesTheGivenCylindersWithoutSavingThem() {
+        final var preview =
+                diveService.previewCylinderConsumption(
+                        userEntity.toRecord(), diveId, List.of(cylinder(12.0, "preview")));
+
+        // 150 bar drop x 12 L - the edited cylinder, not the saved (empty) configuration.
+        assertThat(preview.ocConsumedLiters()).isNotNull().isBetween(1500.0, 2100.0);
+        final var reloaded = diveService.getDiveById(userEntity.toRecord(), diveId).orElseThrow();
+        assertThat(Objects.requireNonNull(reloaded.configuration()).cylinders()).isEmpty();
+    }
+
+    @Test
+    void anotherUserCannotPreviewTheCylinderConsumptionOfSomeoneElsesDive() {
+        final var other =
+                userRepository
+                        .save(new UserEntity("config-it-other@test.ch", "hash", "IT other"))
+                        .toRecord();
+
+        assertThatThrownBy(
+                        () ->
+                                diveService.previewCylinderConsumption(
+                                        other, diveId, List.of(cylinder(12.0, ""))))
+                .isInstanceOf(ForbiddenException.class);
     }
 
     @Test

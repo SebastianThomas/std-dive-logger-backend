@@ -4,6 +4,8 @@ import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.dive.DiveSiteWithDives;
 import ch.sthomas.stddivelogger.model.controller.dive.UploadDiveBody;
@@ -13,6 +15,7 @@ import ch.sthomas.stddivelogger.model.dive.conditions.SiteVisibilityLog;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
@@ -51,6 +54,7 @@ import java.text.DecimalFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -112,6 +116,15 @@ public class DiveService {
             final User user, final String query, final boolean includeReader, final int page) {
         return diveDataService.searchDives(
                 user.id(), query, PageRequest.of(page, SIMPLIFIED_DIVE_PAGE_SIZE));
+    }
+
+    /** See {@code DiveController#previewCylinderConsumption}. */
+    public CylinderConsumptionResult previewCylinderConsumption(
+            final User user, final long id, final List<DiveConfigurationCylinder> cylinders) {
+        final var dive =
+                getDiveById(user, id)
+                        .orElseThrow(() -> new NoSuchElementException("No dive " + id));
+        return CylinderConsumptionCalculator.calculate(dive.profiles(), cylinders);
     }
 
     public Optional<Dive> getDiveById(final User user, final long id) {

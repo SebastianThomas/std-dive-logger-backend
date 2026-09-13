@@ -28,7 +28,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/** Shearwater XML records UTC; the site zone only controls local display. */
+/**
+ * Shearwater's exports carry the dive computer's local wall-clock reading with no timezone (see
+ * ImportService.SOURCES_WITH_UNKNOWN_TIMEZONE), so a commit must re-interpret it in the dive site's
+ * real zone rather than keep the UTC placeholder the readers parse it as.
+ */
 @org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(properties = "scheduling.enabled=false")
 @Testcontainers
@@ -80,7 +84,7 @@ class ShearwaterTimezoneCorrectionIntegrationTest {
     }
 
     @Test
-    void shearwaterXmlPreservesUtcAndExposesTheSiteZone() throws IOException {
+    void shearwaterXmlImportIsCorrectedToTheDiveSiteRealTimezone() throws IOException {
         final var user = createTestUser("shearwater-tz-it-1@test.ch");
         final var staged =
                 importService.stageUpload(user, List.of(fixture("shearwater-perdix2-native.xml")));
@@ -103,7 +107,9 @@ class ShearwaterTimezoneCorrectionIntegrationTest {
         final var fullDive = diveService.getDiveById(user, committedDive.id()).orElseThrow();
         final var profile = fullDive.profiles().getFirst();
 
-        final var expectedStart = Instant.parse("2026-08-22T10:13:49Z");
+        // The raw startDate "8/22/2026 10:13:49 AM" is Malé wall-clock time (a fixed UTC+5, no-DST
+        // zone, so the expectation never depends on the test's own run date).
+        final var expectedStart = Instant.parse("2026-08-22T05:13:49Z");
         assertThat(profile.start()).isEqualTo(expectedStart);
         assertThat(Objects.requireNonNull(fullDive.site()).zoneId()).isEqualTo("Indian/Maldives");
         assertThat(profile.end()).isEqualTo(expectedStart.plusSeconds(4025));

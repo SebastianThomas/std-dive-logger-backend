@@ -22,6 +22,7 @@ import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder;
 
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,12 @@ public class MapsImportJobFactory {
                     "std-dive-logger/job-kind", "maps-import");
 
     public static final String KIND_LABEL = "std-dive-logger/import-source";
+
+    /** How long a successful import Job (and its pod) stays around for inspection. */
+    public static final Duration COMPLETED_RETENTION = Duration.ofHours(24);
+
+    /** How long a failed import Job (and its pod, with its logs) stays around for debugging. */
+    public static final Duration FAILED_RETENTION = Duration.ofHours(72);
 
     private static final VolumeMount WORK_MOUNT =
             new VolumeMountBuilder().withName("work").withMountPath("/work").build();
@@ -140,7 +147,10 @@ public class MapsImportJobFactory {
                 .withNewSpec()
                 .withBackoffLimit(1)
                 .withActiveDeadlineSeconds(7200L)
-                .withTtlSecondsAfterFinished(86400)
+                // Kubernetes can't tell Complete from Failed here, so this is the failed-Job
+                // retention; MapsImportJobLauncher deletes completed Jobs after
+                // COMPLETED_RETENTION.
+                .withTtlSecondsAfterFinished((int) FAILED_RETENTION.toSeconds())
                 .withNewTemplate()
                 .withNewMetadata()
                 .withLabels(labels)

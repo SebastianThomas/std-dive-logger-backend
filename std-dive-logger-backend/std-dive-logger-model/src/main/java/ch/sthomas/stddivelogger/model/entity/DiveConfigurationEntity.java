@@ -191,4 +191,14 @@ public class DiveConfigurationEntity {
     public void rebaseUsageWindows(final java.time.Duration delta) {
         cylinders.forEach(c -> c.rebaseUsageWindows(delta));
     }
+
+    /** See {@link DiveConfigurationCylinderEntity#shiftUsageWindows}. */
+    public void shiftUsageWindows(
+            final java.util.function.BiPredicate<
+                            ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas,
+                            ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow>
+                    which,
+            final java.time.Duration delta) {
+        cylinders.forEach(c -> c.shiftUsageWindows(which, delta));
+    }
 }

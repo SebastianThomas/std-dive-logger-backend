@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -67,6 +70,7 @@ class ReimportProfileIntegrationTest {
     }
 
     @Autowired private ImportService importService;
+    @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private DiveService diveService;
     @Autowired private UserRepository userRepository;
 
@@ -140,10 +144,144 @@ class ReimportProfileIntegrationTest {
     }
 
     /**
-     * A Shearwater native XML import (naive-UTC clock, corrected to the dive site's real zone at
-     * commit time) reimported with the UDDF export of the same dive (also naive-UTC): the profiles
-     * match apart from a whole-hour clock gap, so instead of rejecting it the diver is asked which
-     * start time to keep. EXISTING keeps the corrected time; NEW adopts the file's raw clock.
+     * Refining a Shearwater import with the same dive's other Shearwater export (UDDF first, then
+     * the native XML with the better data) must not move the profile: both files carry the same
+     * timezone-less wall clock, and the reimport is corrected to the dive site's zone exactly like
+     * the original commit was.
+     */
+    @Test
+    void refiningAShearwaterUddfImportWithTheNativeXmlKeepsTheCorrectedStart() throws IOException {
+        final var user = createTestUser("reimport-tz-it-0@test.ch");
+        final var staged =
+                importService.stageUpload(user, List.of(fixture("shearwater-perdix2.uddf")));
+        final var committedDive =
+                importService.commit(
+                        user,
+                        staged.staged().getFirst().id(),
+                        new PendingImportCommitRequest(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "Male, Maldives 0",
+                                new Location(4.1755, 73.5093),
+                                null,
+                                null));
+        final var profile =
+                diveService
+                        .getDiveById(user, committedDive.id())
+                        .orElseThrow()
+                        .profiles()
+                        .getFirst();
+        // Male, Maldives - always UTC+5, no DST: the raw "10:13:49" wall clock is 05:13:49Z.
+        final var correctedStart = Instant.parse("2026-08-22T05:13:49Z");
+        assertThat(profile.start()).isEqualTo(correctedStart);
+
+        final var preview =
+                importService.previewReimportProfile(
+                        user,
+                        committedDive.id(),
+                        profile.id(),
+                        0,
+                        fixture("shearwater-perdix2-native.xml"));
+        assertThat(preview.conflicts().clockOffset()).isNull();
+
+        final var refined =
+                importService.commitReimportProfile(
+                        user,
+                        committedDive.id(),
+                        profile.id(),
+                        preview.pendingImportId(),
+                        new ReimportResolution(null, null, null, null, null));
+        assertThat(refined.profiles().getFirst().start()).isEqualTo(correctedStart);
+        // The refine replaces the rows: no copy of the UDDF samples may survive next to the XML's.
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                """
+                                SELECT count(*) - count(DISTINCT elapsed) FROM t_dive_measurements
+                                WHERE fk_dive_profile_id = ?
+                                """,
+                                Long.class,
+                                profile.id()))
+                .isZero();
+    }
+
+    /**
+     * Refining merges instead of replacing, so which of the two Shearwater exports came first
+     * doesn't matter: UDDF-then-XML and XML-then-UDDF end up with identical measurements, carrying
+     * everything either file has (e.g. the XML's real per-sample TTS).
+     */
+    @Test
+    void refiningWithTheOtherShearwaterExportGivesTheSameProfileInEitherOrder() throws IOException {
+        final var uddfFirst =
+                importAndRefine(
+                        "reimport-order-1@test.ch",
+                        "shearwater-perdix2.uddf",
+                        "shearwater-perdix2-native.xml",
+                        "Male, Maldives order 1");
+        final var xmlFirst =
+                importAndRefine(
+                        "reimport-order-2@test.ch",
+                        "shearwater-perdix2-native.xml",
+                        "shearwater-perdix2.uddf",
+                        "Male, Maldives order 2");
+
+        assertThat(uddfFirst).isEqualTo(xmlFirst);
+        assertThat(uddfFirst).anyMatch(m -> m.timeToSurface() != null);
+        assertThat(uddfFirst).extracting(DiveMeasurement::time).doesNotHaveDuplicates();
+    }
+
+    private List<DiveMeasurement> importAndRefine(
+            final String email, final String first, final String second, final String siteName)
+            throws IOException {
+        // Own display name per user - t_users.name is unique, and this test creates two.
+        final var user = userRepository.save(new UserEntity(email, "hash", email)).toRecord();
+        final var staged = importService.stageUpload(user, List.of(fixture(first)));
+        final var dive =
+                importService.commit(
+                        user,
+                        staged.staged().getFirst().id(),
+                        new PendingImportCommitRequest(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                siteName,
+                                new Location(4.1755, 73.5093),
+                                null,
+                                null));
+        final var profileId =
+                diveService.getDiveById(user, dive.id()).orElseThrow().profiles().getFirst().id();
+        final var preview =
+                importService.previewReimportProfile(
+                        user, dive.id(), profileId, 0, fixture(second));
+        importService.commitReimportProfile(
+                user,
+                dive.id(),
+                profileId,
+                preview.pendingImportId(),
+                new ReimportResolution(null, null, null, null, null));
+        return Objects.requireNonNull(
+                        diveService
+                                .getDiveById(user, dive.id())
+                                .orElseThrow()
+                                .profiles()
+                                .getFirst()
+                                .measurements())
+                .stream()
+                .map(DiveMeasurementWithId::measurement)
+                .toList();
+    }
+
+    /**
+     * A dive whose Shearwater profile still sits on the raw, uncorrected clock (imported while the
+     * timezone correction was skipped) refined with the same dive's export: the corrected reimport
+     * matches apart from a whole-hour gap, so instead of rejecting it the diver is asked which
+     * start time to keep. EXISTING keeps the dive's current clock; NEW adopts the corrected one.
      */
     @Test
     void reimportingAcrossAWholeHourClockOffsetAsksWhichTimeToKeep() throws IOException {
@@ -178,15 +316,15 @@ class ReimportProfileIntegrationTest {
         final var correctedStart = Instant.parse("2026-08-22T05:13:49Z");
         final var rawFileStart = Instant.parse("2026-08-22T10:13:49Z");
 
-        diveService.setDiveStartTime(
-                user, committedDive.id(), Instant.parse("2026-08-22T05:13:49Z"));
+        // Puts the dive back on the raw file clock, like a dive imported before the correction.
+        diveService.setDiveStartTime(user, committedDive.id(), rawFileStart);
         final var preview =
                 importService.previewReimportProfile(
                         user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));
         final var clockOffset = Objects.requireNonNull(preview.conflicts().clockOffset());
-        assertThat(clockOffset.existingStart()).isEqualTo(correctedStart);
-        assertThat(clockOffset.reimportedStart()).isEqualTo(rawFileStart);
-        assertThat(clockOffset.offsetMinutes()).isEqualTo(300);
+        assertThat(clockOffset.existingStart()).isEqualTo(rawFileStart);
+        assertThat(clockOffset.reimportedStart()).isEqualTo(correctedStart);
+        assertThat(Math.abs(clockOffset.offsetMinutes())).isEqualTo(300);
 
         // No choice for the offset -> refused, same as any other unresolved conflict.
         assertThatThrownBy(
@@ -200,7 +338,7 @@ class ReimportProfileIntegrationTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("start time");
 
-        // EXISTING: the reimported profile is re-aligned onto the dive's corrected clock.
+        // EXISTING: the reimported profile is re-aligned onto the dive's current clock.
         final var kept =
                 importService.commitReimportProfile(
                         user,
@@ -209,11 +347,11 @@ class ReimportProfileIntegrationTest {
                         preview.pendingImportId(),
                         new ReimportResolution(
                                 null, null, null, null, ReimportResolution.Choice.EXISTING));
-        assertThat(kept.profiles().getFirst().start()).isEqualTo(correctedStart);
+        assertThat(kept.profiles().getFirst().start()).isEqualTo(rawFileStart);
     }
 
     @Test
-    void reimportingAcrossAWholeHourClockOffsetCanAdoptTheUploadedFilesClock() throws IOException {
+    void reimportingAcrossAWholeHourClockOffsetCanAdoptTheCorrectedClock() throws IOException {
         final var user = createTestUser("reimport-tz-it-2@test.ch");
         final var staged =
                 importService.stageUpload(user, List.of(fixture("shearwater-perdix2-native.xml")));
@@ -241,11 +379,12 @@ class ReimportProfileIntegrationTest {
                         .id();
 
         diveService.setDiveStartTime(
-                user, committedDive.id(), Instant.parse("2026-08-22T05:13:49Z"));
+                user, committedDive.id(), Instant.parse("2026-08-22T10:13:49Z"));
         final var preview =
                 importService.previewReimportProfile(
                         user, committedDive.id(), profileId, 0, fixture("shearwater-perdix2.uddf"));
 
+        // NEW: how a dive stuck on the raw clock gets fixed - it adopts the corrected start.
         final var updated =
                 importService.commitReimportProfile(
                         user,
@@ -255,7 +394,7 @@ class ReimportProfileIntegrationTest {
                         new ReimportResolution(
                                 null, null, null, null, ReimportResolution.Choice.NEW));
         assertThat(updated.profiles().getFirst().start())
-                .isEqualTo(Instant.parse("2026-08-22T10:13:49Z"));
+                .isEqualTo(Instant.parse("2026-08-22T05:13:49Z"));
     }
 
     @Test

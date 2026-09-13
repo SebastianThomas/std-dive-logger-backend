@@ -170,7 +170,7 @@ public class AnalyticsService {
                         JOB_MODULE, JOB_NAME, ANALYTICS_VERSION, MAX_DIVES_PER_RUN);
         final var result =
                 candidates.dives().stream()
-                        .map(this::computeAnalytics)
+                        .map(dive -> computeAnalytics(dive, candidates.generationOf(dive.id())))
                         .reduce(AnalyticsResult::merge)
                         .orElse(new AnalyticsResult(true, List.of()));
         if (!candidates.hasMore()) {
@@ -187,7 +187,7 @@ public class AnalyticsService {
                         false, List.of("There are more than " + MAX_DIVES_PER_RUN + " dives.")));
     }
 
-    private AnalyticsResult computeAnalytics(final Dive dive) {
+    private AnalyticsResult computeAnalytics(final Dive dive, final long readGeneration) {
         // Delete-and-replace: otherwise a recompute (e.g. after a version bump) would just pile
         // new segment/depth-variance rows up next to the stale ones instead of replacing them.
         analyticsDataService.deleteExistingSegmentsAndAnalytics(dive.id());
@@ -200,8 +200,17 @@ public class AnalyticsService {
         // calculated values, not just the one that logged it).
         final var gasResults = DiveGasCalculator.calculate(dive.profiles());
         analyticsDataService.saveGasResults(gasResults);
-        analyticsDataService.recordJobState(
-                dive.id(), JOB_MODULE, JOB_NAME, ANALYTICS_VERSION, Instant.now());
+        if (!analyticsDataService.recordJobStateIfUnchanged(
+                dive.id(),
+                readGeneration,
+                JOB_MODULE,
+                JOB_NAME,
+                ANALYTICS_VERSION,
+                Instant.now())) {
+            logger.info(
+                    "Dive {} changed while computing its analytics; not marking it computed",
+                    dive.id());
+        }
         return new AnalyticsResult(
                 true,
                 List.of(

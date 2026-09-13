@@ -12,6 +12,7 @@ import ch.sthomas.stddivelogger.model.analytics.DiveProfileRatesResponse;
 import ch.sthomas.stddivelogger.model.analytics.DiveProfileSegmenter;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegment;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfileSegmentWithId;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsDepthVarianceEntity;
 import ch.sthomas.stddivelogger.model.entity.AnalyticsJobStateEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
@@ -19,12 +20,15 @@ import ch.sthomas.stddivelogger.model.entity.DiveProfileSegmentEntity;
 import ch.sthomas.stddivelogger.model.entity.gas.DiveMeasurementGasEntity;
 import ch.sthomas.stddivelogger.model.user.User;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -75,28 +79,35 @@ public class AnalyticsDataService {
                                 diveProfileRepository
                                         .findById(segment.profile().id())
                                         .orElseThrow()));
-        return toSegmentWithId(entity, true);
+        return toSegmentWithId(
+                entity,
+                segment.measurements() != null
+                        ? segment.measurements()
+                        : slice(
+                                entity,
+                                diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(
+                                        entity.getProfile().getId())));
     }
 
-    private DiveProfileSegmentWithId toSegmentWithId(
-            final DiveProfileSegmentEntity entity, final boolean includeMeasurements) {
-        final var profile = entity.getProfile();
-        final var firstIdx = entity.getFirstMeasurementIdx();
-        final var lastIdx = entity.getLastMeasurementIdx();
-        final var allMeasurements =
-                diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(profile.getId());
-        final var measurements =
-                IntStream.rangeClosed(firstIdx, lastIdx)
-                        .mapToObj(allMeasurements::get)
-                        .map(DiveMeasurementEntity::toRecordWithId)
-                        .toList();
+    private static DiveProfileSegmentWithId toSegmentWithId(
+            final DiveProfileSegmentEntity entity,
+            final @Nullable List<DiveMeasurementWithId> segmentMeasurements) {
         return new DiveProfileSegmentWithId(
                 new DiveProfileSegment(
-                        profile.toRecord(false),
-                        firstIdx,
+                        entity.getProfile().toRecord(false),
+                        entity.getFirstMeasurementIdx(),
                         entity.getType(),
-                        includeMeasurements ? measurements : null),
+                        segmentMeasurements),
                 entity.getId());
+    }
+
+    private static List<DiveMeasurementWithId> slice(
+            final DiveProfileSegmentEntity entity, final List<DiveMeasurementEntity> all) {
+        return IntStream.rangeClosed(
+                        entity.getFirstMeasurementIdx(), entity.getLastMeasurementIdx())
+                .mapToObj(all::get)
+                .map(DiveMeasurementEntity::toRecordWithId)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -107,11 +118,18 @@ public class AnalyticsDataService {
                         module, jobName, version, PageRequest.of(0, limit + RECOMPUTE_OVERFETCH));
         final var hasMore = ids.size() > limit;
         final var pageIds = hasMore ? ids.subList(0, limit) : ids;
+        // Read before the dives themselves: a change landing in between then counts as "after".
+        final Map<Long, Long> generations = new HashMap<>();
+        pageIds.forEach(
+                id ->
+                        diveRepository
+                                .findAnalyticsGeneration(id)
+                                .ifPresent(g -> generations.put(id, g)));
         final var dives =
                 diveRepository.findAllById(pageIds).stream()
                         .map(d -> d.toRecord(storageService.baseUrl(), false))
                         .toList();
-        return new DivesToRecompute(dives, hasMore);
+        return new DivesToRecompute(dives, generations, hasMore);
     }
 
     @Transactional
@@ -132,8 +150,45 @@ public class AnalyticsDataService {
      */
     @Transactional
     public void invalidateAnalyticsForDive(final long diveId) {
+        // Bumped first: the dive row is then locked before the job-state row, the same order
+        // recordJobStateIfUnchanged takes them in, so the two can't deadlock.
+        diveRepository.bumpAnalyticsGeneration(diveId);
         deleteExistingSegmentsAndAnalytics(diveId);
         analyticsJobStateRepository.deleteByDive_Id(diveId);
+    }
+
+    /**
+     * Records that a dive was saved. Doesn't schedule a recompute on its own (a plain save leaves
+     * the profiles the analytics are computed from untouched), but a computation already running
+     * for this dive won't be recorded as done - see {@link #recordJobStateIfUnchanged}.
+     */
+    @Transactional
+    public void markDiveChanged(final long diveId) {
+        diveRepository.bumpAnalyticsGeneration(diveId);
+    }
+
+    /**
+     * {@link #recordJobState}, unless the dive changed since the job read it at {@code
+     * readGeneration} (a save, or an attached/reimported/trimmed/aligned profile) - recording the
+     * stale result would mark the dive done and its analytics would never catch up. The dive row
+     * stays locked until the state is written, so no change can slip in between check and write.
+     *
+     * @return whether the state was recorded
+     */
+    @Transactional
+    public boolean recordJobStateIfUnchanged(
+            final long diveId,
+            final long readGeneration,
+            final String module,
+            final String jobName,
+            final long version,
+            final Instant computedAt) {
+        final var current = diveRepository.lockAnalyticsGeneration(diveId);
+        if (current.isEmpty() || current.get() != readGeneration) {
+            return false;
+        }
+        recordJobState(diveId, module, jobName, version, computedAt);
+        return true;
     }
 
     @Transactional
@@ -207,7 +262,23 @@ public class AnalyticsDataService {
                             + id
                             + ", maybe check again later if this dive is new.");
         }
-        return segments.stream().map(s -> toSegmentWithId(s, includeMeasurements)).toList();
+        if (!includeMeasurements) {
+            return segments.stream().map(s -> toSegmentWithId(s, null)).toList();
+        }
+        // One load per profile, not per segment - a profile has dozens of segments.
+        final Map<Long, List<DiveMeasurementEntity>> measurementsByProfile = new HashMap<>();
+        return segments.stream()
+                .map(
+                        s ->
+                                toSegmentWithId(
+                                        s,
+                                        slice(
+                                                s,
+                                                measurementsByProfile.computeIfAbsent(
+                                                        s.getProfile().getId(),
+                                                        diveMeasurementRepository
+                                                                ::findAllByProfile_IdOrderByElapsedAsc))))
+                .toList();
     }
 
     @Transactional(readOnly = true)

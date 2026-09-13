@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public record DiveProfile(
         long id,
@@ -60,11 +61,38 @@ public record DiveProfile(
                 null,
                 null,
                 null,
-                measurements.getFirst().measurement().n2(),
-                measurements.getLast().measurement().n2(),
-                measurements.getLast().measurement().o2Tox(),
-                measurements.getFirst().measurement().cns(),
-                measurements.getLast().measurement().cns());
+                // First/last sample that carries the value, not the literal first/last sample:
+                // devices log CNS/GF99/OTU sparser than depth, and a missing reading on the very
+                // last sample must not drop the whole end figure.
+                firstPresent(measurements, DiveMeasurement::n2),
+                lastPresent(measurements, DiveMeasurement::n2),
+                lastPresent(measurements, DiveMeasurement::o2Tox),
+                firstPresent(measurements, DiveMeasurement::cns),
+                lastPresent(measurements, DiveMeasurement::cns));
+    }
+
+    private static @Nullable Double firstPresent(
+            final List<DiveMeasurementWithId> measurements,
+            final Function<DiveMeasurement, @Nullable Double> value) {
+        for (final var measurement : measurements) {
+            final var v = value.apply(measurement.measurement());
+            if (v != null) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable Double lastPresent(
+            final List<DiveMeasurementWithId> measurements,
+            final Function<DiveMeasurement, @Nullable Double> value) {
+        for (var i = measurements.size() - 1; i >= 0; i--) {
+            final var v = value.apply(measurements.get(i).measurement());
+            if (v != null) {
+                return v;
+            }
+        }
+        return null;
     }
 
     @Override

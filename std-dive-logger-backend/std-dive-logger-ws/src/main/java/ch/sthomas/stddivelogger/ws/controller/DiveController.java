@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.ws.controller;
 import static org.springframework.http.MediaType.*;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
+import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionResult;
 import ch.sthomas.stddivelogger.model.controller.TrimProfileBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateDiveBody;
 import ch.sthomas.stddivelogger.model.controller.UpdateTagsBody;
@@ -11,6 +12,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportPreviewResu
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.*;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
@@ -401,6 +403,22 @@ public class DiveController {
     }
 
     @Operation(summary = "Create an empty new dive")
+    /**
+     * What {@code cylinderConsumption} would be for this dive with {@code cylinders} instead of the
+     * saved ones - lets the edit form's gas-consumption breakdown follow unsaved cylinder edits
+     * with the same calculator the saved figures come from. Changes nothing.
+     */
+    @PostMapping(path = "/{id}/cylinder-consumption/preview", consumes = APPLICATION_JSON_VALUE)
+    public CylinderConsumptionResult previewCylinderConsumption(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable final long id,
+            @RequestBody final List<DiveConfigurationCylinder> cylinders) {
+        if (user == null) {
+            throw new UnauthorizedException("Login to preview the gas consumption of dive " + id);
+        }
+        return diveService.previewCylinderConsumption(user, id, cylinders);
+    }
+
     @PostMapping(path = "/create")
     public ResponseEntity<Dive> createDive(
             @Valid @NotNull @RequestBody final UploadDiveBody body,

@@ -20,6 +20,31 @@ import java.util.Optional;
 
 @Repository
 public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
+    // t_dives.analytics_generation is deliberately not mapped on DiveEntity: Hibernate writes every
+    // mapped column on any update, so a stale in-memory copy would silently undo a bump.
+    @Modifying
+    @Query(
+            value =
+                    "UPDATE t_dives SET analytics_generation = analytics_generation + 1"
+                            + " WHERE pk_dive_id = :diveId",
+            nativeQuery = true)
+    int bumpAnalyticsGeneration(@Param("diveId") long diveId);
+
+    @Query(
+            value = "SELECT analytics_generation FROM t_dives WHERE pk_dive_id = :diveId",
+            nativeQuery = true)
+    Optional<Long> findAnalyticsGeneration(@Param("diveId") long diveId);
+
+    /**
+     * Same as {@link #findAnalyticsGeneration}, holding the dive row until the transaction ends.
+     */
+    @Query(
+            value =
+                    "SELECT analytics_generation FROM t_dives WHERE pk_dive_id = :diveId"
+                            + " FOR UPDATE",
+            nativeQuery = true)
+    Optional<Long> lockAnalyticsGeneration(@Param("diveId") long diveId);
+
     // EXISTS rather than a JOIN + DISTINCT (the original shape here) - a dive can have more than
     // one profile from the same computer, so a plain join multiplies rows and needs DISTINCT to
     // undo it, but Postgres then rejects sorting by any column (e.g. diveSummary.start, see

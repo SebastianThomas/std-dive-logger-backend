@@ -24,7 +24,7 @@ class MapsImportJobFactoryTest {
         assertThat(job.getMetadata().getLabels()).containsAllEntriesOf(MapsImportJobFactory.LABELS);
         assertThat(spec.getBackoffLimit()).isEqualTo(1);
         assertThat(spec.getActiveDeadlineSeconds()).isEqualTo(7200L);
-        assertThat(spec.getTtlSecondsAfterFinished()).isEqualTo(86400);
+        assertThat(spec.getTtlSecondsAfterFinished()).isEqualTo(72 * 3600);
         assertThat(pod.getServiceAccountName()).isEqualTo("std-dive-logger-osm-importer");
         assertThat(pod.getAutomountServiceAccountToken()).isFalse();
         assertThat(pod.getInitContainers()).isEmpty();

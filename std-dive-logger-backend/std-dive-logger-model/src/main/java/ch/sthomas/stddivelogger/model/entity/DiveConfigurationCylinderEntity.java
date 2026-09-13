@@ -119,4 +119,14 @@ public class DiveConfigurationCylinderEntity {
     public void rebaseUsageWindows(final java.time.Duration delta) {
         usageWindows.forEach(w -> w.rebaseUsageWindows(delta));
     }
+
+    /** Shifts only the windows {@code which} selects, given this cylinder's mix. */
+    public void shiftUsageWindows(
+            final java.util.function.BiPredicate<Gas, CylinderUsageWindow> which,
+            final java.time.Duration delta) {
+        final var gas = new Gas(gasO2, gasHe);
+        usageWindows.stream()
+                .filter(w -> which.test(gas, w.toRecord()))
+                .forEach(w -> w.rebaseUsageWindows(delta));
+    }
 }

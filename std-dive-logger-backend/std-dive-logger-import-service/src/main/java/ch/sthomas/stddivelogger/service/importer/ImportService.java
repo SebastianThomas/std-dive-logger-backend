@@ -20,6 +20,7 @@ import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.NamedBuddy;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.ProfileMeasurementMerge;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
@@ -62,10 +63,18 @@ import java.util.stream.Stream;
 public class ImportService {
     private static final Duration PENDING_IMPORT_EXPIRY = Duration.ofHours(48);
 
-    // Native XML is UTC; UDDF has already been parsed into Instants. Only naive sources
-    // need a site-zone correction at commit.
+    // Every Shearwater export carries the dive computer's plain local wall-clock reading with no
+    // timezone of its own - the UDDF even suffixes it with a "Z" it doesn't mean (its own export
+    // timestamp in the same file *is* real UTC, the dive's is not). Confirmed against a Suunto
+    // recording of the same dive, which carries a real offset: Shearwater "10:30:52" (XML and UDDF)
+    // vs. Suunto "10:30:54+02:00". Each reader parses the reading as if it were UTC; see
+    // correctForUnknownTimezone for how that is corrected once a real dive-site location is known.
     private static final Set<PendingImportSource> SOURCES_WITH_UNKNOWN_TIMEZONE =
-            EnumSet.of(PendingImportSource.DL7_SHEARWATER, PendingImportSource.DB_SHEARWATER);
+            EnumSet.of(
+                    PendingImportSource.XML_SHEARWATER,
+                    PendingImportSource.UDDF_SHEARWATER,
+                    PendingImportSource.DL7_SHEARWATER,
+                    PendingImportSource.DB_SHEARWATER);
 
     private final FitReaderService fitReaderService;
     private final UddfReaderService uddfReaderService;
@@ -480,6 +489,31 @@ public class ImportService {
                 payload.diveNumberGuess());
     }
 
+    private ParsedImport correctedForSite(
+            final ParsedImport parsed, final @Nullable DiveSite site) {
+        final var payload = correctForUnknownTimezone(parsed.source(), parsed.payload(), site);
+        if (payload == parsed.payload()) {
+            return parsed;
+        }
+        final var startDate =
+                parsed.startDate() == null || payload.profiles().isEmpty()
+                        ? parsed.startDate()
+                        : payload.profiles().getFirst().start();
+        return new ParsedImport(
+                parsed.source(),
+                parsed.externalId(),
+                parsed.filename(),
+                parsed.diveIdentifierGuess(),
+                parsed.siteNameGuess(),
+                parsed.latitudeGuess(),
+                parsed.longitudeGuess(),
+                parsed.computerSerial(),
+                startDate,
+                parsed.durationSeconds(),
+                parsed.maxDepth(),
+                payload);
+    }
+
     /**
      * The shift needed to move an {@link Instant} that was naively parsed as "this wall-clock
      * reading, in UTC" to what it should actually be: the same wall-clock reading, in {@code zone}.
@@ -573,10 +607,14 @@ public class ImportService {
                             + result.parsed().size()
                             + " dive(s)");
         }
-        final var parsedImport = result.parsed().get(entry);
+        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
+        // The target dive's site is a real location, so a timezone-less source is corrected
+        // exactly like at a normal commit - otherwise refining a correctly placed dive with the
+        // same dive's Shearwater export would read as a whole-hour clock offset.
+        final var parsedImport =
+                correctedForSite(result.parsed().get(entry), context.dive().site());
         final var reimportedProfile = parsedImport.payload().profiles().getFirst();
 
-        final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
         // Throws on a genuine "different dive"; returns a whole-hour offset when the clocks only
         // differ by a timezone artefact, which becomes a resolvable conflict instead.
         final var clockOffset =
@@ -615,11 +653,11 @@ public class ImportService {
     }
 
     /**
-     * Phase 2: replaces the target profile's measurements (re-running the similarity check as a
-     * defense-in-depth double check) and applies the given resolution for whichever fields {@link
-     * #previewReimportProfile} flagged as conflicting - a null choice for a field that wasn't
-     * actually conflicting is fine (nothing to resolve there); a null choice for one that was
-     * throws.
+     * Phase 2: merges the file into the target profile's measurements (see {@link
+     * ProfileMeasurementMerge}; re-running the similarity check as a defense-in-depth double check)
+     * and applies the given resolution for whichever fields {@link #previewReimportProfile} flagged
+     * as conflicting - a null choice for a field that wasn't actually conflicting is fine (nothing
+     * to resolve there); a null choice for one that was throws.
      */
     @Transactional
     public Dive commitReimportProfile(
@@ -656,17 +694,25 @@ public class ImportService {
         }
         final var payload = pendingImport.getPayload();
         final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
-        final var reimportedProfile =
+        final var clock =
                 resolveReimportClock(
                         context, payload.profiles().getFirst(), resolution.startClock());
-
+        final var reimported = clock.reimported();
+        // Merged, not replaced: the refined profile keeps every sample and field either file has,
+        // and comes out the same whichever of the two was imported first.
+        final var existing =
+                context.profileMeasurements().stream()
+                        .map(m -> m.shifted(clock.existingShift()))
+                        .toList();
+        final var existingStart = context.profileStart().plus(clock.existingShift());
+        final var existingEnd = context.profileEnd().plus(clock.existingShift());
         diveService.reimportProfile(
                 user,
                 diveId,
                 profileId,
-                reimportedProfile.measurements(),
-                reimportedProfile.start(),
-                reimportedProfile.end());
+                ProfileMeasurementMerge.merge(existing, reimported.measurements()),
+                existingStart.isBefore(reimported.start()) ? existingStart : reimported.start(),
+                existingEnd.isAfter(reimported.end()) ? existingEnd : reimported.end());
 
         final var existingBuddyNames =
                 context.dive().namedBuddies().stream().map(NamedBuddy::name).toList();
@@ -698,7 +744,13 @@ public class ImportService {
      * EXISTING re-aligns the parsed data onto the dive's current clock, NEW keeps the file's clock.
      * A missing choice for a real offset is an error, mirroring the other conflict fields.
      */
-    private static DiveProfileUpload resolveReimportClock(
+    /**
+     * Both recordings on one clock: {@code reimported} as the file to merge in, and the shift the
+     * existing profile needs (non-zero only when the diver adopted the file's clock).
+     */
+    private record ClockResolution(DiveProfileUpload reimported, Duration existingShift) {}
+
+    private static ClockResolution resolveReimportClock(
             final DiveDataService.ReimportPreviewContext context,
             final DiveProfileUpload reimported,
             final ReimportResolution.@Nullable Choice choice) {
@@ -717,7 +769,7 @@ public class ImportService {
                         ReimportSimilarityCheck.activeStart(
                                 context.profileMeasurements(), context.profileStart()));
         if (offset.isEmpty()) {
-            return reimported.shifted(retainExistingClock);
+            return new ClockResolution(reimported.shifted(retainExistingClock), Duration.ZERO);
         }
         if (choice == null) {
             throw new ch.sthomas.stddivelogger.model.exception.ReimportClockConflictException(
@@ -725,8 +777,9 @@ public class ImportService {
                             context.profileStart(), reimported.start(), offset.get().toMinutes()));
         }
         return switch (choice) {
-            case EXISTING -> reimported.shifted(retainExistingClock);
-            case NEW -> reimported;
+            case EXISTING ->
+                    new ClockResolution(reimported.shifted(retainExistingClock), Duration.ZERO);
+            case NEW -> new ClockResolution(reimported, retainExistingClock.negated());
         };
     }
 }

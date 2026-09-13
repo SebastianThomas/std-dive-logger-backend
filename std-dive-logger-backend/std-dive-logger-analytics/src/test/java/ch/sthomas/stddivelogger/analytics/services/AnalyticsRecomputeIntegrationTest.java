@@ -223,6 +223,61 @@ class AnalyticsRecomputeIntegrationTest {
         assertThat(idsOf(candidatesAtNextVersion.dives())).contains(diveId);
     }
 
+    @Test
+    void aDiveSavedWhileItsAnalyticsRanIsNotMarkedComputed() {
+        final var diveId = createDiveWithDescentAndHoldProfile();
+        final var candidates =
+                analyticsDataService.findDivesNeedingRecompute(
+                        AnalyticsService.JOB_MODULE,
+                        AnalyticsService.JOB_NAME,
+                        AnalyticsService.ANALYTICS_VERSION,
+                        100);
+
+        // The diver saves the dive after the job read it, before the job records its result.
+        analyticsDataService.markDiveChanged(diveId);
+
+        assertThat(
+                        analyticsDataService.recordJobStateIfUnchanged(
+                                diveId,
+                                candidates.generationOf(diveId),
+                                AnalyticsService.JOB_MODULE,
+                                AnalyticsService.JOB_NAME,
+                                AnalyticsService.ANALYTICS_VERSION,
+                                Instant.now()))
+                .isFalse();
+        assertThat(
+                        idsOf(
+                                analyticsDataService
+                                        .findDivesNeedingRecompute(
+                                                AnalyticsService.JOB_MODULE,
+                                                AnalyticsService.JOB_NAME,
+                                                AnalyticsService.ANALYTICS_VERSION,
+                                                100)
+                                        .dives()))
+                .contains(diveId);
+    }
+
+    @Test
+    void anUnchangedDiveIsMarkedComputed() {
+        final var diveId = createDiveWithDescentAndHoldProfile();
+        final var candidates =
+                analyticsDataService.findDivesNeedingRecompute(
+                        AnalyticsService.JOB_MODULE,
+                        AnalyticsService.JOB_NAME,
+                        AnalyticsService.ANALYTICS_VERSION,
+                        100);
+
+        assertThat(
+                        analyticsDataService.recordJobStateIfUnchanged(
+                                diveId,
+                                candidates.generationOf(diveId),
+                                AnalyticsService.JOB_MODULE,
+                                AnalyticsService.JOB_NAME,
+                                AnalyticsService.ANALYTICS_VERSION,
+                                Instant.now()))
+                .isTrue();
+    }
+
     private static Set<Long> idsOf(final List<Dive> dives) {
         return dives.stream().map(Dive::id).collect(Collectors.toSet());
     }

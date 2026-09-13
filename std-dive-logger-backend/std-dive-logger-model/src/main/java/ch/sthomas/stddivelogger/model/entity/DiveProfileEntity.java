@@ -183,6 +183,15 @@ public class DiveProfileEntity {
      * the previous measurement rows first (no {@code orphanRemoval} on this collection), so
      * reassigning the list here does not by itself clean up the old rows.
      */
+    /**
+     * Detaches every current measurement from this profile's collection. Must happen before those
+     * rows are deleted: the collection cascades ALL, so a flush would otherwise re-persist (i.e.
+     * un-schedule the deletion of) every row still reachable from it.
+     */
+    public void clearMeasurements() {
+        this.measurements = new ArrayList<>();
+    }
+
     public void replaceMeasurements(
             final List<DiveMeasurementEntity> newMeasurements,
             final Instant start,

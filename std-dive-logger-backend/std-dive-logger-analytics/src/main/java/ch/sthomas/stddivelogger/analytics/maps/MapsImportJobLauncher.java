@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.analytics.maps;
 import ch.sthomas.stddivelogger.data.service.MapsImportKind;
 import ch.sthomas.stddivelogger.data.service.MapsImportRunStore;
 
+import io.fabric8.kubernetes.api.model.DeletionPropagation;
 import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -180,6 +181,7 @@ public class MapsImportJobLauncher {
             runs.markRunning(runId);
         } else {
             promote(runId, kindOf(job));
+            deleteIfRetentionElapsed(job);
         }
     }
 
@@ -199,6 +201,30 @@ public class MapsImportJobLauncher {
                     exception);
             runs.markFailed(runId, "BoundaryPromotionFailed");
         }
+    }
+
+    /**
+     * Completed Jobs only need {@link MapsImportJobFactory#COMPLETED_RETENTION}; the Job's own TTL
+     * is the longer failed-Job retention, since Kubernetes applies it to both outcomes alike. Runs
+     * after the promotion attempt, so a Job is never removed before its run was promoted.
+     */
+    private void deleteIfRetentionElapsed(final Job job) {
+        final String completionTime = job.getStatus().getCompletionTime();
+        if (completionTime == null
+                || Instant.parse(completionTime)
+                        .plus(MapsImportJobFactory.COMPLETED_RETENTION)
+                        .isAfter(Instant.now())) {
+            return;
+        }
+        kubernetes
+                .batch()
+                .v1()
+                .jobs()
+                .inNamespace(properties.getNamespace())
+                .withName(job.getMetadata().getName())
+                .withPropagationPolicy(DeletionPropagation.BACKGROUND)
+                .delete();
+        LOG.info("Deleted completed maps import Job {}", job.getMetadata().getName());
     }
 
     /**
