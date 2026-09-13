@@ -36,8 +36,8 @@ public final class ProfileMeasurementMerge {
             return a;
         }
         final var aWins = compareRichness(a, b) >= 0;
-        final var primary = sortedByTime(aWins ? a : b);
-        final var secondary = sortedByTime(aWins ? b : a);
+        final var primary = collapseSameSamples(sortedByTime(aWins ? a : b));
+        final var secondary = collapseSameSamples(sortedByTime(aWins ? b : a));
 
         final var merged = new ArrayList<DiveMeasurement>(primary.size() + secondary.size());
         var i = 0;
@@ -65,6 +65,29 @@ public final class ProfileMeasurementMerge {
             }
         }
         return merged;
+    }
+
+    /**
+     * One sample per point in time: a recording that holds the same sample more than once (as
+     * profiles refined before the merge existed do - every sample stored two or three times) is
+     * collapsed field by field first, so merging heals such a profile instead of carrying every
+     * copy along.
+     */
+    static List<DiveMeasurement> collapseSameSamples(final List<DiveMeasurement> sorted) {
+        final var collapsed = new ArrayList<DiveMeasurement>(sorted.size());
+        for (final var measurement : sorted) {
+            final var last = collapsed.isEmpty() ? null : collapsed.getLast();
+            if (last != null
+                    && Duration.between(last.time(), measurement.time())
+                                    .abs()
+                                    .compareTo(SAME_SAMPLE)
+                            <= 0) {
+                collapsed.set(collapsed.size() - 1, combine(last, measurement));
+            } else {
+                collapsed.add(measurement);
+            }
+        }
+        return collapsed;
     }
 
     /** {@code p}'s values, with every field {@code p} lacks filled in from {@code s}. */

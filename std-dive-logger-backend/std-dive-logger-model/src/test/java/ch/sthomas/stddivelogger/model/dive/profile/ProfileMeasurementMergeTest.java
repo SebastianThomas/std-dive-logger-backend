@@ -97,4 +97,32 @@ class ProfileMeasurementMergeTest {
 
         assertThat(ProfileMeasurementMerge.merge(uddf(), shifted)).hasSize(7);
     }
+
+    @Test
+    void aProfileHoldingEverySampleSeveralTimesIsHealedByTheMerge() {
+        // Like a profile refined before the merge existed: every UDDF sample stored three times,
+        // once with CNS only, twice with TTS only.
+        final var triplicated = new ArrayList<DiveMeasurement>();
+        for (final var m : uddf()) {
+            triplicated.add(m);
+            triplicated.add(
+                    sample(
+                            m.time().getEpochSecond() - START.getEpochSecond(),
+                            10,
+                            null,
+                            Duration.ofMinutes(2)));
+            triplicated.add(
+                    sample(
+                            m.time().getEpochSecond() - START.getEpochSecond(),
+                            10,
+                            null,
+                            Duration.ofMinutes(2)));
+        }
+
+        final var merged = ProfileMeasurementMerge.merge(triplicated, xml());
+
+        assertThat(merged).extracting(DiveMeasurement::time).doesNotHaveDuplicates().hasSize(7);
+        assertThat(merged.getFirst().cns()).isEqualTo(5.0);
+        assertThat(merged.getFirst().timeToSurface()).isNotNull();
+    }
 }

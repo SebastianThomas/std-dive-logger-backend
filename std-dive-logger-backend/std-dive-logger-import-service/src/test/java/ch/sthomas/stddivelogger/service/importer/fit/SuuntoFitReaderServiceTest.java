@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.service.importer.fit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -212,6 +213,13 @@ class SuuntoFitReaderServiceTest {
      */
     @Test
     void keepsAGarminFitsFullDiveSettings() throws IOException {
+        // A real dive kept only locally (gitignored, not in the repository) - skip without it.
+        assumeTrue(
+                SuuntoFitReaderServiceTest.class
+                                .getClassLoader()
+                                .getResource("36 Malapascua Bugtong Bato.fit")
+                        != null,
+                "local-only Garmin fixture not present");
         final var settings =
                 Objects.requireNonNull(
                         parseFixture("36 Malapascua Bugtong Bato.fit")

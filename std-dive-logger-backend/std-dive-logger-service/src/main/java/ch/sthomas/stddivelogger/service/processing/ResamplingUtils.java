@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,9 +45,22 @@ public class ResamplingUtils {
         if (finiteMeasurements.isEmpty()) {
             return List.of();
         }
+        // Samples that repeat an earlier timestamp (e.g. a profile holding every sample more than
+        // once) would make the interpolation below divide by a zero-length interval and turn every
+        // resampled depth into NaN/Infinity - which then fails profile alignment outright.
+        final var distinctTimes = new ArrayList<DiveMeasurementWithId>(finiteMeasurements.size());
+        for (final var measurement : finiteMeasurements) {
+            if (distinctTimes.isEmpty()
+                    || measurement
+                            .measurement()
+                            .time()
+                            .isAfter(distinctTimes.getLast().measurement().time())) {
+                distinctTimes.add(measurement);
+            }
+        }
         var start = info.baseTime();
-        final var firstOriginalMeasurementTime = finiteMeasurements.getFirst().measurement().time();
-        final var lastOriginalMeasurementTime = finiteMeasurements.getLast().measurement().time();
+        final var firstOriginalMeasurementTime = distinctTimes.getFirst().measurement().time();
+        final var lastOriginalMeasurementTime = distinctTimes.getLast().measurement().time();
         while (start.isAfter(firstOriginalMeasurementTime)) {
             start = start.minus(info.sampleRate());
         }
@@ -59,7 +73,7 @@ public class ResamplingUtils {
                         // Duration.ofMillis(startMs),
                         d -> !d.isAfter(lastOriginalMeasurementTime),
                         d -> d.plus(info.sampleRate()))
-                .map(d -> getResampledMeasurement(finiteMeasurements, measurementIdx, d))
+                .map(d -> getResampledMeasurement(distinctTimes, measurementIdx, d))
                 .toList();
     }
 
@@ -118,12 +132,15 @@ public class ResamplingUtils {
                                 Duration.between(
                                         l.getFirst().measurement().time(),
                                         l.getLast().measurement().time()))
+                // A repeated timestamp is no sampling interval - counting its zero gaps could make
+                // zero the most common "rate".
+                .filter(Duration::isPositive)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
                 .entrySet()
                 .stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
-                .orElseThrow();
+                .orElse(Duration.ofSeconds(1));
     }
 
     private static Duration measurementRateSubSecond(Duration measurementRateRaw) {
