@@ -217,8 +217,12 @@ class SuuntoJsonReaderServiceTest {
         assertThat(deco.getFirst().depth()).isEqualTo(4.5);
     }
 
+    /**
+     * The format has a ceiling but no stop duration: the sample's TimeToSurface is TTS (it includes
+     * the ascent) and must stay exactly that, never be shown as the stop's time.
+     */
     @Test
-    void decoStopSecondsComesFromTheSamplesOwnTimeToSurfaceNotAGuess() {
+    void aCeilingHasNoStopDurationAndTheSamplesTimeToSurfaceStaysTts() {
         final var header =
                 new SuuntoHeader(
                         "2026-01-01T10:00:00.000+00:00",
@@ -231,8 +235,11 @@ class SuuntoJsonReaderServiceTest {
 
         final var profile = service.getDiveProfile(COMPUTER, header, samples, List.of());
 
-        final var deco = Objects.requireNonNull(profile.measurements().getFirst().deco());
-        assertThat(deco.getFirst().seconds()).isEqualTo(532L);
+        final var measurement = profile.measurements().getFirst();
+        final var deco = Objects.requireNonNull(measurement.deco());
+        assertThat(deco.getFirst().depth()).isEqualTo(4.5);
+        assertThat(deco.getFirst().seconds()).isEqualTo(0L);
+        assertThat(measurement.timeToSurface()).isEqualTo(Duration.ofSeconds(532));
     }
 
     @Test

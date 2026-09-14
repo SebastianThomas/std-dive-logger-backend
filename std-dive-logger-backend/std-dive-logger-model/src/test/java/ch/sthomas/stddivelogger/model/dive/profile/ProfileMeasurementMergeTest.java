@@ -125,4 +125,60 @@ class ProfileMeasurementMergeTest {
         assertThat(merged.getFirst().cns()).isEqualTo(5.0);
         assertThat(merged.getFirst().timeToSurface()).isNotNull();
     }
+
+    /**
+     * Older imports stored a UDDF export's summed stop durations as "TTS" next to the real TTS of
+     * the same moment. The real one includes the ascent, so it is the longer - and the one kept,
+     * whichever copy comes first.
+     */
+    @Test
+    void ofTwoReadingsOfTheSameMomentTheLongerTtsIsKeptInEitherOrder() {
+        final var stopTime = List.of(withTts(sampleAt(0, 20.0), Duration.ofSeconds(60)));
+        final var realTts = List.of(withTts(sampleAt(0, 20.0), Duration.ofSeconds(180)));
+
+        assertThat(ProfileMeasurementMerge.merge(stopTime, realTts).getFirst().timeToSurface())
+                .isEqualTo(Duration.ofSeconds(180));
+        assertThat(ProfileMeasurementMerge.merge(realTts, stopTime).getFirst().timeToSurface())
+                .isEqualTo(Duration.ofSeconds(180));
+        assertThat(
+                        ProfileMeasurementMerge.merge(
+                                        List.of(stopTime.getFirst(), realTts.getFirst()), List.of())
+                                .getFirst()
+                                .timeToSurface())
+                .isEqualTo(Duration.ofSeconds(180));
+    }
+
+    private static DiveMeasurement sampleAt(final long seconds, final double depth) {
+        return new DiveMeasurement(
+                Instant.parse("2026-09-13T08:30:52Z").plusSeconds(seconds),
+                null,
+                depth,
+                null,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
+    }
+
+    private static DiveMeasurement withTts(final DiveMeasurement m, final Duration tts) {
+        return new DiveMeasurement(
+                m.time(),
+                m.temperature(),
+                m.depth(),
+                m.ndl(),
+                m.deco(),
+                m.gas(),
+                m.po2(),
+                m.rmvLiters(),
+                m.n2(),
+                m.o2Tox(),
+                m.cns(),
+                m.mode(),
+                tts);
+    }
 }

@@ -45,9 +45,12 @@ class UddfDecoStopParsingTest {
         assertTrue(firstStop.seconds() > 0);
     }
 
+    /**
+     * UDDF has no time-to-surface field. The decostop durations are stop time, not TTS (which
+     * includes the ascent), so no measurement gets a TTS - the stops themselves stay as parsed.
+     */
     @Test
-    void ttsIsDerivedFromTheSameWaypointsDecostopSumSinceUddfHasNoNativeTtsField()
-            throws IOException {
+    void noMeasurementGetsATtsSinceUddfHasNoTtsFieldAndStopTimeIsNotTts() throws IOException {
         final UddfFile file;
         try (final var inputStream = getClass().getClassLoader().getResourceAsStream(FILE)) {
             file = xmlMapper().readValue(inputStream, UddfFile.class);
@@ -60,17 +63,12 @@ class UddfDecoStopParsingTest {
                         .toList();
         assertFalse(withDeco.isEmpty());
 
-        for (final var m : withDeco) {
-            final var deco = Objects.requireNonNull(m.deco());
-            final var expectedTts = deco.stream().mapToLong(DecoStop::seconds).sum();
-            assertEquals(expectedTts, Objects.requireNonNull(m.timeToSurface()).toSeconds());
-        }
-
-        final var withoutDeco =
-                measurements.stream()
-                        .filter(m -> Objects.requireNonNull(m.deco()).isEmpty())
-                        .toList();
-        assertFalse(withoutDeco.isEmpty());
-        assertTrue(withoutDeco.stream().allMatch(m -> m.timeToSurface() == null));
+        assertTrue(
+                withDeco.stream()
+                        .allMatch(
+                                m ->
+                                        Objects.requireNonNull(m.deco()).stream()
+                                                .allMatch(d -> d.seconds() > 0)));
+        assertTrue(measurements.stream().allMatch(m -> m.timeToSurface() == null));
     }
 }

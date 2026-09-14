@@ -652,9 +652,11 @@ public class DiveEntity {
     }
 
     // Each DecoStop.seconds() is a remaining-time-at-this-point reading (FIT's next_stop_time,
-    // Suunto JSON's TimeToSurface) sampled repeatedly through a stop - summing it inflates the
+    // Shearwater's first-stop time) sampled repeatedly through a stop - summing it inflates the
     // real obligation many times over. The peak reading across the dive is the actual severity;
     // 5min was picked against two real dives (~8.9min real deco vs. ~3.1min NDL-scratch/no deco).
+    // A bare ceiling with no logged stop time (Suunto JSON, Divesoft) counts that sample's TTS
+    // instead - it is stored as TTS, never as the stop's time.
     private static final long MINIMUM_DECO_MINUTES = 5;
 
     private boolean hasDeco() {
@@ -664,12 +666,21 @@ public class DiveEntity {
         final var maxDecoSeconds =
                 profiles.stream()
                         .flatMap(DiveProfileEntity::getMeasurementsStream)
-                        .filter(m -> m.getDecoStops() != null)
-                        .flatMap(m -> m.getDecoStops().stream())
-                        .mapToLong(d -> d.seconds())
+                        .filter(m -> m.getDecoStops() != null && !m.getDecoStops().isEmpty())
+                        .mapToLong(DiveEntity::decoObligationSeconds)
                         .max()
                         .orElse(0);
         return Duration.ofSeconds(maxDecoSeconds).toMinutes() >= MINIMUM_DECO_MINUTES;
+    }
+
+    private static long decoObligationSeconds(final DiveMeasurementEntity measurement) {
+        final var stopSeconds =
+                measurement.getDecoStops().stream().mapToLong(d -> d.seconds()).max().orElse(0);
+        if (stopSeconds > 0) {
+            return stopSeconds;
+        }
+        final var tts = measurement.getTimeToSurface();
+        return tts == null ? 0 : tts.toSeconds();
     }
 
     public void setManualTags(final Collection<TagDefinitionEntity> manualTagDefs) {

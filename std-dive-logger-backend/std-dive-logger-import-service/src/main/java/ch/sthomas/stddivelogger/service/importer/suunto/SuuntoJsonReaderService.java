@@ -161,14 +161,11 @@ public class SuuntoJsonReaderService extends BaseReaderService {
                             sample.noDecTime() != null
                                     ? Duration.ofSeconds(sample.noDecTime())
                                     : null,
+                            // The format has a ceiling but no stop duration: seconds=0 (unknown),
+                            // same as Divesoft. The sample's TimeToSurface is TTS - it includes
+                            // the ascent - and is kept as exactly that below, never as stop time.
                             sample.ceiling() != null && sample.ceiling() > 0
-                                    ? List.of(
-                                            new DecoStop(
-                                                    "ceiling",
-                                                    sample.ceiling(),
-                                                    sample.timeToSurface() != null
-                                                            ? sample.timeToSurface()
-                                                            : 0))
+                                    ? List.of(new DecoStop("ceiling", sample.ceiling(), 0))
                                     : List.of(),
                             gas,
                             // No PO2/setpoint, RMV/SAC, N2/O2Tox/CNS, or CCR mode in this format.

@@ -525,20 +525,11 @@ public record UddfFile(
                             null,
                             (double) cns,
                             toMode(diveMode),
-                            ttsEstimate()),
+                            // UDDF has no time-to-surface field. The decostop durations are the
+                            // stop time, not TTS (which includes the ascent), so nothing is
+                            // passed off as TTS here - see DiveMeasurement#timeToSurface.
+                            null),
                     gas);
-        }
-
-        // UDDF has no dedicated TTS field - approximated as the sum of every currently-listed
-        // decostop's duration (excludes ascent time between stops, so this reads a little low vs
-        // a device's own TTS, but is real deco-severity signal rather than nothing).
-        private @Nullable Duration ttsEstimate() {
-            if (decoStop == null || decoStop.isEmpty()) {
-                return null;
-            }
-            final var totalSeconds =
-                    decoStop.stream().mapToLong(d -> Long.parseLong(d.seconds())).sum();
-            return totalSeconds > 0 ? Duration.ofSeconds(totalSeconds) : null;
         }
 
         private static @Nullable DiveMode toMode(final @Nullable UddfDiveMode diveMode) {

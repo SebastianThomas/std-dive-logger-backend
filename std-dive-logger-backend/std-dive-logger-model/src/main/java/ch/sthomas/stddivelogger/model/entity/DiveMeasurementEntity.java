@@ -184,4 +184,8 @@ public class DiveMeasurementEntity {
     public void rebase(final Duration delta) {
         elapsed = elapsed.plus(delta);
     }
+
+    public @Nullable Duration getTimeToSurface() {
+        return timeToSurfaceSeconds == null ? null : Duration.ofSeconds(timeToSurfaceSeconds);
+    }
 }

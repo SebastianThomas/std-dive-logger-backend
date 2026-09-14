@@ -29,11 +29,13 @@ public final class ProfileMeasurementMerge {
 
     public static List<DiveMeasurement> merge(
             final List<DiveMeasurement> a, final List<DiveMeasurement> b) {
+        // Collapsed even with nothing to merge in: a profile holding the same sample more than
+        // once (older refines appended instead of merging) must come out with one per moment.
         if (a.isEmpty()) {
-            return b;
+            return collapseSameSamples(sortedByTime(b));
         }
         if (b.isEmpty()) {
-            return a;
+            return collapseSameSamples(sortedByTime(a));
         }
         final var aWins = compareRichness(a, b) >= 0;
         final var primary = collapseSameSamples(sortedByTime(aWins ? a : b));
@@ -105,7 +107,7 @@ public final class ProfileMeasurementMerge {
                 first(p.o2Tox(), s.o2Tox()),
                 first(p.cns(), s.cns()),
                 first(p.mode(), s.mode()),
-                first(p.timeToSurface(), s.timeToSurface()));
+                longer(p.timeToSurface(), s.timeToSurface()));
     }
 
     private static @Nullable PO2 combinePo2(final @Nullable PO2 p, final @Nullable PO2 s) {
@@ -173,5 +175,18 @@ public final class ProfileMeasurementMerge {
 
     private static List<DiveMeasurement> sortedByTime(final List<DiveMeasurement> measurements) {
         return measurements.stream().sorted(Comparator.comparing(DiveMeasurement::time)).toList();
+    }
+
+    /**
+     * TTS of two readings of the same moment: the longer one. A device's TTS includes the ascent,
+     * so it is never below a stop time that older imports stored as "TTS" (UDDF has no TTS field,
+     * its decostop durations were summed instead) - which also makes the choice order-independent.
+     */
+    private static @Nullable Duration longer(
+            final @Nullable Duration a, final @Nullable Duration b) {
+        if (a == null || b == null) {
+            return a != null ? a : b;
+        }
+        return a.compareTo(b) >= 0 ? a : b;
     }
 }
