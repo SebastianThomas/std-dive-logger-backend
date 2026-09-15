@@ -23,6 +23,8 @@ import jakarta.validation.constraints.NotBlank;
 
 import org.jspecify.annotations.Nullable;
 import org.passay.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -41,6 +44,8 @@ import java.util.stream.Stream;
 
 @Service
 public class UserService {
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     public static final int USERS_PAGE_SIZE = 10;
     public static final int GROUPS_PAGE_SIZE = 10;
 
@@ -68,6 +73,7 @@ public class UserService {
                     new WhitespaceRule());
     private final AccountRequestRepository accountRequestRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final ImportFileService importFileService;
 
     public UserService(
             final UserDataService userDataService,
@@ -75,13 +81,15 @@ public class UserService {
             final AccountRequestRepository accountRequestRepository,
             GroupMemberRepository groupMemberRepository,
             final StorageService storageService,
-            @Lazy final ObjectStorageService objectStorageService) {
+            @Lazy final ObjectStorageService objectStorageService,
+            final ImportFileService importFileService) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
         this.accountRequestRepository = accountRequestRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.storageService = storageService;
         this.objectStorageService = objectStorageService;
+        this.importFileService = importFileService;
     }
 
     public User getUserById(final long userId) {
@@ -129,8 +137,44 @@ public class UserService {
         return passwordValidator.validate(new PasswordData(password));
     }
 
+    /**
+     * Deletes the account and what it stored outside the database: kept import files (local
+     * volume), photos, dive previews, icon and background (object storage). The rows cascade, the
+     * stored objects don't; an object that can't be removed is logged, not retried.
+     */
     public void deleteUser(final User user) {
+        final var objectPaths =
+                new ArrayList<>(userDataService.findObjectStoragePathsOfAccount(user.id()));
+        if (user.customIconUrl() != null) {
+            objectPaths.addAll(imagePaths("user-icon", user.id()));
+        }
+        if (user.customBackgroundUrl() != null) {
+            objectPaths.addAll(imagePaths("user-background", user.id()));
+        }
+        importFileService.deleteAllOfAccount(user.id());
         userDataService.deleteUserByEmail(user.email());
+        final var failed = new ArrayList<String>();
+        for (final var path : objectPaths) {
+            try {
+                objectStorageService.delete(path);
+            } catch (final IOException | RuntimeException e) {
+                failed.add(path);
+            }
+        }
+        if (!failed.isEmpty()) {
+            logger.error(
+                    "Deleted account {}, but could not remove {} stored object(s): {}",
+                    user.id(),
+                    failed.size(),
+                    failed);
+        }
+    }
+
+    /** Every name {@link #validateAndUploadImage} may have used for the account's image. */
+    private static List<String> imagePaths(final String category, final long userId) {
+        return Stream.of("png", "jpg", "webp")
+                .map(extension -> String.format("%s/%d.%s", category, userId, extension))
+                .toList();
     }
 
     public PagedResponse<User> getUsersByPartialName(final String query, final int page) {

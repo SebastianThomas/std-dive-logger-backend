@@ -22,6 +22,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -31,6 +32,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import tools.jackson.databind.json.JsonMapper;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -60,6 +65,7 @@ class ImportIntegrationTest {
     private static final String TEST_JWT_SECRET =
             "integration-test-jwt-signing-secret-needs-to-be-long-enough";
     private static final String TEST_USER_EMAIL = "test@test.ch";
+    private static final Path IMPORT_FILES_DIR = tempDir();
 
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres =
@@ -71,11 +77,21 @@ class ImportIntegrationTest {
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
         registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> TEST_JWT_SECRET);
+        registry.add("ch.sthomas.stddivelogger.import-files.dir", IMPORT_FILES_DIR::toString);
         registry.add(
                 "ch.sthomas.stddivelogger.storage.r2.base-url", () -> "http://localhost/unused");
     }
 
     @Autowired private RestTestClient restTestClient;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    private static Path tempDir() {
+        try {
+            return Files.createTempDirectory("import-files-it");
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
     private static String bearerToken() {
         final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
@@ -710,5 +726,54 @@ class ImportIntegrationTest {
                 .value(
                         response ->
                                 assertThat(response).contains("not a Shearwater Cloud database"));
+    }
+
+    /** An account that keeps its files stores each Divesoft dive's JSON exactly as posted. */
+    @Test
+    void aKeptDivesoftDiveIsStoredAsTheApiReturnedIt() throws IOException {
+        jdbcTemplate.update(
+                "UPDATE t_users SET keep_import_files = TRUE WHERE email = ?", TEST_USER_EMAIL);
+        try {
+            final var body = syntheticDiveRequestBody("it-test-dive-kept");
+            restTestClient
+                    .post()
+                    .uri("/v1/import/divesoft")
+                    .headers(h -> h.addAll(authorizedJsonHeaders()))
+                    .body(body)
+                    .exchange()
+                    .expectStatus()
+                    .isOk();
+
+            final var file =
+                    jdbcTemplate.queryForMap(
+                            """
+                            SELECT f.pk_import_file_id, f.source, f.scope, f.storage_path,
+                                   f.metadata::text AS metadata
+                            FROM t_import_file f JOIN t_users u ON u.pk_user_id = f.fk_user_id
+                            WHERE u.email = ? AND f.original_filename = ?
+                            """,
+                            TEST_USER_EMAIL,
+                            "divesoft-it-test-dive-kept.json");
+            assertThat(file.get("source")).isEqualTo("DIVESOFT");
+            assertThat(file.get("scope")).isEqualTo("SINGLE_PROFILE");
+            assertThat((String) file.get("metadata")).contains("it-test-dive-kept");
+            final var json = JsonMapper.builder().build();
+            assertThat(
+                            json.readTree(
+                                    Files.readAllBytes(
+                                            IMPORT_FILES_DIR.resolve(
+                                                    (String) file.get("storage_path")))))
+                    .isEqualTo(json.readTree(body).get("dives").get(0));
+            assertThat(
+                            jdbcTemplate.queryForObject(
+                                    "SELECT count(*) FROM t_pending_import WHERE fk_import_file_id = ?",
+                                    Long.class,
+                                    file.get("pk_import_file_id")))
+                    .isPositive();
+        } finally {
+            jdbcTemplate.update(
+                    "UPDATE t_users SET keep_import_files = FALSE WHERE email = ?",
+                    TEST_USER_EMAIL);
+        }
     }
 }

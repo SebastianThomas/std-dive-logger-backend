@@ -39,6 +39,10 @@ public class UserEntity {
     @Column(name = "custom_background_url")
     private @Nullable String customBackgroundUrl;
 
+    // Opt-in: keep every uploaded dive file so it can be re-processed by newer importers.
+    @Column(name = "keep_import_files", nullable = false)
+    private boolean keepImportFiles;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GroupMemberEntity> groups;
 
@@ -100,5 +104,13 @@ public class UserEntity {
 
     public void setCustomBackgroundUrl(@Nullable final String customBackgroundUrl) {
         this.customBackgroundUrl = customBackgroundUrl;
+    }
+
+    public boolean isKeepImportFiles() {
+        return keepImportFiles;
+    }
+
+    public void setKeepImportFiles(final boolean keepImportFiles) {
+        this.keepImportFiles = keepImportFiles;
     }
 }

@@ -70,4 +70,13 @@ public class AnalyticsJobs {
     public void refreshDiveSiteStats() {
         queue.enqueue(JobKind.SITES, false);
     }
+
+    /** Re-read kept dive files after an importer update; drop files nothing refers to. */
+    @Schedules({
+        @Scheduled(cron = "0 17 * * * *", zone = "UTC"),
+        @Scheduled(initialDelay = 60000),
+    })
+    public void reprocessImports() {
+        queue.enqueue(JobKind.REPROCESS_IMPORTS, false);
+    }
 }

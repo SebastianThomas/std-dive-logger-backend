@@ -3,8 +3,11 @@ package ch.sthomas.stddivelogger.model.entity;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSummary;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.entity.converter.ImportLocatorToStringConverter;
+import ch.sthomas.stddivelogger.model.importfile.ImportLocator;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,6 +18,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
@@ -80,6 +85,16 @@ public class PendingImportEntity {
 
     @Column(name = "reimport_target_profile_id")
     private @Nullable Long reimportTargetProfileId;
+
+    // The stored upload this was parsed from (only for accounts that keep their files), and where
+    // in it this dive is - carried to the commit, which links the result to the file.
+    @Column(name = "fk_import_file_id")
+    private @Nullable Long importFileId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = ImportLocatorToStringConverter.class)
+    @Column(name = "import_locator")
+    private @Nullable ImportLocator importLocator;
 
     public PendingImportEntity() {}
 
@@ -182,9 +197,24 @@ public class PendingImportEntity {
         return reimportTargetProfileId;
     }
 
+    public @Nullable Long getImportFileId() {
+        return importFileId;
+    }
+
+    public ImportLocator getImportLocator() {
+        return importLocator == null ? ImportLocator.WHOLE_FILE : importLocator;
+    }
+
     public PendingImportEntity withReimportTarget(final long diveId, final long profileId) {
         this.reimportTargetDiveId = diveId;
         this.reimportTargetProfileId = profileId;
+        return this;
+    }
+
+    public PendingImportEntity withImportFile(
+            final @Nullable Long importFileId, final @Nullable ImportLocator importLocator) {
+        this.importFileId = importFileId;
+        this.importLocator = importLocator;
         return this;
     }
 

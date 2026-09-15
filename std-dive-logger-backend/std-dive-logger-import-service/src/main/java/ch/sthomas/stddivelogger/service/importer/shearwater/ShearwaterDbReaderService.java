@@ -264,21 +264,23 @@ public class ShearwaterDbReaderService extends BaseReaderService {
                         toDiveNumber(dive.diveNumber()));
         final var siteName = firstNonBlank(dive.location(), dive.site());
         return new ParsedImport(
-                PendingImportSource.DB_SHEARWATER,
-                dive.diveId(),
-                filename,
-                siteName != null ? siteName : getDiveName(filename),
-                siteName,
-                // Shearwater's GnssEntry/ExitLocation columns exist but are empty in every dive of
-                // the only real database available to check the format against - see
-                // ShearwaterPnfParser's note on the equivalent binary GNSS record.
-                null,
-                null,
-                computer.serialNumber(),
-                profile.start(),
-                Duration.between(profile.start(), profile.end()).toSeconds(),
-                log.maxDepthMeters(),
-                payload);
+                        PendingImportSource.DB_SHEARWATER,
+                        dive.diveId(),
+                        filename,
+                        siteName != null ? siteName : getDiveName(filename),
+                        siteName,
+                        // Shearwater's GnssEntry/ExitLocation columns exist but are empty in every
+                        // dive of
+                        // the only real database available to check the format against - see
+                        // ShearwaterPnfParser's note on the equivalent binary GNSS record.
+                        null,
+                        null,
+                        computer.serialNumber(),
+                        profile.start(),
+                        Duration.between(profile.start(), profile.end()).toSeconds(),
+                        log.maxDepthMeters(),
+                        payload)
+                .withDiveId(dive.diveId());
     }
 
     private DiveComputer getOrCreateComputer(

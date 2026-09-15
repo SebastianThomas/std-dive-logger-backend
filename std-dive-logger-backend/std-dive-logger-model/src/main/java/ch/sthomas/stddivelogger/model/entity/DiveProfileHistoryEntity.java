@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -30,6 +32,18 @@ public class DiveProfileHistoryEntity {
 
     @Column(name = "original_dive_id")
     private long originalDiveId;
+
+    // Kept window after trims, relative to the first sample deeper than 0.5 m - clock-independent,
+    // so re-processing can re-apply it to a profile re-derived from its files.
+    @Column(name = "trim_start_offset_ms")
+    private @Nullable Long trimStartOffsetMs;
+
+    @Column(name = "trim_end_offset_ms")
+    private @Nullable Long trimEndOffsetMs;
+
+    // Every sample came from stored files: re-processing may replace the profile, not only add.
+    @Column(name = "import_files_complete", nullable = false)
+    private boolean importFilesComplete;
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -75,5 +89,34 @@ public class DiveProfileHistoryEntity {
     public void updateOriginal(final Instant newOriginalStart, final Instant newOriginalEnd) {
         this.originalStart = newOriginalStart.atOffset(ZoneOffset.UTC);
         this.originalEnd = newOriginalEnd.atOffset(ZoneOffset.UTC);
+    }
+
+    /** Narrows the recorded kept window; a null bound leaves that end as it was. */
+    public void recordTrim(
+            final @Nullable Duration startOffset, final @Nullable Duration endOffset) {
+        if (startOffset != null) {
+            final var ms = startOffset.toMillis();
+            trimStartOffsetMs = trimStartOffsetMs == null ? ms : Math.max(trimStartOffsetMs, ms);
+        }
+        if (endOffset != null) {
+            final var ms = endOffset.toMillis();
+            trimEndOffsetMs = trimEndOffsetMs == null ? ms : Math.min(trimEndOffsetMs, ms);
+        }
+    }
+
+    public @Nullable Duration getTrimStartOffset() {
+        return trimStartOffsetMs == null ? null : Duration.ofMillis(trimStartOffsetMs);
+    }
+
+    public @Nullable Duration getTrimEndOffset() {
+        return trimEndOffsetMs == null ? null : Duration.ofMillis(trimEndOffsetMs);
+    }
+
+    public boolean isImportFilesComplete() {
+        return importFilesComplete;
+    }
+
+    public void setImportFilesComplete(final boolean importFilesComplete) {
+        this.importFilesComplete = importFilesComplete;
     }
 }

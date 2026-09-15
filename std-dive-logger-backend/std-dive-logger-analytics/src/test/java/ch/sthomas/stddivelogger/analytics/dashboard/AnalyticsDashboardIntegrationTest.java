@@ -108,7 +108,11 @@ class AnalyticsDashboardIntegrationTest {
     @Test
     void dashboardExposesFutureSchedulesAndProtectsManualActions() {
         final var status = controller.status();
-        assertThat(status.jobs()).hasSize(8);
+        assertThat(status.jobs()).hasSize(9);
+        assertThat(status.jobs())
+                .filteredOn(job -> job.id().equals("REPROCESS_IMPORTS"))
+                .singleElement()
+                .satisfies(job -> assertThat(job.cron()).isEqualTo("0 17 * * * *"));
         assertThat(status.jobs())
                 .filteredOn(job -> job.nextRun() != null)
                 .allSatisfy(job -> assertThat(job.nextRun()).isAfter(status.now()));

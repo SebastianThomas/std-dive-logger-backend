@@ -122,6 +122,12 @@ public class DiveProfileEntity {
         return this;
     }
 
+    /** Replaces, rather than adds to, what this profile has - a re-processing result. */
+    public DiveProfileEntity replaceDecoSettings(final @Nullable DecoSettings settings) {
+        this.decoSettings = settings;
+        return this;
+    }
+
     public DiveProfileEntity setDive(final DiveEntity diveEntity) {
         this.dive = diveEntity;
         return this;

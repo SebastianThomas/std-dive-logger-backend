@@ -857,6 +857,24 @@ public class DiveController {
 
     @Operation(
             summary =
+                    "Phase 1 of refining a profile from a dive file the account already stored -"
+                            + " same checks and result as the upload variant; the dive in the file is"
+                            + " the one this dive was linked to, or its only dive.")
+    @PostMapping(path = "/{id}/profiles/{profileId}/reimport-stored/{importFileId}")
+    public ReimportPreviewResult previewReimportProfileFromStoredFile(
+            @AuthenticationPrincipal final @Nullable User user,
+            @PathVariable("id") @Positive final long diveId,
+            @PathVariable("profileId") @Positive final long profileId,
+            @PathVariable("importFileId") @Positive final long importFileId) {
+        if (user == null) {
+            throw new UnauthorizedException("Log in to reimport a profile.");
+        }
+        return importService.previewReimportProfileFromStoredFile(
+                user, diveId, profileId, importFileId);
+    }
+
+    @Operation(
+            summary =
                     "Phase 2: replaces the target profile's measurements and applies the given"
                             + " resolution for whichever fields the preview step flagged as conflicting."
                             + " Leaves everything else about the dive (suit, site, configuration, tags,"

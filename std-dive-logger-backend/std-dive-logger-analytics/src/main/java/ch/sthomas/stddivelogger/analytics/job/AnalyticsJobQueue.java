@@ -4,6 +4,8 @@ import ch.sthomas.stddivelogger.analytics.maps.MapsImportJobLauncher;
 import ch.sthomas.stddivelogger.analytics.services.AnalyticsService;
 import ch.sthomas.stddivelogger.data.service.AnalyticsJobRunStore;
 import ch.sthomas.stddivelogger.model.exception.AnalyticsException;
+import ch.sthomas.stddivelogger.service.ImportFileService;
+import ch.sthomas.stddivelogger.service.importer.reprocess.ImportReprocessService;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -12,6 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 
 import javax.sql.DataSource;
 
@@ -19,20 +23,28 @@ import javax.sql.DataSource;
 public class AnalyticsJobQueue {
     private static final Logger LOG = LoggerFactory.getLogger(AnalyticsJobQueue.class);
     private static final long LOCK_ID = 734268193;
+    // A file stored at stage time is only referenced once its pending imports are saved.
+    private static final Duration UNREFERENCED_FILE_GRACE = Duration.ofHours(1);
     private final DataSource dataSource;
     private final AnalyticsJobRunStore runs;
     private final AnalyticsService analytics;
     private final @Nullable MapsImportJobLauncher mapsImportJobLauncher;
+    private final ImportReprocessService importReprocessService;
+    private final ImportFileService importFileService;
 
     public AnalyticsJobQueue(
             final DataSource dataSource,
             final AnalyticsJobRunStore runs,
             final AnalyticsService analytics,
-            final @Nullable MapsImportJobLauncher mapsImportJobLauncher) {
+            final @Nullable MapsImportJobLauncher mapsImportJobLauncher,
+            final ImportReprocessService importReprocessService,
+            final ImportFileService importFileService) {
         this.dataSource = dataSource;
         this.runs = runs;
         this.analytics = analytics;
         this.mapsImportJobLauncher = mapsImportJobLauncher;
+        this.importReprocessService = importReprocessService;
+        this.importFileService = importFileService;
     }
 
     public boolean enqueue(final JobKind job, final boolean manual) {
@@ -82,6 +94,10 @@ public class AnalyticsJobQueue {
                     throw new IllegalStateException("Kubernetes maps imports are disabled");
                 }
                 mapsImportJobLauncher.launchConfiguredImport();
+            }
+            case REPROCESS_IMPORTS -> {
+                importReprocessService.reprocessPending();
+                importFileService.sweepUnreferenced(Instant.now().minus(UNREFERENCED_FILE_GRACE));
             }
         }
     }

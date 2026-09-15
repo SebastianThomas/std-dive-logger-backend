@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.xml.XmlMapper;
 
 @Configuration
 @EntityScan("ch.sthomas.stddivelogger.model.entity")
@@ -29,5 +30,11 @@ public class AnalyticsBaseConfig {
         return ObjectMapperUtils.objectMapperBuilder(
                         customizer -> customizer.addModule(new JtsModule(geometryFactory)))
                 .build();
+    }
+
+    /** The UDDF / XML readers re-processing kept dive files uses. */
+    @Bean
+    XmlMapper xmlMapper() {
+        return ObjectMapperUtils.xmlMapperBuilder(customizer -> {}).build();
     }
 }

@@ -142,18 +142,19 @@ public class UddfReaderService extends BaseReaderService {
         final var end = uddfFile.exportEnd(entry);
         return Optional.of(
                 new ParsedImport(
-                        PendingImportSource.UDDF_SHEARWATER,
-                        null,
-                        filename,
-                        getDiveName(filename),
-                        uddfFile.exportSite(),
-                        null,
-                        null,
-                        uddfFile.exportDiveComputerSerialNumber(),
-                        start,
-                        Duration.between(start, end).toSeconds(),
-                        null,
-                        payload));
+                                PendingImportSource.UDDF_SHEARWATER,
+                                null,
+                                filename,
+                                getDiveName(filename),
+                                uddfFile.exportSite(),
+                                null,
+                                null,
+                                uddfFile.exportDiveComputerSerialNumber(),
+                                start,
+                                Duration.between(start, end).toSeconds(),
+                                null,
+                                payload)
+                        .atEntry(entry));
     }
 
     private DiveProfileUpload getProfile(

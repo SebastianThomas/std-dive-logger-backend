@@ -89,6 +89,10 @@ binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
 `CH_STHOMAS_STDDIVELOGGER_PUSH_VAPID_...`), same as the feign autocomplete URL
 — so it needs no properties-file entry at all.
 
+## Kept dive files volume
+
+Accounts that opt in keep their uploaded dive files on one shared `local-path` volume that ws, import-ws and analytics mount at `/data/import-files`; create it once per namespace before the first deploy with `kubectl --context homelab -n std-dive-logger-dev apply -f deploy/import-files-pvc.yaml` (and `-n std-dive-logger-prod` for prod).
+
 ## Workflows
 
 - **`db.yml`** (manual) — provisions the CNPG Postgres+PostGIS Cluster for one

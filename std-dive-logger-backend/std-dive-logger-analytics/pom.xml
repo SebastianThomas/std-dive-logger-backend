@@ -28,6 +28,12 @@
             <artifactId>std-dive-logger-service</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Re-processing kept dive files needs the readers (REPROCESS_IMPORTS job). -->
+        <dependency>
+            <groupId>ch.sthomas.stddivelogger</groupId>
+            <artifactId>std-dive-logger-import-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>

@@ -37,17 +37,15 @@ public record DiveProfileUpload(
         if (trimStart == null && trimEnd == null) {
             return this;
         }
-        final var effectiveStart = trimStart != null ? trimStart : start;
-        final var effectiveEnd = trimEnd != null ? trimEnd : end;
-        if (!effectiveStart.isBefore(effectiveEnd)) {
+        if (trimStart != null && trimEnd != null && !trimStart.isBefore(trimEnd)) {
             throw new IllegalArgumentException("Trim start must be before trim end.");
         }
+        // A missing bound keeps that whole side, samples outside [start, end] included - like
+        // trimming a saved profile, so re-processing re-applies either kind of trim the same way.
         final var kept =
                 measurements.stream()
-                        .filter(
-                                m ->
-                                        !m.time().isBefore(effectiveStart)
-                                                && !m.time().isAfter(effectiveEnd))
+                        .filter(m -> trimStart == null || !m.time().isBefore(trimStart))
+                        .filter(m -> trimEnd == null || !m.time().isAfter(trimEnd))
                         .toList();
         if (kept.size() < 2) {
             throw new IllegalArgumentException(

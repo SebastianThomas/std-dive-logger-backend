@@ -604,6 +604,126 @@ public class DiveDataService {
         return toRecord(diveRepository.save(dive));
     }
 
+    /** A profile's id, computer and start - enough to tell which saved profile an upload became. */
+    public record ProfileKey(long profileId, long computerId, Instant start) {}
+
+    @Transactional(readOnly = true)
+    public List<ProfileKey> findProfileKeys(final long diveId) {
+        return findDiveEntityById(diveId).getProfiles().stream()
+                .map(p -> new ProfileKey(p.getId(), p.getComputer().getId(), p.getStart()))
+                .toList();
+    }
+
+    /** Everything re-processing a profile from its stored files needs, read at once. */
+    public record ReprocessContext(
+            long diveId,
+            long userId,
+            long computerId,
+            DiveSite site,
+            Instant start,
+            Instant end,
+            List<DiveMeasurement> measurements,
+            @Nullable DecoSettings decoSettings,
+            @Nullable Duration trimStartOffset,
+            @Nullable Duration trimEndOffset,
+            boolean importFilesComplete) {}
+
+    @Transactional(readOnly = true)
+    public Optional<ReprocessContext> findReprocessContext(final long profileId) {
+        return diveProfileRepository
+                .findById(profileId)
+                .map(
+                        profile -> {
+                            final var dive = findDiveEntityById(profile.getDiveId());
+                            final var history = diveProfileHistoryRepository.findById(profileId);
+                            return new ReprocessContext(
+                                    dive.getId(),
+                                    dive.getUserId(),
+                                    profile.getComputer().getId(),
+                                    dive.getDiveSite().toRecord(),
+                                    profile.getStart(),
+                                    profile.getEnd(),
+                                    profile.toMeasurementRecords(),
+                                    profile.getDecoSettings(),
+                                    history.map(DiveProfileHistoryEntity::getTrimStartOffset)
+                                            .orElse(null),
+                                    history.map(DiveProfileHistoryEntity::getTrimEndOffset)
+                                            .orElse(null),
+                                    history.map(DiveProfileHistoryEntity::isImportFilesComplete)
+                                            .orElse(false));
+                        });
+    }
+
+    /**
+     * Replaces a profile with its re-processed version - samples, bounds and deco settings as
+     * proposed; a clock change moves the alignment reset target along. No similarity check: the
+     * data comes from the profile's own files.
+     */
+    @Transactional
+    public Dive applyReprocessedProfile(
+            final long diveId,
+            final long profileId,
+            final DiveProfileUpload upload,
+            final Duration clockShift) {
+        final var dive = findDiveEntityById(diveId);
+        final var profile = findProfileOnDive(dive, profileId);
+        final var eventShift =
+                Duration.between(
+                        ReimportSimilarityCheck.activeStart(
+                                profile.toMeasurementRecords(), profile.getStart()),
+                        ReimportSimilarityCheck.activeStart(upload.measurements(), upload.start()));
+        profile.replaceDecoSettings(upload.decoSettings());
+        // Out of the cascading collection before the delete, see reimportProfileMeasurements.
+        profile.clearMeasurements();
+        diveMeasurementRepository.deleteAllByProfile_Id(profileId);
+        diveMeasurementRepository.flush();
+        profile.replaceMeasurements(
+                toMeasurementEntities(upload.measurements()), upload.start(), upload.end());
+        if (!clockShift.isZero()) {
+            diveProfileHistoryRepository
+                    .findById(profileId)
+                    .ifPresent(
+                            history -> {
+                                history.updateOriginal(
+                                        history.getOriginalStart().plus(clockShift),
+                                        history.getOriginalEnd().plus(clockShift));
+                                diveProfileHistoryRepository.save(history);
+                            });
+        }
+        dive.updateDiveSummary(dive.getProfiles().size() == 1 ? eventShift : Duration.ZERO);
+        final var userId = dive.getUserEntity().getId();
+        diveRepository.save(dive);
+        entityManager.flush();
+        analyticsDataService.invalidateAnalyticsForDive(diveId);
+        return refreshAutoTags(diveId, userId);
+    }
+
+    /** Offsets from the first sample deeper than 0.5 m; see DiveProfileHistoryEntity#recordTrim. */
+    @Transactional
+    public void recordProfileTrim(
+            final long profileId,
+            final @Nullable Duration startOffset,
+            final @Nullable Duration endOffset) {
+        diveProfileHistoryRepository
+                .findById(profileId)
+                .ifPresent(
+                        history -> {
+                            history.recordTrim(startOffset, endOffset);
+                            diveProfileHistoryRepository.save(history);
+                        });
+    }
+
+    @Transactional
+    public void setImportFilesComplete(final long profileId, final boolean complete) {
+        diveProfileHistoryRepository
+                .findById(profileId)
+                .ifPresent(
+                        history -> {
+                            history.setImportFilesComplete(complete);
+                            diveProfileHistoryRepository.save(history);
+                        });
+    }
+
     @Transactional(readOnly = true)
     public Optional<DiveSite> findDiveSiteByName(final String diveSite) {
         return diveSiteRepository.findByNameIgnoreCase(diveSite).map(DiveSiteEntity::toRecord);
@@ -1131,6 +1251,11 @@ public class DiveDataService {
 
         final var newStart = survivors.getFirst().getTime();
         final var newEnd = survivors.getLast().getTime();
+        // Before the delete: the kept window is recorded relative to the untrimmed profile.
+        final var activeStart =
+                ReimportSimilarityCheck.activeStart(
+                        measurements.stream().map(DiveMeasurementEntity::toRecord).toList(),
+                        measurements.getFirst().getTime());
 
         diveMeasurementRepository.deleteAll(toDelete);
         diveMeasurementRepository.flush();
@@ -1146,6 +1271,11 @@ public class DiveDataService {
         freshProfile.updateBounds(newStart, newEnd);
         freshDive.updateDiveSummary();
         analyticsDataService.invalidateAnalyticsForDive(diveId);
+        // Clock-independent, so re-processing the profile from its stored files keeps the trim.
+        recordProfileTrim(
+                profileId,
+                trimStart == null ? null : Duration.between(activeStart, trimStart),
+                trimEnd == null ? null : Duration.between(activeStart, trimEnd));
 
         return toRecord(diveRepository.save(freshDive));
     }

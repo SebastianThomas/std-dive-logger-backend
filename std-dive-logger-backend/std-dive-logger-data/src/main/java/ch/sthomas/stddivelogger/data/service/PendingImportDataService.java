@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
+import ch.sthomas.stddivelogger.model.importfile.ImportLocator;
 import ch.sthomas.stddivelogger.model.user.User;
 
 import org.jspecify.annotations.Nullable;
@@ -41,24 +42,27 @@ public class PendingImportDataService {
             final @Nullable Instant startDate,
             final @Nullable Long durationSeconds,
             final @Nullable Double maxDepth,
-            final PendingImportPayload payload) {
+            final PendingImportPayload payload,
+            final @Nullable Long importFileId,
+            final @Nullable ImportLocator importLocator) {
         final var userEntity = userRepository.findById(user.id()).orElseThrow();
         return pendingImportRepository.save(
                 new PendingImportEntity(
-                        userEntity,
-                        source,
-                        externalId,
-                        filename,
-                        diveIdentifierGuess,
-                        siteNameGuess,
-                        latitudeGuess,
-                        longitudeGuess,
-                        computerSerial,
-                        startDate,
-                        durationSeconds,
-                        maxDepth,
-                        payload,
-                        Instant.now()));
+                                userEntity,
+                                source,
+                                externalId,
+                                filename,
+                                diveIdentifierGuess,
+                                siteNameGuess,
+                                latitudeGuess,
+                                longitudeGuess,
+                                computerSerial,
+                                startDate,
+                                durationSeconds,
+                                maxDepth,
+                                payload,
+                                Instant.now())
+                        .withImportFile(importFileId, importLocator));
     }
 
     @Transactional

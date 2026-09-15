@@ -14,7 +14,12 @@ public enum JobKind {
             "Boundary import",
             "Launch the OSM and geoBoundaries CGAZ boundary imports in Kubernetes",
             "0 0 2 * * SUN",
-            0);
+            0),
+    REPROCESS_IMPORTS(
+            "Import re-processing",
+            "Re-read kept dive files after importer updates: apply additions, flag real changes",
+            "0 17 * * * *",
+            60);
 
     public final String label;
     public final String description;

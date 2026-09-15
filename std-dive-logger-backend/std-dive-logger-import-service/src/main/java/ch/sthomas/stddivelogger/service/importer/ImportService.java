@@ -1,7 +1,17 @@
 package ch.sthomas.stddivelogger.service.importer;
 
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.BUDDIES;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.CONFIGURATION;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.DIVE_IDENTIFIER;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.DIVE_NUMBER;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.GAS_CONSUMPTION;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.NOTES;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.SITE;
+import static ch.sthomas.stddivelogger.model.importfile.ImportedDiveField.VISIBILITY;
+
 import ch.sthomas.stddivelogger.data.location.LocationTimezoneResolver;
 import ch.sthomas.stddivelogger.data.service.DiveDataService;
+import ch.sthomas.stddivelogger.data.service.ImportFileDataService;
 import ch.sthomas.stddivelogger.data.service.PendingImportDataService;
 import ch.sthomas.stddivelogger.model.controller.dive.DivesoftImportRequest;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportCommitRequest;
@@ -19,15 +29,22 @@ import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.NamedBuddy;
 import ch.sthomas.stddivelogger.model.dive.SimplifiedDive;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
 import ch.sthomas.stddivelogger.model.dive.profile.ProfileMeasurementMerge;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
+import ch.sthomas.stddivelogger.model.entity.DiveImportFileEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveProfileImportFileEntity;
+import ch.sthomas.stddivelogger.model.entity.ImportFileEntity;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
 import ch.sthomas.stddivelogger.model.exception.MissingDiveSiteValueException;
 import ch.sthomas.stddivelogger.model.geometry.Location;
+import ch.sthomas.stddivelogger.model.importer.divesoft.DivesoftDiveDetailResponse;
+import ch.sthomas.stddivelogger.model.importfile.ImportedDiveField;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
+import ch.sthomas.stddivelogger.service.ImportFileService;
 import ch.sthomas.stddivelogger.service.importer.divesoft.DivesoftReaderService;
 import ch.sthomas.stddivelogger.service.importer.dl7.Dl7ReaderService;
 import ch.sthomas.stddivelogger.service.importer.fit.FitReaderService;
@@ -35,10 +52,15 @@ import ch.sthomas.stddivelogger.service.importer.shearwater.ShearwaterDbReaderSe
 import ch.sthomas.stddivelogger.service.importer.uddf.UddfReaderService;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import tools.jackson.databind.JsonNode;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -48,8 +70,12 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -61,7 +87,10 @@ import java.util.stream.Stream;
 
 @Service
 public class ImportService {
+    private static final Logger logger = LoggerFactory.getLogger(ImportService.class);
     private static final Duration PENDING_IMPORT_EXPIRY = Duration.ofHours(48);
+    // The database keeps microseconds; a parsed start may carry more.
+    private static final Duration SAME_START = Duration.ofMillis(1);
 
     // Every Shearwater export carries the dive computer's plain local wall-clock reading with no
     // timezone of its own - the UDDF even suffixes it with a "Z" it doesn't mean (its own export
@@ -85,7 +114,10 @@ public class ImportService {
     private final ShearwaterDbReaderService shearwaterDbReaderService;
     private final PendingImportDataService pendingImportDataService;
     private final DiveService diveService;
+    private final DiveDataService diveDataService;
     private final LocationTimezoneResolver locationTimezoneResolver;
+    private final ImportFileService importFileService;
+    private final ImportFileDataService importFileDataService;
 
     public ImportService(
             final FitReaderService fitReaderService,
@@ -97,7 +129,10 @@ public class ImportService {
             final ShearwaterDbReaderService shearwaterDbReaderService,
             final PendingImportDataService pendingImportDataService,
             final DiveService diveService,
-            final LocationTimezoneResolver locationTimezoneResolver) {
+            final DiveDataService diveDataService,
+            final LocationTimezoneResolver locationTimezoneResolver,
+            final ImportFileService importFileService,
+            final ImportFileDataService importFileDataService) {
         this.fitReaderService = fitReaderService;
         this.uddfReaderService = uddfReaderService;
         this.xmlReaderService = xmlReaderService;
@@ -107,32 +142,66 @@ public class ImportService {
         this.shearwaterDbReaderService = shearwaterDbReaderService;
         this.pendingImportDataService = pendingImportDataService;
         this.diveService = diveService;
+        this.diveDataService = diveDataService;
         this.locationTimezoneResolver = locationTimezoneResolver;
+        this.importFileService = importFileService;
+        this.importFileDataService = importFileDataService;
     }
 
-    public StageImportResult stageDivesoft(final User user, final DivesoftImportRequest request) {
-        return stage(user, Stream.of(divesoftReaderService.parse(user, request)));
+    /**
+     * Stages dives fetched from the Divesoft API. {@code rawDives} - the API's own JSON, one per
+     * dive, same order - is what an account that keeps its files stores, one file per dive.
+     */
+    public StageImportResult stageDivesoft(
+            final User user, final DivesoftImportRequest request, final List<byte[]> rawDives) {
+        final var staged = new ArrayList<PendingImportSummary>();
+        final var errors = new ArrayList<String>();
+        final var dives = request.dives();
+        for (var i = 0; i < dives.size(); i++) {
+            final var result =
+                    divesoftReaderService
+                            .parse(user, new DivesoftImportRequest(List.of(dives.get(i))))
+                            .toResult();
+            errors.addAll(result.errors());
+            final var fileId =
+                    i < rawDives.size()
+                            ? keepFile(
+                                    user,
+                                    divesoftFilename(result.parsed()),
+                                    "application/json",
+                                    rawDives.get(i),
+                                    result.parsed(),
+                                    divesoftMetadata(result.parsed()))
+                            : null;
+            result.parsed().forEach(p -> staged.add(stageOne(user, p, fileId).toSummary()));
+        }
+        return new StageImportResult(staged, errors);
     }
 
     public StageImportResult stageUpload(final User user, final List<MultipartFile> files) {
-        return stage(user, files.stream().flatMap(file -> parseFile(user, file)));
+        final var staged = new ArrayList<PendingImportSummary>();
+        final var errors = new ArrayList<String>();
+        for (final var file : files) {
+            final var filename = file.getOriginalFilename();
+            final byte[] bytes;
+            final ParsedImportResultStreaming.Result result;
+            try {
+                bytes = file.getBytes();
+                result = parse(user, filename, bytes);
+            } catch (final IOException e) {
+                errors.add(MessageFormat.format("Could not import the file {0}", filename));
+                continue;
+            }
+            errors.addAll(result.errors());
+            final var fileId =
+                    keepFile(user, filename, file.getContentType(), bytes, result.parsed(), null);
+            result.parsed().forEach(p -> staged.add(stageOne(user, p, fileId).toSummary()));
+        }
+        return new StageImportResult(staged, errors);
     }
 
-    private StageImportResult stage(
-            final User user, final Stream<ParsedImportResultStreaming> parsed) {
-        final var result =
-                parsed.reduce(ParsedImportResultStreaming::concat)
-                        .map(ParsedImportResultStreaming::toResult)
-                        .orElse(new ParsedImportResultStreaming.Result(List.of(), List.of()));
-        final var summaries =
-                result.parsed().stream()
-                        .map(p -> stageOne(user, p))
-                        .map(PendingImportEntity::toSummary)
-                        .toList();
-        return new StageImportResult(summaries, result.errors());
-    }
-
-    private PendingImportEntity stageOne(final User user, final ParsedImport parsed) {
+    private PendingImportEntity stageOne(
+            final User user, final ParsedImport parsed, final @Nullable Long importFileId) {
         return pendingImportDataService.save(
                 user,
                 parsed.source(),
@@ -146,22 +215,89 @@ public class ImportService {
                 parsed.startDate(),
                 parsed.durationSeconds(),
                 parsed.maxDepth(),
-                parsed.payload());
+                parsed.payload(),
+                importFileId,
+                importFileId == null ? null : parsed.locator());
     }
 
-    private Stream<ParsedImportResultStreaming> parseFile(
-            final User user, final MultipartFile file) {
-        try {
-            return parseFile(user, file.getOriginalFilename(), file.getInputStream());
-        } catch (final IOException e) {
-            return Stream.of(
-                    new ParsedImportResultStreaming(
-                            Stream.empty(),
-                            Stream.of(
-                                    MessageFormat.format(
-                                            "Could not import the file {0}",
-                                            file.getOriginalFilename()))));
+    /** Stores the upload for an account that keeps its files; null otherwise. */
+    private @Nullable Long keepFile(
+            final User user,
+            final @Nullable String filename,
+            final @Nullable String contentType,
+            final byte[] bytes,
+            final List<ParsedImport> parsed,
+            final @Nullable JsonNode metadata) {
+        if (parsed.isEmpty()) {
+            return null;
         }
+        return importFileService.storeIfKept(
+                user,
+                parsed.getFirst().source(),
+                filename,
+                contentType,
+                bytes,
+                parsed.size(),
+                parsed.stream().mapToInt(p -> p.payload().profiles().size()).sum(),
+                metadata);
+    }
+
+    private static String divesoftFilename(final List<ParsedImport> parsed) {
+        final var id = parsed.isEmpty() ? null : parsed.getFirst().externalId();
+        return "divesoft-" + Objects.requireNonNullElse(id, "dive") + ".json";
+    }
+
+    private static @Nullable JsonNode divesoftMetadata(final List<ParsedImport> parsed) {
+        if (parsed.isEmpty()) {
+            return null;
+        }
+        final var metadata = new LinkedHashMap<String, String>();
+        final var id = parsed.getFirst().externalId();
+        if (id != null) {
+            metadata.put("divesoftId", id);
+        }
+        metadata.put("fetchedAt", Instant.now().toString());
+        return ImportedFieldValues.JSON.valueToTree(metadata);
+    }
+
+    private ParsedImportResultStreaming.Result parse(
+            final User user, final @Nullable String filename, final byte[] bytes)
+            throws IOException {
+        return parseFile(user, filename, new ByteArrayInputStream(bytes))
+                .reduce(ParsedImportResultStreaming::concat)
+                .map(ParsedImportResultStreaming::toResult)
+                .orElse(new ParsedImportResultStreaming.Result(List.of(), List.of()));
+    }
+
+    /** Parses a stored file again - the same dispatch as its upload; Divesoft from its API JSON. */
+    public ParsedImportResultStreaming.Result parseStored(
+            final User user, final ImportFileEntity file, final byte[] bytes) throws IOException {
+        if (file.getSource() == PendingImportSource.DIVESOFT) {
+            final var dive =
+                    ImportedFieldValues.JSON.readValue(bytes, DivesoftDiveDetailResponse.class);
+            return divesoftReaderService
+                    .parse(user, new DivesoftImportRequest(List.of(dive)))
+                    .toResult();
+        }
+        return parse(user, dispatchFilename(file), bytes);
+    }
+
+    private static String dispatchFilename(final ImportFileEntity file) {
+        final var name = file.getOriginalFilename();
+        final var type = UploadFileType.fromFilename(name);
+        if (name != null && type != null && type != UploadFileType.NONE) {
+            return name;
+        }
+        final var extension =
+                switch (file.getSource()) {
+                    case UDDF_SHEARWATER -> "uddf";
+                    case FIT_GARMIN, FIT_SUUNTO -> "fit";
+                    case XML_SUBSURFACE, XML_SHEARWATER -> "xml";
+                    case JSON_SUUNTO, DIVESOFT -> "json";
+                    case DL7_SHEARWATER -> "zxu";
+                    case DB_SHEARWATER -> "db";
+                };
+        return "stored-file-" + file.getId() + "." + extension;
     }
 
     private Stream<ParsedImportResultStreaming> parseFile(
@@ -221,6 +357,15 @@ public class ImportService {
                 .toList();
     }
 
+    /**
+     * A commit's result, plus what provenance needs: the payload as saved (site timezone applied)
+     * and the dive-level values taken from the file.
+     */
+    private record Committed(
+            SimplifiedDive dive,
+            PendingImportPayload saved,
+            Map<ImportedDiveField, JsonNode> taken) {}
+
     @Transactional
     public SimplifiedDive commit(
             final User user,
@@ -241,14 +386,13 @@ public class ImportService {
         final var payload = applyProfileTrims(entity.getPayload(), overrides.profileTrims());
 
         final var attachToNumber = resolveAttachTarget(user, overrides, payload);
-        final SimplifiedDive result;
-        if (attachToNumber != null) {
-            result = attach(user, attachToNumber, overrides, payload, entity.getSource());
-        } else {
-            result = createDive(user, entity, overrides, payload);
-        }
+        final var committed =
+                attachToNumber != null
+                        ? attach(user, attachToNumber, overrides, payload, entity.getSource())
+                        : createDive(user, entity, overrides, payload);
+        recordProvenance(entity, payload, committed, overrides.profileTrims());
         pendingImportDataService.deleteById(pendingImportId);
-        return result;
+        return committed.dive();
     }
 
     /**
@@ -262,12 +406,7 @@ public class ImportService {
         if (trims == null || trims.isEmpty()) {
             return payload;
         }
-        final var trimByIndex =
-                trims.stream()
-                        .collect(
-                                Collectors.toMap(
-                                        PendingImportCommitRequest.ProfileTrim::profileIndex,
-                                        Function.identity()));
+        final var trimByIndex = trimsByIndex(trims);
         final var profiles = payload.profiles();
         final var trimmedProfiles =
                 IntStream.range(0, profiles.size())
@@ -288,6 +427,19 @@ public class ImportService {
                 payload.configuration(),
                 payload.namedBuddies(),
                 payload.diveNumberGuess());
+    }
+
+    private static Map<Integer, PendingImportCommitRequest.ProfileTrim> trimsByIndex(
+            final @Nullable List<PendingImportCommitRequest.ProfileTrim> trims) {
+        if (trims == null) {
+            return Map.of();
+        }
+        return trims.stream()
+                .collect(
+                        Collectors.toMap(
+                                PendingImportCommitRequest.ProfileTrim::profileIndex,
+                                Function.identity(),
+                                (a, b) -> b));
     }
 
     /**
@@ -369,7 +521,7 @@ public class ImportService {
         return effective != null && effective.isFractional() ? effective : null;
     }
 
-    private SimplifiedDive attach(
+    private Committed attach(
             final User user,
             final DiveNumber diveNumber,
             final PendingImportCommitRequest overrides,
@@ -382,7 +534,14 @@ public class ImportService {
         for (final var profile : correctedPayload.profiles()) {
             result = diveService.addProfile(user, diveNumber, notes, profile);
         }
-        return Objects.requireNonNull(result, "Pending import has no profiles to attach");
+        final var taken = new EnumMap<ImportedDiveField, JsonNode>(ImportedDiveField.class);
+        if (overrides.notes() == null) {
+            ImportedFieldValues.putTaken(taken, NOTES, payload.notes());
+        }
+        return new Committed(
+                Objects.requireNonNull(result, "Pending import has no profiles to attach"),
+                correctedPayload,
+                taken);
     }
 
     /**
@@ -408,7 +567,7 @@ public class ImportService {
                 .orElse(payload);
     }
 
-    private SimplifiedDive createDive(
+    private Committed createDive(
             final User user,
             final PendingImportEntity entity,
             final PendingImportCommitRequest overrides,
@@ -426,11 +585,11 @@ public class ImportService {
         final var namedBuddies =
                 Optional.ofNullable(overrides.namedBuddies())
                         .orElse(correctedPayload.namedBuddies());
+        final var diveNumberGuess = correctedPayload.diveNumberGuess();
         final var diveNumber =
                 overrides.diveNumber() != null
                         ? Optional.of(overrides.diveNumber())
-                        : Optional.ofNullable(correctedPayload.diveNumberGuess())
-                                .map(DiveNumber::number);
+                        : Optional.ofNullable(diveNumberGuess).map(DiveNumber::number);
         final var saveResult =
                 diveService.saveDive(
                         user,
@@ -446,7 +605,125 @@ public class ImportService {
         if (saveResult.isException()) {
             throw saveResult.dbException();
         }
-        return saveResult.value();
+
+        final var taken = new EnumMap<ImportedDiveField, JsonNode>(ImportedDiveField.class);
+        if (overrides.notes() == null) {
+            ImportedFieldValues.putTaken(taken, NOTES, correctedPayload.notes());
+        }
+        if (overrides.visibility() == null) {
+            ImportedFieldValues.putTaken(taken, VISIBILITY, correctedPayload.visibility());
+        }
+        if (overrides.namedBuddies() == null) {
+            ImportedFieldValues.putTaken(taken, BUDDIES, correctedPayload.namedBuddies());
+        }
+        ImportedFieldValues.putTaken(taken, GAS_CONSUMPTION, correctedPayload.gasConsumption());
+        if (hasContent(correctedPayload.configuration())) {
+            ImportedFieldValues.putTaken(taken, CONFIGURATION, correctedPayload.configuration());
+        }
+        if (overrides.diveNumber() == null && diveNumberGuess != null) {
+            ImportedFieldValues.putTaken(taken, DIVE_NUMBER, diveNumberGuess.number());
+        }
+        if (overrides.diveIdentifier() == null) {
+            ImportedFieldValues.putTaken(taken, DIVE_IDENTIFIER, entity.getDiveIdentifierGuess());
+        }
+        final var siteNameGuess = entity.getSiteNameGuess();
+        if (overrides.diveSiteId() == null
+                && overrides.newSiteName() == null
+                && siteNameGuess != null) {
+            ImportedFieldValues.putTaken(
+                    taken,
+                    SITE,
+                    new ImportedFieldValues.SiteValue(
+                            siteNameGuess, entity.getLatitudeGuess(), entity.getLongitudeGuess()));
+        }
+        return new Committed(saveResult.value(), correctedPayload, taken);
+    }
+
+    private static boolean hasContent(final DiveConfiguration configuration) {
+        return !configuration.cylinders().isEmpty()
+                || configuration.base() != null
+                || configuration.weight() != null;
+    }
+
+    /**
+     * Records pre-commit trims, and - for an account that keeps its files - which profiles and
+     * dive-level values came from the stored file.
+     */
+    private void recordProvenance(
+            final PendingImportEntity entity,
+            final PendingImportPayload trimmed,
+            final Committed committed,
+            final @Nullable List<PendingImportCommitRequest.ProfileTrim> trims) {
+        final var fileId = entity.getImportFileId();
+        final var trimByIndex = trimsByIndex(trims);
+        if (fileId == null && trimByIndex.isEmpty()) {
+            return;
+        }
+        final var diveId = committed.dive().id();
+        final var untrimmed = entity.getPayload();
+        final var saved = committed.saved();
+        final var keys = diveDataService.findProfileKeys(diveId);
+        final var siteId =
+                Optional.ofNullable(committed.dive().site()).map(DiveSite::id).orElse(null);
+        final var version = ImportParserVersions.current(entity.getSource());
+        for (var i = 0; i < saved.profiles().size(); i++) {
+            final var upload = saved.profiles().get(i);
+            final var profileId = profileIdOf(keys, upload);
+            if (profileId == null) {
+                logger.warn(
+                        "Profile {} of pending import {} not found on dive {}",
+                        i,
+                        entity.getId(),
+                        diveId);
+                continue;
+            }
+            final var original = untrimmed.profiles().get(i);
+            final var activeStart =
+                    ReimportSimilarityCheck.activeStart(original.measurements(), original.start());
+            final var trim = trimByIndex.get(i);
+            if (trim != null) {
+                diveDataService.recordProfileTrim(
+                        profileId,
+                        between(activeStart, trim.trimStart()),
+                        between(activeStart, trim.trimEnd()));
+            }
+            if (fileId != null) {
+                // The uniform shift the site's timezone applied to every sample of this profile.
+                final var timezoneShift =
+                        Duration.between(trimmed.profiles().get(i).start(), upload.start());
+                importFileDataService.linkProfile(
+                        profileId,
+                        fileId,
+                        entity.getImportLocator().withProfile(i),
+                        version,
+                        activeStart.plus(timezoneShift),
+                        siteId);
+                diveDataService.setImportFilesComplete(profileId, true);
+            }
+        }
+        if (fileId != null) {
+            importFileDataService.linkDive(
+                    diveId, fileId, entity.getImportLocator().dive(), version, committed.taken());
+        }
+    }
+
+    private static @Nullable Duration between(final Instant from, final @Nullable Instant to) {
+        return to == null ? null : Duration.between(from, to);
+    }
+
+    private static @Nullable Long profileIdOf(
+            final List<DiveDataService.ProfileKey> keys, final DiveProfileUpload upload) {
+        return keys.stream()
+                .filter(k -> k.computerId() == upload.diveComputerId())
+                .filter(
+                        k ->
+                                Duration.between(k.start(), upload.start())
+                                                .abs()
+                                                .compareTo(SAME_START)
+                                        <= 0)
+                .map(DiveDataService.ProfileKey::profileId)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
@@ -489,8 +766,10 @@ public class ImportService {
                 payload.diveNumberGuess());
     }
 
-    private ParsedImport correctedForSite(
-            final ParsedImport parsed, final @Nullable DiveSite site) {
+    /**
+     * The parsed dive with its clock read in {@code site}'s timezone, where the source has none.
+     */
+    public ParsedImport correctedForSite(final ParsedImport parsed, final @Nullable DiveSite site) {
         final var payload = correctForUnknownTimezone(parsed.source(), parsed.payload(), site);
         if (payload == parsed.payload()) {
             return parsed;
@@ -499,19 +778,7 @@ public class ImportService {
                 parsed.startDate() == null || payload.profiles().isEmpty()
                         ? parsed.startDate()
                         : payload.profiles().getFirst().start();
-        return new ParsedImport(
-                parsed.source(),
-                parsed.externalId(),
-                parsed.filename(),
-                parsed.diveIdentifierGuess(),
-                parsed.siteNameGuess(),
-                parsed.latitudeGuess(),
-                parsed.longitudeGuess(),
-                parsed.computerSerial(),
-                startDate,
-                parsed.durationSeconds(),
-                parsed.maxDepth(),
-                payload);
+        return parsed.withPayload(payload, startDate);
     }
 
     /**
@@ -583,13 +850,11 @@ public class ImportService {
             final int entry,
             final MultipartFile file) {
         final var filename = Objects.requireNonNull(file.getOriginalFilename());
+        final byte[] bytes;
         final ParsedImportResultStreaming.Result result;
         try {
-            result =
-                    parseFile(user, filename, file.getInputStream())
-                            .reduce(ParsedImportResultStreaming::concat)
-                            .map(ParsedImportResultStreaming::toResult)
-                            .orElse(new ParsedImportResultStreaming.Result(List.of(), List.of()));
+            bytes = file.getBytes();
+            result = parse(user, filename, bytes);
         } catch (final IOException e) {
             throw new UncheckedIOException("Could not read uploaded file " + filename, e);
         }
@@ -607,12 +872,61 @@ public class ImportService {
                             + result.parsed().size()
                             + " dive(s)");
         }
+        final var fileId =
+                keepFile(user, filename, file.getContentType(), bytes, result.parsed(), null);
+        return previewReimport(user, diveId, profileId, result.parsed().get(entry), fileId);
+    }
+
+    /**
+     * {@link #previewReimportProfile} from a file the account already stored - the dive in it is
+     * the one this dive was linked to before, or its only dive.
+     */
+    public ReimportPreviewResult previewReimportProfileFromStoredFile(
+            final User user, final long diveId, final long profileId, final long importFileId) {
+        final var file = importFileService.getOwned(user, importFileId);
+        final ParsedImportResultStreaming.Result result;
+        try {
+            result = parseStored(user, file, importFileService.read(file));
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Could not read stored file " + importFileId, e);
+        }
+        final var knownDives =
+                Stream.concat(
+                                importFileDataService.findDiveLinks(diveId).stream()
+                                        .filter(l -> l.getFile().getId() == importFileId)
+                                        .map(DiveImportFileEntity::getLocator),
+                                importFileDataService.findProfileLinksOfDive(diveId).stream()
+                                        .filter(l -> l.getFile().getId() == importFileId)
+                                        .map(DiveProfileImportFileEntity::getLocator))
+                        .toList();
+        final var parsed =
+                result.parsed().stream()
+                        .filter(p -> knownDives.stream().anyMatch(l -> l.sameDive(p.locator())))
+                        .findFirst()
+                        .or(
+                                () ->
+                                        result.parsed().size() == 1
+                                                ? Optional.of(result.parsed().getFirst())
+                                                : Optional.empty())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Could not tell which dive of the stored file"
+                                                        + " belongs to this dive"));
+        return previewReimport(user, diveId, profileId, parsed, file.getId());
+    }
+
+    private ReimportPreviewResult previewReimport(
+            final User user,
+            final long diveId,
+            final long profileId,
+            final ParsedImport chosen,
+            final @Nullable Long importFileId) {
         final var context = diveService.getReimportPreviewContext(user, diveId, profileId);
         // The target dive's site is a real location, so a timezone-less source is corrected
         // exactly like at a normal commit - otherwise refining a correctly placed dive with the
         // same dive's Shearwater export would read as a whole-hour clock offset.
-        final var parsedImport =
-                correctedForSite(result.parsed().get(entry), context.dive().site());
+        final var parsedImport = correctedForSite(chosen, context.dive().site());
         final var reimportedProfile = parsedImport.payload().profiles().getFirst();
 
         // Throws on a genuine "different dive"; returns a whole-hour offset when the clocks only
@@ -647,7 +961,7 @@ public class ImportService {
                         parsedImport.payload().namedBuddies(),
                         parsedImport.payload().gasConsumption());
 
-        final var pendingImport = stageOne(user, parsedImport);
+        final var pendingImport = stageOne(user, parsedImport, importFileId);
         pendingImportDataService.markReimportTarget(pendingImport.getId(), diveId, profileId);
         return new ReimportPreviewResult(pendingImport.getId(), conflicts);
     }
@@ -717,37 +1031,73 @@ public class ImportService {
 
         final var existingBuddyNames =
                 context.dive().namedBuddies().stream().map(NamedBuddy::name).toList();
+        final var notes =
+                ReimportFieldMerge.resolveNotes(
+                        context.dive().notes(), payload.notes(), resolution.notes());
+        final var visibility =
+                ReimportFieldMerge.resolveVisibility(
+                        context.dive().visibility(), payload.visibility(), resolution.visibility());
+        final var namedBuddies =
+                ReimportFieldMerge.resolveNamedBuddies(
+                        existingBuddyNames, payload.namedBuddies(), resolution.namedBuddies());
+        final var gasConsumption =
+                ReimportFieldMerge.resolveGasConsumption(
+                        context.dive().gasConsumption(),
+                        payload.gasConsumption(),
+                        resolution.gasConsumption());
         final var updated =
                 diveService.applyReimportResolution(
-                        user,
-                        diveId,
-                        ReimportFieldMerge.resolveNotes(
-                                context.dive().notes(), payload.notes(), resolution.notes()),
-                        ReimportFieldMerge.resolveVisibility(
-                                context.dive().visibility(),
-                                payload.visibility(),
-                                resolution.visibility()),
-                        ReimportFieldMerge.resolveNamedBuddies(
-                                existingBuddyNames,
-                                payload.namedBuddies(),
-                                resolution.namedBuddies()),
-                        ReimportFieldMerge.resolveGasConsumption(
-                                context.dive().gasConsumption(),
-                                payload.gasConsumption(),
-                                resolution.gasConsumption()));
+                        user, diveId, notes, visibility, namedBuddies, gasConsumption);
+
+        final var taken = new EnumMap<ImportedDiveField, JsonNode>(ImportedDiveField.class);
+        if (notes != null) {
+            ImportedFieldValues.putTaken(taken, NOTES, payload.notes());
+        }
+        if (visibility != null) {
+            ImportedFieldValues.putTaken(taken, VISIBILITY, payload.visibility());
+        }
+        if (namedBuddies != null) {
+            ImportedFieldValues.putTaken(taken, BUDDIES, payload.namedBuddies());
+        }
+        if (gasConsumption != null) {
+            ImportedFieldValues.putTaken(taken, GAS_CONSUMPTION, payload.gasConsumption());
+        }
+        recordReimportProvenance(pendingImport, diveId, profileId, context.dive().site(), taken);
         pendingImportDataService.deleteById(pendingImportId);
         return updated;
     }
 
-    /**
-     * When the reimport's clock is a whole number of hours off the existing profile (a UTC vs.
-     * local-zone artefact - {@link ReimportConflicts.ClockOffset}), apply the diver's choice:
-     * EXISTING re-aligns the parsed data onto the dive's current clock, NEW keeps the file's clock.
-     * A missing choice for a real offset is an error, mirroring the other conflict fields.
-     */
+    private void recordReimportProvenance(
+            final PendingImportEntity pendingImport,
+            final long diveId,
+            final long profileId,
+            final @Nullable DiveSite site,
+            final Map<ImportedDiveField, JsonNode> taken) {
+        final var fileId = pendingImport.getImportFileId();
+        if (fileId == null) {
+            // Samples from a file that isn't kept: re-processing may only add to this profile now.
+            diveDataService.setImportFilesComplete(profileId, false);
+            return;
+        }
+        final var version = ImportParserVersions.current(pendingImport.getSource());
+        final var upload = pendingImport.getPayload().profiles().getFirst();
+        importFileDataService.linkProfile(
+                profileId,
+                fileId,
+                pendingImport.getImportLocator().withProfile(0),
+                version,
+                ReimportSimilarityCheck.activeStart(upload.measurements(), upload.start()),
+                site == null ? null : site.id());
+        importFileDataService.linkDive(
+                diveId, fileId, pendingImport.getImportLocator().dive(), version, taken);
+    }
+
     /**
      * Both recordings on one clock: {@code reimported} as the file to merge in, and the shift the
-     * existing profile needs (non-zero only when the diver adopted the file's clock).
+     * existing profile needs (non-zero only when the diver adopted the file's clock). When the
+     * clocks are a whole number of hours apart (a UTC vs. local-zone artefact - {@link
+     * ReimportConflicts.ClockOffset}), EXISTING re-aligns the parsed data onto the dive's current
+     * clock, NEW keeps the file's clock; a missing choice for a real offset is an error.
      */
     private record ClockResolution(DiveProfileUpload reimported, Duration existingShift) {}
 

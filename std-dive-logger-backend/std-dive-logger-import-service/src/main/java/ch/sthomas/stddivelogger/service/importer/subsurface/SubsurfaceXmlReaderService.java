@@ -111,11 +111,12 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         try {
             final var parsed =
                     parseOne(
-                            user,
-                            dive.getValue(),
-                            computers,
-                            sites,
-                            getDiveName(filename) + "-" + dive.getKey());
+                                    user,
+                                    dive.getValue(),
+                                    computers,
+                                    sites,
+                                    getDiveName(filename) + "-" + dive.getKey())
+                            .atEntry(dive.getKey());
             return new ParsedImportResultStreaming(Stream.of(parsed), Stream.empty());
         } catch (final Exception e) {
             logger.info("Could not parse subsurface XML file dive #{}", dive.getLeft(), e);

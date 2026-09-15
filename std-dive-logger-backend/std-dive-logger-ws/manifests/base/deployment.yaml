@@ -25,6 +25,8 @@ spec:
           configMap: { name: std-dive-logger-ws-config }
         - name: logs
           emptyDir: { sizeLimit: 200Mi }
+        - name: import-files
+          persistentVolumeClaim: { claimName: std-dive-logger-import-files }
       containers:
         - name: ws
           image: ${WS_IMAGE}
@@ -37,6 +39,7 @@ spec:
             # from the env below). SPRING_CONFIG_NAME picks it by its real name.
             - { name: config, mountPath: /config, readOnly: true }
             - { name: logs, mountPath: /logs }
+            - { name: import-files, mountPath: /data/import-files }
           env:
             - { name: SPRING_CONFIG_LOCATION, value: "/config/" }
             - { name: SPRING_CONFIG_NAME, value: std-dive-logger-ws-dev }

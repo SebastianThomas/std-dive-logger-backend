@@ -109,6 +109,35 @@ public class UserDataService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isKeepImportFiles(final long userId) {
+        return userRepository.findById(userId).map(UserEntity::isKeepImportFiles).orElse(false);
+    }
+
+    @Transactional
+    public void setKeepImportFiles(final long userId, final boolean keep) {
+        userRepository.findById(userId).orElseThrow().setKeepImportFiles(keep);
+    }
+
+    /**
+     * Object-storage paths deleting the account must remove (the rows cascade, the objects don't):
+     * photos on its dives or uploaded by it, and its dives' preview images.
+     */
+    @Transactional(readOnly = true)
+    public List<String> findObjectStoragePathsOfAccount(final long userId) {
+        return namedParameterJdbcTemplate.queryForList(
+                """
+                SELECT storage_path FROM t_dive_photo
+                WHERE fk_uploaded_by_user_id = :userId
+                   OR fk_dive_id IN (SELECT pk_dive_id FROM t_dives WHERE fk_diver_id = :userId)
+                UNION
+                SELECT preview_image FROM t_dives
+                WHERE fk_diver_id = :userId AND preview_image IS NOT NULL
+                """,
+                Map.of("userId", userId),
+                String.class);
+    }
+
+    @Transactional(readOnly = true)
     public PagedResponse<User> findUsersByClosestMatchName(
             final String query, final Pageable pageable) {
         return PagedResponse.of(

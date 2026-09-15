@@ -14,7 +14,9 @@ import ch.sthomas.stddivelogger.service.importer.ImportService;
 
 import io.swagger.v3.oas.annotations.Operation;
 
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
 
@@ -24,6 +26,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -32,9 +39,16 @@ import java.util.List;
 public class ImportWsController {
 
     private final ImportService importService;
+    private final JsonMapper jsonMapper;
+    private final Validator validator;
 
-    public ImportWsController(final ImportService importService) {
+    public ImportWsController(
+            final ImportService importService,
+            final JsonMapper jsonMapper,
+            final Validator validator) {
         this.importService = importService;
+        this.jsonMapper = jsonMapper;
+        this.validator = validator;
     }
 
     @Operation(
@@ -59,9 +73,28 @@ public class ImportWsController {
                             + " parses them but does not persist anything yet.")
     @PostMapping(path = "/divesoft", consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<StageImportResult> stageDivesoft(
-            @AuthenticationPrincipal final User user,
-            @Valid @RequestBody final DivesoftImportRequest request) {
-        final var staged = importService.stageDivesoft(user, request);
+            @AuthenticationPrincipal final User user, @RequestBody final JsonNode body) {
+        // Read as a tree first: an account that keeps its files stores each dive's JSON exactly
+        // as the Divesoft API returned it, not only the fields this app maps.
+        final DivesoftImportRequest request;
+        try {
+            request = jsonMapper.treeToValue(body, DivesoftImportRequest.class);
+        } catch (final JacksonException e) {
+            throw new IllegalArgumentException("Malformed Divesoft import request", e);
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Malformed Divesoft import request");
+        }
+        final var violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
+        final var dives = body.get("dives");
+        final var rawDives = new ArrayList<byte[]>();
+        for (var i = 0; i < dives.size(); i++) {
+            rawDives.add(jsonMapper.writeValueAsBytes(dives.get(i)));
+        }
+        final var staged = importService.stageDivesoft(user, request, rawDives);
         if (staged.staged().isEmpty() && !staged.errors().isEmpty()) {
             return ResponseEntity.internalServerError().body(staged);
         }

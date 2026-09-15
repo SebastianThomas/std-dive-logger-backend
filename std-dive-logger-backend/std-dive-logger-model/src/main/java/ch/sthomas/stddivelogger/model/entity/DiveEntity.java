@@ -772,6 +772,10 @@ public class DiveEntity {
         return user.getId();
     }
 
+    public DiveSiteEntity getDiveSite() {
+        return diveSite;
+    }
+
     public @Nullable DiveConfigurationEntity getConfiguration() {
         return configuration;
     }
