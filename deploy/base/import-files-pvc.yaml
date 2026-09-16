@@ -1,7 +1,7 @@
 # Kept dive files (opt-in per account, see ImportFileStore), shared by ws, import-ws and analytics.
 # local-path volumes are ReadWriteOnce and pinned to one node, so all three pods run on that node.
-# Deliberately not part of deploy/<env>: a deploy must never prune it. Applied once per namespace,
-# see deploy/README.md.
+# Part of deploy/base, so every deploy creates it (and never prunes: kube-deploy only applies), in
+# whichever namespace the overlay sets. See deploy/README.md.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

@@ -91,7 +91,7 @@ binding straight onto `ch.sthomas.stddivelogger.push.vapid.*` (env var
 
 ## Kept dive files volume
 
-Accounts that opt in keep their uploaded dive files on one shared `local-path` volume that ws, import-ws and analytics mount at `/data/import-files`; create it once per namespace before the first deploy with `kubectl --context homelab -n std-dive-logger-dev apply -f deploy/import-files-pvc.yaml` (and `-n std-dive-logger-prod` for prod).
+Accounts that opt in keep their uploaded dive files on one shared `local-path` volume that ws, import-ws and analytics mount at `/data/import-files`; `deploy/base/import-files-pvc.yaml` is part of both overlays, so a deploy creates it in that namespace and never removes it again (kube-deploy only applies, it never prunes) - to create it ahead of a deploy, `kubectl --context homelab -n std-dive-logger-dev apply -f deploy/base/import-files-pvc.yaml`.
 
 ## Workflows
 

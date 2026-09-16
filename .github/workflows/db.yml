@@ -36,7 +36,7 @@ jobs:
           ping: kube-cp-01
           hostname: gha-dive-db-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: "${{ inputs.environment }} Cluster"
+      - name: "${{ inputs.environment }} CNPG Cluster"
         uses: SebastianThomas/homelab-actions/cnpg-cluster@v1
         with:
           server: ${{ secrets.KUBE_API }}

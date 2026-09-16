@@ -11,7 +11,7 @@ import java.nio.file.StandardCopyOption;
 /**
  * Stored upload bytes, on a local volume rather than object storage (cheaper for small files kept
  * indefinitely). In Kubernetes every app mounts the same volume here - see {@code
- * deploy/import-files-pvc.yaml}. Paths are relative, one directory per account.
+ * deploy/base/import-files-pvc.yaml}. Paths are relative, one directory per account.
  */
 @Service
 public class ImportFileStore {
