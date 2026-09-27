@@ -2,7 +2,9 @@ package ch.sthomas.stddivelogger.model.analytics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindow;
@@ -451,6 +453,90 @@ class CylinderConsumptionCalculatorTest {
         // Complement is empty -> the unwindowed cylinder's litres are excluded rather than
         // inflating RMV: 1800 / 4.0 = 450, not (1800 + 1200) / 4.0.
         assertEquals(1800.0 / 4.0, notNull(result.ocRmvLiters()), 1e-9);
+    }
+
+    // --- whole-dive total vs partly-tracked gas ---
+
+    private static List<CylinderUsageWindow> lastMinute(
+            final DiveMeasurementWithId from, final DiveMeasurementWithId to) {
+        return List.of(
+                new CylinderUsageWindow(
+                        Duration.between(START, from.measurement().time()),
+                        Duration.between(START, to.measurement().time())));
+    }
+
+    @Test
+    void onlyADecoStageTrackedGivesItsRmvButNoWholeDiveTotal() {
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 20, null);
+        final var m2 = sample(120, 6, null);
+        final var deco = windowedCylinder(7, 200, 150, CylinderRole.OC, lastMinute(m1, m2));
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile(List.of(m0, m1, m2))), List.of(deco));
+
+        // 350 L over 20m -> 6m: ambient 3.0 -> 1.6, avg 2.3 bar x 1 min.
+        assertEquals(350.0 / 2.3, notNull(result.ocRmvLiters()), 1e-9);
+        assertEquals(350.0, notNull(result.ocConsumedLiters()), 1e-9);
+        assertFalse(result.ocConsumedLitersComplete());
+    }
+
+    @Test
+    void backGasPlusDecoStageIsTheWholeDivesTotal() {
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 20, null);
+        final var m2 = sample(120, 6, null);
+        final var backGas = cylinder(12, 200, 100, CylinderRole.OC);
+        final var deco = windowedCylinder(7, 200, 150, CylinderRole.OC, lastMinute(m1, m2));
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile(List.of(m0, m1, m2))), List.of(backGas, deco));
+
+        assertEquals(1550.0, notNull(result.ocConsumedLiters()), 1e-9);
+        assertTrue(result.ocConsumedLitersComplete());
+    }
+
+    @Test
+    void aTrackedCylinderWithoutPressuresMakesTheTotalIncomplete() {
+        // Sidemount: the second bottle's end pressure wasn't noted.
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 20, null);
+        final var left = cylinder(12, 200, 100, CylinderRole.OC);
+        final var right =
+                new DiveConfigurationCylinder(
+                        nextId++,
+                        new CylinderSize(CylinderSizeUnit.LITER, 12),
+                        null,
+                        200.0,
+                        null,
+                        "",
+                        Gas.AIR,
+                        CylinderRole.OC,
+                        List.of());
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile(List.of(m0, m1))), List.of(left, right));
+
+        assertFalse(result.ocConsumedLitersComplete());
+    }
+
+    @Test
+    void aCylinderOfUnknownSizeCountsAsNoDataNotAsZeroLitres() {
+        // 0 L is how an import records "size not known" - it must not turn RMV into 0.
+        final var m0 = sample(0, 0, null);
+        final var m1 = sample(60, 20, null);
+        final var unknownSize = cylinder(0, 200, 100, CylinderRole.OC);
+
+        final var result =
+                CylinderConsumptionCalculator.calculate(
+                        List.of(profile(List.of(m0, m1))), List.of(unknownSize));
+
+        assertNull(result.ocRmvLiters());
+        assertNull(result.ocConsumedLiters());
+        assertFalse(result.ocConsumedLitersComplete());
     }
 
     // --- per-cylinder contributions (the "show the working" breakdown) ---

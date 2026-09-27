@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.model.entity;
 
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderMaterial;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.gear.StandardCylinder;
@@ -104,15 +105,19 @@ public class DiveConfigurationEntity {
                         .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    // Fills a null material via StandardCylinder.inferMaterial so imported/legacy payloads always
-    // land with a value.
+    // Fills a null material via StandardCylinder.inferMaterial for a known size; an import's 0 L
+    // ("size unknown") cylinder keeps no material rather than an invented one.
     private DiveConfigurationCylinderEntity toCylinderEntity(
             final DiveConfigurationCylinder c,
             final Function<CylinderSize, CylinderSizeEntity> getCylinderSizeEntity) {
-        final var material =
-                c.material() != null
-                        ? c.material()
-                        : StandardCylinder.inferMaterial(c.size().liters(), c.size().unit());
+        final @Nullable CylinderMaterial material;
+        if (c.material() != null) {
+            material = c.material();
+        } else if (c.size().liters() > 0) {
+            material = StandardCylinder.inferMaterial(c.size().liters(), c.size().unit());
+        } else {
+            material = null;
+        }
         return new DiveConfigurationCylinderEntity(
                 this,
                 getCylinderSizeEntity.apply(c.size()),

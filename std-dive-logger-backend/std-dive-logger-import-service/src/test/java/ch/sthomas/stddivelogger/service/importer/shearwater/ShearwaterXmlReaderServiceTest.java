@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
+import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputerManufacturer;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
@@ -70,6 +71,12 @@ class ShearwaterXmlReaderServiceTest {
     void parsesTheRealFixtureWithoutThrowing() throws IOException {
         final var result = parseFixture();
         assertThat(result.payload().profiles()).hasSize(1);
+    }
+
+    @Test
+    void takesTheLogbooksDiveNumber() throws IOException {
+        // <number>134</number>, the same value the UDDF export of this dive carries.
+        assertThat(parseFixture().payload().diveNumberGuess()).isEqualTo(new DiveNumber(134));
     }
 
     @Test

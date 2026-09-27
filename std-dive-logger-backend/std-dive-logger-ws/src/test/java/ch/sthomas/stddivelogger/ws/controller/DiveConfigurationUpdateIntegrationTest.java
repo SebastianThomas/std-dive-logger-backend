@@ -35,6 +35,7 @@ import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveSummaryEntity;
 import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.exception.ForbiddenException;
@@ -499,7 +500,7 @@ class DiveConfigurationUpdateIntegrationTest {
                                         .setParameter("id", diveId)
                                         .getSingleResult())
                         .shortValue();
-        assertThat(version).isEqualTo((short) 1);
+        assertThat(version).isEqualTo(DiveSummaryEntity.GAS_COMPUTATION_VERSION);
     }
 
     @Test

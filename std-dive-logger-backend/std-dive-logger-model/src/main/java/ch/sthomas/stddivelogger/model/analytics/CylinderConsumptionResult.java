@@ -36,8 +36,12 @@ public record CylinderConsumptionResult(
         List<CylinderUsageWindow> openCircuitWindows,
         // Per-cylinder "show the working" lines (litres, and per-cylinder RMV for breathed
         // cylinders) - see CylinderContribution. Empty when there are no cylinders / no profile.
-        List<CylinderContribution> contributions) {
+        List<CylinderContribution> contributions,
+        // ocConsumedLiters is the whole dive's OC gas: every OC cylinder has usable pressures and
+        // size, and together they span the whole dive. False = a partial total (RMV is still
+        // meaningful over the tracked stretches, a total is not).
+        boolean ocConsumedLitersComplete) {
     public static final CylinderConsumptionResult EMPTY =
             new CylinderConsumptionResult(
-                    null, null, null, null, null, null, null, List.of(), List.of());
+                    null, null, null, null, null, null, null, List.of(), List.of(), false);
 }

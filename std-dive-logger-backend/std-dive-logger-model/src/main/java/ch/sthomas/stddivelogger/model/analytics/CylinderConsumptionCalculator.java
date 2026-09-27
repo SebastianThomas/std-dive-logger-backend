@@ -86,7 +86,8 @@ public final class CylinderConsumptionCalculator {
                     null,
                     null,
                     List.of(),
-                    contributionsFor(cylinders, List.of(), null, isCcrDive, diveStart));
+                    contributionsFor(cylinders, List.of(), null, isCcrDive, diveStart),
+                    false);
         }
 
         final var ocRmv =
@@ -119,7 +120,12 @@ public final class CylinderConsumptionCalculator {
                 ocRmv.rmvLiters() == null ? null : ocRmv.pressureMinutes(),
                 bailoutRmv.rmvLiters() == null ? null : bailoutRmv.pressureMinutes(),
                 openCircuitWindows,
-                contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive, diveStart));
+                contributionsFor(cylinders, depthTimeline, modeTimeline, isCcrDive, diveStart),
+                !isCcrDive
+                        && ocRmv.coversWholeDive()
+                        && cylinders.stream()
+                                .filter(c -> c.role() == CylinderRole.OC)
+                                .allMatch(c -> consumedLiters(c) != null));
     }
 
     /**
@@ -278,8 +284,11 @@ public final class CylinderConsumptionCalculator {
         return result;
     }
 
+    /** Null without both pressures, a pressure drop, or a known size (0 L = size unknown). */
     private static @Nullable Double consumedLiters(final DiveConfigurationCylinder cylinder) {
-        if (cylinder.startBar() == null || cylinder.endBar() == null) {
+        if (cylinder.startBar() == null
+                || cylinder.endBar() == null
+                || cylinder.size().liters() <= 0) {
             return null;
         }
         final var pressureDrop = cylinder.startBar() - cylinder.endBar();
@@ -320,8 +329,9 @@ public final class CylinderConsumptionCalculator {
      * One role's combined RMV plus the pressure-minutes denominator behind it (for the
      * gas-consistency breakdown). {@code rmvLiters} null = nothing to compute it from.
      */
-    private record RoleRmv(@Nullable Double rmvLiters, double pressureMinutes) {
-        static final RoleRmv NONE = new RoleRmv(null, 0);
+    private record RoleRmv(
+            @Nullable Double rmvLiters, double pressureMinutes, boolean coversWholeDive) {
+        static final RoleRmv NONE = new RoleRmv(null, 0, false);
     }
 
     /**
@@ -408,7 +418,10 @@ public final class CylinderConsumptionCalculator {
         final var denominator =
                 pressureMinutesCovered(depthTimeline, modeTimeline, explicitWindows)
                         + (anyUnwindowedIncluded ? complementPressureMinutes : 0.0);
-        return new RoleRmv(denominator > 0 ? numerator / denominator : null, denominator);
+        // Whole dive: an unwindowed cylinder took the rest, or the windows leave no rest.
+        final var coversWholeDive = anyUnwindowedIncluded || complementPressureMinutes <= 0;
+        return new RoleRmv(
+                denominator > 0 ? numerator / denominator : null, denominator, coversWholeDive);
     }
 
     private static double pressureMinutesCovered(

@@ -419,14 +419,7 @@ public class ImportService {
                                                     .trimmed(trim.trimStart(), trim.trimEnd());
                                 })
                         .toList();
-        return new PendingImportPayload(
-                trimmedProfiles,
-                payload.notes(),
-                payload.visibility(),
-                payload.gasConsumption(),
-                payload.configuration(),
-                payload.namedBuddies(),
-                payload.diveNumberGuess());
+        return payload.withProfiles(trimmedProfiles);
     }
 
     private static Map<Integer, PendingImportCommitRequest.ProfileTrim> trimsByIndex(
@@ -605,6 +598,11 @@ public class ImportService {
         if (saveResult.isException()) {
             throw saveResult.dbException();
         }
+        // Only fills a gap: a site's water type is shared, and a set one is never overwritten.
+        final var waterTypeHint = correctedPayload.waterTypeHint();
+        if (waterTypeHint != null && site.waterType() == null) {
+            diveService.setWaterTypeForSite(user, siteId, waterTypeHint);
+        }
 
         final var taken = new EnumMap<ImportedDiveField, JsonNode>(ImportedDiveField.class);
         if (overrides.notes() == null) {
@@ -756,14 +754,7 @@ public class ImportService {
                                         profile.shifted(
                                                 timezoneOffset(profile.start(), zone.get())))
                         .toList();
-        return new PendingImportPayload(
-                correctedProfiles,
-                payload.notes(),
-                payload.visibility(),
-                payload.gasConsumption(),
-                payload.configuration(),
-                payload.namedBuddies(),
-                payload.diveNumberGuess());
+        return payload.withProfiles(correctedProfiles);
     }
 
     /**

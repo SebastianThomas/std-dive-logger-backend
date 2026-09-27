@@ -68,9 +68,10 @@ public class DiveSummaryEntity {
      * Bump whenever {@link CylinderConsumptionCalculator}'s RMV output changes, so the nightly
      * summary job re-derives every dive whose stored {@link #gasComputationVersion} is behind (a
      * dive save already recomputes on its own - this covers algorithm changes with no data change).
-     * Starts at 1; the migration defaults existing rows to 0.
+     * Starts at 1; the migration defaults existing rows to 0. 2: a 0 L ("size unknown") cylinder no
+     * longer counts as 0 litres used.
      */
-    public static final short GAS_COMPUTATION_VERSION = 1;
+    public static final short GAS_COMPUTATION_VERSION = 2;
 
     @Column(name = "gas_computation_version")
     private short gasComputationVersion;

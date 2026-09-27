@@ -69,9 +69,16 @@ public record GasConsumptionComparison(
                         ? Double.valueOf(gasConsumption.rmvLiters())
                         : impliedRmv;
         final var calculatedRmv = cylinderConsumption.ocRmvLiters();
-        final var calculatedTotal = cylinderConsumption.ocConsumedLiters();
+        // A partial cylinder total (some OC gas untracked) is no whole-dive figure to compare.
+        final var calculatedTotal =
+                cylinderConsumption.ocConsumedLitersComplete()
+                        ? cylinderConsumption.ocConsumedLiters()
+                        : null;
 
-        final var rmvVsCalculatedMismatch = differsBeyondTolerance(insertedRmv, calculatedRmv);
+        // A partly-tracked RMV (e.g. deco stage only) isn't the whole dive's RMV either.
+        final var rmvVsCalculatedMismatch =
+                cylinderConsumption.ocConsumedLitersComplete()
+                        && differsBeyondTolerance(insertedRmv, calculatedRmv);
         final var totalLitersMismatch = differsBeyondTolerance(insertedTotal, calculatedTotal);
         final var rmvVsImpliedMismatch =
                 gasConsumption.rmvLiters() > 0

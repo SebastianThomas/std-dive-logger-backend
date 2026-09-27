@@ -17,11 +17,11 @@ public final class ImportParserVersions {
             case FIT_GARMIN -> 1;
             case FIT_SUUNTO -> 1;
             case JSON_SUUNTO -> 1;
-            case UDDF_SHEARWATER -> 1;
+            case UDDF_SHEARWATER -> 2;
             case XML_SUBSURFACE -> 1;
-            case XML_SHEARWATER -> 1;
+            case XML_SHEARWATER -> 2;
             case DL7_SHEARWATER -> 1;
-            case DB_SHEARWATER -> 1;
+            case DB_SHEARWATER -> 2;
         };
     }
 }

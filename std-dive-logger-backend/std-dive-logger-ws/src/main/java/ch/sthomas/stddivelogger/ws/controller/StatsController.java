@@ -72,6 +72,12 @@ public class StatsController {
         return statsService.getStatsForUserBySiteType(user);
     }
 
+    @GetMapping(path = "/water-type")
+    public List<UserDiveStatsBy<String>> getStatsForUserByWaterType(
+            @AuthenticationPrincipal final User user) {
+        return statsService.getStatsForUserByWaterType(user);
+    }
+
     @GetMapping(path = "/by-tag")
     public List<UserDiveStatsBy<TagDefinition>> getStatsForUserByTag(
             @AuthenticationPrincipal final User user) {

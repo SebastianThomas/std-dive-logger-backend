@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
@@ -177,6 +178,20 @@ class ShearwaterDbReaderServiceTest {
         assertThat(parsed.payload().visibility().description()).isEqualTo("4m");
         assertThat(parsed.payload().configuration().weight()).isEqualTo(4.0);
         assertThat(parsed.payload().configuration().base()).isEqualTo(BaseConfiguration.SIDEMOUNT);
+        // The test database's Environment column is "Lake/Quarry".
+        assertThat(parsed.payload().waterTypeHint()).isEqualTo(WaterType.FRESH);
+    }
+
+    @Test
+    void onlyEnvironmentsThatNameTheWaterBecomeAWaterType() {
+        assertThat(ShearwaterDbReaderService.toWaterType("Ocean/Sea")).isEqualTo(WaterType.SALT);
+        assertThat(ShearwaterDbReaderService.toWaterType("Lake/Quarry")).isEqualTo(WaterType.FRESH);
+        assertThat(ShearwaterDbReaderService.toWaterType("River/Spring"))
+                .isEqualTo(WaterType.FRESH);
+        assertThat(ShearwaterDbReaderService.toWaterType("Cave/Cavern")).isNull();
+        assertThat(ShearwaterDbReaderService.toWaterType("Pool")).isNull();
+        assertThat(ShearwaterDbReaderService.toWaterType("")).isNull();
+        assertThat(ShearwaterDbReaderService.toWaterType(null)).isNull();
     }
 
     @Test

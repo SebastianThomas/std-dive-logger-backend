@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.service.importer.shearwater;
 import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
+import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
@@ -97,7 +98,7 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
                         DiveGasConsumption.EMPTY,
                         DiveConfiguration.createEmpty(user),
                         List.of(),
-                        null);
+                        toDiveNumber(log.number()));
         return new ParsedImport(
                 PendingImportSource.XML_SHEARWATER,
                 null,
@@ -215,6 +216,15 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
                 null,
                 log.computerFirmware(),
                 details.build());
+    }
+
+    /** The logbook's own dive number - the same value its UDDF export carries. */
+    static @Nullable DiveNumber toDiveNumber(final int number) {
+        try {
+            return new DiveNumber(number);
+        } catch (final IllegalArgumentException e) {
+            return null; // 0 / negative: not numbered.
+        }
     }
 
     private static @Nullable DiveMode toMode(final String circuitSetting) {

@@ -66,6 +66,13 @@ public class StatsDataService {
     }
 
     /**
+     * A dive's effective water type: its own override, else its site's, else {@code UNSPECIFIED}.
+     * Needs {@code site} ({@code t_dive_site}) and {@code cond} ({@code t_dive_conditions}) joined.
+     */
+    private static final String WATER_TYPE_EXPR =
+            "COALESCE(cond.water_type, site.water_type, 'UNSPECIFIED')";
+
+    /**
      * One row per dive of the user, with everything a breakdown needs except buddy/temperature
      * (those come from the {@link #BUDDIES_CTE}/{@link #TEMPS_CTE} below - a dive can have many
      * buddies/measurements, so they can't live on this 1-row-per-dive CTE without duplicating every
@@ -77,11 +84,16 @@ public class StatsDataService {
                 SELECT d.pk_dive_id AS dive_id, d.dive_number, d.dive_site AS site_id,
                        ds.duration_seconds, ds.max_depth, ds.max_time_to_surface_seconds,
                        ds.dive_start,
-                       dc.base_configuration, COALESCE(site.site_type, 'UNSPECIFIED') AS site_type
+                       dc.base_configuration, COALESCE(site.site_type, 'UNSPECIFIED') AS site_type,
+            """
+                    + WATER_TYPE_EXPR
+                    + """
+                 AS water_type
                 FROM t_dives d
                 JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
                 JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
                 JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+                LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
                 WHERE d.fk_diver_id = :userId
             )
             """;
@@ -330,12 +342,26 @@ public class StatsDataService {
     }
 
     /**
-     * Groups by {@code site.site_type} (see {@link #DIVES_CTE}, {@code UNSPECIFIED} when the site
-     * hasn't had a type set yet) - a string key rather than an enum, so an unset/unknown type never
-     * fails to deserialize even if the enum's members change later.
+     * Groups by {@code site.site_type} ({@code UNSPECIFIED} when unset) - a string key rather than
+     * an enum, so an unknown type never fails to deserialize if the enum changes later.
      */
     @Transactional(readOnly = true)
     public List<UserDiveStatsBy<String>> getStatsBySiteType(final User user) {
+        return getStatsByDivesColumn(user, "site_type");
+    }
+
+    /**
+     * Groups by the dive's effective water type (see {@link #WATER_TYPE_EXPR}): {@code SALT}/{@code
+     * FRESH}/{@code BRACKISH}, {@code UNSPECIFIED} when neither the dive nor its site has one.
+     */
+    @Transactional(readOnly = true)
+    public List<UserDiveStatsBy<String>> getStatsByWaterType(final User user) {
+        return getStatsByDivesColumn(user, "water_type");
+    }
+
+    /** {@code column} is one of {@link #DIVES_CTE}'s string columns - never user input. */
+    private List<UserDiveStatsBy<String>> getStatsByDivesColumn(
+            final User user, final String column) {
         final var sql =
                 "WITH "
                         + DIVES_CTE
@@ -343,9 +369,9 @@ public class StatsDataService {
                         + BUDDIES_CTE
                         + ", "
                         + TEMPS_CTE
-                        + """
-                        SELECT dv.site_type AS grp,
-                        """
+                        + "SELECT dv."
+                        + column
+                        + " AS grp,\n"
                         + AGGREGATE_SELECT_LIST
                         + """
                         , COUNT(DISTINCT b.name) AS buddy_count,
@@ -354,7 +380,7 @@ public class StatsDataService {
                         FROM dives dv
                         LEFT JOIN buddies b ON b.dive_id = dv.dive_id
                         LEFT JOIN temps t ON t.dive_id = dv.dive_id
-                        GROUP BY dv.site_type
+                        GROUP BY grp
                         ORDER BY dive_count DESC
                         """;
         final var params = new MapSqlParameterSource("userId", user.id());
@@ -641,9 +667,15 @@ public class StatsDataService {
                         dc.weight_kg,
                         dc.fk_suit_id,
                         dc.fk_ccr_unit_id,
-                        dc.base_configuration
+                        dc.base_configuration,
+                """
+                        + WATER_TYPE_EXPR
+                        + """
+                     AS water_type
                     FROM t_dives d
                     JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                    LEFT JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+                    LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
                     LEFT JOIN t_dive_gas_consumption gc ON gc.fk_dive_id = d.pk_dive_id
                     LEFT JOIN t_dive_visibility v ON v.fk_dive_id = d.pk_dive_id
                     LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
@@ -781,13 +813,17 @@ public class StatsDataService {
                             "COALESCE(s.type::text || COALESCE(' ' || s.thickness_mm::text || 'mm', ''), 'No suit')";
                     case CCR_UNIT -> "COALESCE(cu.name, 'No CCR unit')";
                     case BASE_CONFIGURATION -> "COALESCE(fd.base_configuration, 'Not specified')";
+                    case WATER_TYPE ->
+                            """
+                            CASE fd.water_type WHEN 'SALT' THEN 'Salt' WHEN 'FRESH' THEN 'Fresh'
+                                WHEN 'BRACKISH' THEN 'Brackish' ELSE 'Not specified' END""";
                 };
         final var joinClause =
                 switch (dimension) {
                     case SUIT -> "LEFT JOIN t_suits s ON s.pk_suit_id = fd.fk_suit_id\n";
                     case CCR_UNIT ->
                             "LEFT JOIN t_ccr_units cu ON cu.pk_ccr_unit_id = fd.fk_ccr_unit_id\n";
-                    case BASE_CONFIGURATION -> "";
+                    case BASE_CONFIGURATION, WATER_TYPE -> "";
                 };
         // A CCR unit only ever makes sense on a dive that actually references one - scope this
         // specific breakdown to those, so it isn't swamped by every other dive all lumped into

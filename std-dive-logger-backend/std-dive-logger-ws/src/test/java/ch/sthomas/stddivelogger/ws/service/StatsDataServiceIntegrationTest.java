@@ -11,12 +11,16 @@ import ch.sthomas.stddivelogger.data.repository.TagDefinitionRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Temperature;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStats;
+import ch.sthomas.stddivelogger.model.dive.stats.UserDiveStatsBy;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerManufacturerEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveConditionsEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
@@ -91,6 +95,11 @@ class StatsDataServiceIntegrationTest {
     private UserEntity userEntity;
     private User user;
     private long tagId;
+    private SuitEntity suit;
+    private DiveSiteEntity site;
+    private DiveComputerEntity computer;
+    private TagDefinitionEntity tag;
+    private DiveEntity dive2;
 
     private DiveEntity createDive(
             final int number,
@@ -167,24 +176,23 @@ class StatsDataServiceIntegrationTest {
     void setUp() {
         userEntity = userRepository.save(new UserEntity("stats-it-test@test.ch", "hash", "IT"));
         user = userEntity.toRecord();
-        final var suit =
+        suit =
                 suitRepository.save(
                         new SuitEntity(
                                 userEntity,
                                 ch.sthomas.stddivelogger.model.dive.gear.Suit.createUnknown(user)));
-        final var site =
+        site =
                 diveSiteRepository.save(
                         new DiveSiteEntity(
                                 "Stats IT Test Site", new Location(47.0, 8.0).toPoint()));
         final var manufacturer =
                 diveComputerManufacturerRepository.save(
                         new DiveComputerManufacturerEntity("Test Manufacturer"));
-        final var computer =
+        computer =
                 diveComputerRepository.save(
                         new DiveComputerEntity(
                                 null, "STATS-IT-TEST-COMPUTER", manufacturer, userEntity));
-        final var tag =
-                tagDefinitionRepository.save(new TagDefinitionEntity("wreck", userEntity, null));
+        tag = tagDefinitionRepository.save(new TagDefinitionEntity("wreck", userEntity, null));
         tagId = tag.getId();
 
         createDive(
@@ -199,18 +207,19 @@ class StatsDataServiceIntegrationTest {
                 suit,
                 computer,
                 tag);
-        createDive(
-                2,
-                Instant.parse("2026-01-15T10:00:00Z"),
-                "Bob",
-                5.0,
-                8.0,
-                120L,
-                90L,
-                site,
-                suit,
-                computer,
-                tag);
+        dive2 =
+                createDive(
+                        2,
+                        Instant.parse("2026-01-15T10:00:00Z"),
+                        "Bob",
+                        5.0,
+                        8.0,
+                        120L,
+                        90L,
+                        site,
+                        suit,
+                        computer,
+                        tag);
     }
 
     @Test
@@ -342,5 +351,51 @@ class StatsDataServiceIntegrationTest {
         assertThat(bob.stats().diveCount()).isEqualTo(1L);
         assertThat(Objects.requireNonNull(bob.stats().maxTemp()).celsius()).isEqualTo(8.0);
         assertThat(Objects.requireNonNull(bob.stats().minTemp()).celsius()).isEqualTo(5.0);
+    }
+
+    @Test
+    void waterTypeBreakdownUsesTheDiveOverrideElseTheSiteElseUnspecified() {
+        // Dive 1 inherits FRESH from the shared site; dive 2 overrides it to SALT.
+        site.setWaterType(WaterType.FRESH);
+        diveSiteRepository.save(site);
+        dive2.setConditions(new DiveConditionsEntity(dive2, WaterType.SALT, null));
+        diveRepository.save(dive2);
+        // Dive 3 is at a site without a water type.
+        final var unknownSite =
+                diveSiteRepository.save(
+                        new DiveSiteEntity(
+                                "Stats IT Unknown Water", new Location(46.0, 7.0).toPoint()));
+        createDive(
+                3,
+                Instant.parse("2026-02-01T10:00:00Z"),
+                "Carol",
+                20.0,
+                21.0,
+                0L,
+                0L,
+                unknownSite,
+                suit,
+                computer,
+                tag);
+
+        // The stats query is raw JDBC, which doesn't trigger Hibernate's auto-flush.
+        diveRepository.flush();
+        final var byWaterType = statsDataService.getStatsByWaterType(user);
+
+        assertThat(byWaterType)
+                .extracting(UserDiveStatsBy::key)
+                .containsExactlyInAnyOrder("FRESH", "SALT", "UNSPECIFIED");
+        final var fresh = statsFor(byWaterType, "FRESH");
+        assertThat(fresh.diveCount()).isEqualTo(1L);
+        assertThat(Objects.requireNonNull(fresh.maxTemp()).celsius()).isEqualTo(15.0);
+        final var salt = statsFor(byWaterType, "SALT");
+        assertThat(salt.diveCount()).isEqualTo(1L);
+        assertThat(Objects.requireNonNull(salt.minTemp()).celsius()).isEqualTo(5.0);
+        assertThat(statsFor(byWaterType, "UNSPECIFIED").diveCount()).isEqualTo(1L);
+    }
+
+    private static UserDiveStats statsFor(
+            final List<UserDiveStatsBy<String>> rows, final String key) {
+        return rows.stream().filter(r -> key.equals(r.key())).findFirst().orElseThrow().stats();
     }
 }

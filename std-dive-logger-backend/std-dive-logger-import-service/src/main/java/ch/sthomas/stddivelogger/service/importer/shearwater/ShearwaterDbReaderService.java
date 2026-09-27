@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.model.controller.dive.upload.DiveProfileUpload;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.PendingImportPayload;
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.BaseConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveComputer;
@@ -64,7 +65,7 @@ import java.util.stream.Stream;
  *
  * <ul>
  *   <li>{@code dive_details} - what the diver typed in the app: dive number, location, buddy,
- *       notes, visibility, tank pressures/size, weight.
+ *       notes, visibility, environment (water type), tank pressures/size, weight.
  *   <li>{@code log_data} - the dive computer's own recording, as a gzipped native (PNF) binary blob
  *       in {@code data_bytes_1}; see {@link ShearwaterPnfParser}.
  * </ul>
@@ -261,7 +262,8 @@ public class ShearwaterDbReaderService extends BaseReaderService {
                         DiveGasConsumption.EMPTY,
                         toConfiguration(user, dive, log, tankProfile),
                         toBuddies(dive.buddy()),
-                        toDiveNumber(dive.diveNumber()));
+                        toDiveNumber(dive.diveNumber()),
+                        toWaterType(dive.environment()));
         final var siteName = firstNonBlank(dive.location(), dive.site());
         return new ParsedImport(
                         PendingImportSource.DB_SHEARWATER,
@@ -514,6 +516,21 @@ public class ShearwaterDbReaderService extends BaseReaderService {
         return switch (apparatus.trim().toLowerCase(Locale.ROOT)) {
             case "sidemount" -> BaseConfiguration.SIDEMOUNT;
             case "single tank", "doubles" -> BaseConfiguration.BACKMOUNT;
+            default -> null;
+        };
+    }
+
+    /**
+     * The app's fixed "Environment" choices that name the water itself. Anything else ("Cave /
+     * Cavern", "Pool", blank) says nothing about salinity and stays unset.
+     */
+    static @Nullable WaterType toWaterType(final @Nullable String environment) {
+        if (environment == null) {
+            return null;
+        }
+        return switch (environment.trim()) {
+            case "Ocean/Sea" -> WaterType.SALT;
+            case "Lake/Quarry", "River/Spring" -> WaterType.FRESH;
             default -> null;
         };
     }

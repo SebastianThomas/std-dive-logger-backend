@@ -3,5 +3,6 @@ package ch.sthomas.stddivelogger.model.dive.stats;
 public enum StatsBreakdownDimension {
     SUIT,
     BASE_CONFIGURATION,
-    CCR_UNIT
+    CCR_UNIT,
+    WATER_TYPE
 }

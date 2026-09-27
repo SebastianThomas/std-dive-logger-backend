@@ -545,10 +545,16 @@ class ImportIntegrationTest {
             """;
 
     private static Path shearwaterDatabase(final String... diveNumbers) throws Exception {
+        return shearwaterDatabase(SHEARWATER_CLOCK_READING, diveNumbers);
+    }
+
+    /** Commits share one device, so each needs its own clock reading to not collide. */
+    private static Path shearwaterDatabase(final long clockReading, final String... diveNumbers)
+            throws Exception {
         final var blob =
                 ShearwaterPnfTestLogs.gzipWithLengthPrefix(
                         ShearwaterPnfTestLogs.build(
-                                SHEARWATER_CLOCK_READING,
+                                clockReading,
                                 400,
                                 18.4,
                                 14,
@@ -699,6 +705,63 @@ class ImportIntegrationTest {
         // proof it ran to completion.
         assertThat(committed.summary().maxDepth()).isEqualTo(18.4);
         assertThat(committed.summary().bottomTime().toSeconds()).isPositive();
+    }
+
+    private SimplifiedDive commit(
+            final long pendingImportId, final PendingImportCommitRequest request) {
+        return Objects.requireNonNull(
+                restTestClient
+                        .post()
+                        .uri("/v1/import/pending/" + pendingImportId + "/commit")
+                        .headers(h -> h.addAll(authorizedJsonHeaders()))
+                        .body(request)
+                        .exchange()
+                        .expectStatus()
+                        .isOk()
+                        .expectBody(SimplifiedDive.class)
+                        .returnResult()
+                        .getResponseBody());
+    }
+
+    @Test
+    void theDatabasesEnvironmentFillsASitesMissingWaterTypeButNeverOverwritesIt() throws Exception {
+        // The test database's Environment is "Lake/Quarry" for every dive.
+        final var first =
+                stageDatabase(shearwaterDatabase(SHEARWATER_CLOCK_READING + 86_400, "92"))
+                        .staged()
+                        .getFirst();
+        final var created =
+                commit(
+                        first.id(),
+                        new PendingImportCommitRequest(
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "Integration Test Water Type Quarry",
+                                new Location(47.21, 8.66),
+                                null,
+                                null));
+        final var siteId = Objects.requireNonNull(created.site()).id();
+        final var waterTypeSql = "SELECT water_type FROM t_dive_site WHERE pk_dive_site_id = ?";
+        assertThat(jdbcTemplate.queryForObject(waterTypeSql, String.class, siteId))
+                .isEqualTo("FRESH");
+
+        // A diver has since set the site differently - the next import must not undo that.
+        jdbcTemplate.update(
+                "UPDATE t_dive_site SET water_type = 'SALT' WHERE pk_dive_site_id = ?", siteId);
+        final var second =
+                stageDatabase(shearwaterDatabase(SHEARWATER_CLOCK_READING + 2 * 86_400, "93"))
+                        .staged()
+                        .getFirst();
+        commit(
+                second.id(),
+                new PendingImportCommitRequest(
+                        null, null, null, null, null, siteId, null, null, null, null));
+        assertThat(jdbcTemplate.queryForObject(waterTypeSql, String.class, siteId))
+                .isEqualTo("SALT");
     }
 
     @Test

@@ -24,7 +24,8 @@ class GasConsumptionComparisonTest {
                 ocConsumed == null ? null : 100.0,
                 null,
                 List.of(),
-                List.of());
+                List.of(),
+                ocConsumed != null);
     }
 
     private static GasConsumptionComparison of(
@@ -62,6 +63,20 @@ class GasConsumptionComparisonTest {
         assertThat(result.mismatch()).isTrue();
         assertThat(result.rmvVsCalculatedMismatch()).isFalse();
         assertThat(result.totalLitersMismatch()).isTrue();
+    }
+
+    @Test
+    void aPartlyTrackedCylinderFigureIsShownButNeverComparedToTheWholeDiveEntry() {
+        // Only the deco stage is tracked: its 350 L / 12 l/min aren't the dive's 1980 L / 22.
+        final var partial =
+                new CylinderConsumptionResult(
+                        12.0, null, null, null, 350.0, 20.0, null, List.of(), List.of(), false);
+
+        final var result = of(new DiveGasConsumption(0, 22.0, 1980.0), partial, 20.0);
+
+        assertThat(result.mismatch()).isFalse();
+        assertThat(result.calculatedRmvLiters()).isEqualTo(12.0);
+        assertThat(result.calculatedTotalLiters()).isNull();
     }
 
     @Test

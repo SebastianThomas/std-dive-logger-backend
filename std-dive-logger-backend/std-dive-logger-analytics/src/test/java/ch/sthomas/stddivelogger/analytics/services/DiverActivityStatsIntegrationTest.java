@@ -39,6 +39,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -194,9 +196,16 @@ class DiverActivityStatsIntegrationTest {
         assertThat(stats.overdue()).isTrue();
         assertThat(stats.expectedNextDiveBy()).isBefore(Instant.now());
 
-        // streak: a run of consecutive months in the recent era, but not "current" (~52d gap)
+        // streak: a run of consecutive months in the recent era. It stays "current" while the last
+        // dive's month is this month or last month (the month isn't over yet) - ~52 days ago is
+        // last month for part of every month and two months back for the rest.
         assertThat(stats.longestMonthStreak()).isGreaterThanOrEqualTo(6);
-        assertThat(stats.currentMonthStreak()).isZero();
+        final var lastDiveMonth = YearMonth.from(daysAgo(52).atZone(ZoneOffset.UTC));
+        if (lastDiveMonth.isBefore(YearMonth.now(ZoneOffset.UTC).minusMonths(1))) {
+            assertThat(stats.currentMonthStreak()).isZero();
+        } else {
+            assertThat(stats.currentMonthStreak()).isEqualTo(stats.longestMonthStreak());
+        }
 
         assertThat(stats.distinctSites()).isEqualTo(2);
         assertThat(stats.busiestMonth()).isBetween(1, 12);

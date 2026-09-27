@@ -135,7 +135,7 @@ public class UddfReaderService extends BaseReaderService {
                         notes,
                         visibility,
                         uddfFile.exportGasConsumption(entry),
-                        uddfFile.getConfiguration(user),
+                        uddfFile.exportConfiguration(user, entry),
                         uddfFile.getBuddies(),
                         diveNumberGuess);
         final var start = uddfFile.exportStart(entry);

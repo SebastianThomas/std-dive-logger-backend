@@ -72,6 +72,10 @@ public class StatsService {
         return statsDataService.getStatsBySiteType(user);
     }
 
+    public List<UserDiveStatsBy<String>> getStatsForUserByWaterType(final User user) {
+        return statsDataService.getStatsByWaterType(user);
+    }
+
     public @Nullable UserDiveStats getStatsForUserByTagFilter(
             final User user, final Collection<Long> tagIds) {
         return statsDataService.computeStatsForTagFilter(user, tagIds);

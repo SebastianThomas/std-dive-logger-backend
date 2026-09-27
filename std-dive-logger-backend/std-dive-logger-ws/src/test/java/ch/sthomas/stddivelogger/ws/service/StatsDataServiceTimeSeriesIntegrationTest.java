@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import ch.sthomas.stddivelogger.data.repository.DiveComputerManufacturerRepository;
 import ch.sthomas.stddivelogger.data.repository.DiveComputerRepository;
@@ -12,14 +13,17 @@ import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.StatsDataService;
 import ch.sthomas.stddivelogger.model.dive.AutoDetectRule;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
 import ch.sthomas.stddivelogger.model.dive.gear.Suit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
+import ch.sthomas.stddivelogger.model.dive.stats.StatsBreakdownDimension;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsFilters;
 import ch.sthomas.stddivelogger.model.dive.stats.StatsGranularity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveComputerManufacturerEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveConditionsEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveMeasurementEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileEntity;
@@ -265,5 +269,26 @@ class StatsDataServiceTimeSeriesIntegrationTest {
         assertThat(bucket.diveCount()).isEqualTo(2L);
         assertThat(bucket.avgOcRmvLiters()).isNull();
         assertThat(bucket.avgBailoutRmvLiters()).isNull();
+    }
+
+    @Test
+    void waterTypeBreakdownSplitsABucketBySiteDefaultAndPerDiveOverride() {
+        site.setWaterType(WaterType.FRESH);
+        diveSiteRepository.save(site);
+        createDive(1, Instant.parse("2026-08-05T10:00:00Z"), 20.0);
+        final var seaDive = createDive(2, Instant.parse("2026-08-20T10:00:00Z"), 14.0);
+        seaDive.setConditions(new DiveConditionsEntity(seaDive, WaterType.SALT, null));
+        diveRepository.saveAndFlush(seaDive);
+
+        final var series =
+                statsDataService.getTimeSeries(
+                        user,
+                        StatsGranularity.MONTH,
+                        StatsFilters.EMPTY,
+                        StatsBreakdownDimension.WATER_TYPE);
+
+        assertThat(series.breakdown())
+                .extracting(p -> p.category(), p -> p.avgOcRmvLiters())
+                .containsExactlyInAnyOrder(tuple("Fresh", 20.0), tuple("Salt", 14.0));
     }
 }

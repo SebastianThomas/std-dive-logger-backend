@@ -3,9 +3,13 @@ package ch.sthomas.stddivelogger.model.importer;
 import ch.sthomas.stddivelogger.model.dive.DiveNumber;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
 import ch.sthomas.stddivelogger.model.dive.conditions.VisibilityFeeling;
+import ch.sthomas.stddivelogger.model.dive.gear.CylinderRole;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
+import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoStop;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSizeUnit;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMode;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
@@ -25,7 +29,6 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +120,7 @@ public record UddfFile(
 
     @SuppressWarnings("NullAway")
     public DiveGasConsumption exportGasConsumption(final int entry) {
-        return getGasConsumption(profileData.repetitionGroup.get(entry).dive);
+        return getGasConsumption(profileData.repetitionGroup.get(entry).dive, gasDefinitions);
     }
 
     @SuppressWarnings("NullAway")
@@ -162,48 +165,102 @@ public record UddfFile(
         }
     }
 
-    static DiveGasConsumption getGasConsumption(final UddfProfileDataDive dive) {
-        final var tankData = dive.tankdata;
-        if (tankData == null) {
+    /** UDDF is SI throughout: pressures in Pa, volumes in m³. */
+    private static final double PASCAL_PER_BAR = 100_000;
+
+    private static final double LITERS_PER_CUBIC_METER = 1000;
+
+    /**
+     * Surface litres drawn from the tanks: Σ volume × pressure drop over tanks carrying both.
+     * {@code breathingconsumptionvolume} is a rate (m³/s at an unstated pressure), not a total -
+     * not used. {@link DiveGasConsumption#EMPTY} when the tanks became cylinders (see {@link
+     * #getCylinders}), whose consumption is then calculated, or when no tank has a volume.
+     */
+    static DiveGasConsumption getGasConsumption(
+            final UddfProfileDataDive dive, final List<UddfGasMix> gasDefinitions) {
+        if (dive.tankdata == null || !getCylinders(dive, gasDefinitions).isEmpty()) {
             return DiveGasConsumption.EMPTY;
         }
-        final var usedPerTank =
-                tankData.stream()
-                        .map(
-                                t -> {
-                                    final var pressure =
-                                            Optional.ofNullable(t.pressureStart)
-                                                    .flatMap(
-                                                            s ->
-                                                                    Optional.ofNullable(
-                                                                                    t.pressureEnd)
-                                                                            .map(e -> e - s));
-                                    return Pair.of(
-                                            pressure.orElse(null),
-                                            Optional.ofNullable(t.breathingVolume)
-                                                    .or(
-                                                            () ->
-                                                                    getVolumeByTankAndPressure(
-                                                                            t, pressure))
-                                                    .orElse(null));
-                                })
-                        .toList();
         final var totalLiters =
-                usedPerTank.stream()
+                dive.tankdata.stream()
+                        .map(UddfTankData::surfaceLitersUsed)
                         .filter(Objects::nonNull)
-                        .filter(p -> p.getRight() != null)
-                        .mapToDouble(Pair::getRight)
+                        .mapToDouble(Double::doubleValue)
                         .sum();
-        return new DiveGasConsumption(0, 0, totalLiters);
+        return totalLiters > 0
+                ? new DiveGasConsumption(0, 0, totalLiters)
+                : DiveGasConsumption.EMPTY;
     }
 
-    private static @NonNull Optional<Double> getVolumeByTankAndPressure(
-            final UddfTankData t, final Optional<Double> pressure) {
-        return pressure.flatMap(p -> Optional.ofNullable(t.tankVolume).map(v -> v * p));
+    @SuppressWarnings("NullAway")
+    public DiveConfiguration exportConfiguration(final User user, final int entry) {
+        final var empty = DiveConfiguration.createEmpty(user);
+        return new DiveConfiguration(
+                empty.suit(),
+                empty.base(),
+                empty.weight(),
+                empty.weightFeeling(),
+                getCylinders(profileData.repetitionGroup.get(entry).dive, gasDefinitions),
+                empty.ccrUnit(),
+                empty.secondaryCcrUnit(),
+                empty.adHocSuitType());
     }
 
-    public DiveConfiguration getConfiguration(final User user) {
-        return DiveConfiguration.createEmpty(user);
+    /**
+     * One OC cylinder per {@code tankdata} with a real start and end pressure - but only when its
+     * gas is known, never guessed: the tank's own mix link, or, without one, the only gas breathed
+     * all dive (a tank whose pressure dropped must have held it). A multi-gas dive's unlinked tanks
+     * and any closed-circuit dive (diluent / O2 / bailout can't be told apart) yield none. Size is
+     * {@code tankvolume}, else 0 L ("unknown"), like the Shearwater database import.
+     */
+    static List<DiveConfigurationCylinder> getCylinders(
+            final UddfProfileDataDive dive, final List<UddfGasMix> gasDefinitions) {
+        if (dive.tankdata == null) {
+            return List.of();
+        }
+        final var measurements = getMeasurements(dive, gasDefinitions);
+        if (measurements.stream().anyMatch(m -> m.mode() == DiveMode.CC)) {
+            return List.of();
+        }
+        final var breathed =
+                measurements.stream()
+                        .map(DiveMeasurement::gas)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        final var onlyGas = breathed.size() == 1 ? breathed.getFirst() : null;
+        final var cylinders = new ArrayList<DiveConfigurationCylinder>();
+        for (final var tank : dive.tankdata) {
+            if (tank.pressureStart == null
+                    || tank.pressureEnd == null
+                    || tank.pressureStart <= 0
+                    || tank.pressureEnd <= 0) {
+                continue;
+            }
+            final var gas =
+                    tank.linkedMix(gasDefinitions)
+                            .map(mix -> new Gas(mix.o2, mix.he))
+                            .orElse(tank.pressureDropped() ? onlyGas : null);
+            if (gas == null) {
+                continue;
+            }
+            final var liters =
+                    tank.tankVolume != null && tank.tankVolume > 0
+                            ? tank.tankVolume * LITERS_PER_CUBIC_METER
+                            : 0;
+            cylinders.add(
+                    new DiveConfigurationCylinder(
+                            0,
+                            new CylinderSize(CylinderSizeUnit.LITER, liters),
+                            null,
+                            tank.pressureStart / PASCAL_PER_BAR,
+                            tank.pressureEnd / PASCAL_PER_BAR,
+                            "",
+                            gas,
+                            CylinderRole.OC,
+                            List.of()));
+        }
+        return List.copyOf(cylinders);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -431,12 +488,40 @@ public record UddfFile(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfTankData(
-            @JacksonXmlProperty(localName = "link") Link link,
+            // Absent in Shearwater's export - it links no tank to a mix.
+            @JacksonXmlProperty(localName = "link") @Nullable Link link,
             @JacksonXmlProperty(localName = "tankvolume") @Nullable Double tankVolume,
             @JacksonXmlProperty(localName = "tankpressurebegin") @Nullable Double pressureStart,
             @JacksonXmlProperty(localName = "tankpressureend") @Nullable Double pressureEnd,
             @JacksonXmlProperty(localName = "breathingconsumptionvolume")
-                    @Nullable Double breathingVolume) {}
+                    @Nullable Double breathingVolume) {
+
+        /** Volume × pressure drop, or null without a volume or a pressure drop. */
+        @Nullable Double surfaceLitersUsed() {
+            if (tankVolume == null
+                    || tankVolume <= 0
+                    || pressureStart == null
+                    || pressureEnd == null
+                    || pressureStart <= pressureEnd) {
+                return null;
+            }
+            return tankVolume
+                    * LITERS_PER_CUBIC_METER
+                    * (pressureStart - pressureEnd)
+                    / PASCAL_PER_BAR;
+        }
+
+        boolean pressureDropped() {
+            return pressureStart != null && pressureEnd != null && pressureStart > pressureEnd;
+        }
+
+        Optional<UddfGasMix> linkedMix(final List<UddfGasMix> mixes) {
+            if (link == null) {
+                return Optional.empty();
+            }
+            return mixes.stream().filter(mix -> mix.id().equals(link.ref())).findFirst();
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record UddfSamples(@JacksonXmlElementWrapper(useWrapping = false) List<UddfSample> waypoint) {
