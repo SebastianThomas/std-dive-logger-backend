@@ -1,11 +1,16 @@
 package ch.sthomas.stddivelogger.ws.auth;
 
+import ch.sthomas.stddivelogger.data.repository.RefreshTokenRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthRequest;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthResponse;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
 import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
+import ch.sthomas.stddivelogger.service.PushService;
+import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.utils.SecurityUtils;
+
+import io.jsonwebtoken.JwtException;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -17,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.NoSuchElementException;
@@ -31,27 +37,43 @@ public class AuthService {
     private final AuthenticationManager applicationAuthenticationManager;
     public final boolean sameSiteCookie;
     private final UserDataService userDataService;
+    private final UserService userService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PushService pushService;
 
     public AuthService(
             final JwtUtil jwtUtil,
             final AuthenticationManager applicationAuthenticationManager,
             @Value("${ch.sthomas.stddivelogger.ws.security.same_site_cookie:true}")
                     final boolean sameSiteCookie,
-            final UserDataService userDataService) {
+            final UserDataService userDataService,
+            final UserService userService,
+            final RefreshTokenRepository refreshTokenRepository,
+            final PushService pushService) {
         this.jwtUtil = jwtUtil;
         this.applicationAuthenticationManager = applicationAuthenticationManager;
         this.sameSiteCookie = sameSiteCookie;
         this.userDataService = userDataService;
+        this.userService = userService;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.pushService = pushService;
     }
 
+    /** A 401 for any unusable cookie (expired, revoked, tampered) - never a 500. */
     public String refresh(@Nullable final String refreshToken) {
-        final var username = assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
-        // assertValidForUser already threw above if refreshToken was null.
-        if (!jwtUtil.isTokenValid(
-                Objects.requireNonNull(refreshToken), username, JwtUtil.TokenType.REFRESH_TOKEN)) {
+        final var username = assertValidForUser(refreshToken);
+        try {
+            // assertValidForUser already threw above if refreshToken was null.
+            if (!jwtUtil.isTokenValid(
+                    Objects.requireNonNull(refreshToken),
+                    username,
+                    JwtUtil.TokenType.REFRESH_TOKEN)) {
+                throw new UnauthorizedException("Invalid refresh token.");
+            }
+        } catch (final JwtException e) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
-        return jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);
+        return jwtUtil.generateAccessToken(username);
     }
 
     public ResponseEntity<AuthResponse> login(final AuthRequest request) {
@@ -71,28 +93,66 @@ public class AuthService {
         return createLoginResponse(authRequest.user().getUsername());
     }
 
-    private ResponseEntity<AuthResponse> createLoginResponse(final String username) {
-        final var token = jwtUtil.generateToken(username, JwtUtil.TokenType.ACCESS_TOKEN);
-        final var refreshToken = jwtUtil.generateToken(username, JwtUtil.TokenType.REFRESH_TOKEN);
+    /**
+     * Stores the new password (same policy as signup), revokes every session and push subscription
+     * of the account, then signs this device back in with a fresh session.
+     */
+    @Transactional
+    public ResponseEntity<AuthResponse> changePassword(
+            final long userId, final String currentPassword, final String newPassword) {
+        final var user = userService.changePassword(userId, currentPassword, newPassword);
+        revokeAllSessions(userId);
+        return createLoginResponse(user.email());
+    }
 
-        final var responseCookie = createRefreshTokenCookie(refreshToken, Duration.ofDays(30));
+    /** "Log out on all devices": every refresh token and push subscription of the account. */
+    @Transactional
+    public void revokeAllSessions(final long userId) {
+        final int tokens = refreshTokenRepository.deleteAllByUserId(userId);
+        final int subscriptions = pushService.deleteAllForUser(userId);
+        logger.info(
+                "Revoked {} session(s) and {} push subscription(s) of user {}",
+                tokens,
+                subscriptions,
+                userId);
+    }
+
+    private ResponseEntity<AuthResponse> createLoginResponse(final String username) {
+        final var user =
+                userDataService
+                        .findUserByEmail(username)
+                        .orElseThrow(() -> new UnauthorizedException("Unknown user."));
+        final var token = jwtUtil.generateAccessToken(username);
+        final var refreshToken = jwtUtil.generateRefreshToken(user.id(), username);
+
+        final var responseCookie =
+                createRefreshTokenCookie(refreshToken, JwtUtil.REFRESH_TOKEN_LIFETIME);
         final var login = new AuthResponse.AuthResponseWithRefreshToken(token, responseCookie);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, login.refreshToken().toString())
                 .body(login.toAuthResponse());
     }
 
+    /** Lenient: an expired or unknown token has nothing left to delete, the cookie still goes. */
     public void logout(final String refreshToken) {
-        assertValidForUser(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
-        jwtUtil.deleteRefreshToken(refreshToken);
+        try {
+            assertValidForUser(refreshToken);
+            jwtUtil.deleteRefreshToken(refreshToken);
+        } catch (final UnauthorizedException | JwtException e) {
+            logger.debug("Logout with an unusable refresh token - nothing to revoke.");
+        }
     }
 
-    private String assertValidForUser(
-            @Nullable final String refreshToken, final JwtUtil.TokenType tokenType) {
+    private String assertValidForUser(@Nullable final String refreshToken) {
         if (refreshToken == null) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
-        final var username = jwtUtil.extractUsername(refreshToken, tokenType);
+        final String username;
+        try {
+            username = jwtUtil.extractUsername(refreshToken, JwtUtil.TokenType.REFRESH_TOKEN);
+        } catch (final JwtException | IllegalArgumentException e) {
+            throw new UnauthorizedException("Invalid refresh token.");
+        }
         if (username == null) {
             throw new UnauthorizedException("Invalid refresh token.");
         }

@@ -7,6 +7,7 @@ import ch.sthomas.stddivelogger.model.dive.home.HomeRecentDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecordDive;
 import ch.sthomas.stddivelogger.model.dive.home.HomeRecords;
 import ch.sthomas.stddivelogger.model.dive.home.HomeWindow;
+import ch.sthomas.stddivelogger.model.push.LogbookSnapshot;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -187,6 +188,31 @@ public class HomeDataService {
                 highlightedDives,
                 topBuddies,
                 new HomeRecords(recordOf(recordRows, "DEEPEST"), recordOf(recordRows, "LONGEST")));
+    }
+
+    /**
+     * The dashboard's headline only (totals + recent dives) for the logbook-sync push: two of the
+     * queries above, read-only - never computes activity stats or reminders.
+     */
+    @Transactional(readOnly = true)
+    public LogbookSnapshot syncSnapshot(final long userId) {
+        final var params = new MapSqlParameterSource("userId", userId);
+        final var summary =
+                Objects.requireNonNull(
+                        jdbc.queryForObject(Q_SUMMARY, params, HomeDataService::mapSummary));
+        return new LogbookSnapshot(
+                summary.diveCount(),
+                summary.maxDiveNumber(),
+                summary.totalBottomSeconds() == null
+                        ? null
+                        : Duration.ofSeconds(summary.totalBottomSeconds()),
+                summary.maxDepth(),
+                summary.firstDiveStart(),
+                summary.lastDiveStart(),
+                summary.divesThisYear(),
+                new HomeActivity(
+                        summary.window30(), summary.window365(), summary.windowPrevious365()),
+                jdbc.query(Q_RECENT, params, this::mapRecentDive));
     }
 
     private static @Nullable HomeRecordDive recordOf(

@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.UUID;
@@ -54,22 +55,31 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(final String username, final TokenType tokenType) {
-        final var expiration =
-                switch (tokenType) {
-                    case ACCESS_TOKEN -> ofSeconds(300);
-                    case REFRESH_TOKEN -> ofDays(30);
-                };
-        final var issuedAt = new Date();
-        final var expirationAt = new Date(System.currentTimeMillis() + expiration.toMillis());
-        final var builder =
-                Jwts.builder().subject(username).issuedAt(issuedAt).expiration(expirationAt);
-        if (tokenType == TokenType.REFRESH_TOKEN) {
-            final var jti = UUID.randomUUID().toString();
-            builder.id(jti);
-            refreshTokenRepository.save(new RefreshTokenEntity(jti, expirationAt.toInstant()));
-        }
-        return builder.signWith(getSigningKey(tokenType)).compact();
+    public static final Duration ACCESS_TOKEN_LIFETIME = ofSeconds(300);
+    public static final Duration REFRESH_TOKEN_LIFETIME = ofDays(30);
+
+    public String generateAccessToken(final String username) {
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_LIFETIME.toMillis()))
+                .signWith(getSigningKey(TokenType.ACCESS_TOKEN))
+                .compact();
+    }
+
+    /** Persists the jti with its owner, so the session can be revoked (one or all of a user's). */
+    public String generateRefreshToken(final long userId, final String username) {
+        final var expirationAt =
+                new Date(System.currentTimeMillis() + REFRESH_TOKEN_LIFETIME.toMillis());
+        final var jti = UUID.randomUUID().toString();
+        refreshTokenRepository.save(new RefreshTokenEntity(jti, userId, expirationAt.toInstant()));
+        return Jwts.builder()
+                .subject(username)
+                .id(jti)
+                .issuedAt(new Date())
+                .expiration(expirationAt)
+                .signWith(getSigningKey(TokenType.REFRESH_TOKEN))
+                .compact();
     }
 
     public @Nullable String extractUsername(final String token, final TokenType tokenType)

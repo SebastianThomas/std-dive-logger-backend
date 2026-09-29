@@ -45,9 +45,15 @@ public class PushController {
         return Map.of("publicKey", pushService.publicKey(), "enabled", pushService.isEnabled());
     }
 
-    @Operation(summary = "Register this browser for push")
+    public record SubscriptionState(boolean logbookSync) {}
+
+    @Operation(
+            summary = "Register (or refresh) this browser for push",
+            description =
+                    "Idempotent upsert by endpoint - the app re-sends it on start, which heals rotated"
+                            + " or revoked subscriptions. Returns the stored logbook-sync choice.")
     @PostMapping("/subscriptions")
-    public ResponseEntity<Void> subscribe(
+    public SubscriptionState subscribe(
             @AuthenticationPrincipal final @Nullable User user,
             @Valid @RequestBody final PushSubscriptionRequest body,
             @RequestHeader(value = "User-Agent", required = false)
@@ -55,8 +61,7 @@ public class PushController {
         if (user == null) {
             throw new UnauthorizedException("Log in to enable push notifications.");
         }
-        pushService.subscribe(user.id(), body, userAgent);
-        return ResponseEntity.noContent().build();
+        return new SubscriptionState(pushService.subscribe(user.id(), body, userAgent));
     }
 
     public record UnsubscribeRequest(@NotBlank String endpoint) {}

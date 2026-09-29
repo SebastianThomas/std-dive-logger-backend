@@ -96,7 +96,11 @@ public class WsSecurityConfig {
                                     .permitAll()
                                     .requestMatchers(HttpMethod.GET, "/v1/explore/**")
                                     .permitAll()
-                                    .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
+                                    .requestMatchers(
+                                            HttpMethod.POST,
+                                            "/api/auth/deregister",
+                                            "/api/auth/password",
+                                            "/api/auth/logout-all")
                                     .authenticated()
                                     .requestMatchers(HttpMethod.POST, "/api/auth/**")
                                     .permitAll()

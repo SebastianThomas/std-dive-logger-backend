@@ -56,6 +56,15 @@ public class AnalyticsJobs {
         queue.enqueue(JobKind.PUSH, false);
     }
 
+    /** Push a changed logbook's snapshot to the diver's devices (debounced, see the service). */
+    @Schedules({
+        @Scheduled(cron = "45 * * * * *", zone = "UTC"),
+        @Scheduled(initialDelay = 50000),
+    })
+    public void sendLogbookSyncPushes() {
+        queue.enqueue(JobKind.LOGBOOK_SYNC, false);
+    }
+
     /** Nightly cleanup of long-expired reminder rows. */
     @Scheduled(cron = "0 30 3 * * *", zone = "UTC")
     public void purgeExpiredReminders() {

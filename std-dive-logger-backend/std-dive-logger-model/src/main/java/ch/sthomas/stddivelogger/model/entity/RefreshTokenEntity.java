@@ -21,10 +21,15 @@ public class RefreshTokenEntity {
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 
+    /** Owner - lets every session of one user be revoked at once (password change, logout-all). */
+    @Column(name = "fk_user_id", nullable = false, updatable = false)
+    private long userId;
+
     public RefreshTokenEntity() {}
 
-    public RefreshTokenEntity(final String jti, final Instant expiresAt) {
+    public RefreshTokenEntity(final String jti, final long userId, final Instant expiresAt) {
         this.jti = jti;
+        this.userId = userId;
         this.expiresAt = expiresAt.atOffset(UTC);
     }
 }

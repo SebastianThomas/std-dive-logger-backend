@@ -8,7 +8,16 @@ public enum JobKind {
     ACTIVITY("Diver activity", "Refresh activity and trend statistics", "30 * * * * *", 15),
     REMINDERS("Reminders", "Recalculate due reminders", "0 */5 * * * *", 20),
     PUSH("Reminder delivery", "Send due push notifications to divers", "0 2/5 * * * *", 45),
-    CLEANUP("Reminder cleanup", "Remove expired reminders", "0 30 3 * * *", 0),
+    LOGBOOK_SYNC(
+            "Logbook sync",
+            "Push a changed logbook's snapshot to the diver's devices (offline copy)",
+            "45 * * * * *",
+            50),
+    CLEANUP(
+            "Reminder cleanup",
+            "Remove expired reminders and dead push subscriptions",
+            "0 30 3 * * *",
+            0),
     SITES("Dive site statistics", "Refresh shared site aggregates", "0 4/15 * * * *", 30),
     MAPS_IMPORT(
             "Boundary import",

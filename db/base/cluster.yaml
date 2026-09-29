@@ -27,7 +27,7 @@ spec:
       # infrastructure/cloudnative-pg/image-catalog.yaml).
       - name: postgis
   storage:
-    size: 3Gi
+    size: 6Gi
     storageClass: local-path
   bootstrap:
     initdb:
@@ -43,5 +43,5 @@ spec:
         - CREATE SCHEMA IF NOT EXISTS maps AUTHORIZATION std_dive_logger
         - CREATE SCHEMA IF NOT EXISTS maps_osm_stage AUTHORIZATION std_dive_logger
   resources:
-    requests: { cpu: 50m, memory: 256Mi }
-    limits: { memory: 640Mi }
+    requests: { cpu: 50m, memory: 512Mi }
+    limits: { memory: 1024Mi }

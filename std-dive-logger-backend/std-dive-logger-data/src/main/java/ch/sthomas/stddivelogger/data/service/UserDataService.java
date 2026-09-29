@@ -108,6 +108,11 @@ public class UserDataService {
         userRepository.deleteByEmailEqualsIgnoreCase(email);
     }
 
+    @Transactional
+    public void updatePassword(final long userId, final String encodedPassword) {
+        userRepository.findById(userId).orElseThrow().setPassword(encodedPassword);
+    }
+
     @Transactional(readOnly = true)
     public boolean isKeepImportFiles(final long userId) {
         return userRepository.findById(userId).map(UserEntity::isKeepImportFiles).orElse(false);

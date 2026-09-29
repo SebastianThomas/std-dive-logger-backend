@@ -2,12 +2,10 @@ package ch.sthomas.stddivelogger.service;
 
 import ch.sthomas.stddivelogger.model.entity.PushSubscriptionEntity;
 import ch.sthomas.stddivelogger.model.push.PushSendResult;
-import ch.sthomas.stddivelogger.model.push.WebPushMessage;
 
 import nl.martijndwars.webpush.AbstractPushService;
 import nl.martijndwars.webpush.Encoding;
 import nl.martijndwars.webpush.Notification;
-import nl.martijndwars.webpush.Urgency;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.jose4j.lang.JoseException;
@@ -17,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import tools.jackson.databind.json.JsonMapper;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,6 +22,7 @@ import java.net.http.HttpResponse;
 import java.security.GeneralSecurityException;
 import java.security.Security;
 import java.time.Duration;
+import java.util.concurrent.Executors;
 
 /**
  * VAPID-signs and RFC-8291-encrypts via {@code nl.martijndwars:web-push} (see {@link
@@ -37,7 +34,9 @@ import java.time.Duration;
 public class VapidWebPushSender implements WebPushSender {
 
     private static final Logger logger = LoggerFactory.getLogger(VapidWebPushSender.class);
-    private static final int TTL_SECONDS = (int) Duration.ofDays(1).toSeconds();
+    // Hard bounds: a slow push service must not stall the (single, shared) analytics job queue.
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
     static {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
@@ -45,16 +44,17 @@ public class VapidWebPushSender implements WebPushSender {
         }
     }
 
-    private final JsonMapper jsonMapper;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient =
+            HttpClient.newBuilder()
+                    .connectTimeout(CONNECT_TIMEOUT)
+                    .executor(Executors.newVirtualThreadPerTaskExecutor())
+                    .build();
     private final @Nullable LiteWebPushService pushService;
 
     public VapidWebPushSender(
-            final JsonMapper jsonMapper,
             @Value("${ch.sthomas.stddivelogger.push.vapid.public-key:}") final String publicKey,
             @Value("${ch.sthomas.stddivelogger.push.vapid.private-key:}") final String privateKey,
             @Value("${ch.sthomas.stddivelogger.push.vapid.subject:}") final String subject) {
-        this.jsonMapper = jsonMapper;
         this.pushService = buildPushService(publicKey, privateKey, subject);
     }
 
@@ -78,21 +78,25 @@ public class VapidWebPushSender implements WebPushSender {
 
     @Override
     public PushSendResult send(
-            final PushSubscriptionEntity subscription, final WebPushMessage message) {
+            final PushSubscriptionEntity subscription,
+            final byte[] payload,
+            final PushOptions options) {
         if (pushService == null) {
             return PushSendResult.NOT_CONFIGURED;
         }
         try {
-            final var notification =
+            final var builder =
                     Notification.builder()
                             .endpoint(subscription.getEndpoint())
                             .userPublicKey(subscription.getP256dh())
                             .userAuth(subscription.getAuth())
-                            .payload(jsonMapper.writeValueAsBytes(message))
-                            .urgency(Urgency.NORMAL)
-                            .ttl(TTL_SECONDS)
-                            .build();
-            return dispatch(pushService.buildRequest(notification));
+                            .payload(payload)
+                            .urgency(options.urgency())
+                            .ttl((int) options.ttl().toSeconds());
+            if (options.topic() != null) {
+                builder.topic(options.topic());
+            }
+            return dispatch(pushService.buildRequest(builder.build()));
         } catch (final GeneralSecurityException | IOException | JoseException e) {
             logger.warn(
                     "Failed to build web push request for subscription {}",
@@ -105,7 +109,7 @@ public class VapidWebPushSender implements WebPushSender {
     private PushSendResult dispatch(final nl.martijndwars.webpush.HttpRequest request) {
         var builder =
                 java.net.http.HttpRequest.newBuilder(URI.create(request.getUrl()))
-                        .timeout(Duration.ofSeconds(10))
+                        .timeout(REQUEST_TIMEOUT)
                         .POST(
                                 java.net.http.HttpRequest.BodyPublishers.ofByteArray(
                                         request.getBody()));
@@ -118,6 +122,13 @@ public class VapidWebPushSender implements WebPushSender {
             return switch (response.statusCode()) {
                 case 200, 201, 202 -> PushSendResult.SENT;
                 case 404, 410 -> PushSendResult.GONE;
+                case 413 -> {
+                    logger.error(
+                            "Web push payload too large ({} bytes) for endpoint ending …{}",
+                            request.getBody().length,
+                            tail(request.getUrl()));
+                    yield PushSendResult.FAILED;
+                }
                 default -> {
                     logger.info(
                             "Web push service responded {} for endpoint ending …{}",
@@ -127,7 +138,7 @@ public class VapidWebPushSender implements WebPushSender {
                 }
             };
         } catch (final IOException e) {
-            logger.warn("Web push HTTP send failed", e);
+            logger.warn("Web push HTTP send failed: {}", e.toString());
             return PushSendResult.FAILED;
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();

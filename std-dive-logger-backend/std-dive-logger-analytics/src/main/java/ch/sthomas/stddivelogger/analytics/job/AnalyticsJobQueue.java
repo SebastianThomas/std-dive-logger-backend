@@ -5,6 +5,7 @@ import ch.sthomas.stddivelogger.analytics.services.AnalyticsService;
 import ch.sthomas.stddivelogger.data.service.AnalyticsJobRunStore;
 import ch.sthomas.stddivelogger.model.exception.AnalyticsException;
 import ch.sthomas.stddivelogger.service.ImportFileService;
+import ch.sthomas.stddivelogger.service.LogbookSyncService;
 import ch.sthomas.stddivelogger.service.importer.reprocess.ImportReprocessService;
 
 import org.jspecify.annotations.Nullable;
@@ -31,6 +32,7 @@ public class AnalyticsJobQueue {
     private final @Nullable MapsImportJobLauncher mapsImportJobLauncher;
     private final ImportReprocessService importReprocessService;
     private final ImportFileService importFileService;
+    private final LogbookSyncService logbookSyncService;
 
     public AnalyticsJobQueue(
             final DataSource dataSource,
@@ -38,13 +40,15 @@ public class AnalyticsJobQueue {
             final AnalyticsService analytics,
             final @Nullable MapsImportJobLauncher mapsImportJobLauncher,
             final ImportReprocessService importReprocessService,
-            final ImportFileService importFileService) {
+            final ImportFileService importFileService,
+            final LogbookSyncService logbookSyncService) {
         this.dataSource = dataSource;
         this.runs = runs;
         this.analytics = analytics;
         this.mapsImportJobLauncher = mapsImportJobLauncher;
         this.importReprocessService = importReprocessService;
         this.importFileService = importFileService;
+        this.logbookSyncService = logbookSyncService;
     }
 
     public boolean enqueue(final JobKind job, final boolean manual) {
@@ -87,6 +91,7 @@ public class AnalyticsJobQueue {
             case ACTIVITY -> analytics.recomputeDiverActivityStats();
             case REMINDERS -> analytics.recomputeDiverReminders();
             case PUSH -> analytics.sendDueReminderPushes();
+            case LOGBOOK_SYNC -> logbookSyncService.sendDue();
             case CLEANUP -> analytics.purgeExpiredReminders();
             case SITES -> analytics.refreshDiveSiteStats();
             case MAPS_IMPORT -> {

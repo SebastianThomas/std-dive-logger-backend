@@ -156,11 +156,15 @@ public class AnalyticsService {
         return "/";
     }
 
-    /** Nightly: drop reminders that expired a couple of days ago. */
+    /** Nightly: drop reminders that expired a couple of days ago and dead push subscriptions. */
     public void purgeExpiredReminders() {
         final int deleted = diverReminderDataService.purgeExpired();
         if (deleted > 0) {
             logger.info("Purged {} expired reminder(s).", deleted);
+        }
+        final int pruned = pushService.pruneFailing();
+        if (pruned > 0) {
+            logger.info("Pruned {} push subscription(s) that kept failing.", pruned);
         }
     }
 

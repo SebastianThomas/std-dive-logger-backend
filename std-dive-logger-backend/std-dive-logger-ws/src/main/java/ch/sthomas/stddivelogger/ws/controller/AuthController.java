@@ -122,4 +122,38 @@ public class AuthController {
     public void deregister(@AuthenticationPrincipal final User user) {
         userService.deleteUser(user);
     }
+
+    public record ChangePasswordRequest(
+            @NotBlank String currentPassword, @NotBlank String newPassword) {
+        @NotNull
+        @Override
+        public String toString() {
+            return String.format(
+                    "ChangePasswordRequest {currentPassword: %s, newPassword: %s}",
+                    sanitizePassword(currentPassword), sanitizePassword(newPassword));
+        }
+    }
+
+    @Operation(
+            summary = "Change the password",
+            description =
+                    "Signs every other device out (sessions + push subscriptions) and returns a"
+                            + " fresh session for this one.")
+    @PostMapping("/password")
+    public ResponseEntity<AuthResponse> changePassword(
+            @AuthenticationPrincipal final User user,
+            @Valid @RequestBody final ChangePasswordRequest request) {
+        return authService.changePassword(
+                user.id(), request.currentPassword(), request.newPassword());
+    }
+
+    @Operation(summary = "Log out on all devices (every session + push subscription)")
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll(@AuthenticationPrincipal final User user) {
+        authService.revokeAllSessions(user.id());
+        final var deleteCookie = authService.createRefreshTokenCookie("", Duration.ofSeconds(0));
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .build();
+    }
 }

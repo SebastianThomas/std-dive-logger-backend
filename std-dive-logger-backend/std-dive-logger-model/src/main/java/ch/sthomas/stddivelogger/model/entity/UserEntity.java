@@ -106,6 +106,11 @@ public class UserEntity {
         this.customBackgroundUrl = customBackgroundUrl;
     }
 
+    /** Takes an already-encoded hash, never a raw password. */
+    public void setPassword(final String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
     public boolean isKeepImportFiles() {
         return keepImportFiles;
     }

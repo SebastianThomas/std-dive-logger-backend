@@ -37,6 +37,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -118,6 +119,31 @@ public class UserService {
             return user;
         }
         throw new UserCreationException("Could not create verify Email Request.");
+    }
+
+    /**
+     * Verifies the current password and stores the new one under the same policy as signup. The
+     * caller revokes the account's other sessions (see {@code AuthService.changePassword}).
+     */
+    @Transactional
+    public User changePassword(
+            final long userId, final String currentPassword, final String newPassword) {
+        final var user = userDataService.findUserById(userId);
+        if (!passwordEncoder.matches(currentPassword, user.password())) {
+            throw new IllegalArgumentException("The current password is not correct.");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new IllegalArgumentException(
+                    "The new password must be different from the current one.");
+        }
+        final var validated = isValidPassword(newPassword);
+        if (!validated.isValid()) {
+            throw new InvalidPasswordException(
+                    validated.getDetails().stream().map(RuleResultDetail::toString).toList());
+        }
+        userDataService.updatePassword(
+                userId, Objects.requireNonNull(passwordEncoder.encode(newPassword)));
+        return user;
     }
 
     private boolean isValidEmail(final String email) {

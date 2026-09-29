@@ -49,6 +49,10 @@ public class PushSubscriptionEntity {
     @Column(name = "failure_count", nullable = false)
     private int failureCount;
 
+    /** Receives the logbook-sync snapshot push (keeps this device's offline copy current). */
+    @Column(name = "logbook_sync", nullable = false)
+    private boolean logbookSync = true;
+
     public PushSubscriptionEntity() {}
 
     public PushSubscriptionEntity(
@@ -66,12 +70,30 @@ public class PushSubscriptionEntity {
         this.failureCount = 0;
     }
 
-    /** Re-subscribing from the same browser: refresh the keys, clear the failure count. */
-    public void refresh(final String p256dh, final String auth, final @Nullable String userAgent) {
+    /**
+     * Re-subscribing from the same browser: refresh the keys, clear the failure count. The owner
+     * follows whoever registered last - a browser shared by two accounts must not keep pushing the
+     * first account's data.
+     */
+    public PushSubscriptionEntity refresh(
+            final long userId,
+            final String p256dh,
+            final String auth,
+            final @Nullable String userAgent) {
+        this.userId = userId;
         this.p256dh = p256dh;
         this.auth = auth;
         this.userAgent = userAgent;
         this.failureCount = 0;
+        return this;
+    }
+
+    public boolean isLogbookSync() {
+        return logbookSync;
+    }
+
+    public void setLogbookSync(final boolean logbookSync) {
+        this.logbookSync = logbookSync;
     }
 
     public void recordSuccess() {
