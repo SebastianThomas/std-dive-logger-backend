@@ -66,6 +66,7 @@ class MapsImportJobFactoryTest {
                         "wget -q -O /work/adm0.gpkg",
                         "load /work/adm1.gpkg globalADM1 adm1",
                         "-a_srs EPSG:4326",
+                        "-makevalid",
                         "-nln \"maps_cgaz_stage.$3\"",
                         "-lco OVERWRITE=YES",
                         "-overwrite");

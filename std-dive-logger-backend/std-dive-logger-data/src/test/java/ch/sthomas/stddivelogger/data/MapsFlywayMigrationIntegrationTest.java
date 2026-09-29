@@ -39,7 +39,7 @@ class MapsFlywayMigrationIntegrationTest {
         assertThat(mapsFlyway.migrate().success).isTrue();
         assertThat(mapsFlyway.migrate().migrationsExecuted).isZero();
 
-        assertThat(mapsFlyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(mapsFlyway.info().current().getVersion().getVersion()).isEqualTo("4");
         assertThat(publicFlyway.info().current().getVersion().getVersion()).startsWith("0.4.");
     }
 
@@ -90,7 +90,7 @@ class MapsFlywayMigrationIntegrationTest {
         assertThat(inland.boundaryImportVersion()).isEqualTo(importId);
         assertThat(offshore.countryName()).isNull();
         assertThat(offshore.status()).isEqualTo("NO_COUNTRY");
-        assertThat(runStore.latestSuccessfulState(MapsImportKind.OSM)).isEqualTo("test-state");
+        assertThat(runStore.latestRunState(MapsImportKind.OSM)).isEqualTo("test-state");
     }
 
     @Test
@@ -174,6 +174,31 @@ class MapsFlywayMigrationIntegrationTest {
     }
 
     @Test
+    void capsPromotionAttemptsSoACrashingPromotionIsNotRetriedForever() {
+        flyway("public", "classpath:db/migration/postgresql").migrate();
+        flyway("maps", "classpath:db/migration/maps").migrate();
+        final var jdbc = new JdbcTemplate(dataSource());
+        final var runStore = new MapsImportRunStore(new NamedParameterJdbcTemplate(dataSource()));
+        final long failing = insertRun(jdbc, MapsImportKind.CGAZ, "crashing-promotion");
+        final long newer = insertRun(jdbc, MapsImportKind.CGAZ, "newer");
+
+        // Each crashed attempt leaves its committed count behind; the next one gives up.
+        assertThat(runStore.startPromotionAttempt(failing)).isTrue();
+        assertThat(runStore.startPromotionAttempt(failing)).isTrue();
+        assertThat(runStore.startPromotionAttempt(failing)).isFalse();
+        assertThat(runStore.promote(failing, MapsImportKind.CGAZ)).isFalse();
+        assertThat(statusOf(jdbc, failing)).isEqualTo("FAILED");
+
+        // A finished run stays finished when a lingering Job is reconciled again.
+        runStore.markRunning(failing);
+        assertThat(statusOf(jdbc, failing)).isEqualTo("FAILED");
+
+        // The latest run counts whatever its outcome, so a restart doesn't relaunch it.
+        runStore.markFailed(newer, "KubernetesJobFailed");
+        assertThat(runStore.latestRunState(MapsImportKind.CGAZ)).isEqualTo("state-newer");
+    }
+
+    @Test
     void promotesStagedOsmBoundaries() {
         flyway("public", "classpath:db/migration/postgresql").migrate();
         flyway("maps", "classpath:db/migration/maps").migrate();
@@ -214,6 +239,19 @@ class MapsFlywayMigrationIntegrationTest {
                                 String.class,
                                 runId))
                 .isEqualTo("SUCCEEDED");
+    }
+
+    private static DriverManagerDataSource dataSource() {
+        return new DriverManagerDataSource(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    }
+
+    private static String statusOf(final JdbcTemplate jdbc, final long runId) {
+        return Objects.requireNonNull(
+                jdbc.queryForObject(
+                        "SELECT status FROM maps.import_run WHERE pk_import_run_id = ?",
+                        String.class,
+                        runId));
     }
 
     private static long insertRun(

@@ -45,6 +45,17 @@ public class MapsImportJobFactory {
 
     public static final String KIND_LABEL = "std-dive-logger/import-source";
 
+    /**
+     * Loads CGAZ layer $2 of $1 into staging table $3. CRS assigned (the GeoPackages declare none);
+     * {@code -makevalid} runs GEOS in the Job, not Postgres (ST_MakeValid on whole countries
+     * OOM-killed the DB); schema-qualified -nln so -overwrite finds a failed run's leftover table.
+     */
+    public static final String CGAZ_LOAD =
+            "ogr2ogr -f PostgreSQL \"PG:$DATABASE_URL\" \"$1\" \"$2\" -a_srs EPSG:4326 "
+                    + "-makevalid -nlt MULTIPOLYGON -nln \"maps_cgaz_stage.$3\" "
+                    + "-lco GEOMETRY_NAME=geometry -lco SPATIAL_INDEX=NONE -lco OVERWRITE=YES "
+                    + "-overwrite --config PG_USE_COPY YES";
+
     /** How long a successful import Job (and its pod) stays around for inspection. */
     public static final Duration COMPLETED_RETENTION = Duration.ofHours(24);
 
@@ -95,16 +106,6 @@ public class MapsImportJobFactory {
             final String adm0Url,
             final String adm1Url,
             final String databaseSecretName) {
-        // The GeoPackages declare an undefined SRS although their coordinates are WGS 84 degrees,
-        // so the CRS has to be assigned rather than reprojected. The layer name is
-        // schema-qualified instead of -lco SCHEMA: -overwrite only finds (and replaces) a
-        // staging table left over from an earlier failed run under that qualified name, and
-        // OVERWRITE=YES covers creating it regardless.
-        final String load =
-                "ogr2ogr -f PostgreSQL \"PG:$DATABASE_URL\" \"$1\" \"$2\" -a_srs EPSG:4326 "
-                        + "-nlt MULTIPOLYGON -nln \"maps_cgaz_stage.$3\" "
-                        + "-lco GEOMETRY_NAME=geometry -lco SPATIAL_INDEX=NONE -lco OVERWRITE=YES "
-                        + "-overwrite --config PG_USE_COPY YES";
         final var container =
                 new ContainerBuilder()
                         .withName("import-boundaries")
@@ -113,7 +114,7 @@ public class MapsImportJobFactory {
                         .withArgs(
                                 "set -eu; "
                                         + "load() { "
-                                        + load
+                                        + CGAZ_LOAD
                                         + "; }; "
                                         + "wget -q -O /work/adm0.gpkg \"$ADM0_URL\"; "
                                         + "wget -q -O /work/adm1.gpkg \"$ADM1_URL\"; "

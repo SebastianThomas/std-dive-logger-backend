@@ -23,6 +23,9 @@ public class MapsImportRunStore {
     /** Statement separator used by the promotion scripts of {@link MapsImportKind}. */
     private static final String STATEMENT_SEPARATOR = "\n--;;\n";
 
+    /** A second try covers a transient failure; more would only keep crashing a sick database. */
+    static final int MAX_PROMOTION_ATTEMPTS = 2;
+
     private final NamedParameterJdbcTemplate mapsJdbc;
 
     public MapsImportRunStore(
@@ -65,16 +68,19 @@ public class MapsImportRunStore {
         return id;
     }
 
+    /**
+     * State of the most recent run, whatever its outcome - a failed run's state counts too, so a
+     * restart never relaunches the import that just failed (the weekly schedule retries it).
+     */
     @Transactional(transactionManager = "mapsTransactionManager", readOnly = true)
-    public @Nullable String latestSuccessfulState(final MapsImportKind kind) {
+    public @Nullable String latestRunState(final MapsImportKind kind) {
         return mapsJdbc
                 .query(
                         """
                         SELECT state
                         FROM maps.import_run
-                        WHERE status = 'SUCCEEDED'
-                          AND kind = :kind
-                        ORDER BY finished_at DESC, pk_import_run_id DESC
+                        WHERE kind = :kind
+                        ORDER BY pk_import_run_id DESC
                         LIMIT 1
                         """,
                         new MapSqlParameterSource("kind", kind.name()),
@@ -82,6 +88,41 @@ public class MapsImportRunStore {
                 .stream()
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * Counts a promotion attempt in its own committed transaction, before {@link #promote}: an
+     * attempt that crashes the database rolls back everything inside it, including a failure mark.
+     *
+     * @return whether the run may be promoted now; a run out of attempts is marked failed instead
+     */
+    @Transactional(transactionManager = "mapsTransactionManager")
+    public boolean startPromotionAttempt(final long runId) {
+        final var params =
+                new MapSqlParameterSource("runId", runId)
+                        .addValue("maxAttempts", MAX_PROMOTION_ATTEMPTS);
+        final int started =
+                mapsJdbc.update(
+                        """
+                        UPDATE maps.import_run
+                        SET promotion_attempts = promotion_attempts + 1
+                        WHERE pk_import_run_id = :runId
+                          AND status IN ('PLANNED', 'SUBMITTED', 'RUNNING')
+                          AND promotion_attempts < :maxAttempts
+                        """,
+                        params);
+        if (started > 0) return true;
+        mapsJdbc.update(
+                """
+                UPDATE maps.import_run
+                SET status = 'FAILED',
+                    failure_summary = 'BoundaryPromotionAttemptsExhausted',
+                    finished_at = now()
+                WHERE pk_import_run_id = :runId
+                  AND status IN ('PLANNED', 'SUBMITTED', 'RUNNING')
+                """,
+                params);
+        return false;
     }
 
     /**
@@ -143,6 +184,7 @@ public class MapsImportRunStore {
                     failure_summary = :failureSummary,
                     finished_at = CASE WHEN :status = 'FAILED' THEN now() ELSE finished_at END
                 WHERE pk_import_run_id = :runId
+                  AND status IN ('PLANNED', 'SUBMITTED', 'RUNNING')
                 """,
                 new MapSqlParameterSource("runId", runId)
                         .addValue("status", status)

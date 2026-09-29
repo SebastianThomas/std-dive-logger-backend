@@ -27,8 +27,12 @@ spec:
       # infrastructure/cloudnative-pg/image-catalog.yaml).
       - name: postgis
   storage:
+    # Only applies to new PVCs. local-path can't expand one (nor enforces the
+    # size - it's host disk); a resize attempt fails every reconcile and blocks
+    # resource changes from rolling out, so never resize in place.
     size: 6Gi
     storageClass: local-path
+    resizeInUseVolumes: false
   bootstrap:
     initdb:
       database: std_dive_logger

@@ -59,7 +59,7 @@ public class MapsImportJobLauncher {
         boolean launched = false;
         for (final MapsImportKind kind : MapsImportKind.values()) {
             final String state = stateCalculator.calculate(kind);
-            if (state.equals(runs.latestSuccessfulState(kind)) || hasActiveImport(kind)) continue;
+            if (state.equals(runs.latestRunState(kind)) || hasActiveImport(kind)) continue;
             launchConfiguredImport(kind, state);
             launched = true;
         }
@@ -190,6 +190,8 @@ public class MapsImportJobLauncher {
      * repeated reconciliations of a completed Job that lingers until its TTL are no-ops.
      */
     private void promote(final long runId, final MapsImportKind kind) {
+        // Retrying a promotion that crashed the database would crash it again every 30s.
+        if (!runs.startPromotionAttempt(runId)) return;
         try {
             if (runs.promote(runId, kind)) {
                 LOG.info("Promoted the staged {} boundaries of maps import run {}", kind, runId);

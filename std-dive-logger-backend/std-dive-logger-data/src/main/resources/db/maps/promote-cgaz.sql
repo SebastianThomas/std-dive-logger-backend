@@ -1,5 +1,7 @@
 -- Promotes the ogr2ogr-loaded geoBoundaries CGAZ staging tables into the live maps schema.
--- ogr2ogr launders the GeoPackages' column names to lower case (shapeGroup -> shapegroup).
+-- ogr2ogr launders the GeoPackages' column names to lower case (shapeGroup -> shapegroup) and
+-- already made every geometry a valid MultiPolygon (-makevalid, MapsImportJobFactory.CGAZ_LOAD):
+-- no GEOS call here - ST_MakeValid/ST_IsValid on whole countries OOM-killed the database.
 --
 -- Executed by MapsImportRunStore#promote in a single transaction once the import Job completed.
 -- Statements are separated by a "--;;" line because they are bound as prepared statements, which
@@ -43,7 +45,7 @@ SELECT 'CGAZ',
        2,
        shapename,
        shapegroup,
-       ST_Multi(ST_CollectionExtract(ST_MakeValid(geometry), 3)),
+       geometry,
        (SELECT source_timestamp FROM maps.import_run WHERE pk_import_run_id = :importRunId),
        now(),
        :importRunId
@@ -69,7 +71,7 @@ SELECT 'CGAZ',
        4,
        shapename,
        shapegroup,
-       ST_Multi(ST_CollectionExtract(ST_MakeValid(geometry), 3)),
+       geometry,
        (SELECT source_timestamp FROM maps.import_run WHERE pk_import_run_id = :importRunId),
        now(),
        :importRunId
@@ -101,8 +103,6 @@ UPDATE maps.import_run
 SET status = 'SUCCEEDED',
     finished_at = now(),
     boundary_count = (SELECT count(*) FROM maps.admin_boundary WHERE source = 'CGAZ'),
-    invalid_geometry_count = (
-        SELECT count(*) FROM maps.admin_boundary
-        WHERE source = 'CGAZ' AND NOT ST_IsValid(geometry)
-    )
+    -- Not measured (see the header); ogr2ogr -makevalid leaves none invalid.
+    invalid_geometry_count = NULL
 WHERE pk_import_run_id = :importRunId;

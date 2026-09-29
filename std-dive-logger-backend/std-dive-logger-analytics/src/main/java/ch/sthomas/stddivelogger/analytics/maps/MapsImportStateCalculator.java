@@ -3,6 +3,7 @@ package ch.sthomas.stddivelogger.analytics.maps;
 import ch.sthomas.stddivelogger.data.service.MapsImportKind;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -48,6 +49,9 @@ public class MapsImportStateCalculator {
                     update(digest, "cgaz-adm0-url", properties.getCgazAdm0Url());
                     update(digest, "cgaz-adm1-url", properties.getCgazAdm1Url());
                     update(digest, "gdal-image", MapsImportJobFactory.GDAL_IMAGE);
+                    // A changed load or promotion must re-stage, not wait for the weekly run.
+                    update(digest, "cgaz-load", MapsImportJobFactory.CGAZ_LOAD);
+                    update(digest, "promotion-script", promotionScript(kind));
                 }
             }
             return HexFormat.of().formatHex(digest.digest());
@@ -55,6 +59,12 @@ public class MapsImportStateCalculator {
             throw new IllegalStateException("SHA-256 is unavailable", exception);
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot read maps import configuration", exception);
+        }
+    }
+
+    private static String promotionScript(final MapsImportKind kind) throws IOException {
+        try (var input = new ClassPathResource(kind.getPromotionScript()).getInputStream()) {
+            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 
