@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import org.junit.jupiter.api.Test;
@@ -132,5 +133,72 @@ class DiveProfileUploadTest {
 
         assertEquals(upload.start().plus(offset), shifted.start());
         assertEquals(upload.end().plus(offset), shifted.end());
+    }
+
+    @Test
+    void aCutKeepsTheClockAndLeavesAGapBetweenTheSamplesAroundIt() {
+        final var upload = steadyDescentUpload();
+
+        final var cut =
+                upload.trimmed(
+                        null,
+                        null,
+                        List.of(new TimeRange(START.plusSeconds(95), START.plusSeconds(205))));
+
+        // 100..200 gone; 90 and 210 stay where they were.
+        assertEquals(31 - 11, cut.measurements().size());
+        assertEquals(upload.start(), cut.start());
+        assertEquals(upload.end(), cut.end());
+        assertEquals(
+                List.of(new TimeRange(START.plusSeconds(90), START.plusSeconds(210))), cut.gaps());
+    }
+
+    @Test
+    void aCutBetweenTwoSamplesRemovesNothingAndLeavesNoGap() {
+        final var upload = steadyDescentUpload();
+
+        final var cut =
+                upload.trimmed(
+                        null,
+                        null,
+                        List.of(new TimeRange(START.plusSeconds(101), START.plusSeconds(109))));
+
+        assertEquals(upload.measurements(), cut.measurements());
+        assertEquals(List.of(), cut.gaps());
+    }
+
+    @Test
+    void aLaterTrimClipsAnEarlierGapAndAShiftMovesIt() {
+        final var withGap =
+                steadyDescentUpload()
+                        .trimmed(
+                                null,
+                                null,
+                                List.of(
+                                        new TimeRange(
+                                                START.plusSeconds(95), START.plusSeconds(205))));
+
+        final var trimmed =
+                withGap.trimmed(START.plusSeconds(50), null).shifted(Duration.ofHours(1));
+
+        assertEquals(
+                List.of(
+                        new TimeRange(
+                                START.plusSeconds(90).plus(Duration.ofHours(1)),
+                                START.plusSeconds(210).plus(Duration.ofHours(1)))),
+                trimmed.gaps());
+        // A trim past the gap drops it.
+        assertEquals(List.of(), withGap.trimmed(START.plusSeconds(220), null).gaps());
+    }
+
+    @Test
+    void cuttingAwayAlmostEverythingIsRefused() {
+        final var upload = steadyDescentUpload();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        upload.trimmed(
+                                null, null, List.of(new TimeRange(START, START.plusSeconds(295)))));
     }
 }

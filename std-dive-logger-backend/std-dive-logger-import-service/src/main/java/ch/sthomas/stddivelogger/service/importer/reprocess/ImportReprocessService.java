@@ -14,7 +14,10 @@ import ch.sthomas.stddivelogger.model.dive.DiveSite;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.ProfileMeasurementMerge;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
+import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.entity.DiveImportFileFieldEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveProfileHistoryEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileImportFileEntity;
 import ch.sthomas.stddivelogger.model.entity.ImportFileEntity;
 import ch.sthomas.stddivelogger.model.entity.ImportReprocessConflictEntity;
@@ -268,9 +271,9 @@ public class ImportReprocessService {
     }
 
     /**
-     * The profile as its files read today: merged like a refine merges them, on the profile's own
-     * clock (the diver's alignment kept) moved by whatever the importer now reads differently, with
-     * the recorded trims applied.
+     * The profile as its files read today: merged like a refine merges them, with the recorded
+     * trims and cuts applied, on the profile's own clock (the diver's alignment kept) moved by
+     * whatever the importer now reads differently.
      */
     private static Proposal propose(
             final DiveDataService.ReprocessContext ctx, final List<Derived> derived) {
@@ -293,17 +296,25 @@ public class ImportReprocessService {
         }
         final var currentActive =
                 ReimportSimilarityCheck.activeStart(ctx.measurements(), ctx.start());
+        // Trimmed on the file's clock first: a start trim can move where the samples first go
+        // deeper than 0.5 m, and that's what lines the result up with the profile as it is.
         var upload =
-                new DiveProfileUpload(
+                applyTrims(
+                        new DiveProfileUpload(
                                 ctx.computerId(),
                                 merged.start(),
                                 merged.end(),
                                 merged.measurements(),
-                                merged.decoSettings())
-                        .shifted(
-                                Duration.between(
-                                        base.activeStart(), currentActive.plus(clockShift)));
-        upload = applyTrims(upload, ctx.trimStartOffset(), ctx.trimEndOffset());
+                                merged.decoSettings()),
+                        ctx.trimStartOffset(),
+                        ctx.trimEndOffset(),
+                        ctx.trimCuts());
+        upload =
+                upload.shifted(
+                        Duration.between(
+                                ReimportSimilarityCheck.activeStart(
+                                        upload.measurements(), upload.start()),
+                                currentActive.plus(clockShift)));
         if (!ctx.importFilesComplete()) {
             // Samples from files that aren't kept are in it too: only add, and only within what
             // it covers - trims made before any file was kept were never recorded.
@@ -313,13 +324,15 @@ public class ImportReprocessService {
                                     ctx.start(),
                                     ctx.end(),
                                     ctx.measurements(),
-                                    ctx.decoSettings())
+                                    ctx.decoSettings(),
+                                    ctx.gaps())
                             .shifted(clockShift);
             final var from = current.start().minus(CLIP_TOLERANCE);
             final var to = current.end().plus(CLIP_TOLERANCE);
             final var within =
                     upload.measurements().stream()
                             .filter(m -> !m.time().isBefore(from) && !m.time().isAfter(to))
+                            .filter(m -> current.gaps().stream().noneMatch(g -> inside(g, m)))
                             .toList();
             upload =
                     new DiveProfileUpload(
@@ -327,23 +340,33 @@ public class ImportReprocessService {
                             current.start(),
                             current.end(),
                             ProfileMeasurementMerge.merge(current.measurements(), within),
-                            DecoSettings.merge(current.decoSettings(), upload.decoSettings()));
+                            DecoSettings.merge(current.decoSettings(), upload.decoSettings()),
+                            current.gaps());
         }
         return new Proposal(upload, clockShift);
+    }
+
+    /** Strictly inside: a gap's bounds are the kept samples either side of it. */
+    private static boolean inside(final TimeRange gap, final DiveMeasurement m) {
+        return m.time().isAfter(gap.start()) && m.time().isBefore(gap.end());
     }
 
     private static DiveProfileUpload applyTrims(
             final DiveProfileUpload upload,
             final @Nullable Duration startOffset,
-            final @Nullable Duration endOffset) {
-        if (startOffset == null && endOffset == null) {
+            final @Nullable Duration endOffset,
+            final List<DiveProfileHistoryEntity.TrimCut> cuts) {
+        if (startOffset == null && endOffset == null && cuts.isEmpty()) {
             return upload;
         }
         final var active =
                 ReimportSimilarityCheck.activeStart(upload.measurements(), upload.start());
         return upload.trimmed(
                 startOffset == null ? null : active.plus(startOffset),
-                endOffset == null ? null : active.plus(endOffset));
+                endOffset == null ? null : active.plus(endOffset),
+                cuts.stream()
+                        .map(c -> new TimeRange(active.plus(c.start()), active.plus(c.end())))
+                        .toList());
     }
 
     private Outcome reprocessDiveLink(final long linkId) {

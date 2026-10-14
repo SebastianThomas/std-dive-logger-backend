@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.ws.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
@@ -9,6 +10,8 @@ import ch.sthomas.stddivelogger.model.controller.dive.PendingImportSource;
 import ch.sthomas.stddivelogger.model.controller.dive.upload.ReimportResolution;
 import ch.sthomas.stddivelogger.model.dive.Dive;
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
@@ -391,7 +394,8 @@ class ImportFileRetentionIntegrationTest {
         final var diveId =
                 importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 7", SOMEWHERE);
         final var profile = dive(user, diveId).profiles().getFirst();
-        diveService.trimProfile(user, diveId, profile.id(), null, profile.end().minusSeconds(60));
+        diveService.trimProfile(
+                user, diveId, profile.id(), null, profile.end().minusSeconds(60), List.of());
         final var trimmed = dive(user, diveId).profiles().getFirst();
         diveService.alignProfilesManualToTime(
                 user, Set.of(profile.id()), diveId, trimmed.start().plus(Duration.ofMinutes(10)));
@@ -401,6 +405,153 @@ class ImportFileRetentionIntegrationTest {
 
         assertThat(result.applied()).isZero();
         assertThat(reprocessService.listOpen(user)).isEmpty();
+        assertThat(samples(user, diveId)).isEqualTo(before);
+    }
+
+    /** The time of the sample closest to {@code fraction} of the way through the profile. */
+    private static Instant at(final DiveProfile profile, final double fraction) {
+        final var samples = Objects.requireNonNull(profile.measurements());
+        return samples.get((int) Math.round((samples.size() - 1) * fraction)).measurement().time();
+    }
+
+    @Test
+    void aStartTrimPastTheDescentAndACutMadeAtImportSurviveReprocessing() throws IOException {
+        final var user = user("files-it-15@test.ch", true);
+        final var staged =
+                importService.stageUpload(
+                        user, List.of(fixture("suunto-eon-core-dive-1-deco.json")));
+        final var pendingId = staged.staged().getFirst().id();
+        final var preview = importService.previewPending(user, pendingId).getFirst();
+        // Starting mid-dive moves where the kept samples first go deeper than 0.5 m.
+        final var cut = new TimeRange(at(preview, 0.5), at(preview, 0.6));
+        final var diveId =
+                importService
+                        .commit(
+                                user,
+                                pendingId,
+                                new PendingImportCommitRequest(
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        "Files 15",
+                                        SOMEWHERE,
+                                        null,
+                                        List.of(
+                                                new PendingImportCommitRequest.ProfileTrim(
+                                                        0, at(preview, 0.3), null, List.of(cut)))))
+                        .id();
+        final var profile = dive(user, diveId).profiles().getFirst();
+        assertThat(profile.gaps()).hasSize(1);
+        final var before = samples(user, diveId);
+
+        final var result = reprocessProfile(profile.id());
+
+        assertThat(result.applied()).isZero();
+        assertThat(reprocessService.listOpen(user)).isEmpty();
+        assertThat(samples(user, diveId)).isEqualTo(before);
+        assertThat(dive(user, diveId).profiles().getFirst().gaps()).isEqualTo(profile.gaps());
+    }
+
+    @Test
+    void cutsAndRepeatedTrimsOnASavedProfileSurviveReprocessingAndCutTimeIsNotDiveTime()
+            throws IOException {
+        final var user = user("files-it-16@test.ch", true);
+        final var diveId =
+                importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 16", SOMEWHERE);
+        final var profile = dive(user, diveId).profiles().getFirst();
+        diveService.trimProfile(
+                user,
+                diveId,
+                profile.id(),
+                at(profile, 0.3),
+                null,
+                List.of(new TimeRange(at(profile, 0.5), at(profile, 0.6))));
+        // A second trim, now that the first went past where the samples first went deep.
+        final var once = dive(user, diveId).profiles().getFirst();
+        diveService.trimProfile(user, diveId, profile.id(), at(once, 0.1), null, List.of());
+        final var trimmed = dive(user, diveId);
+        final var gap = trimmed.profiles().getFirst().gaps().getFirst();
+        // Stored in whole seconds.
+        assertThat(trimmed.summary().bottomTime().toSeconds())
+                .isEqualTo(
+                        Duration.between(trimmed.summary().start(), trimmed.summary().end())
+                                .minus(gap.duration())
+                                .toSeconds());
+        final var before = samples(user, diveId);
+
+        final var result = reprocessProfile(profile.id());
+
+        assertThat(result.applied()).isZero();
+        assertThat(reprocessService.listOpen(user)).isEmpty();
+        assertThat(samples(user, diveId)).isEqualTo(before);
+    }
+
+    @Test
+    void aShortProfileInsideALongOneCountsOnceInTheDivesBottomTime() throws IOException {
+        final var user = user("files-it-18@test.ch", false);
+        final var diveId =
+                importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 18", SOMEWHERE);
+        final var whole = dive(user, diveId);
+        final var staged =
+                importService.stageUpload(
+                        user, List.of(fixture("suunto-eon-core-dive-1-deco.fit")));
+        final var pendingId = staged.staged().getFirst().id();
+        final var preview = importService.previewPending(user, pendingId).getFirst();
+        importService.commit(
+                user,
+                pendingId,
+                new PendingImportCommitRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        diveId,
+                        List.of(
+                                new PendingImportCommitRequest.ProfileTrim(
+                                        0, at(preview, 0.4), at(preview, 0.6), List.of()))));
+
+        final var both = dive(user, diveId);
+
+        assertThat(both.profiles()).hasSize(2);
+        assertThat(both.summary().bottomTime()).isEqualTo(whole.summary().bottomTime());
+    }
+
+    @Test
+    void importingOneRecordingTwiceSaysToTrimTheStartInsteadOfFailingOnTheDatabase()
+            throws IOException {
+        final var user = user("files-it-19@test.ch", false);
+        importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 19", SOMEWHERE);
+
+        assertThatThrownBy(
+                        () ->
+                                importAndCommit(
+                                        user,
+                                        "suunto-eon-core-dive-1-deco.json",
+                                        "Files 19",
+                                        SOMEWHERE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trim each import to start at a different point");
+    }
+
+    @Test
+    void resettingTheAlignmentOfAStartTrimmedProfileLeavesItsSamplesWhereTheyAre()
+            throws IOException {
+        final var user = user("files-it-17@test.ch", false);
+        final var diveId =
+                importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 17", SOMEWHERE);
+        final var profile = dive(user, diveId).profiles().getFirst();
+        diveService.trimProfile(user, diveId, profile.id(), at(profile, 0.2), null, List.of());
+        final var before = samples(user, diveId);
+
+        diveService.resetAlignedProfiles(user, (int) diveId, Set.of(profile.id()));
+
         assertThat(samples(user, diveId)).isEqualTo(before);
     }
 

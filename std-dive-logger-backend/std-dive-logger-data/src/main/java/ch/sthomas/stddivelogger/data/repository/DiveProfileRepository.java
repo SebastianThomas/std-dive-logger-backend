@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 @Repository
 public interface DiveProfileRepository extends JpaRepository<DiveProfileEntity, Long> {
@@ -35,4 +36,8 @@ public interface DiveProfileRepository extends JpaRepository<DiveProfileEntity, 
      */
     boolean existsByComputer_IdAndProfileStartAndDive_IdNot(
             long computerId, OffsetDateTime profileStart, long diveId);
+
+    /** The profile the same constraint would collide with, to name its dive in the error. */
+    Optional<DiveProfileEntity> findFirstByComputer_IdAndProfileStart(
+            long computerId, OffsetDateTime profileStart);
 }

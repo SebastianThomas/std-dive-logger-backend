@@ -19,6 +19,7 @@ import ch.sthomas.stddivelogger.model.dive.gear.DiveConfigurationCylinder;
 import ch.sthomas.stddivelogger.model.dive.profile.AlignType;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.stats.DiveGasConsumption;
 import ch.sthomas.stddivelogger.model.exception.DBResult;
@@ -457,19 +458,20 @@ public class DiveService {
     /**
      * Permanently deletes every measurement of a profile outside {@code [trimStart, trimEnd]} -
      * e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting to have its
-     * dive ended manually on the computer. Either bound may be {@code null} to only trim the other
-     * end.
+     * dive ended manually on the computer - or inside one of {@code cuts}. Either bound may be
+     * {@code null} to only trim the other end.
      */
     public Dive trimProfile(
             final User user,
             final long diveId,
             final long profileId,
             final @Nullable Instant trimStart,
-            final @Nullable Instant trimEnd) {
+            final @Nullable Instant trimEnd,
+            final List<TimeRange> cuts) {
         if (!hasWriteAccess(user, diveId)) {
             throw ForbiddenException.forDiveId(user, diveId);
         }
-        final var result = diveDataService.trimProfile(diveId, profileId, trimStart, trimEnd);
+        final var result = diveDataService.trimProfile(diveId, profileId, trimStart, trimEnd, cuts);
         createSaveDivePreview(result);
         return result;
     }

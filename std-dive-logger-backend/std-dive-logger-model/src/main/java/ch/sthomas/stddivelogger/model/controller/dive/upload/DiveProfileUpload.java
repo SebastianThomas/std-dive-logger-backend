@@ -1,6 +1,8 @@
 package ch.sthomas.stddivelogger.model.controller.dive.upload;
 
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
+import ch.sthomas.stddivelogger.model.dive.profile.ProfileCuts;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 
 import org.jspecify.annotations.Nullable;
@@ -8,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 public record DiveProfileUpload(
         long diveComputerId,
@@ -15,7 +18,22 @@ public record DiveProfileUpload(
         Instant end,
         List<DiveMeasurement> measurements,
         // How the device computed the profile's deco / CNS / OTU figures, when the source says.
-        @Nullable DecoSettings decoSettings) {
+        @Nullable DecoSettings decoSettings,
+        // Sections cut out of the profile (see ProfileCuts); absent in staged rows from before.
+        List<TimeRange> gaps) {
+
+    public DiveProfileUpload {
+        gaps = List.copyOf(Objects.requireNonNullElse(gaps, List.of()));
+    }
+
+    public DiveProfileUpload(
+            final long diveComputerId,
+            final Instant start,
+            final Instant end,
+            final List<DiveMeasurement> measurements,
+            final @Nullable DecoSettings decoSettings) {
+        this(diveComputerId, start, end, measurements, decoSettings, List.of());
+    }
 
     public DiveProfileUpload(
             final long diveComputerId,
@@ -27,32 +45,37 @@ public record DiveProfileUpload(
 
     /**
      * Returns a copy with only the measurements inside {@code [trimStart, trimEnd]} (either bound
-     * optional - {@code null} leaves that end untouched), with {@code start}/{@code end} updated to
-     * match the surviving measurements. Mirrors the equivalent trim applied to an already-persisted
-     * profile via {@code DiveDataService.trimProfile} - this is the pre-commit counterpart, applied
-     * to a staged import that hasn't been saved as a dive yet.
+     * optional - {@code null} leaves that end untouched) and outside every cut, with {@code
+     * start}/{@code end} updated to match the surviving measurements. The pre-commit counterpart of
+     * {@code DiveDataService.trimProfile}.
      */
     public DiveProfileUpload trimmed(
-            final @Nullable Instant trimStart, final @Nullable Instant trimEnd) {
-        if (trimStart == null && trimEnd == null) {
+            final @Nullable Instant trimStart,
+            final @Nullable Instant trimEnd,
+            final List<TimeRange> cuts) {
+        if (trimStart == null && trimEnd == null && cuts.isEmpty()) {
             return this;
-        }
-        if (trimStart != null && trimEnd != null && !trimStart.isBefore(trimEnd)) {
-            throw new IllegalArgumentException("Trim start must be before trim end.");
         }
         // A missing bound keeps that whole side, samples outside [start, end] included - like
         // trimming a saved profile, so re-processing re-applies either kind of trim the same way.
         final var kept =
-                measurements.stream()
-                        .filter(m -> trimStart == null || !m.time().isBefore(trimStart))
-                        .filter(m -> trimEnd == null || !m.time().isAfter(trimEnd))
-                        .toList();
-        if (kept.size() < 2) {
-            throw new IllegalArgumentException(
-                    "Trimming this range would leave fewer than 2 measurements on the profile.");
-        }
+                ProfileCuts.keep(measurements, DiveMeasurement::time, trimStart, trimEnd, cuts);
         return new DiveProfileUpload(
-                diveComputerId, kept.getFirst().time(), kept.getLast().time(), kept, decoSettings);
+                diveComputerId,
+                kept.getFirst().time(),
+                kept.getLast().time(),
+                kept,
+                decoSettings,
+                ProfileCuts.gaps(
+                        measurements.stream().map(DiveMeasurement::time).toList(),
+                        kept.stream().map(DiveMeasurement::time).toList(),
+                        cuts,
+                        gaps));
+    }
+
+    public DiveProfileUpload trimmed(
+            final @Nullable Instant trimStart, final @Nullable Instant trimEnd) {
+        return trimmed(trimStart, trimEnd, List.of());
     }
 
     /**
@@ -71,6 +94,7 @@ public record DiveProfileUpload(
                 start.plus(offset),
                 end.plus(offset),
                 shiftedMeasurements,
-                decoSettings);
+                decoSettings,
+                gaps.stream().map(g -> g.shifted(offset)).toList());
     }
 }

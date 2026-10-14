@@ -17,7 +17,9 @@ import ch.sthomas.stddivelogger.model.dive.conditions.WaterType;
 import ch.sthomas.stddivelogger.model.dive.gear.*;
 import ch.sthomas.stddivelogger.model.dive.gear.CylinderUsageWindows;
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
+import ch.sthomas.stddivelogger.model.dive.profile.ProfileCuts;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.CylinderSize;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.Gas;
@@ -103,6 +105,7 @@ public class DiveDataService {
     private final DiveBuddyRepository diveBuddyRepository;
     private final DiveSiteLinkRepository diveSiteLinkRepository;
     private final DiveBuddyDefaultRoleRepository diveBuddyDefaultRoleRepository;
+    private final DiveProfileImportFileRepository profileImportLinks;
 
     public DiveDataService(
             final EntityManager entityManager,
@@ -129,7 +132,8 @@ public class DiveDataService {
             final AnalyticsDataService analyticsDataService,
             final DiveBuddyRepository diveBuddyRepository,
             final DiveSiteLinkRepository diveSiteLinkRepository,
-            final DiveBuddyDefaultRoleRepository diveBuddyDefaultRoleRepository) {
+            final DiveBuddyDefaultRoleRepository diveBuddyDefaultRoleRepository,
+            final DiveProfileImportFileRepository profileImportLinks) {
         this.entityManager = entityManager;
         this.diveRepository = diveRepository;
         this.userRepository = userRepository;
@@ -155,6 +159,7 @@ public class DiveDataService {
         this.diveBuddyRepository = diveBuddyRepository;
         this.diveSiteLinkRepository = diveSiteLinkRepository;
         this.diveBuddyDefaultRoleRepository = diveBuddyDefaultRoleRepository;
+        this.profileImportLinks = profileImportLinks;
     }
 
     @Transactional(readOnly = true)
@@ -460,12 +465,31 @@ public class DiveDataService {
     protected DiveProfileEntity createDiveProfileEntity(final DiveProfileUpload diveProfileUpload) {
         final var computer =
                 diveComputerRepository.findById(diveProfileUpload.diveComputerId()).orElseThrow();
+        // Same computer, same start: the insert would hit t_dive_profiles' unique key as a 500 -
+        // e.g. importing one recording twice to split it, without trimming the second's start.
+        diveProfileRepository
+                .findFirstByComputer_IdAndProfileStart(
+                        computer.getId(), diveProfileUpload.start().atOffset(ZoneOffset.UTC))
+                .ifPresent(
+                        existing -> {
+                            throw new IllegalArgumentException(
+                                    "Dive #"
+                                            + diveRepository
+                                                    .findById(existing.getDiveId())
+                                                    .map(DiveEntity::getNumber)
+                                                    .orElse(0)
+                                            + " already has this computer's profile starting at "
+                                            + diveProfileUpload.start()
+                                            + ". To make several dives from one recording, trim"
+                                            + " each import to start at a different point.");
+                        });
         return new DiveProfileEntity(
                         computer,
                         diveProfileUpload.start(),
                         diveProfileUpload.end(),
                         toMeasurementEntities(diveProfileUpload.measurements()))
-                .mergeDecoSettings(diveProfileUpload.decoSettings());
+                .mergeDecoSettings(diveProfileUpload.decoSettings())
+                .replaceGaps(diveProfileUpload.gaps());
     }
 
     private List<DiveMeasurementEntity> toMeasurementEntities(
@@ -545,7 +569,9 @@ public class DiveDataService {
         profile.clearMeasurements();
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
         diveMeasurementRepository.flush();
-        profile.replaceMeasurements(toMeasurementEntities(newMeasurements), newStart, newEnd);
+        // The file's whole recording: cut sections are back, so are their samples.
+        profile.replaceMeasurements(
+                toMeasurementEntities(newMeasurements), newStart, newEnd, List.of());
         // The manual-alignment reset target re-baselines to the newly reimported raw times too -
         // "reset alignment" should undo drift relative to the file just reimported, not a stale
         // pre-reimport one.
@@ -626,6 +652,8 @@ public class DiveDataService {
             @Nullable DecoSettings decoSettings,
             @Nullable Duration trimStartOffset,
             @Nullable Duration trimEndOffset,
+            List<DiveProfileHistoryEntity.TrimCut> trimCuts,
+            List<TimeRange> gaps,
             boolean importFilesComplete) {}
 
     @Transactional(readOnly = true)
@@ -649,6 +677,9 @@ public class DiveDataService {
                                             .orElse(null),
                                     history.map(DiveProfileHistoryEntity::getTrimEndOffset)
                                             .orElse(null),
+                                    history.map(DiveProfileHistoryEntity::getTrimCuts)
+                                            .orElse(List.of()),
+                                    profile.getGaps(),
                                     history.map(DiveProfileHistoryEntity::isImportFilesComplete)
                                             .orElse(false));
                         });
@@ -678,7 +709,10 @@ public class DiveDataService {
         diveMeasurementRepository.deleteAllByProfile_Id(profileId);
         diveMeasurementRepository.flush();
         profile.replaceMeasurements(
-                toMeasurementEntities(upload.measurements()), upload.start(), upload.end());
+                toMeasurementEntities(upload.measurements()),
+                upload.start(),
+                upload.end(),
+                upload.gaps());
         if (!clockShift.isZero()) {
             diveProfileHistoryRepository
                     .findById(profileId)
@@ -703,12 +737,13 @@ public class DiveDataService {
     public void recordProfileTrim(
             final long profileId,
             final @Nullable Duration startOffset,
-            final @Nullable Duration endOffset) {
+            final @Nullable Duration endOffset,
+            final List<DiveProfileHistoryEntity.TrimCut> cuts) {
         diveProfileHistoryRepository
                 .findById(profileId)
                 .ifPresent(
                         history -> {
-                            history.recordTrim(startOffset, endOffset);
+                            history.recordTrim(startOffset, endOffset, cuts);
                             diveProfileHistoryRepository.save(history);
                         });
     }
@@ -1209,17 +1244,19 @@ public class DiveDataService {
     /**
      * Permanently deletes every measurement of a profile falling outside {@code [trimStart,
      * trimEnd]} - e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while waiting
-     * to have its dive ended manually on the computer. Either bound may be omitted to only trim the
-     * other end. Leaves at least 2 measurements; refuses a range that would leave fewer.
+     * to have its dive ended manually on the computer - or inside one of {@code cuts}, which leaves
+     * a gap on the real clock (see ProfileCuts). Either bound may be omitted to only trim the other
+     * end. Leaves at least 2 measurements; refuses a range that would leave fewer.
      */
     @Transactional
     public Dive trimProfile(
             final long diveId,
             final long profileId,
             final @Nullable Instant trimStart,
-            final @Nullable Instant trimEnd) {
+            final @Nullable Instant trimEnd,
+            final List<TimeRange> cuts) {
         final var dive = findDiveEntityById(diveId);
-        findProfileOnDive(dive, profileId);
+        final var profile = findProfileOnDive(dive, profileId);
 
         final var measurements =
                 diveMeasurementRepository.findAllByProfile_IdOrderByElapsedAsc(profileId);
@@ -1227,35 +1264,34 @@ public class DiveDataService {
             throw new IllegalStateException(
                     "Profile " + profileId + " has no measurements to trim.");
         }
-        final var effectiveStart =
-                trimStart != null ? trimStart : measurements.getFirst().getTime();
-        final var effectiveEnd = trimEnd != null ? trimEnd : measurements.getLast().getTime();
-        if (!effectiveStart.isBefore(effectiveEnd)) {
-            throw new IllegalArgumentException("Trim start must be before trim end.");
-        }
-
-        final var survivors = new ArrayList<DiveMeasurementEntity>();
-        final var toDelete = new ArrayList<DiveMeasurementEntity>();
-        for (final var m : measurements) {
-            final var t = m.getTime();
-            (t.isBefore(effectiveStart) || t.isAfter(effectiveEnd) ? toDelete : survivors).add(m);
-        }
-        if (survivors.size() < 2) {
-            throw new IllegalArgumentException(
-                    "Trimming this range would leave fewer than 2 measurements on the profile.");
-        }
-        if (toDelete.isEmpty()) {
+        final var survivors =
+                ProfileCuts.keep(
+                        measurements, DiveMeasurementEntity::getTime, trimStart, trimEnd, cuts);
+        if (survivors.size() == measurements.size()) {
             // The requested range already covers every measurement - nothing to actually trim.
             return toRecord(dive);
         }
+        final var toDelete =
+                measurements.stream()
+                        .filter(m -> !ProfileCuts.kept(m.getTime(), trimStart, trimEnd, cuts))
+                        .toList();
 
+        final var oldStart = profile.getStart();
+        final var oldEnd = profile.getEnd();
         final var newStart = survivors.getFirst().getTime();
         final var newEnd = survivors.getLast().getTime();
-        // Before the delete: the kept window is recorded relative to the untrimmed profile.
-        final var activeStart =
-                ReimportSimilarityCheck.activeStart(
-                        measurements.stream().map(DiveMeasurementEntity::toRecord).toList(),
-                        measurements.getFirst().getTime());
+        final var survivorTimes = survivors.stream().map(DiveMeasurementEntity::getTime).toList();
+        final var newGaps =
+                ProfileCuts.gaps(
+                        measurements.stream().map(DiveMeasurementEntity::getTime).toList(),
+                        survivorTimes,
+                        cuts,
+                        profile.getGaps());
+        // Before the delete: recorded trims are relative to the untrimmed profile.
+        final var anchor =
+                trimAnchor(
+                        profile,
+                        measurements.stream().map(DiveMeasurementEntity::toRecord).toList());
 
         diveMeasurementRepository.deleteAll(toDelete);
         diveMeasurementRepository.flush();
@@ -1266,18 +1302,58 @@ public class DiveDataService {
         entityManager.clear();
         final var freshDive = findDiveEntityById(diveId);
         final var freshProfile = findProfileOnDive(freshDive, profileId);
-        // Only the two bounds need updating - the surviving measurement rows themselves are
+        // Only the bounds and gaps need updating - the surviving measurement rows themselves are
         // already correct and untouched in the DB, so there's nothing to reassign on the entity.
-        freshProfile.updateBounds(newStart, newEnd);
+        freshProfile.updateBounds(newStart, newEnd, newGaps);
         freshDive.updateDiveSummary();
         analyticsDataService.invalidateAnalyticsForDive(diveId);
-        // Clock-independent, so re-processing the profile from its stored files keeps the trim.
-        recordProfileTrim(
-                profileId,
-                trimStart == null ? null : Duration.between(activeStart, trimStart),
-                trimEnd == null ? null : Duration.between(activeStart, trimEnd));
+        diveProfileHistoryRepository
+                .findById(profileId)
+                .ifPresent(
+                        history -> {
+                            // "Reset alignment" restores the original start: it moves with the
+                            // trimmed edge, or a reset would shift the samples by the trim.
+                            history.updateOriginal(
+                                    history.getOriginalStart()
+                                            .plus(Duration.between(oldStart, newStart)),
+                                    history.getOriginalEnd()
+                                            .plus(Duration.between(oldEnd, newEnd)));
+                            // Clock-independent, so re-processing from stored files keeps it.
+                            history.recordTrim(
+                                    trimStart == null ? null : Duration.between(anchor, trimStart),
+                                    trimEnd == null ? null : Duration.between(anchor, trimEnd),
+                                    cuts.stream()
+                                            .map(
+                                                    c ->
+                                                            DiveProfileHistoryEntity.TrimCut.of(
+                                                                    Duration.between(
+                                                                            anchor, c.start()),
+                                                                    Duration.between(
+                                                                            anchor, c.end())))
+                                            .toList());
+                            diveProfileHistoryRepository.save(history);
+                        });
 
         return toRecord(diveRepository.save(freshDive));
+    }
+
+    /**
+     * What recorded trims are relative to: where the untrimmed profile first went deeper than 0.5
+     * m, on its current clock. Once a start trim may have removed that sample, it comes from the
+     * stored file (its raw start, moved by the diver's alignment) when there is one.
+     */
+    private Instant trimAnchor(
+            final DiveProfileEntity profile, final List<DiveMeasurement> measurements) {
+        final var current = ReimportSimilarityCheck.activeStart(measurements, profile.getStart());
+        final var history = diveProfileHistoryRepository.findById(profile.getId()).orElse(null);
+        if (history == null || history.getTrimStartOffset() == null) {
+            return current;
+        }
+        final var alignment = Duration.between(history.getOriginalStart(), profile.getStart());
+        return profileImportLinks.findByProfileIdOrderByIdAsc(profile.getId()).stream()
+                .findFirst()
+                .map(link -> link.getRawActiveStart().plus(alignment))
+                .orElse(current);
     }
 
     @Transactional

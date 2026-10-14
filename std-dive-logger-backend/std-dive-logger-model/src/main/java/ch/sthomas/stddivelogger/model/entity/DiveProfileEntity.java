@@ -4,12 +4,15 @@ import static java.time.ZoneOffset.UTC;
 
 import ch.sthomas.stddivelogger.model.dive.profile.DecoSettings;
 import ch.sthomas.stddivelogger.model.dive.profile.DiveProfile;
+import ch.sthomas.stddivelogger.model.dive.profile.ProfileCuts;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurement;
 import ch.sthomas.stddivelogger.model.entity.converter.DecoSettingsToStringConverter;
 
 import jakarta.persistence.*;
 import jakarta.persistence.Convert;
 
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -52,6 +55,15 @@ public class DiveProfileEntity {
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
     private List<DiveMeasurementEntity> measurements;
+
+    // Sections cut out of the profile, ascending; see ProfileCuts.
+    @ElementCollection
+    @CollectionTable(
+            name = "t_dive_profile_gap",
+            joinColumns = @JoinColumn(name = "fk_dive_profile_id"))
+    @OrderColumn(name = "sort_order")
+    @BatchSize(size = 64)
+    private List<ProfileGapEmbeddable> gaps = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Convert(converter = DecoSettingsToStringConverter.class)
@@ -106,7 +118,21 @@ public class DiveProfileEntity {
                 profileEnd.toInstant(),
                 getMeasurementsStream().map(DiveMeasurementEntity::toRecordWithId).toList(),
                 includeMeasurements,
-                decoSettings);
+                decoSettings,
+                getGaps());
+    }
+
+    public List<TimeRange> getGaps() {
+        final var start = getStart();
+        return gaps.stream().map(g -> g.toRecord(start)).toList();
+    }
+
+    /** Keeps the collection instance - Hibernate tracks it - and only swaps its rows. */
+    public DiveProfileEntity replaceGaps(final List<TimeRange> newGaps) {
+        final var start = getStart();
+        gaps.clear();
+        ProfileCuts.merge(newGaps).forEach(g -> gaps.add(new ProfileGapEmbeddable(g, start)));
+        return this;
     }
 
     public @Nullable DecoSettings getDecoSettings() {
@@ -156,8 +182,29 @@ public class DiveProfileEntity {
     public Duration getBottomTime() {
         final var measurements = getMeasurements();
         return Duration.between(
-                measurements.getFirst().toRecord().time(),
-                measurements.getLast().toRecord().time());
+                        measurements.getFirst().toRecord().time(),
+                        measurements.getLast().toRecord().time())
+                .minus(ProfileCuts.total(getGaps()));
+    }
+
+    /** First to last sample, minus the gaps. */
+    public List<TimeRange> getRecordedStretches() {
+        final var times = getMeasurementsStream().map(DiveMeasurementEntity::getTime).toList();
+        final var stretches = new ArrayList<TimeRange>();
+        if (times.isEmpty()) {
+            return stretches;
+        }
+        var from = times.getFirst();
+        for (final var gap : getGaps()) {
+            if (from.isBefore(gap.start())) {
+                stretches.add(new TimeRange(from, gap.start()));
+            }
+            from = gap.end().isAfter(from) ? gap.end() : from;
+        }
+        if (from.isBefore(times.getLast())) {
+            stretches.add(new TimeRange(from, times.getLast()));
+        }
+        return stretches;
     }
 
     public DoubleStream getDepths() {
@@ -201,12 +248,17 @@ public class DiveProfileEntity {
         this.profileEnd = profileEnd.plus(delta);
     }
 
-    /** Changes the bounds after trimming while retaining every surviving sample instant. */
-    public void updateBounds(final Instant start, final Instant end) {
+    /**
+     * Changes the bounds after trimming while retaining every surviving sample instant; {@code
+     * newGaps} are the gaps the trim leaves (see ProfileCuts#gaps).
+     */
+    public void updateBounds(
+            final Instant start, final Instant end, final List<TimeRange> newGaps) {
         final var delta = Duration.between(start, getStart());
         measurements.forEach(m -> m.rebase(delta));
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
+        replaceGaps(newGaps);
     }
 
     /**
@@ -223,12 +275,15 @@ public class DiveProfileEntity {
         this.measurements = new ArrayList<>();
     }
 
+    /** Fresh samples, with the gaps they have ({@code List.of()} for a whole file's). */
     public void replaceMeasurements(
             final List<DiveMeasurementEntity> newMeasurements,
             final Instant start,
-            final Instant end) {
+            final Instant end,
+            final List<TimeRange> newGaps) {
         this.profileStart = start.atOffset(UTC);
         this.profileEnd = end.atOffset(UTC);
+        replaceGaps(newGaps);
         this.measurements =
                 newMeasurements.stream()
                         .map(m -> m.setProfile(this))

@@ -44,7 +44,7 @@ class DiveProfileEntityTest {
         final var newEnd = Instant.parse("2026-01-01T11:00:00Z");
         final var newMeasurements = List.of(measurementAt(newStart, 10), measurementAt(newEnd, 5));
 
-        profile.replaceMeasurements(newMeasurements, newStart, newEnd);
+        profile.replaceMeasurements(newMeasurements, newStart, newEnd, List.of());
 
         assertEquals(newStart, profile.getStart());
         assertEquals(newEnd, profile.getEnd());
@@ -73,8 +73,42 @@ class DiveProfileEntityTest {
         assertEquals(java.time.Duration.ofMillis(1250), sample.getElapsed());
         assertEquals(start.plusSeconds(7200).plusMillis(1250), sample.toRecord().time());
         final var absolute = sample.toRecord().time();
-        profile.updateBounds(absolute, profile.getEnd());
+        profile.updateBounds(absolute, profile.getEnd(), List.of());
         assertEquals(java.time.Duration.ZERO, sample.getElapsed());
         assertEquals(absolute, sample.toRecord().time());
+    }
+
+    @Test
+    void gapsMoveWithTheProfileAndAreNotDiveTime() {
+        final var start = Instant.parse("2026-01-01T10:00:00Z");
+        final var computer =
+                new DiveComputerEntity(
+                        "SN",
+                        "Computer",
+                        new DiveComputerManufacturerEntity("Test"),
+                        new UserEntity("a@b.ch", "hash", "Test"));
+        final var profile =
+                new DiveProfileEntity(
+                        computer,
+                        start,
+                        start.plusSeconds(3600),
+                        List.of(
+                                measurementAt(start, 0),
+                                measurementAt(start.plusSeconds(1200), 20),
+                                measurementAt(start.plusSeconds(2400), 0),
+                                measurementAt(start.plusSeconds(3600), 0)));
+        final var gap =
+                new ch.sthomas.stddivelogger.model.dive.profile.TimeRange(
+                        start.plusSeconds(2400), start.plusSeconds(3600));
+        profile.replaceGaps(List.of(gap));
+
+        assertEquals(java.time.Duration.ofMinutes(40), profile.getBottomTime());
+        assertEquals(
+                List.of(
+                        new ch.sthomas.stddivelogger.model.dive.profile.TimeRange(
+                                start, start.plusSeconds(2400))),
+                profile.getRecordedStretches());
+        profile.shiftBy(java.time.Duration.ofHours(1));
+        assertEquals(List.of(gap.shifted(java.time.Duration.ofHours(1))), profile.getGaps());
     }
 }

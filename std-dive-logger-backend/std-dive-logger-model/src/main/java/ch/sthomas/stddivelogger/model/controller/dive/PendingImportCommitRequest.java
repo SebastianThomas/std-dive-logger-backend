@@ -1,6 +1,7 @@
 package ch.sthomas.stddivelogger.model.controller.dive;
 
 import ch.sthomas.stddivelogger.model.dive.conditions.Visibility;
+import ch.sthomas.stddivelogger.model.dive.profile.TimeRange;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -13,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Overrides applied when committing a staged import. When {@code linkToExistingDiveId} is set, the
@@ -45,8 +47,14 @@ public record PendingImportCommitRequest(
         }
     }
 
+    /** {@code cuts}: sections to remove from inside the profile, see ProfileCuts. */
     public record ProfileTrim(
             @PositiveOrZero int profileIndex,
             @Nullable Instant trimStart,
-            @Nullable Instant trimEnd) {}
+            @Nullable Instant trimEnd,
+            List<TimeRange> cuts) {
+        public ProfileTrim {
+            cuts = List.copyOf(Objects.requireNonNullElse(cuts, List.of()));
+        }
+    }
 }

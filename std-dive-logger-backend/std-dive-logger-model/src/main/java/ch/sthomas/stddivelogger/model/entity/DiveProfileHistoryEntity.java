@@ -1,15 +1,21 @@
 package ch.sthomas.stddivelogger.model.entity;
 
+import ch.sthomas.stddivelogger.model.entity.converter.TrimCutsToStringConverter;
+
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "t_dive_profile_history")
@@ -40,6 +46,12 @@ public class DiveProfileHistoryEntity {
 
     @Column(name = "trim_end_offset_ms")
     private @Nullable Long trimEndOffsetMs;
+
+    // Sections cut out, relative to the same anchor.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = TrimCutsToStringConverter.class)
+    @Column(name = "trim_cuts_ms")
+    private @Nullable List<TrimCut> trimCuts;
 
     // Every sample came from stored files: re-processing may replace the profile, not only add.
     @Column(name = "import_files_complete", nullable = false)
@@ -91,9 +103,33 @@ public class DiveProfileHistoryEntity {
         this.originalEnd = newOriginalEnd.atOffset(ZoneOffset.UTC);
     }
 
-    /** Narrows the recorded kept window; a null bound leaves that end as it was. */
+    /** A cut section, in ms from the trim anchor. */
+    public record TrimCut(long startMs, long endMs) {
+        public static TrimCut of(final Duration start, final Duration end) {
+            return new TrimCut(start.toMillis(), end.toMillis());
+        }
+
+        public Duration start() {
+            return Duration.ofMillis(startMs);
+        }
+
+        public Duration end() {
+            return Duration.ofMillis(endMs);
+        }
+    }
+
+    /**
+     * Narrows the recorded kept window and adds the cuts; a null bound leaves that end as it was.
+     */
     public void recordTrim(
-            final @Nullable Duration startOffset, final @Nullable Duration endOffset) {
+            final @Nullable Duration startOffset,
+            final @Nullable Duration endOffset,
+            final List<TrimCut> cuts) {
+        if (!cuts.isEmpty()) {
+            final var all = new ArrayList<>(getTrimCuts());
+            all.addAll(cuts);
+            trimCuts = List.copyOf(all);
+        }
         if (startOffset != null) {
             final var ms = startOffset.toMillis();
             trimStartOffsetMs = trimStartOffsetMs == null ? ms : Math.max(trimStartOffsetMs, ms);
@@ -110,6 +146,10 @@ public class DiveProfileHistoryEntity {
 
     public @Nullable Duration getTrimEndOffset() {
         return trimEndOffsetMs == null ? null : Duration.ofMillis(trimEndOffsetMs);
+    }
+
+    public List<TrimCut> getTrimCuts() {
+        return trimCuts == null ? List.of() : trimCuts;
     }
 
     public boolean isImportFilesComplete() {

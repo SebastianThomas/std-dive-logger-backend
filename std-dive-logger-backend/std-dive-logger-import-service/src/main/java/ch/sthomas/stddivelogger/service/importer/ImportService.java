@@ -35,6 +35,7 @@ import ch.sthomas.stddivelogger.model.dive.profile.ProfileMeasurementMerge;
 import ch.sthomas.stddivelogger.model.dive.profile.ReimportSimilarityCheck;
 import ch.sthomas.stddivelogger.model.dive.profile.measurement.DiveMeasurementWithId;
 import ch.sthomas.stddivelogger.model.entity.DiveImportFileEntity;
+import ch.sthomas.stddivelogger.model.entity.DiveProfileHistoryEntity;
 import ch.sthomas.stddivelogger.model.entity.DiveProfileImportFileEntity;
 import ch.sthomas.stddivelogger.model.entity.ImportFileEntity;
 import ch.sthomas.stddivelogger.model.entity.PendingImportEntity;
@@ -416,7 +417,10 @@ public class ImportService {
                                     return trim == null
                                             ? profiles.get(i)
                                             : profiles.get(i)
-                                                    .trimmed(trim.trimStart(), trim.trimEnd());
+                                                    .trimmed(
+                                                            trim.trimStart(),
+                                                            trim.trimEnd(),
+                                                            trim.cuts());
                                 })
                         .toList();
         return payload.withProfiles(trimmedProfiles);
@@ -683,7 +687,14 @@ public class ImportService {
                 diveDataService.recordProfileTrim(
                         profileId,
                         between(activeStart, trim.trimStart()),
-                        between(activeStart, trim.trimEnd()));
+                        between(activeStart, trim.trimEnd()),
+                        trim.cuts().stream()
+                                .map(
+                                        c ->
+                                                DiveProfileHistoryEntity.TrimCut.of(
+                                                        Duration.between(activeStart, c.start()),
+                                                        Duration.between(activeStart, c.end())))
+                                .toList());
             }
             if (fileId != null) {
                 // The uniform shift the site's timezone applied to every sample of this profile.

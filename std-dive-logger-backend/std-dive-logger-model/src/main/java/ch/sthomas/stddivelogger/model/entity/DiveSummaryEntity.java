@@ -1,12 +1,9 @@
 package ch.sthomas.stddivelogger.model.entity;
 
-import static org.apache.commons.lang3.compare.ComparableUtils.min;
-
 import ch.sthomas.stddivelogger.model.analytics.CylinderConsumptionCalculator;
 import ch.sthomas.stddivelogger.model.dive.DiveSummary;
 import ch.sthomas.stddivelogger.model.dive.gear.DiveConfiguration;
-
-import com.nimbusds.jose.util.Pair;
+import ch.sthomas.stddivelogger.model.dive.profile.ProfileCuts;
 
 import jakarta.persistence.*;
 
@@ -17,7 +14,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Gatherers;
 
 @Entity
 @Table(name = "t_dive_summary")
@@ -69,9 +65,10 @@ public class DiveSummaryEntity {
      * summary job re-derives every dive whose stored {@link #gasComputationVersion} is behind (a
      * dive save already recomputes on its own - this covers algorithm changes with no data change).
      * Starts at 1; the migration defaults existing rows to 0. 2: a 0 L ("size unknown") cylinder no
-     * longer counts as 0 litres used.
+     * longer counts as 0 litres used. 3: bottom time is the union of the profiles' recorded
+     * stretches (the same nightly sweep re-derives it).
      */
-    public static final short GAS_COMPUTATION_VERSION = 2;
+    public static final short GAS_COMPUTATION_VERSION = 3;
 
     @Column(name = "gas_computation_version")
     private short gasComputationVersion;
@@ -158,34 +155,15 @@ public class DiveSummaryEntity {
                         : null);
     }
 
+    /**
+     * The union of every profile's recorded stretches: computers recording the same dive count
+     * once, however much longer one of them ran; profiles from separate sessions add up.
+     */
     private Duration getBottomTime(final List<DiveProfileEntity> profiles) {
-        final var bottomTime =
-                profiles.stream()
-                        .map(DiveProfileEntity::getBottomTime)
-                        .reduce(Duration.ZERO, Duration::plus);
-        final var overlapToSubtract =
-                profiles.stream()
-                        .gather(Gatherers.windowSliding(2))
-                        // Sliding Window returns all elements if size < 2
-                        .filter(l -> l.size() == 2)
-                        .map(l -> Pair.of(l.getFirst(), l.getLast()))
-                        .filter(
-                                p -> {
-                                    final var distance =
-                                            Duration.between(
-                                                    p.getLeft().getStart(),
-                                                    p.getRight().getStart());
-                                    final var lengthL =
-                                            Duration.between(
-                                                    p.getLeft().getStart(), p.getLeft().getEnd());
-                                    final var lengthR =
-                                            Duration.between(
-                                                    p.getRight().getStart(), p.getRight().getEnd());
-                                    return distance.minus(min(lengthL, lengthR).dividedBy(2))
-                                            .isNegative();
-                                })
-                        .map(p -> min(p.getLeft().getBottomTime(), p.getRight().getBottomTime()))
-                        .reduce(Duration.ZERO, Duration::plus);
-        return bottomTime.minus(overlapToSubtract);
+        return ProfileCuts.total(
+                ProfileCuts.merge(
+                        profiles.stream()
+                                .flatMap(p -> p.getRecordedStretches().stream())
+                                .toList()));
     }
 }

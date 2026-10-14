@@ -820,8 +820,9 @@ public class DiveController {
             summary =
                     "Permanently deletes every measurement of a profile outside [trimStart, trimEnd] -"
                             + " e.g. the trailing few minutes at 0.3-0.6m a Divesoft Liberty logs while"
-                            + " waiting to have its dive ended manually on the computer. Either bound may"
-                            + " be omitted to only trim the other end.")
+                            + " waiting to have its dive ended manually on the computer - or inside one of"
+                            + " the cuts, each leaving a gap that no longer counts as dive time. Either"
+                            + " bound may be omitted to only trim the other end.")
     @PostMapping(path = "/{id}/profiles/{profileId}/trim", consumes = APPLICATION_JSON_VALUE)
     public Dive trimProfile(
             @AuthenticationPrincipal final @Nullable User user,
@@ -831,7 +832,8 @@ public class DiveController {
         if (user == null) {
             throw new UnauthorizedException("Log in to trim a profile.");
         }
-        return diveService.trimProfile(user, diveId, profileId, body.trimStart(), body.trimEnd());
+        return diveService.trimProfile(
+                user, diveId, profileId, body.trimStart(), body.trimEnd(), body.cuts());
     }
 
     @Operation(

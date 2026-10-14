@@ -12,6 +12,7 @@ import org.jspecify.annotations.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -23,7 +24,24 @@ public record DiveProfile(
         @Nullable List<DiveMeasurementWithId> measurements,
         @Nullable DiveProfileSummary summary,
         // How the device computed this profile's deco / CNS / OTU figures, when the source says.
-        @Nullable DecoSettings decoSettings) {
+        @Nullable DecoSettings decoSettings,
+        // Sections cut out (see ProfileCuts): no samples, not counted as dive time.
+        List<TimeRange> gaps) {
+    public DiveProfile {
+        gaps = List.copyOf(Objects.requireNonNullElse(gaps, List.of()));
+    }
+
+    public DiveProfile(
+            final long id,
+            final DiveComputer diveComputer,
+            final Instant start,
+            final Instant end,
+            final @Nullable List<DiveMeasurementWithId> measurements,
+            final @Nullable DiveProfileSummary summary,
+            final @Nullable DecoSettings decoSettings) {
+        this(id, diveComputer, start, end, measurements, summary, decoSettings, List.of());
+    }
+
     public DiveProfile(
             final long id,
             final DiveComputer diveComputer,
@@ -57,15 +75,37 @@ public record DiveProfile(
                 diveComputer,
                 start,
                 end,
+                measurements,
+                includeMeasurements,
+                decoSettings,
+                List.of());
+    }
+
+    public DiveProfile(
+            final long id,
+            final DiveComputer diveComputer,
+            final Instant start,
+            final Instant end,
+            final List<DiveMeasurementWithId> measurements,
+            final boolean includeMeasurements,
+            final @Nullable DecoSettings decoSettings,
+            final List<TimeRange> gaps) {
+        this(
+                id,
+                diveComputer,
+                start,
+                end,
                 includeMeasurements ? measurements : null,
-                getSummary(start, end, measurements),
-                decoSettings);
+                getSummary(start, end, measurements, gaps),
+                decoSettings,
+                gaps);
     }
 
     public static DiveProfileSummary getSummary(
             final Instant start,
             final Instant end,
-            final List<DiveMeasurementWithId> measurements) {
+            final List<DiveMeasurementWithId> measurements,
+            final List<TimeRange> gaps) {
         final var depths =
                 measurements.stream()
                         .map(DiveMeasurementWithId::measurement)
@@ -73,8 +113,9 @@ public record DiveProfile(
                         .summaryStatistics();
         final var duration =
                 Duration.between(
-                        measurements.getFirst().measurement().time(),
-                        measurements.getLast().measurement().time());
+                                measurements.getFirst().measurement().time(),
+                                measurements.getLast().measurement().time())
+                        .minus(ProfileCuts.total(gaps));
         return new DiveProfileSummary(
                 start,
                 end,
