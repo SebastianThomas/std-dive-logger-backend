@@ -69,6 +69,7 @@ public class UserDataService {
         if (known.isPresent() && email.equals(known.get().getEmail())) {
             return known.get();
         }
+        userRepository.lockUser(userId);
         userRepository.clearEmailOfOthers(email, userId);
         userRepository.upsert(userId, email, defaultDisplayName(email));
         return userRepository

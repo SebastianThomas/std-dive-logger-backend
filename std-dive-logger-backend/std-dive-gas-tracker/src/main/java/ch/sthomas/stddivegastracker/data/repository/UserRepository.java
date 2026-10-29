@@ -14,6 +14,14 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     Optional<UserEntity> findByEmail(String email);
 
+    /**
+     * Serialises writes to one user's row until the transaction ends. Needed because the upsert's
+     * {@code ON CONFLICT} only covers the primary key: two first requests of one user inserting at
+     * once could otherwise collide on the unique email instead, and fail.
+     */
+    @Query(value = "SELECT 1 FROM pg_advisory_xact_lock(:userId)", nativeQuery = true)
+    int lockUser(long userId);
+
     /** The email is unique: its previous holder (a stale copy) must lose it first. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
@@ -23,8 +31,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     int clearEmailOfOthers(String email, long userId);
 
     /**
-     * Race-free: concurrent first requests of one user insert at most once. Never touches {@code
-     * display_name} of an existing row.
+     * Inserts at most once, under {@link #lockUser}. Never touches {@code display_name} of an
+     * existing row.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
