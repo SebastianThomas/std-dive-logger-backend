@@ -50,9 +50,10 @@ jobs:
         runs-on: ubuntu-latest
         needs: [ build ]
         strategy:
-            max-parallel: 4
+            max-parallel: 5
             matrix:
-                module: [ ws, autocomplete, analytics, import-ws ]
+                # Maven module directory names (std-dive-gas-tracker is not a std-dive-logger-*)
+                module: [ std-dive-logger-ws, std-dive-logger-autocomplete, std-dive-logger-analytics, std-dive-logger-import-ws, std-dive-gas-tracker ]
         steps:
             -   uses: actions/checkout@v5
                 with:
@@ -61,7 +62,7 @@ jobs:
             -   name: Set module name
                 shell: bash
                 run: |
-                    echo "module=std-dive-logger-${{ matrix.module }}" >> $GITHUB_ENV
+                    echo "module=${{ matrix.module }}" >> $GITHUB_ENV
 
             -   name: Set TAG_NAME from image_tag
                 shell: bash

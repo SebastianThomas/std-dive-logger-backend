@@ -6,6 +6,12 @@ provisioned by `.github/workflows/db.yml`. CNPG creates the database
 `std-dive-logger-db-app`, and (via `postInitApplicationSQL`) pre-creates the
 `postgis`, `pg_trgm` and `fuzzystrmatch` extensions.
 
+The same Cluster hosts std-dive-gas-tracker's database `std_dive_gas_tracker`,
+owned by its own role `std_dive_gas_tracker` (`base/gas-tracker-database.yaml`,
+`managed.roles` in `base/cluster.yaml`). `db.yml` creates the role's password
+Secret `std-dive-gas-tracker-db-credentials` once and waits for the database.
+Back up both databases: a `pg_dump` covers one database only.
+
 ## Replaying the legacy DB
 
 Dump the legacy PostGIS DB (public schema only — skips the `tiger` / `topology`

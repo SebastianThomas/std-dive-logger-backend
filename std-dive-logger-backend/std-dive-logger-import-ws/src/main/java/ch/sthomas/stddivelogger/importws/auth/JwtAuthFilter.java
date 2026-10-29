@@ -4,6 +4,7 @@ import ch.sthomas.stddivelogger.model.user.User;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParser;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,20 +19,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-import javax.crypto.SecretKey;
-
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
     private final boolean checkVerified;
-    private final SecretKey signingKey;
+    private final JwtParser accessTokenParser;
 
     public JwtAuthFilter(
             final UserDetailsService userDetailsService,
             final boolean checkVerified,
-            final SecretKey signingKey) {
+            final JwtParser accessTokenParser) {
         this.userDetailsService = userDetailsService;
         this.checkVerified = checkVerified;
-        this.signingKey = signingKey;
+        this.accessTokenParser = accessTokenParser;
     }
 
     @Override
@@ -46,7 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 final var token = authHeader.substring(7);
-                final var claimedUsername = JwtUtil.extractUsername(token, signingKey);
+                final var claimedUsername = JwtUtil.extractUsername(token, accessTokenParser);
 
                 if (claimedUsername != null
                         && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -61,7 +60,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         return;
                     }
 
-                    if (JwtUtil.isTokenValid(token, username, signingKey)) {
+                    if (JwtUtil.isTokenValid(token, username, accessTokenParser)) {
                         final var authToken =
                                 new UsernamePasswordAuthenticationToken(
                                         userDetails, null, userDetails.getAuthorities());
@@ -69,7 +68,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
-        } catch (final JwtException e) {
+        } catch (final JwtException | IllegalArgumentException e) {
+            // Unusable token (other key, HS256, no iss, malformed): unauthenticated -> 401.
             if (!(e instanceof ExpiredJwtException)) {
                 logger.info("Exception parsing JWT", e);
             }

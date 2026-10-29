@@ -41,6 +41,8 @@
         <module>std-dive-logger-autocomplete</module>
         <module>std-dive-logger-analytics</module>
         <module>std-dive-logger-coverage</module>
+        <!-- Separate app with its own DB; depends on no std-dive-logger-* module. -->
+        <module>std-dive-gas-tracker</module>
     </modules>
 
     <dependencies>

@@ -2,6 +2,8 @@ package ch.sthomas.stddivelogger.ws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
+
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
 import org.junit.jupiter.api.Test;
@@ -41,9 +43,7 @@ class HttpObservabilityIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add(
-                "ch.sthomas.stddivelogger.ws.jwt-secret",
-                () -> "observability-test-secret-at-least-32-bytes");
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret",
                 () -> "http-message-not-readable-it-jwt-refresh-secret-needs-to-be-long-enough");

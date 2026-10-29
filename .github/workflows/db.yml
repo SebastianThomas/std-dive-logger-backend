@@ -45,3 +45,22 @@ jobs:
           namespace: std-dive-logger-${{ inputs.environment }}
           manifests: db/${{ inputs.environment }}
           timeout: 900s
+
+      # std-dive-gas-tracker's role password (db/base/cluster.yaml `managed.roles`): generated once,
+      # never rotated by a re-run. Basic-auth with the reload label, as CNPG requires. Runs after the
+      # Cluster step (that step writes the kubeconfig); on the first run CNPG creates the role as soon
+      # as the Secret appears, then the Database - so wait for that before calling the run done.
+      - name: std-dive-gas-tracker database
+        env:
+          NS: std-dive-logger-${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if ! kubectl -n "$NS" get secret std-dive-gas-tracker-db-credentials >/dev/null 2>&1; then
+            kubectl -n "$NS" create secret generic std-dive-gas-tracker-db-credentials \
+              --type=kubernetes.io/basic-auth \
+              --from-literal=username=std_dive_gas_tracker \
+              --from-literal=password="$(openssl rand -hex 24)"
+            kubectl -n "$NS" label secret std-dive-gas-tracker-db-credentials cnpg.io/reload=true
+          fi
+          kubectl -n "$NS" wait database.postgresql.cnpg.io/std-dive-gas-tracker \
+            --for=jsonpath='{.status.applied}'=true --timeout=300s

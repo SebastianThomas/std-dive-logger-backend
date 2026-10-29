@@ -1,0 +1,16 @@
+# Local dev DB for the gas tracker only - picked up by Spring Boot's docker-compose support when
+# running `mvn spring-boot:run` from this module directory. Separate from the dive logger's own
+# dev DB (:5450, the human's real data) - never point the gas tracker at that one.
+services:
+    std_dive_gas_tracker_db:
+        image: postgres:18-alpine
+        environment:
+            POSTGRES_PASSWORD: std_dive_gas_tracker
+            POSTGRES_DB: std_dive_gas_tracker
+            POSTGRES_USER: std_dive_gas_tracker
+        ports:
+            - "5460:5432"
+        volumes:
+            - std_dive_gas_tracker_db_data:/var/lib/postgresql
+volumes:
+    std_dive_gas_tracker_db_data:

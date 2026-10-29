@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
@@ -38,13 +39,16 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-
-import javax.crypto.SecretKey;
 
 /**
  * A real end-to-end test of both primary import HTTP paths - JSON-staging a Divesoft/wetnotes dive
@@ -62,8 +66,9 @@ import javax.crypto.SecretKey;
 @AutoConfigureRestTestClient
 @Testcontainers
 class ImportIntegrationTest {
-    private static final String TEST_JWT_SECRET =
-            "integration-test-jwt-signing-secret-needs-to-be-long-enough";
+    /** Stands in for ws's key pair: import-ws only ever gets the public half. */
+    private static final KeyPair WS_KEYS = ed25519();
+
     private static final String TEST_USER_EMAIL = "test@test.ch";
     private static final Path IMPORT_FILES_DIR = tempDir();
 
@@ -76,7 +81,9 @@ class ImportIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> TEST_JWT_SECRET);
+        registry.add(
+                "ch.sthomas.stddivelogger.ws.jwt-public-key",
+                () -> pem("PUBLIC KEY", WS_KEYS.getPublic().getEncoded()));
         registry.add("ch.sthomas.stddivelogger.import-files.dir", IMPORT_FILES_DIR::toString);
         registry.add(
                 "ch.sthomas.stddivelogger.storage.r2.base-url", () -> "http://localhost/unused");
@@ -84,6 +91,7 @@ class ImportIntegrationTest {
 
     @Autowired private RestTestClient restTestClient;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private Environment environment;
 
     private static Path tempDir() {
         try {
@@ -93,14 +101,37 @@ class ImportIntegrationTest {
         }
     }
 
-    private static String bearerToken() {
-        final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
+    private static KeyPair ed25519() {
+        try {
+            return KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static String pem(final String type, final byte[] der) {
+        return "-----BEGIN %s-----\n%s\n-----END %s-----\n"
+                .formatted(type, Base64.getMimeEncoder().encodeToString(der), type);
+    }
+
+    /** Shaped like ws's access tokens (kid, iss, sub, uid, email_verified); signed with a key. */
+    private static String wsShapedToken(final PrivateKey signingKey) {
         return Jwts.builder()
+                .header()
+                .keyId("test-kid")
+                .and()
+                .issuer("std-dive-logger")
                 .subject(TEST_USER_EMAIL)
+                .claim("uid", 1L)
+                .claim("email_verified", true)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(key)
+                .signWith(signingKey, Jwts.SIG.EdDSA)
                 .compact();
+    }
+
+    private static String bearerToken() {
+        return wsShapedToken(WS_KEYS.getPrivate());
     }
 
     private static HttpHeaders authorizedJsonHeaders() {
@@ -167,6 +198,49 @@ class ImportIntegrationTest {
                 .exchange()
                 .expectStatus()
                 .value(status -> assertThat(status).isIn(401, 403));
+    }
+
+    @Test
+    void startsWithOnlyWsPublicKeyAndNoSigningSecret() {
+        assertThat(environment.getProperty("ch.sthomas.stddivelogger.ws.jwt-public-key"))
+                .contains("BEGIN PUBLIC KEY");
+        assertThat(environment.getProperty("ch.sthomas.stddivelogger.ws.jwt-signing-key")).isNull();
+        assertThat(environment.getProperty("ch.sthomas.stddivelogger.ws.jwt-secret")).isNull();
+    }
+
+    @Test
+    void acceptsAWsShapedTokenAndRejectsOtherKeysHs256AndMissingIssuer() {
+        pending(bearerToken()).expectStatus().isOk();
+
+        final var foreignKey = wsShapedToken(ed25519().getPrivate());
+        final var oldFormatHs256 =
+                Jwts.builder()
+                        .issuer("std-dive-logger")
+                        .subject(TEST_USER_EMAIL)
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(
+                                Keys.hmacShaKeyFor(
+                                        "integration-test-jwt-signing-secret-needs-to-be-long-enough"
+                                                .getBytes()),
+                                Jwts.SIG.HS256)
+                        .compact();
+        final var noIssuer =
+                Jwts.builder()
+                        .subject(TEST_USER_EMAIL)
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .signWith(WS_KEYS.getPrivate(), Jwts.SIG.EdDSA)
+                        .compact();
+        for (final var token : List.of(foreignKey, oldFormatHs256, noIssuer, "not-a-jwt")) {
+            pending(token).expectStatus().isUnauthorized();
+        }
+    }
+
+    private RestTestClient.ResponseSpec pending(final String bearer) {
+        return restTestClient
+                .get()
+                .uri("/v1/import/pending")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + bearer)
+                .exchange();
     }
 
     @Test

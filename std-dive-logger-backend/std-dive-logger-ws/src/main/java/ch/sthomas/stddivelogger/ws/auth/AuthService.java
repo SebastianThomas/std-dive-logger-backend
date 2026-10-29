@@ -73,7 +73,12 @@ public class AuthService {
         } catch (final JwtException e) {
             throw new UnauthorizedException("Invalid refresh token.");
         }
-        return jwtUtil.generateAccessToken(username);
+        // The access token carries the account's current uid and email_verified.
+        final var user =
+                userDataService
+                        .findUserByEmail(username)
+                        .orElseThrow(() -> new UnauthorizedException("Unknown user."));
+        return jwtUtil.generateAccessToken(user);
     }
 
     public ResponseEntity<AuthResponse> login(final AuthRequest request) {
@@ -122,7 +127,7 @@ public class AuthService {
                 userDataService
                         .findUserByEmail(username)
                         .orElseThrow(() -> new UnauthorizedException("Unknown user."));
-        final var token = jwtUtil.generateAccessToken(username);
+        final var token = jwtUtil.generateAccessToken(user);
         final var refreshToken = jwtUtil.generateRefreshToken(user.id(), username);
 
         final var responseCookie =

@@ -8,9 +8,7 @@ import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.DiveService;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +26,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
 import java.util.UUID;
-
-import javax.crypto.SecretKey;
 
 @org.junit.jupiter.api.Tag("slow")
 @SpringBootTest(
@@ -40,9 +35,6 @@ import javax.crypto.SecretKey;
 @AutoConfigureRestTestClient
 @Testcontainers
 class HomeControllerIntegrationTest {
-
-    private static final String TEST_JWT_SECRET =
-            "home-controller-it-jwt-signing-secret-needs-to-be-long-enough";
 
     @Container @ServiceConnection
     static final PostgreSQLContainer postgres =
@@ -53,7 +45,7 @@ class HomeControllerIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> TEST_JWT_SECRET);
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret",
                 () -> "home-controller-it-jwt-refresh-secret-needs-to-be-long-enough");
@@ -74,13 +66,7 @@ class HomeControllerIntegrationTest {
     @Autowired private DiveService diveService;
 
     private static String bearerToken(final String email) {
-        final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
-        return Jwts.builder()
-                .subject(email)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(key)
-                .compact();
+        return TestJwtKeys.accessToken(email);
     }
 
     private User seedUser(final String name) {

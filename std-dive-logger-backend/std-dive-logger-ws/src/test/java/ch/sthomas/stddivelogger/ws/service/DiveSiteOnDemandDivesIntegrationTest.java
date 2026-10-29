@@ -22,6 +22,7 @@ import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.SuitEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,7 @@ class DiveSiteOnDemandDivesIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> "test-jwt-secret");
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret", () -> "test-jwt-refresh-secret");
         registry.add(

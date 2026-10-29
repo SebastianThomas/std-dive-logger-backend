@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target: { kind: Deployment, name: std-dive-gas-tracker }
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 25m, memory: 192Mi }
+          limits: { memory: 640Mi }
+  - target: { kind: HTTPRoute, name: std-dive-gas-tracker }
+    patch: |
+      - op: replace
+        path: /spec/hostnames/0
+        value: ws.std-dive-gas-tracker-dev.sthomas.ch

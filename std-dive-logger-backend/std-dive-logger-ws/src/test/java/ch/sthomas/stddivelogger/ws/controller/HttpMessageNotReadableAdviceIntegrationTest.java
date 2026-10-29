@@ -9,9 +9,7 @@ import ch.sthomas.stddivelogger.model.entity.DiveSiteEntity;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
 import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.service.DiveService;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +27,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
-
-import javax.crypto.SecretKey;
 
 /**
  * A real end-to-end HTTP test for {@code HttpMessageNotReadableAdviceTrait} / {@code
@@ -52,8 +47,6 @@ import javax.crypto.SecretKey;
 @Testcontainers
 class HttpMessageNotReadableAdviceIntegrationTest {
 
-    private static final String TEST_JWT_SECRET =
-            "http-message-not-readable-it-jwt-signing-secret-needs-to-be-long-enough";
     private static final String TEST_USER_EMAIL = "http-message-not-readable-it@test.ch";
 
     @Container @ServiceConnection
@@ -65,7 +58,7 @@ class HttpMessageNotReadableAdviceIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> TEST_JWT_SECRET);
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret",
                 () -> "http-message-not-readable-it-jwt-refresh-secret-needs-to-be-long-enough");
@@ -86,13 +79,7 @@ class HttpMessageNotReadableAdviceIntegrationTest {
     @Autowired private DiveService diveService;
 
     private static String bearerToken() {
-        final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
-        return Jwts.builder()
-                .subject(TEST_USER_EMAIL)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(key)
-                .compact();
+        return TestJwtKeys.accessToken(TEST_USER_EMAIL);
     }
 
     @Test

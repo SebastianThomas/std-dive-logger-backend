@@ -1,0 +1,2386 @@
+{
+  "components" : {
+    "schemas" : {
+      "AddMemberRequest" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "ADMIN", "MEMBER" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "role" ],
+        "type" : "object"
+      },
+      "Balances" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "inventoryValue" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "members" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberBalance"
+            },
+            "type" : "array"
+          },
+          "suggestions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Suggestion"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "currency", "inventoryValue", "members", "suggestions" ],
+        "type" : "object"
+      },
+      "CloseVesselRequest" : {
+        "properties" : {
+          "closedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "closingPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "closingPressureBar" ],
+        "type" : "object"
+      },
+      "ConsumptionReport" : {
+        "properties" : {
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ConsumptionRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "rows" ],
+        "type" : "object"
+      },
+      "ConsumptionRow" : {
+        "properties" : {
+          "charge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "fills" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "heLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "member" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "o2Litres" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "charge", "fills", "heLitres", "member", "o2Litres" ],
+        "type" : "object"
+      },
+      "CostLine" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "costLineId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "paidAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "payer" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "payerMemberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "amount", "costLineId", "paidAt", "payer", "payerMemberId" ],
+        "type" : "object"
+      },
+      "CostLineInput" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "paidAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "payerMemberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "amount", "payerMemberId" ],
+        "type" : "object"
+      },
+      "Fill" : {
+        "properties" : {
+          "calcModelVersion" : {
+            "type" : "string"
+          },
+          "chargedMember" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "createdAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "endAnalysis" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "endMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "endPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "fillId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "filledAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "recordedBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "stages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StageResult"
+            },
+            "type" : "array"
+          },
+          "startMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "startPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "VOIDED" ],
+            "type" : "string"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/FillTarget"
+          },
+          "totalCharge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "voidReason" : {
+            "type" : "string"
+          },
+          "warnings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Warning"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "calcModelVersion", "createdAt", "endMix", "endPressureBar", "fillId", "filledAt", "recordedBy", "stages", "startMix", "startPressureBar", "status", "target", "totalCharge", "updatedAt", "warnings" ],
+        "type" : "object"
+      },
+      "FillInput" : {
+        "properties" : {
+          "endAnalysis" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "filledAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "stages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FillInputStage"
+            },
+            "type" : "array"
+          },
+          "startMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "startPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/FillTarget"
+          }
+        },
+        "required" : [ "stages", "startPressureBar", "target" ],
+        "type" : "object"
+      },
+      "FillInputStage" : {
+        "properties" : {
+          "pressureAfterBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/StageSource"
+          },
+          "sourcePressureAfterBar" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "pressureAfterBar", "source" ],
+        "type" : "object"
+      },
+      "FillPreview" : {
+        "properties" : {
+          "endMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "endPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "stages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StageResult"
+            },
+            "type" : "array"
+          },
+          "totalCharge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "warnings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Warning"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "endMix", "endPressureBar", "stages", "totalCharge", "warnings" ],
+        "type" : "object"
+      },
+      "FillSummary" : {
+        "properties" : {
+          "chargedMember" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "endMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "endPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "fillId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "filledAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "heLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "o2Litres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "VOIDED" ],
+            "type" : "string"
+          },
+          "targetLabel" : {
+            "type" : "string"
+          },
+          "totalCharge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          }
+        },
+        "required" : [ "endMix", "endPressureBar", "fillId", "filledAt", "heLitres", "o2Litres", "status", "targetLabel", "totalCharge" ],
+        "type" : "object"
+      },
+      "FillTarget" : {
+        "discriminator" : {
+          "mapping" : {
+            "CYLINDER" : "#/components/schemas/FillTargetCylinder",
+            "VESSEL" : "#/components/schemas/FillTargetVessel"
+          },
+          "propertyName" : "type"
+        },
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/FillTargetCylinder"
+        }, {
+          "$ref" : "#/components/schemas/FillTargetVessel"
+        } ],
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ]
+      },
+      "FillTargetCylinder" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/FillTarget"
+        }, {
+          "properties" : {
+            "chargedMemberId" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "cylinderLabel" : {
+              "type" : "string"
+            },
+            "waterVolumeLitres" : {
+              "format" : "double",
+              "type" : "number"
+            }
+          },
+          "required" : [ "chargedMemberId", "waterVolumeLitres" ],
+          "type" : "object"
+        } ]
+      },
+      "FillTargetVessel" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/FillTarget"
+        }, {
+          "properties" : {
+            "vesselId" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "vesselLabel" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "vesselId" ],
+          "type" : "object"
+        } ]
+      },
+      "GasMix" : {
+        "properties" : {
+          "he" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "o2" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "he", "o2" ],
+        "type" : "object"
+      },
+      "LossReport" : {
+        "properties" : {
+          "drawnLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "inflowLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "lineLossLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "lossAmount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "lossFraction" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "residualLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "unaccountedLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "writeOffAmount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          }
+        },
+        "required" : [ "drawnLitres", "inflowLitres", "lineLossLitres", "lossFraction", "residualLitres", "unaccountedLitres" ],
+        "type" : "object"
+      },
+      "LossesReport" : {
+        "properties" : {
+          "vessels" : {
+            "items" : {
+              "$ref" : "#/components/schemas/LossesReportEntry"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "vessels" ],
+        "type" : "object"
+      },
+      "LossesReportEntry" : {
+        "properties" : {
+          "report" : {
+            "$ref" : "#/components/schemas/LossReport"
+          },
+          "vessel" : {
+            "$ref" : "#/components/schemas/VesselSummary"
+          }
+        },
+        "required" : [ "report", "vessel" ],
+        "type" : "object"
+      },
+      "MeResponse" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "teams" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TeamSummary"
+            },
+            "type" : "array"
+          },
+          "userId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "displayName", "email", "teams", "userId" ],
+        "type" : "object"
+      },
+      "Member" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "joinedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "leftAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "memberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "role" : {
+            "enum" : [ "ADMIN", "MEMBER" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "PENDING", "LEFT" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "displayName", "joinedAt", "memberId", "role", "status" ],
+        "type" : "object"
+      },
+      "MemberBalance" : {
+        "properties" : {
+          "balance" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "fillCharges" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "lossShares" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "member" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "paidCosts" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "paymentsReceived" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "paymentsSent" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "provisionalCharges" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          }
+        },
+        "required" : [ "balance", "fillCharges", "lossShares", "member", "paidCosts", "paymentsReceived", "paymentsSent", "provisionalCharges" ],
+        "type" : "object"
+      },
+      "MemberRef" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "memberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "displayName", "memberId" ],
+        "type" : "object"
+      },
+      "PageFillSummary" : {
+        "properties" : {
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "result" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FillSummary"
+            },
+            "type" : "array"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "page", "result", "size", "totalElements", "totalPages" ],
+        "type" : "object"
+      },
+      "Payment" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "from" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "paidAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paymentId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          }
+        },
+        "required" : [ "amount", "createdBy", "from", "paidAt", "paymentId", "to" ],
+        "type" : "object"
+      },
+      "PaymentInput" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "fromMemberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "paidAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "toMemberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "amount", "fromMemberId", "toMemberId" ],
+        "type" : "object"
+      },
+      "PolicyComparison" : {
+        "properties" : {
+          "members" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyComparisonRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "members" ],
+        "type" : "object"
+      },
+      "PolicyComparisonRow" : {
+        "properties" : {
+          "delta" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "member" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "pooled" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "trueUp" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          }
+        },
+        "required" : [ "delta", "member", "pooled", "trueUp" ],
+        "type" : "object"
+      },
+      "Reading" : {
+        "properties" : {
+          "bookPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "createdBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "discrepancyLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "measuredAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "readingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "bookPressureBar", "createdBy", "discrepancyLitres", "measuredAt", "pressureBar", "readingId" ],
+        "type" : "object"
+      },
+      "ReadingInput" : {
+        "properties" : {
+          "measuredAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "pressureBar" ],
+        "type" : "object"
+      },
+      "StageResult" : {
+        "properties" : {
+          "addedHeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "addedLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "addedO2Litres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "charge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "drawLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "index" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "isEstimate" : {
+            "type" : "boolean"
+          },
+          "lineLossLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "pressureAfterBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/StageSource"
+          },
+          "sourceMix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "sourcePressureAfterBar" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "addedHeLitres", "addedLitres", "addedO2Litres", "charge", "drawLitres", "index", "isEstimate", "lineLossLitres", "pressureAfterBar", "source", "sourceMix" ],
+        "type" : "object"
+      },
+      "StageSource" : {
+        "discriminator" : {
+          "mapping" : {
+            "AIR" : "#/components/schemas/StageSourceAir",
+            "VESSEL" : "#/components/schemas/StageSourceVessel"
+          },
+          "propertyName" : "type"
+        },
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/StageSourceVessel"
+        }, {
+          "$ref" : "#/components/schemas/StageSourceAir"
+        } ],
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ]
+      },
+      "StageSourceAir" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/StageSource"
+        } ]
+      },
+      "StageSourceVessel" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/StageSource"
+        }, {
+          "properties" : {
+            "label" : {
+              "type" : "string"
+            },
+            "vesselId" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "required" : [ "vesselId" ],
+          "type" : "object"
+        } ]
+      },
+      "Suggestion" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "from" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "to" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          }
+        },
+        "required" : [ "amount", "from", "to" ],
+        "type" : "object"
+      },
+      "Team" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "defaultLossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "defaultResidualPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "lineDeadVolumeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "memberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "ADMIN", "MEMBER" ],
+            "type" : "string"
+          },
+          "teamId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "currency", "defaultLossPolicy", "defaultResidualPressureBar", "lineDeadVolumeLitres", "memberId", "name", "role", "teamId" ],
+        "type" : "object"
+      },
+      "TeamInput" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "defaultLossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "defaultResidualPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "lineDeadVolumeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "currency", "defaultLossPolicy", "defaultResidualPressureBar", "lineDeadVolumeLitres", "name" ],
+        "type" : "object"
+      },
+      "TeamSummary" : {
+        "properties" : {
+          "memberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "ADMIN", "MEMBER" ],
+            "type" : "string"
+          },
+          "teamId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "memberId", "name", "role", "teamId" ],
+        "type" : "object"
+      },
+      "UpdateMeRequest" : {
+        "properties" : {
+          "displayName" : {
+            "maxLength" : 60,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "displayName" ],
+        "type" : "object"
+      },
+      "UpdateMemberRequest" : {
+        "properties" : {
+          "role" : {
+            "enum" : [ "ADMIN", "MEMBER" ],
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "PENDING", "LEFT" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "VesselCreate" : {
+        "properties" : {
+          "expectedResidualPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "initialCostLine" : {
+            "$ref" : "#/components/schemas/CostLineInput"
+          },
+          "initialPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "lossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "mix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "openedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "waterVolumeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "label", "mix", "waterVolumeLitres" ],
+        "type" : "object"
+      },
+      "VesselDetail" : {
+        "properties" : {
+          "allocated" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "bookContentLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "closedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "closingPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "costLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CostLine"
+            },
+            "type" : "array"
+          },
+          "createdBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "drawnLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "estimatedContentLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "estimatedPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "expectedResidualPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "gasClass" : {
+            "enum" : [ "OXYGEN", "HELIUM", "AIR", "NITROX", "TRIMIX" ],
+            "type" : "string"
+          },
+          "inflowLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "initialPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "lossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "lossReport" : {
+            "$ref" : "#/components/schemas/LossReport"
+          },
+          "mix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "openedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rate" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "rateIsEstimate" : {
+            "type" : "boolean"
+          },
+          "readings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Reading"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "enum" : [ "IN_SERVICE", "CLOSED" ],
+            "type" : "string"
+          },
+          "totalCost" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "unallocated" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "usableContentLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "vesselId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "waterVolumeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "allocated", "bookContentLitres", "costLines", "createdBy", "drawnLitres", "estimatedContentLitres", "estimatedPressureBar", "expectedResidualPressureBar", "gasClass", "inflowLitres", "initialPressureBar", "label", "lossPolicy", "mix", "openedAt", "rate", "rateIsEstimate", "readings", "status", "totalCost", "unallocated", "usableContentLitres", "vesselId", "waterVolumeLitres" ],
+        "type" : "object"
+      },
+      "VesselSummary" : {
+        "properties" : {
+          "closedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "estimatedContentLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "estimatedPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "gasClass" : {
+            "enum" : [ "OXYGEN", "HELIUM", "AIR", "NITROX", "TRIMIX" ],
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "lossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "mix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "openedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rate" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "rateIsEstimate" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "enum" : [ "IN_SERVICE", "CLOSED" ],
+            "type" : "string"
+          },
+          "usableContentLitres" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "vesselId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "waterVolumeLitres" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "estimatedContentLitres", "estimatedPressureBar", "gasClass", "label", "lossPolicy", "mix", "openedAt", "rate", "rateIsEstimate", "status", "usableContentLitres", "vesselId", "waterVolumeLitres" ],
+        "type" : "object"
+      },
+      "VesselUpdate" : {
+        "properties" : {
+          "expectedResidualPressureBar" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "lossPolicy" : {
+            "enum" : [ "TRUE_UP", "POOLED" ],
+            "type" : "string"
+          },
+          "mix" : {
+            "$ref" : "#/components/schemas/GasMix"
+          },
+          "notes" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "VoidFillRequest" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason" ],
+        "type" : "object"
+      },
+      "Warning" : {
+        "properties" : {
+          "code" : {
+            "enum" : [ "ANALYSIS_MISMATCH", "SOURCE_OVERDRAWN" ],
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "stageIndex" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "code", "message" ],
+        "type" : "object"
+      }
+    }
+  },
+  "info" : {
+    "title" : "STD Dive Gas Tracker API",
+    "version" : "v1"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/v1/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "me-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateMe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "me-controller" ]
+      }
+    },
+    "/v1/teams" : {
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TeamInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Team"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "team-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Team"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "team-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TeamInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Team"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "team-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/balances" : {
+      "get" : {
+        "operationId" : "balances",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Balances"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payment-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/fills" : {
+      "get" : {
+        "operationId" : "list_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "memberId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "vesselId",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "includeVoided",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 50,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageFillSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FillInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Fill"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/fills/preview" : {
+      "post" : {
+        "operationId" : "preview",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "replacing",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FillInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FillPreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/fills/{fillId}" : {
+      "get" : {
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "fillId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Fill"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      },
+      "put" : {
+        "operationId" : "update_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "fillId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FillInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Fill"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/fills/{fillId}/void" : {
+      "post" : {
+        "operationId" : "voidFill",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "fillId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VoidFillRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Fill"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fill-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/members" : {
+      "get" : {
+        "operationId" : "list_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Member"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      },
+      "post" : {
+        "operationId" : "add",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddMemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Member"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/members/me/leave" : {
+      "post" : {
+        "operationId" : "leave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/members/{memberId}" : {
+      "put" : {
+        "operationId" : "update_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "memberId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Member"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/payments" : {
+      "get" : {
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Payment"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payment-controller" ]
+      },
+      "post" : {
+        "operationId" : "record",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PaymentInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Payment"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payment-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/payments/{paymentId}" : {
+      "delete" : {
+        "operationId" : "delete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "paymentId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "payment-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/reports/consumption" : {
+      "get" : {
+        "operationId" : "consumption",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsumptionReport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/reports/losses" : {
+      "get" : {
+        "operationId" : "losses",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LossesReport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/reports/policy-comparison" : {
+      "get" : {
+        "operationId" : "policyComparison",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyComparison"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels" : {
+      "get" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "default" : "IN_SERVICE",
+            "enum" : [ "IN_SERVICE", "CLOSED", "ALL" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/VesselSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VesselCreate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}" : {
+      "get" : {
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      },
+      "put" : {
+        "operationId" : "update_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VesselUpdate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}/close" : {
+      "post" : {
+        "operationId" : "close",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CloseVesselRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}/cost-lines" : {
+      "post" : {
+        "operationId" : "addCostLine",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CostLineInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}/cost-lines/{costLineId}" : {
+      "delete" : {
+        "operationId" : "deleteCostLine",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "costLineId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}/readings" : {
+      "post" : {
+        "operationId" : "addReading",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReadingInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/vessels/{vesselId}/reopen" : {
+      "post" : {
+        "operationId" : "reopen",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "vesselId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VesselDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "vessel-controller" ]
+      }
+    }
+  }
+}

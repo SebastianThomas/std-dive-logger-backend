@@ -1,0 +1,18 @@
+---
+# std-dive-gas-tracker's database, inside std-dive-logger-db (cluster.yaml) - same instance, so the
+# dev DR standby (db/dev/cluster-dr.yaml, a physical replica) covers it too, but its own database
+# and its own role: the gas tracker can neither read nor write the dive logger's data. Plain
+# Postgres, no extensions; Flyway creates the schema on the first start.
+#
+# The role std_dive_gas_tracker is managed in cluster.yaml (`managed.roles`); its password lives in
+# Secret std-dive-gas-tracker-db-credentials, which .github/workflows/db.yml creates once. The
+# default reclaim policy (retain) keeps the data if this object is ever deleted.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: std-dive-gas-tracker
+spec:
+  name: std_dive_gas_tracker
+  owner: std_dive_gas_tracker
+  cluster:
+    name: std-dive-logger-db

@@ -11,6 +11,31 @@ only supplies the shared `app-deployer` identity (`KUBE_TOKEN`).
 | autocomplete | `std-dive-logger-autocomplete-dev.sthomas.ch`<br>`autocomplete.std-dive-logger-dev.sthomas.ch` | `std-dive-logger-autocomplete.sthomas.ch`<br>`autocomplete.std-dive-logger.sthomas.ch` |
 | analytics | Tailnet `/ops` (no public route) | Tailnet `/ops` (no public route) |
 | frontend | `std-dive-logger-web-dev.sthomas.ch`<br>`std-dive-logger-dev.sthomas.ch` (separate repo) | `std-dive-logger-web.sthomas.ch`<br>`std-dive-logger.sthomas.ch` |
+| gas tracker API | `ws.std-dive-gas-tracker-dev.sthomas.ch` | `ws.std-dive-gas-tracker.sthomas.ch` |
+| gas tracker web | `std-dive-gas-tracker-dev.sthomas.ch` (repo `std-dive-gas-tracker-web`) | `std-dive-gas-tracker.sthomas.ch` |
+
+The gas tracker (module `std-dive-gas-tracker`) shares the namespace, the deploy
+workflow and `std-dive-logger-secrets/jwt-public-key` (it only verifies dive-logger
+tokens) and the Postgres Cluster `std-dive-logger-db`, in which it has its **own**
+database `std_dive_gas_tracker` and role (`db/base/gas-tracker-database.yaml` +
+`managed.roles` in `db/base/cluster.yaml`, password in Secret
+`std-dive-gas-tracker-db-credentials`, created once by `db.yml`). So it also shares
+the wait-for-db component and, in dev, the DR standby. Same hostname scheme: the
+bare `std-dive-gas-tracker[-dev]` host is its web app, `ws.` its API.
+
+**First gas-tracker deploy to an environment, in this order** — the deploy workflow
+rolls it out together with the dive-logger services, so a missing prerequisite
+fails that whole job:
+1. `db.yml` for the environment, with a tag that contains `db/base/gas-tracker-database.yaml`
+   (creates the role, its Secret `std-dive-gas-tracker-db-credentials` and the database inside
+   the existing `std-dive-logger-db` — no new instance, the dive logger's data is untouched);
+2. the `*.std-dive-gas-tracker[-dev].sthomas.ch` names on the Traefik listener cert (homelab-infra
+   `gateway-certs.yaml`, already listed there) — delegate first: one new acme-dns account shared
+   by both zones, CNAMEs `_acme-challenge.std-dive-gas-tracker[-dev].sthomas.ch` to it, merged
+   into `ACME_DNS_JSON`; only then push homelab-infra (its push to main deploys);
+3. then the app deploy. Backups: dev's DR standby replicates the whole instance, so the gas
+   database comes along; a `pg_dump` taken from it must name `std_dive_gas_tracker` too
+   (a dump is per database). Prod has no standby yet, for either app.
 
 ### Hostname scheme
 
@@ -28,7 +53,8 @@ working aliases — each HTTPRoute simply lists both. Only the bare host moved.
 `*.sthomas.ch` wildcard cert. The new `ws.` / `importer.` / `autocomplete.`
 names are **two** labels deep, and a wildcard matches exactly one label — so
 they need a `*.std-dive-logger.sthomas.ch` / `*.std-dive-logger-dev.sthomas.ch`
-cert (or per-host certs) on the Traefik `websecure` listener before they serve
+cert — and `ws.std-dive-gas-tracker[-dev]` a `*.std-dive-gas-tracker.sthomas.ch` /
+`*.std-dive-gas-tracker-dev.sthomas.ch` one — (or per-host certs) on the Traefik `websecure` listener before they serve
 HTTPS. That lives in `homelab-infra`, not here.
 
 Frontend CORS: because the frontend answers on two hostnames, both are real
@@ -74,7 +100,9 @@ The mounted file is fully templatized — every env-specific / secret value is
 
 - DB: `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` ← CNPG's `std-dive-logger-db-app`
 - `std-dive-logger-secrets` (kube-secret, from GH env secrets + variables) —
-  JWT ×2, R2 account/access/secret, email password, VAPID public/private key +
+  access-token Ed25519 key pair (`JWT_SIGNING_KEY` secret → `ws` only; `JWT_PUBLIC_KEY`
+  variable → `ws` + `import-ws`; make one with `tools/generate-jwt-keys.sh`), refresh-token
+  secret, R2 account/access/secret, email password, VAPID public/private key +
   subject (web push; `ws` only gets the public key, `analytics` gets all three).
   Only the private key is a real GH *secret* (masked); the public key and
   subject aren't sensitive, so they're GH *variables* instead — still not

@@ -1,0 +1,70 @@
+---
+# Lives in the dive logger's namespace (shared deploy workflow and std-dive-logger-secrets for the
+# public JWT key) and in its Postgres Cluster std-dive-logger-db, but with its own database and
+# role (db/base/gas-tracker-database.yaml): it never sees the dive logger's data. The shared
+# wait-for-db component adds the initContainer that waits for that Cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: std-dive-gas-tracker
+  labels:
+    app: std-dive-gas-tracker
+    app.kubernetes.io/name: std-dive-gas-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: std-dive-gas-tracker }
+  template:
+    metadata:
+      labels:
+        app: std-dive-gas-tracker
+        app.kubernetes.io/name: std-dive-gas-tracker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: /actuator/prometheus
+    spec:
+      volumes:
+        - name: config
+          configMap: { name: std-dive-gas-tracker-config }
+        - name: logs
+          emptyDir: { sizeLimit: 200Mi }
+      containers:
+        - name: gas-tracker
+          image: ${GAS_TRACKER_IMAGE}
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: mgmt, containerPort: 8085 }
+          volumeMounts:
+            - { name: config, mountPath: /config, readOnly: true }
+            - { name: logs, mountPath: /logs }
+          env:
+            - { name: SPRING_CONFIG_LOCATION, value: "/config/" }
+            - { name: SPRING_CONFIG_NAME, value: std-dive-gas-tracker-dev }
+            - { name: LOGGING_CONFIG, value: "/config/std-dive-gas-tracker-dev-logback.xml" }
+            - { name: SPRING_APPLICATION_NAME, value: std-dive-gas-tracker }
+            - { name: SERVER_PORT, value: "8080" }
+            - { name: ADDITIONAL_JAVA_OPTS, value: "-Xms32m -XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC -XX:G1PeriodicGCInterval=120000 -XX:G1PeriodicGCSystemLoadThreshold=0 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+UseCompactObjectHeaders" }
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://std-dive-logger-db-rw:5432/std_dive_gas_tracker" }
+            - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-gas-tracker-db-credentials, key: username } } }
+            - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-gas-tracker-db-credentials, key: password } } }
+            - { name: STD_DIVE_LOGGER_WS_JWT_PUBLIC_KEY, valueFrom: { secretKeyRef: { name: std-dive-logger-secrets, key: jwt-public-key } } }
+          envFrom:
+            # GAS_TRACKER_WEB_URL (CORS) comes from the overlay's std-dive-logger-env.
+            - configMapRef: { name: std-dive-logger-env }
+          startupProbe:
+            httpGet: { path: /actuator/health/readiness, port: mgmt }
+            periodSeconds: 5
+            failureThreshold: 60          # up to 5 min for Flyway + JVM warmup
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: mgmt }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: mgmt }
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 50m, memory: 320Mi }
+            limits: { memory: 768Mi }

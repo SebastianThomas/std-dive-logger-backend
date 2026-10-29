@@ -6,6 +6,9 @@
 # CNPG auto-creates Secret `std-dive-logger-db-app` (keys: username, password,
 # dbname, host, port, uri, jdbc-uri) - deploy/base/deployment-*.yaml read from it.
 #
+# It also hosts std-dive-gas-tracker's database (own database + role, see
+# gas-tracker-database.yaml and `managed.roles` below).
+#
 # Applied by homelab-actions/cnpg-cluster (see ../.github/workflows/db.yml),
 # deliberately separate from the app deploy workflow. The DB is *replayed* from
 # the legacy PostGIS dump once, right after this Cluster first goes Ready - see
@@ -46,6 +49,15 @@ spec:
         - CREATE EXTENSION IF NOT EXISTS fuzzystrmatch
         - CREATE SCHEMA IF NOT EXISTS maps AUTHORIZATION std_dive_logger
         - CREATE SCHEMA IF NOT EXISTS maps_osm_stage AUTHORIZATION std_dive_logger
+  managed:
+    roles:
+      # Owner of std-dive-gas-tracker's database (gas-tracker-database.yaml). Not a
+      # member of std_dive_logger, so it has no privileges on the dive logger's tables.
+      # Password: the basic-auth Secret db.yml creates once (username = role name).
+      - name: std_dive_gas_tracker
+        ensure: present
+        login: true
+        passwordSecret: { name: std-dive-gas-tracker-db-credentials }
   resources:
     requests: { cpu: 50m, memory: 512Mi }
     limits: { memory: 1024Mi }

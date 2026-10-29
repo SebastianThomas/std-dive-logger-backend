@@ -68,7 +68,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
-        } catch (final JwtException e) {
+        } catch (final JwtException | IllegalArgumentException e) {
+            // Unusable token (other key, HS256, no iss, malformed): unauthenticated -> 401.
             if (!(e instanceof ExpiredJwtException)) {
                 logger.info("Exception parsing JWT", e);
             }

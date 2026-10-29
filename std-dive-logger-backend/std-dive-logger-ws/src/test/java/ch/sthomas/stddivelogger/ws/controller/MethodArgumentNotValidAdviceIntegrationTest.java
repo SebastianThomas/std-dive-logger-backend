@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +19,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
-
-import java.util.Date;
-
-import javax.crypto.SecretKey;
 
 /**
  * A real end-to-end HTTP test for {@code MethodArgumentNotValidAdviceTrait} / {@code
@@ -43,8 +37,6 @@ import javax.crypto.SecretKey;
 @Testcontainers
 class MethodArgumentNotValidAdviceIntegrationTest {
 
-    private static final String TEST_JWT_SECRET =
-            "method-argument-not-valid-it-jwt-signing-secret-needs-to-be-long-enough";
     private static final String TEST_USER_EMAIL = "method-argument-not-valid-it@test.ch";
 
     @Container @ServiceConnection
@@ -56,7 +48,7 @@ class MethodArgumentNotValidAdviceIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> TEST_JWT_SECRET);
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret",
                 () -> "method-argument-not-valid-it-jwt-refresh-secret-needs-to-be-long-enough");
@@ -75,13 +67,7 @@ class MethodArgumentNotValidAdviceIntegrationTest {
     @Autowired private UserRepository userRepository;
 
     private static String bearerToken() {
-        final SecretKey key = Keys.hmacShaKeyFor(TEST_JWT_SECRET.getBytes());
-        return Jwts.builder()
-                .subject(TEST_USER_EMAIL)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(key)
-                .compact();
+        return TestJwtKeys.accessToken(TEST_USER_EMAIL);
     }
 
     @Test

@@ -1,7 +1,7 @@
 name: deploy
 run-name: "deploy ${{ inputs.target || 'dev' }} @ ${{ inputs.tag || github.event.workflow_run.head_branch }}"
 
-# One workflow, both environments (the 4 Spring services -> K3s).
+# One workflow, both environments (the 5 Spring services -> K3s).
 #   - after "Build and push to Image Registry" succeeds for a v* tag
 #       -> auto-deploy to dev, but ONLY if that tag is reachable from main
 #   - manual "Run workflow" -> pick target (dev / prod) + the tag to ship;
@@ -111,7 +111,8 @@ jobs:
           namespace: std-dive-logger-${{ needs.gate.outputs.target }}
           name: std-dive-logger-secrets
           literals: |
-            jwt-secret=${{ secrets.JWT_SECRET }}
+            jwt-signing-key=${{ secrets.JWT_SIGNING_KEY }}
+            jwt-public-key=${{ vars.JWT_PUBLIC_KEY }}
             jwt-refresh-secret=${{ secrets.JWT_REFRESH_SECRET }}
             r2-account-id=${{ secrets.R2_ACCOUNT_ID }}
             r2-access-key=${{ secrets.R2_ACCESS_KEY }}
@@ -152,9 +153,11 @@ jobs:
             IMPORT_WS_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-import-ws:${{ needs.gate.outputs.ref }}
             AUTOCOMPLETE_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-autocomplete:${{ needs.gate.outputs.ref }}
             ANALYTICS_IMAGE=${{ secrets.container_registry_username }}/std-dive-logger-analytics:${{ needs.gate.outputs.ref }}
+            GAS_TRACKER_IMAGE=${{ secrets.container_registry_username }}/std-dive-gas-tracker:${{ needs.gate.outputs.ref }}
           rollouts: >-
             deployment/std-dive-logger-ws
             deployment/std-dive-logger-import-ws
             deployment/std-dive-logger-autocomplete
             deployment/std-dive-logger-analytics
+            deployment/std-dive-gas-tracker
           rollout-timeout: 420s

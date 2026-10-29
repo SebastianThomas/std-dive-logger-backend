@@ -15,6 +15,7 @@ import ch.sthomas.stddivelogger.model.geometry.Location;
 import ch.sthomas.stddivelogger.model.graphs.LegendType;
 import ch.sthomas.stddivelogger.service.DiveService;
 import ch.sthomas.stddivelogger.service.process.GraphImageCreator;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> "test-jwt-secret");
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret", () -> "test-jwt-refresh-secret");
         registry.add(

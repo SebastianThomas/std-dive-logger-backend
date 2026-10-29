@@ -25,6 +25,7 @@ import ch.sthomas.stddivelogger.service.ImportFileService;
 import ch.sthomas.stddivelogger.service.UserService;
 import ch.sthomas.stddivelogger.service.importer.ImportService;
 import ch.sthomas.stddivelogger.service.importer.reprocess.ImportReprocessService;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import jakarta.persistence.EntityManager;
 
@@ -75,7 +76,7 @@ class ImportFileRetentionIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add("ch.sthomas.stddivelogger.ws.jwt-secret", () -> "test-jwt-secret");
+        TestJwtKeys.register(registry);
         registry.add(
                 "ch.sthomas.stddivelogger.ws.jwt-refresh-secret", () -> "test-jwt-refresh-secret");
         registry.add(

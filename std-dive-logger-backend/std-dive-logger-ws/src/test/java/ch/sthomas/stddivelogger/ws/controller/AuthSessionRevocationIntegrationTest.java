@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.data.repository.PushSubscriptionRepository;
 import ch.sthomas.stddivelogger.data.repository.UserRepository;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthResponse;
 import ch.sthomas.stddivelogger.model.entity.UserEntity;
+import ch.sthomas.stddivelogger.ws.auth.TestJwtKeys;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -59,9 +60,7 @@ class AuthSessionRevocationIntegrationTest {
 
     @DynamicPropertySource
     static void nonDatasourceProperties(final DynamicPropertyRegistry registry) {
-        registry.add(
-                "ch.sthomas.stddivelogger.ws.jwt-secret",
-                () -> "auth-session-it-jwt-signing-secret-needs-to-be-long-enough");
+        TestJwtKeys.register(registry);
         registry.add("ch.sthomas.stddivelogger.ws.jwt-refresh-secret", () -> REFRESH_SECRET);
         registry.add("ch.sthomas.stddivelogger.push.vapid.public-key", () -> "BTestPublicKey");
         registry.add(

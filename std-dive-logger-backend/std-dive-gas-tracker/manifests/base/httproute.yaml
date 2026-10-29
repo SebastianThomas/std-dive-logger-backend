@@ -1,0 +1,21 @@
+---
+# Base hostname is the PROD one - the dev overlay patches it to ws.std-dive-gas-tracker-dev. The
+# bare std-dive-gas-tracker[-dev].sthomas.ch serves the web app (separate repo), like the dive
+# logger's ws.std-dive-logger / std-dive-logger pair.
+# TLS: ws.std-dive-gas-tracker[-dev].sthomas.ch is two labels deep, so it needs a
+# *.std-dive-gas-tracker[-dev].sthomas.ch cert on the Traefik websecure listener - the
+# *.sthomas.ch wildcard does not cover it (a wildcard matches exactly one label).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: std-dive-gas-tracker
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: kube-system
+  hostnames:
+    - ws.std-dive-gas-tracker.sthomas.ch
+  rules:
+    - backendRefs:
+        - name: std-dive-gas-tracker
+          port: 80
