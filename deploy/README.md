@@ -101,7 +101,7 @@ The mounted file is fully templatized — every env-specific / secret value is
 - DB: `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` ← CNPG's `std-dive-logger-db-app`
 - `std-dive-logger-secrets` (kube-secret, from GH env secrets + variables) —
   access-token Ed25519 key pair (`JWT_SIGNING_KEY` secret → `ws` only; `JWT_PUBLIC_KEY`
-  variable → `ws` + `import-ws`; make one with `tools/generate-jwt-keys.sh`), refresh-token
+  secret → `ws` + `import-ws` + gas tracker; make one with `tools/generate-jwt-keys.sh`), refresh-token
   secret, R2 account/access/secret, email password, VAPID public/private key +
   subject (web push; `ws` only gets the public key, `analytics` gets all three).
   Only the private key is a real GH *secret* (masked); the public key and

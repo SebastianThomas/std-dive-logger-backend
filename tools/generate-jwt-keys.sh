@@ -32,6 +32,6 @@ STD_DIVE_LOGGER_WS_JWT_PUBLIC_KEY='$(one_line "$public_pem")'
 
 # GitHub environment (dev / prod, each its own pair) - the values without the quotes:
 #   secret   JWT_SIGNING_KEY = the STD_DIVE_LOGGER_WS_JWT_SIGNING_KEY value
-#   variable JWT_PUBLIC_KEY  = the STD_DIVE_LOGGER_WS_JWT_PUBLIC_KEY value
+#   secret   JWT_PUBLIC_KEY  = the STD_DIVE_LOGGER_WS_JWT_PUBLIC_KEY value
 # Gas tracker: add the public key to ch.sthomas.stddivegastracker.auth.public-keys.
 OUT

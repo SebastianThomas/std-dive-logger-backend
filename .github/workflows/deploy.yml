@@ -112,7 +112,7 @@ jobs:
           name: std-dive-logger-secrets
           literals: |
             jwt-signing-key=${{ secrets.JWT_SIGNING_KEY }}
-            jwt-public-key=${{ vars.JWT_PUBLIC_KEY }}
+            jwt-public-key=${{ secrets.JWT_PUBLIC_KEY }}
             jwt-refresh-secret=${{ secrets.JWT_REFRESH_SECRET }}
             r2-account-id=${{ secrets.R2_ACCOUNT_ID }}
             r2-access-key=${{ secrets.R2_ACCESS_KEY }}
