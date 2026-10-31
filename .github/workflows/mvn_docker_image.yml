@@ -8,7 +8,7 @@ jobs:
     build:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v7
                 with:
                     ref: ${{ github.ref_name }}
 
@@ -55,7 +55,7 @@ jobs:
                 # Maven module directory names (std-dive-gas-tracker is not a std-dive-logger-*)
                 module: [ std-dive-logger-ws, std-dive-logger-autocomplete, std-dive-logger-analytics, std-dive-logger-import-ws, std-dive-gas-tracker ]
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v7
                 with:
                     ref: ${{ github.ref_name }}
 
@@ -145,7 +145,7 @@ jobs:
         permissions:
             contents: write
         steps:
-            -   uses: actions/checkout@v5
+            -   uses: actions/checkout@v7
                 with:
                     ref: ${{ github.ref_name }}
 
