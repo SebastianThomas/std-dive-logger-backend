@@ -126,7 +126,8 @@ public class MapsBoundaryDataService {
     public int resolveStaleSites(final long importVersion, final int limit) {
         final var params =
                 new MapSqlParameterSource("importVersion", importVersion).addValue("limit", limit);
-        final List<Long> ids = mapsJdbc.queryForList(STALE_SITE_IDS_SQL, params, Long.class);
+        final List<Long> ids =
+                mapsJdbc.query(STALE_SITE_IDS_SQL, params, (rs, rowNum) -> rs.getLong(1));
         ids.forEach(this::resolveSite);
         return ids.size();
     }

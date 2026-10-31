@@ -1088,9 +1088,9 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
     }
 
     private List<Long> participants(final long vesselId) {
-        return jdbc.queryForList(
+        return jdbc.query(
                 "SELECT fk_member_id FROM t_vessel_loss_participant WHERE fk_vessel_id = ?",
-                Long.class,
+                (rs, rowNum) -> rs.getLong(1),
                 vesselId);
     }
 

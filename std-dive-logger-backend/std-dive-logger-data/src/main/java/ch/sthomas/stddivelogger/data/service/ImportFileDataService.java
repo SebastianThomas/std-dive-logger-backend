@@ -219,7 +219,7 @@ public class ImportFileDataService {
     @Transactional(readOnly = true)
     public List<Long> findProfilesNeedingReprocessing(
             final ToIntFunction<PendingImportSource> currentVersion, final int limit) {
-        return jdbc.queryForList(
+        return jdbc.query(
                 """
                 SELECT DISTINCT l.fk_dive_profile_id
                 FROM t_dive_profile_import_file l
@@ -233,13 +233,13 @@ public class ImportFileDataService {
                 """
                         .formatted(versionCase(currentVersion)),
                 Map.of("limit", limit),
-                Long.class);
+                (rs, rowNum) -> rs.getLong(1));
     }
 
     @Transactional(readOnly = true)
     public List<Long> findDiveLinksNeedingReprocessing(
             final ToIntFunction<PendingImportSource> currentVersion, final int limit) {
-        return jdbc.queryForList(
+        return jdbc.query(
                 """
                 SELECT l.pk_dive_import_file_id
                 FROM t_dive_import_file l
@@ -250,7 +250,7 @@ public class ImportFileDataService {
                 """
                         .formatted(versionCase(currentVersion)),
                 Map.of("limit", limit),
-                Long.class);
+                (rs, rowNum) -> rs.getLong(1));
     }
 
     /** Built from the enum and ints only - nothing user-supplied reaches the SQL text. */

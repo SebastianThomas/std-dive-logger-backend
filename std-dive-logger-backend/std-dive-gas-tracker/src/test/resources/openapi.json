@@ -1736,7 +1736,7 @@
           "required" : false,
           "schema" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         }, {
           "in" : "query",
@@ -1744,7 +1744,7 @@
           "required" : false,
           "schema" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         }, {
           "in" : "query",
@@ -1840,7 +1840,7 @@
           "required" : false,
           "schema" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         } ],
         "requestBody" : {
@@ -2308,7 +2308,7 @@
           "required" : false,
           "schema" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         }, {
           "in" : "query",
@@ -2316,7 +2316,7 @@
           "required" : false,
           "schema" : {
             "format" : "int64",
-            "type" : "integer"
+            "type" : [ "integer", "null" ]
           }
         } ],
         "responses" : {

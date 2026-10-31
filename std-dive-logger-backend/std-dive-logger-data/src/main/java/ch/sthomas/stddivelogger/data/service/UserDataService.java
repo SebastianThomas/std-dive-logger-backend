@@ -129,7 +129,7 @@ public class UserDataService {
      */
     @Transactional(readOnly = true)
     public List<String> findObjectStoragePathsOfAccount(final long userId) {
-        return namedParameterJdbcTemplate.queryForList(
+        return namedParameterJdbcTemplate.query(
                 """
                 SELECT storage_path FROM t_dive_photo
                 WHERE fk_uploaded_by_user_id = :userId
@@ -139,7 +139,7 @@ public class UserDataService {
                 WHERE fk_diver_id = :userId AND preview_image IS NOT NULL
                 """,
                 Map.of("userId", userId),
-                String.class);
+                (rs, rowNum) -> rs.getString(1));
     }
 
     @Transactional(readOnly = true)
