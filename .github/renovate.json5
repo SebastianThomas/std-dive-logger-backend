@@ -31,6 +31,12 @@
       matchPackageNames: ['ch.sthomas.**'],
       enabled: false,
     },
+    // Maven Central answers Mend's shared IPs with 429, and Renovate aborts the whole run on a
+    // temporary error from Central alone (not from other registries). Same content, via Google.
+    {
+      matchDatasources: ['maven'],
+      registryUrls: ['https://maven-central.storage-download.googleapis.com/maven2/'],
+    },
     // What runs in the services: grouped, but a person looks at it.
     {
       matchManagers: ['maven'],
