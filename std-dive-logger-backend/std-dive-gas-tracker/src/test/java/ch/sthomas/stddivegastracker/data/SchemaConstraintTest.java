@@ -272,14 +272,11 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                     team         | default_loss_policy = 'FOO'                    | t_team_default_loss_policy_check
                     team         | name = ' '                                     | t_team_name_check
                     member       | role = 'OWNER'                                 | t_team_member_role_check
-                    # identity: lower-case emails only, unique; a member is a user xor an invited email
+                    # identity: lower-case emails only, unique; a member is always a user
                     user         | email = 'Upper@Example.test'                   | t_user_email_check
                     user         | email = 'no-at-sign'                           | t_user_email_check
                     user         | email = (SELECT email FROM t_user WHERE email LIKE 'd1-c-alice%') | t_user_email_key
-                    member       | invited_email = 'both@example.test'            | ck_team_member_user_or_email
-                    member       | fk_user_id = NULL                              | ck_team_member_user_or_email
-                    member       | fk_user_id = NULL, invited_email = 'Mixed@Example.test' | t_team_member_invited_email_check
-                    member       | fk_user_id = NULL, invited_email = 'no-at-sign' | t_team_member_invited_email_check
+                    member       | fk_user_id = NULL                              | fk_user_id
                     vessel       | loss_policy = 'FOO'                            | t_vessel_loss_policy_check
                     vessel       | label = ' '                                    | t_vessel_label_check
                     # foreign keys point at existing rows
@@ -335,7 +332,6 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                     costLine     | amount = 999999999.99
                     payment      | amount = 0.01
                     user         | email = NULL
-                    member       | fk_user_id = NULL, invited_email = 'pending@example.test'
                     team         | currency = 'USD'
                     """)
     void edgeValueIsAccepted(final String row, final String set) {
@@ -356,36 +352,6 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                                                 T0)))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("\"uq_team_member_team_user\"");
-    }
-
-    @Test
-    void duplicateInvitationInOneTeamIsRejectedButNotAcrossTeams() {
-        members.saveAndFlush(
-                new TeamMemberEntity(team.getId(), "invited@example.test", Role.MEMBER, T0));
-        final var otherTeam = teams.save(new TeamEntity("Other team", "CHF", LossPolicy.POOLED));
-        members.saveAndFlush(
-                new TeamMemberEntity(otherTeam.getId(), "invited@example.test", Role.MEMBER, T0));
-
-        assertThatThrownBy(
-                        () ->
-                                members.saveAndFlush(
-                                        new TeamMemberEntity(
-                                                team.getId(),
-                                                "invited@example.test",
-                                                Role.ADMIN,
-                                                T0)))
-                .isInstanceOf(DataIntegrityViolationException.class)
-                .hasMessageContaining("\"uq_team_member_team_invited_email\"");
-    }
-
-    @Test
-    void invitationsAreLookedUpByEmailThroughAPartialIndex() {
-        assertThat(
-                        jdbc.queryForObject(
-                                "SELECT indexdef FROM pg_indexes WHERE indexname = 'ix_team_member_invited_email'",
-                                String.class))
-                .contains("(invited_email)")
-                .contains("WHERE (invited_email IS NOT NULL)");
     }
 
     @Test
@@ -506,7 +472,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                         jdbc.queryForList(
                                 "SELECT version FROM flyway_schema_history ORDER BY installed_rank",
                                 String.class))
-                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3");
+                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4");
     }
 
     /** AGENTS.md "Migrations": Postgres creates no index for an FK, so each needs a leading one. */

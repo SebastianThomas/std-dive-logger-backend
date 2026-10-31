@@ -323,10 +323,10 @@ public final class FillService {
     }
 
     /**
-     * A cylinder or bank draw is charged to a member of the team who has not left (PENDING is
-     * fine). A bank target is in service now and was open at {@code filledAt} (DOMAIN §5.6). An
-     * update may keep the target it had - a member who left since, a bank closed since (then {@code
-     * filledAt} stays before the closing) - so a wrong pressure can still be corrected.
+     * A cylinder or bank draw is charged to a member of the team who has not left. A bank target is
+     * in service now and was open at {@code filledAt} (DOMAIN §5.6). An update may keep the target
+     * it had - a member who left since, a bank closed since (then {@code filledAt} stays before the
+     * closing) - so a wrong pressure can still be corrected.
      */
     private static ResolvedTarget resolveTarget(
             final FillTarget target,

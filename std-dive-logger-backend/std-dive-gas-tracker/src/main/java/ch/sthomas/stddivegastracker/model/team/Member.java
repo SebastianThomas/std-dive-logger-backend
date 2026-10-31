@@ -6,7 +6,7 @@ import java.time.Instant;
 
 /**
  * API.md §2 {@code Member}. Teammates see each other's username, never an email address (DOMAIN
- * §2). {@code username} is null while PENDING, and until a token carrying it was seen.
+ * §2). {@code username} is null until a token carrying it was seen.
  */
 public record Member(
         long memberId,

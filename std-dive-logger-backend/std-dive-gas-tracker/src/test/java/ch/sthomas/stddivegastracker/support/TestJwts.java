@@ -73,6 +73,10 @@ public final class TestJwts {
         if (uid != null) {
             builder.claim("uid", uid);
         }
+        // Real tokens always carry one; malformed test subjects have nothing to derive it from.
+        if (email.contains("@")) {
+            builder.claim("username", email.substring(0, email.indexOf('@')));
+        }
         return builder;
     }
 

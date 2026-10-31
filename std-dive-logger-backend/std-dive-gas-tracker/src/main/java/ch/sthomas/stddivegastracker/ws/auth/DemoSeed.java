@@ -101,12 +101,16 @@ public final class DemoSeed {
         final var aliceId =
                 teamService
                         .addMember(
-                                teamId, admin, new AddMemberRequest(null, ALICE_EMAIL, Role.MEMBER))
+                                teamId,
+                                admin,
+                                new AddMemberRequest(usernameOf(ALICE_EMAIL), Role.MEMBER))
                         .memberId();
         final var bobId =
                 teamService
                         .addMember(
-                                teamId, admin, new AddMemberRequest(null, BOB_EMAIL, Role.MEMBER))
+                                teamId,
+                                admin,
+                                new AddMemberRequest(usernameOf(BOB_EMAIL), Role.MEMBER))
                         .memberId();
 
         // the nearly empty bank the team already had when it started using the app
@@ -181,13 +185,14 @@ public final class DemoSeed {
                 "demo-seed: created '{}' for {} (local development only).", TEAM_NAME, ADMIN_EMAIL);
     }
 
+    private static String usernameOf(final String email) {
+        return email.substring(0, email.indexOf('@'));
+    }
+
     private GasUser user(final String email, final String displayName) {
         final var user =
                 userService.resolveAuthenticated(
-                        DevLoginController.devUserId(email),
-                        email,
-                        true,
-                        email.substring(0, email.indexOf('@')));
+                        DevLoginController.devUserId(email), email, usernameOf(email));
         userService.updateMe(user, new UpdateMeRequest(displayName));
         return user;
     }

@@ -27,17 +27,13 @@ public final class UserService {
 
     /**
      * The user behind a verified token: called once per authenticated request with the JWT claims
-     * {@code uid}, {@code sub} (email), {@code email_verified} and {@code username} (absent from
-     * tokens issued before it existed; see ws.auth). DOMAIN §2: creates the row on first sight,
-     * refreshes a changed email, binds invitations.
+     * {@code uid}, {@code sub} (email) and {@code username} (absent from tokens issued before it
+     * existed; see ws.auth). DOMAIN §2: creates the row on first sight, refreshes a changed email,
+     * binds invitations.
      */
     public GasUser resolveAuthenticated(
-            final long userId,
-            final String subject,
-            final boolean emailVerified,
-            final @Nullable String username) {
-        return userDataService.syncAuthenticated(
-                userId, normalizeEmail(subject), emailVerified, username);
+            final long userId, final String subject, final @Nullable String username) {
+        return userDataService.syncAuthenticated(userId, normalizeEmail(subject), username);
     }
 
     /** Lists the user's ACTIVE teams only (DOMAIN §10: LEFT members are non-members). */

@@ -101,43 +101,12 @@ public class TeamDataService {
     }
 
     /**
-     * {@code email} is normalised. A known user (a row with that email) becomes ACTIVE, an unknown
-     * email a PENDING invitation (DOMAIN §2). A LEFT row is reactivated in place (unique per user
-     * or invited email); ACTIVE and PENDING are a 409.
+     * Only someone who already uses the app: a waiting invitation for an unknown name would let
+     * anyone register a mistyped one and join. A LEFT row is reactivated in place (unique per
+     * user).
      */
     @Transactional
-    public Member addMember(final long teamId, final String email, final Role role) {
-        lockTeam(teamId);
-        final var now = Instant.now();
-        final var user = userRepository.findByEmail(email);
-        final var existing =
-                user.flatMap(u -> memberRepository.findByTeamIdAndUserId(teamId, u.getId()))
-                        .or(() -> memberRepository.findByTeamIdAndInvitedEmail(teamId, email));
-        if (existing.isPresent()) {
-            final var member = existing.get();
-            if (member.getLeftAt() == null) {
-                throw new IllegalStateException(
-                        member.isActive()
-                                ? "Already a member of this team."
-                                : "Already invited to this team.");
-            }
-            member.setRole(role);
-            reactivate(member, now);
-            return toMembers(List.of(member)).getFirst();
-        }
-        final var created =
-                user.isPresent()
-                        ? new TeamMemberEntity(teamId, user.get().getId(), role, now)
-                        : new TeamMemberEntity(teamId, email, role, now);
-        return toMembers(List.of(memberRepository.save(created))).getFirst();
-    }
-
-    /**
-     * Only someone who already uses the app: nothing to bind an unknown name to, and anyone could
-     * later register a mistyped one and join.
-     */
-    @Transactional
-    public Member addMemberByUsername(final long teamId, final String username, final Role role) {
+    public Member addMember(final long teamId, final String username, final Role role) {
         lockTeam(teamId);
         final var user =
                 userRepository
@@ -217,11 +186,7 @@ public class TeamDataService {
                 .orElseThrow(() -> new NoSuchElementException(INVALID_INVITE));
     }
 
-    /**
-     * Absent {@code role}/{@code status} stay as they are; LEFT -> ACTIVE resets joinedAt. A member
-     * without a user (PENDING, or LEFT while pending) can be demoted or set LEFT, but only that
-     * email's first sign-in makes it ACTIVE.
-     */
+    /** Absent {@code role}/{@code status} stay as they are; LEFT -> ACTIVE resets joinedAt. */
     @Transactional
     public Member updateMember(
             final long teamId,
@@ -233,12 +198,6 @@ public class TeamDataService {
                 memberRepository
                         .findByIdAndTeamId(memberId, teamId)
                         .orElseThrow(() -> new NoSuchElementException("Member not found."));
-        if (status == MemberStatus.PENDING) {
-            throw new IllegalArgumentException("Status can only be set to ACTIVE or LEFT.");
-        }
-        if (status == MemberStatus.ACTIVE && member.getUserId() == null) {
-            throw new IllegalStateException("Waits for the first sign-in.");
-        }
         final var newRole = role == null ? member.getRole() : role;
         final var nowLeft =
                 status == null ? member.getLeftAt() != null : status == MemberStatus.LEFT;
@@ -291,17 +250,12 @@ public class TeamDataService {
     }
 
     /**
-     * Joins the users' username and display name (from the invited email while PENDING); ACTIVE
-     * first, then PENDING, then LEFT, each by name, then id.
+     * Joins the users' username and display name; ACTIVE first, then LEFT, each by name, then id.
      */
     private List<Member> toMembers(final List<TeamMemberEntity> members) {
         final var users =
                 userRepository
-                        .findAllById(
-                                members.stream()
-                                        .map(TeamMemberEntity::getUserId)
-                                        .filter(Objects::nonNull)
-                                        .toList())
+                        .findAllById(members.stream().map(TeamMemberEntity::getUserId).toList())
                         .stream()
                         .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
         return members.stream()
@@ -312,12 +266,7 @@ public class TeamDataService {
 
     private static Member toRecord(
             final TeamMemberEntity member, final Map<Long, UserEntity> users) {
-        final var userId = member.getUserId();
-        if (userId == null) {
-            final var invited = Objects.requireNonNull(member.getInvitedEmail());
-            return member.toRecord(null, UserDataService.defaultDisplayName(invited));
-        }
-        final var user = Objects.requireNonNull(users.get(userId));
+        final var user = Objects.requireNonNull(users.get(member.getUserId()));
         return member.toRecord(user.getUsername(), user.getDisplayName());
     }
 }

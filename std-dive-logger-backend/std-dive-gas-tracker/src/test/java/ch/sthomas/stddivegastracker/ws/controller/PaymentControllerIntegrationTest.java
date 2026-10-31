@@ -150,29 +150,29 @@ final class PaymentControllerIntegrationTest extends AbstractPaymentIntegrationT
     }
 
     @Test
-    void aPendingMemberCanBeThePayerOrTheRecipientWhenTheOtherPartyOrAnAdminRecordsIt() {
+    void aMemberCanBeThePayerOrTheRecipientWhenTheOtherPartyOrAnAdminRecordsIt() {
         final var crew = crew();
-        final var pending =
-                addMember(crew.adminEmail(), crew.teamId(), uniqueEmail("pending"), Role.MEMBER)
+        final var another =
+                addMember(crew.adminEmail(), crew.teamId(), uniqueEmail("another"), Role.MEMBER)
                         .memberId();
         final var b = crew.b().memberId();
-        fillFor(crew, pending, 60);
+        fillFor(crew, another, 60);
 
-        // the pending payer's recipient (a plain member) records it, then an admin; a pending
-        // recipient is paid by a plain member
+        // the payer's recipient (a plain member) records it, then an admin; the other way
+        // round a plain member pays
         final var byRecipient =
-                recordPayment(emailOf(crew.b()), crew.teamId(), paymentBody(pending, b, "5.00"));
+                recordPayment(emailOf(crew.b()), crew.teamId(), paymentBody(another, b, "5.00"));
         final var byAdmin =
-                recordPayment(crew.adminEmail(), crew.teamId(), paymentBody(pending, b, "6.00"));
-        final var toPending =
-                recordPayment(emailOf(crew.b()), crew.teamId(), paymentBody(b, pending, "1.00"));
+                recordPayment(crew.adminEmail(), crew.teamId(), paymentBody(another, b, "6.00"));
+        final var toAnother =
+                recordPayment(emailOf(crew.b()), crew.teamId(), paymentBody(b, another, "1.00"));
 
-        assertThat(byRecipient.from().memberId()).isEqualTo(pending);
-        assertThat(byAdmin.from().memberId()).isEqualTo(pending);
-        assertThat(toPending.to().memberId()).isEqualTo(pending);
+        assertThat(byRecipient.from().memberId()).isEqualTo(another);
+        assertThat(byAdmin.from().memberId()).isEqualTo(another);
+        assertThat(toAnother.to().memberId()).isEqualTo(another);
         final var balances = balancesOf(crew.adminEmail(), crew.teamId());
-        assertThat(balanceOf(balances, pending).paymentsSent().toPlainString()).isEqualTo("11.00");
-        assertThat(balanceOf(balances, pending).paymentsReceived().toPlainString())
+        assertThat(balanceOf(balances, another).paymentsSent().toPlainString()).isEqualTo("11.00");
+        assertThat(balanceOf(balances, another).paymentsReceived().toPlainString())
                 .isEqualTo("1.00");
         // B received 5.00 + 6.00 and sent 1.00
         assertThat(balanceOf(balances, b).balance().toPlainString()).isEqualTo("-10.00");

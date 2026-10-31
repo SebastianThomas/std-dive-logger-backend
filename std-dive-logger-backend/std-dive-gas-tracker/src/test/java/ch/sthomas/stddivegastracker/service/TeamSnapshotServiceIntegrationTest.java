@@ -153,7 +153,7 @@ final class TeamSnapshotServiceIntegrationTest extends AbstractVesselIntegration
         final var admin = uniqueEmail("admin");
         final var team = createTeam(admin);
         final var active = addActiveMember(admin, team.teamId());
-        final var pending = addMember(admin, team.teamId(), uniqueEmail("pending"), Role.MEMBER);
+        final var another = addMember(admin, team.teamId(), uniqueEmail("another"), Role.MEMBER);
         final var leaver = addActiveMember(admin, team.teamId());
         send(
                         HttpMethod.POST,
@@ -171,14 +171,14 @@ final class TeamSnapshotServiceIntegrationTest extends AbstractVesselIntegration
         final var state = snapshots.snapshot(membership(team));
 
         assertThat(state.input().activeMemberIds())
-                .containsExactlyInAnyOrder(team.memberId(), active.memberId());
-        assertThat(state.members()).containsKeys(pending.memberId(), leaver.memberId());
-        // fallback: ACTIVE members only (no PENDING, no LEFT) share the loss of the early bank
+                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), another.memberId());
+        assertThat(state.members()).containsKeys(another.memberId(), leaver.memberId());
+        // fallback: ACTIVE members only (no LEFT) share the loss of the early bank
         assertThat(shareHolders(state, early.vesselId()))
-                .containsExactlyInAnyOrder(team.memberId(), active.memberId());
-        // the real snapshot: not LEFT, so ACTIVE and PENDING
+                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), another.memberId());
+        // the real snapshot: not LEFT
         assertThat(shareHolders(state, late.vesselId()))
-                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), pending.memberId());
+                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), another.memberId());
     }
 
     @Test

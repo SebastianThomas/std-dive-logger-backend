@@ -1,7 +1,6 @@
 package ch.sthomas.stddivegastracker.ws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 
 import ch.sthomas.stddivegastracker.model.team.Member;
 import ch.sthomas.stddivegastracker.model.team.MemberStatus;
@@ -118,7 +117,7 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
     // --- add ----------------------------------------------------------------------------
 
     @Test
-    void anAdminAddsAnExistingUserAsMemberByDefaultAndTheEmailIsNormalised() {
+    void anAdminAddsAnExistingUserAsMemberByDefaultIgnoringCaseAndSpaces() {
         final var admin = uniqueEmail("admin");
         final var team = createTeam(admin);
         final var diver = uniqueEmail("diver");
@@ -131,8 +130,10 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                                         "/v1/teams/" + team.teamId() + "/members",
                                         admin,
                                         Map.of(
-                                                "email",
-                                                "  " + diver.toUpperCase(Locale.ROOT) + " "))
+                                                "username",
+                                                "  "
+                                                        + usernameOf(diver).toUpperCase(Locale.ROOT)
+                                                        + "  "))
                                 .expectStatus()
                                 .isOk()
                                 .expectBody(Member.class)
@@ -171,11 +172,13 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
         final var diver = addMember(admin, team.teamId(), uniqueEmail("diver"), Role.MEMBER);
         me(emailOf(diver));
 
-        add(admin, team.teamId(), Map.of("email", emailOf(diver), "role", "ADMIN"))
+        add(admin, team.teamId(), Map.of("username", usernameOf(emailOf(diver)), "role", "ADMIN"))
                 .expectStatus()
                 .isEqualTo(409);
         // The creator is an ACTIVE member as well.
-        add(admin, team.teamId(), Map.of("email", admin)).expectStatus().isEqualTo(409);
+        add(admin, team.teamId(), Map.of("username", usernameOf(admin)))
+                .expectStatus()
+                .isEqualTo(409);
         assertThat(members(admin, team.teamId())).hasSize(2);
         assertThat(members(admin, team.teamId()))
                 .filteredOn(member -> member.memberId() == diver.memberId())
@@ -211,7 +214,7 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
         final var diver = addMember(admin, team.teamId(), uniqueEmail("diver"), Role.MEMBER);
         final var leaver = addMember(admin, team.teamId(), uniqueEmail("leaver"), Role.ADMIN);
         leave(emailOf(leaver), team.teamId()).expectStatus().isNoContent();
-        final var body = Map.<String, Object>of("email", uniqueEmail("newcomer"));
+        final var body = Map.<String, Object>of("username", "newcomer");
 
         add(emailOf(diver), team.teamId(), body).expectStatus().isForbidden();
         add(uniqueEmail("stranger"), team.teamId(), body).expectStatus().isNotFound();
@@ -227,184 +230,13 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
 
         for (final var body :
                 List.<Map<String, Object>>of(
-                        Map.of("email", "not-an-email"),
-                        Map.of("email", "   "),
+                        Map.of("username", "nobody-with-this-name"),
+                        Map.of("username", "   "),
                         Map.of("role", "ADMIN"),
-                        Map.of("email", uniqueEmail("x"), "role", "OWNER"))) {
+                        Map.of("username", usernameOf(admin), "role", "OWNER"))) {
             add(admin, team.teamId(), body).expectStatus().isBadRequest();
         }
         assertThat(members(admin, team.teamId())).hasSize(1);
-    }
-
-    // --- PENDING members (DOMAIN §2): an unknown email waits for its first sign-in -------
-
-    @Test
-    void anUnknownEmailBecomesAPendingMemberShownWithItsInvitedEmail() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var newcomer = uniqueEmail("newcomer");
-
-        final var pending =
-                Objects.requireNonNull(
-                        add(
-                                        admin,
-                                        team.teamId(),
-                                        Map.of(
-                                                "email",
-                                                "  " + newcomer.toUpperCase(Locale.ROOT) + " ",
-                                                "role",
-                                                "ADMIN"))
-                                .expectStatus()
-                                .isOk()
-                                .expectBody(Member.class)
-                                .returnResult()
-                                .getResponseBody());
-
-        assertThat(pending.status()).isEqualTo(MemberStatus.PENDING);
-        assertThat(pending.displayName()).isEqualTo(newcomer.substring(0, newcomer.indexOf('@')));
-        assertThat(pending.role()).isEqualTo(Role.ADMIN);
-        assertThat(pending.joinedAt()).isNotNull();
-        assertThat(pending.leftAt()).isNull();
-        assertThat(members(admin, team.teamId())).contains(pending);
-        // No user row is created for the invited email.
-        assertThat(
-                        jdbc.queryForObject(
-                                "SELECT count(*) FROM t_user WHERE email = ?",
-                                Integer.class,
-                                newcomer))
-                .isZero();
-    }
-
-    @Test
-    void membersAreListedActiveThenPendingThenLeft() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        setDisplayName(admin, "Zed");
-        final var leaver = addMember(admin, team.teamId(), uniqueEmail("aaron"), Role.MEMBER);
-        setDisplayName(emailOf(leaver), "Aaron");
-        updateOk(admin, team.teamId(), leaver.memberId(), Map.of("status", "LEFT"));
-        final var pendingB =
-                addMember(admin, team.teamId(), "beta" + uniqueEmail("p"), Role.MEMBER);
-        final var pendingA =
-                addMember(admin, team.teamId(), "Alpha" + uniqueEmail("p"), Role.MEMBER);
-
-        final var list = members(admin, team.teamId());
-
-        assertThat(list)
-                .extracting(Member::memberId)
-                .containsExactly(
-                        team.memberId(),
-                        pendingA.memberId(),
-                        pendingB.memberId(),
-                        leaver.memberId());
-        assertThat(list)
-                .extracting(Member::status)
-                .containsExactly(
-                        MemberStatus.ACTIVE,
-                        MemberStatus.PENDING,
-                        MemberStatus.PENDING,
-                        MemberStatus.LEFT);
-    }
-
-    @Test
-    void addingAPendingMemberAgainIsAConflict() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var invited = addMember(admin, team.teamId(), uniqueEmail("invited"), Role.MEMBER);
-
-        add(
-                        admin,
-                        team.teamId(),
-                        Map.of("email", emailOf(invited).toUpperCase(Locale.ROOT), "role", "ADMIN"))
-                .expectStatus()
-                .isEqualTo(409)
-                .expectBody(String.class)
-                .value(body -> assertThat(body).contains("Already invited"));
-
-        assertThat(members(admin, team.teamId())).hasSize(2).contains(invited);
-    }
-
-    @Test
-    void aPendingMemberCannotBeSetActiveBeforeTheirFirstSignIn() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var invited = addMember(admin, team.teamId(), uniqueEmail("invited"), Role.MEMBER);
-
-        for (final var request :
-                List.<Map<String, Object>>of(
-                        Map.of("status", "ACTIVE"), Map.of("status", "ACTIVE", "role", "ADMIN"))) {
-            update(admin, team.teamId(), invited.memberId(), request)
-                    .expectStatus()
-                    .isEqualTo(409)
-                    .expectBody(String.class)
-                    .value(body -> assertThat(body).contains("Waits for the first sign-in"));
-        }
-        // Also not after the invitation was withdrawn.
-        updateOk(admin, team.teamId(), invited.memberId(), Map.of("status", "LEFT"));
-        update(admin, team.teamId(), invited.memberId(), Map.of("status", "ACTIVE"))
-                .expectStatus()
-                .isEqualTo(409);
-        // The rejected request changed nothing, not even the role.
-        assertThat(members(admin, team.teamId()))
-                .filteredOn(member -> member.memberId() == invited.memberId())
-                .extracting(Member::role, Member::status)
-                .containsExactly(tuple(Role.MEMBER, MemberStatus.LEFT));
-    }
-
-    @Test
-    void pendingIsNotAStatusAnAdminCanRequest() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var diver = addMember(admin, team.teamId(), uniqueEmail("diver"), Role.MEMBER);
-        me(emailOf(diver));
-
-        update(admin, team.teamId(), diver.memberId(), Map.of("status", "PENDING"))
-                .expectStatus()
-                .isBadRequest();
-        update(admin, team.teamId(), team.memberId(), Map.of("status", "PENDING"))
-                .expectStatus()
-                .isBadRequest();
-        assertThat(members(admin, team.teamId()))
-                .extracting(Member::status)
-                .containsOnly(MemberStatus.ACTIVE);
-    }
-
-    @Test
-    void anAdminCanChangeTheRoleOfAPendingMemberAndSetItLeftAndInviteItAgain() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var invited = addMember(admin, team.teamId(), uniqueEmail("invited"), Role.MEMBER);
-
-        final var promoted =
-                updateOk(admin, team.teamId(), invited.memberId(), Map.of("role", "ADMIN"));
-        assertThat(promoted.status()).isEqualTo(MemberStatus.PENDING);
-        assertThat(promoted.role()).isEqualTo(Role.ADMIN);
-
-        final var left =
-                updateOk(admin, team.teamId(), invited.memberId(), Map.of("status", "LEFT"));
-        assertThat(left.status()).isEqualTo(MemberStatus.LEFT);
-        assertThat(left.leftAt()).isNotNull();
-        assertThat(left.displayName()).isEqualTo(invited.displayName());
-
-        final var again = addMember(admin, team.teamId(), emailOf(invited), Role.MEMBER);
-        assertThat(again.memberId()).isEqualTo(invited.memberId());
-        assertThat(again.status()).isEqualTo(MemberStatus.PENDING);
-        assertThat(again.role()).isEqualTo(Role.MEMBER);
-        assertThat(again.leftAt()).isNull();
-        assertThat(again.joinedAt()).isAfter(invited.joinedAt());
-        assertThat(members(admin, team.teamId())).hasSize(2);
-    }
-
-    @Test
-    void aPendingAdminDoesNotCountAsAnAdmin() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        addMember(admin, team.teamId(), uniqueEmail("pending-admin"), Role.ADMIN);
-
-        // Nobody could administrate the team if its only bound admin left: still the last admin.
-        assertLastAdmin(leave(admin, team.teamId()));
-        assertLastAdmin(update(admin, team.teamId(), team.memberId(), Map.of("role", "MEMBER")));
-        assertLastAdmin(update(admin, team.teamId(), team.memberId(), Map.of("status", "LEFT")));
     }
 
     // --- update -------------------------------------------------------------------------
@@ -423,13 +255,12 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                 .isEqualTo(
                         new Member(
                                 diver.memberId(),
-                                null,
+                                usernameOf(emailOf(diver)),
                                 diver.displayName(),
                                 Role.ADMIN,
                                 MemberStatus.ACTIVE,
                                 diver.joinedAt(),
                                 null));
-        assertThat(diver.status()).isEqualTo(MemberStatus.PENDING);
         // Promoted members can manage the team.
         send(HttpMethod.PUT, "/v1/teams/" + team.teamId(), emailOf(diver), validTeam())
                 .expectStatus()

@@ -3,9 +3,6 @@
     "schemas" : {
       "AddMemberRequest" : {
         "properties" : {
-          "email" : {
-            "type" : "string"
-          },
           "role" : {
             "enum" : [ "ADMIN", "MEMBER" ],
             "type" : "string"
@@ -14,7 +11,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "role" ],
+        "required" : [ "role", "username" ],
         "type" : "object"
       },
       "Balances" : {
@@ -615,7 +612,7 @@
             "type" : "string"
           },
           "status" : {
-            "enum" : [ "ACTIVE", "PENDING", "LEFT" ],
+            "enum" : [ "ACTIVE", "LEFT" ],
             "type" : "string"
           },
           "username" : {
@@ -1224,7 +1221,7 @@
             "type" : "string"
           },
           "status" : {
-            "enum" : [ "ACTIVE", "PENDING", "LEFT" ],
+            "enum" : [ "ACTIVE", "LEFT" ],
             "type" : "string"
           }
         },

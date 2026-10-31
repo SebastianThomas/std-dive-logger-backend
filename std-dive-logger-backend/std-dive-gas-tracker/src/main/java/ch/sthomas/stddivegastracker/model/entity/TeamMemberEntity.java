@@ -11,11 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 
-/**
- * A person's membership in one team (DOMAIN §2). Exactly one of {@code userId} and {@code
- * invitedEmail} is set: an invited email without a user is PENDING until that email's first
- * verified sign-in binds it (see {@code UserDataService}); {@code leftAt} set means LEFT.
- */
+/** A person's membership in one team (DOMAIN §2); {@code leftAt} set means LEFT. */
 @Entity
 @Table(name = "t_team_member")
 @SuppressWarnings("NullAway.Init")
@@ -29,11 +25,8 @@ public class TeamMemberEntity {
     @Column(name = "fk_team_id", nullable = false)
     private Long teamId;
 
-    @Column(name = "fk_user_id")
-    private @Nullable Long userId;
-
-    @Column(name = "invited_email", length = 320)
-    private @Nullable String invitedEmail;
+    @Column(name = "fk_user_id", nullable = false)
+    private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 10)
@@ -56,15 +49,6 @@ public class TeamMemberEntity {
         this.joinedAt = joinedAt;
     }
 
-    /** A PENDING member; {@code invitedEmail} is normalised (trimmed, lower-cased). */
-    public TeamMemberEntity(
-            final Long teamId, final String invitedEmail, final Role role, final Instant joinedAt) {
-        this.teamId = teamId;
-        this.invitedEmail = invitedEmail;
-        this.role = role;
-        this.joinedAt = joinedAt;
-    }
-
     public Long getId() {
         return id;
     }
@@ -73,18 +57,8 @@ public class TeamMemberEntity {
         return teamId;
     }
 
-    public @Nullable Long getUserId() {
+    public Long getUserId() {
         return userId;
-    }
-
-    public @Nullable String getInvitedEmail() {
-        return invitedEmail;
-    }
-
-    /** Binds a PENDING member to the user who signed in with its invited email. */
-    public void bindTo(final Long userId) {
-        this.userId = userId;
-        this.invitedEmail = null;
     }
 
     public Role getRole() {
@@ -113,26 +87,19 @@ public class TeamMemberEntity {
         this.leftAt = leftAt;
     }
 
-    /** ACTIVE: bound to a user and not left - the only state that may use the API (DOMAIN §10). */
+    /** ACTIVE: not left - the only state that may use the API (DOMAIN §10). */
     public boolean isActive() {
-        return userId != null && leftAt == null;
+        return leftAt == null;
     }
 
     public MemberStatus status() {
-        if (leftAt != null) {
-            return MemberStatus.LEFT;
-        }
-        return userId == null ? MemberStatus.PENDING : MemberStatus.ACTIVE;
+        return leftAt != null ? MemberStatus.LEFT : MemberStatus.ACTIVE;
     }
 
     public TeamMembership toMembership() {
         return new TeamMembership(id, teamId, role);
     }
 
-    /**
-     * {@code email} and {@code displayName} are the user's, or the invited address's while PENDING;
-     * {@code email} is null for a user whose address moved to another account.
-     */
     public Member toRecord(final @Nullable String username, final String displayName) {
         return new Member(id, username, displayName, role, status(), joinedAt, leftAt);
     }

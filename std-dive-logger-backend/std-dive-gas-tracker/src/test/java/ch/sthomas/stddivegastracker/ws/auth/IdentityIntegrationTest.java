@@ -1,7 +1,6 @@
 package ch.sthomas.stddivegastracker.ws.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.tuple;
 
 import ch.sthomas.stddivegastracker.model.team.Member;
 import ch.sthomas.stddivegastracker.model.team.MemberStatus;
@@ -18,8 +17,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -28,9 +25,8 @@ import java.util.stream.IntStream;
 
 /**
  * DOMAIN §2: the identity is the dive-logger {@code uid}, the email a copy refreshed on every
- * request, and an invited email turns into a membership at its first verified sign-in. Tokens come
- * from {@link TestJwts}; a person is known by email ({@link TestJwts#uidOf}) unless a test changes
- * the email of one uid.
+ * request. Tokens come from {@link TestJwts}; a person is known by email ({@link TestJwts#uidOf})
+ * unless a test changes the email of one uid.
  */
 final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
 
@@ -101,7 +97,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
         final var claimerEmail = uniqueEmail("claimer");
         final var claimerUid = TestJwts.uidOf(claimerEmail);
         me(claimerEmail);
-        assertThat(holder.status()).isEqualTo(MemberStatus.PENDING);
 
         // The claimer's dive-logger address becomes the one the holder's copy still shows.
         assertThat(meWithToken(bearer(claimerUid, holderEmail)).email()).isEqualTo(holderEmail);
@@ -157,209 +152,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
                         uid));
     }
 
-    // --- PENDING members are bound at the first verified sign-in ----------------------------
-
-    @Test
-    void anInvitedEmailBecomesAnActiveMembershipWithTheSameMemberIdOnTheFirstSignIn() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var person = uniqueEmail("person");
-        final var invited = addMember(admin, team.teamId(), person, Role.ADMIN);
-        assertThat(invited.status()).isEqualTo(MemberStatus.PENDING);
-        send(
-                        HttpMethod.POST,
-                        "/v1/teams/" + team.teamId() + "/members",
-                        admin,
-                        Map.of("email", person))
-                .expectStatus()
-                .isEqualTo(409);
-        assertThat(members(admin, team.teamId())).hasSize(2);
-
-        // First sign-in, the address in another case: normalised, so it matches.
-        final var me =
-                meWithToken(bearer(TestJwts.uidOf(person), "  " + person.toUpperCase(Locale.ROOT)));
-
-        assertThat(me.userId()).isEqualTo(TestJwts.uidOf(person));
-        assertThat(me.teams()).hasSize(1);
-        assertThat(me.teams().getFirst().teamId()).isEqualTo(team.teamId());
-        assertThat(me.teams().getFirst().memberId()).isEqualTo(invited.memberId());
-        assertThat(me.teams().getFirst().role()).isEqualTo(Role.ADMIN);
-        final var bound = memberOf(admin, team.teamId(), invited.memberId());
-        assertThat(bound.status()).isEqualTo(MemberStatus.ACTIVE);
-        assertThat(bound.displayName()).isEqualTo(invited.displayName());
-        assertThat(bound.joinedAt()).isEqualTo(invited.joinedAt());
-        assertThat(members(admin, team.teamId())).hasSize(2);
-        // The membership is a real one: the new admin can administrate.
-        send(HttpMethod.GET, "/v1/teams/" + team.teamId(), person, null).expectStatus().isOk();
-        send(
-                        HttpMethod.PUT,
-                        "/v1/teams/" + team.teamId() + "/members/" + team.memberId(),
-                        person,
-                        Map.of("role", "MEMBER"))
-                .expectStatus()
-                .isOk();
-    }
-
-    @Test
-    void oneSignInBindsTheInvitationsOfEveryTeamAndOnlyThoseOfItsOwnEmail() {
-        final var adminA = uniqueEmail("admin-a");
-        final var adminB = uniqueEmail("admin-b");
-        final var teamA = createTeam(adminA);
-        final var teamB = createTeam(adminB);
-        final var person = uniqueEmail("person");
-        final var someoneElse = uniqueEmail("someone-else");
-        final var inA = addMember(adminA, teamA.teamId(), person, Role.MEMBER);
-        final var inB = addMember(adminB, teamB.teamId(), person, Role.ADMIN);
-        final var other = addMember(adminA, teamA.teamId(), someoneElse, Role.MEMBER);
-
-        final var me = me(person);
-
-        assertThat(me.teams())
-                .extracting(summary -> summary.memberId())
-                .containsExactlyInAnyOrder(inA.memberId(), inB.memberId());
-        assertThat(memberOf(adminA, teamA.teamId(), other.memberId()).status())
-                .isEqualTo(MemberStatus.PENDING);
-    }
-
-    @Test
-    void aDuplicateInvitationStaysPendingAndTheUserKeepsTheirExistingMembership() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var otherTeamAdmin = uniqueEmail("other-admin");
-        final var otherTeam = createTeam(otherTeamAdmin);
-        final var oldEmail = uniqueEmail("old");
-        final var newEmail = uniqueEmail("new");
-        final var uid = TestJwts.uidOf(oldEmail);
-        final var member = addMember(admin, team.teamId(), oldEmail, Role.MEMBER);
-        me(oldEmail);
-        // The admin only knows the new address: an unknown email, so another (pending) row.
-        final var duplicate = addMember(admin, team.teamId(), newEmail, Role.ADMIN);
-        final var elsewhere = addMember(otherTeamAdmin, otherTeam.teamId(), newEmail, Role.MEMBER);
-        assertThat(members(admin, team.teamId())).hasSize(3);
-
-        final var me = meWithToken(bearer(uid, newEmail));
-
-        // Nothing is deleted or bound in the team where the user already has a row ...
-        assertThat(members(admin, team.teamId()))
-                .extracting(Member::memberId, Member::status)
-                .containsExactlyInAnyOrder(
-                        tuple(team.memberId(), MemberStatus.ACTIVE),
-                        tuple(member.memberId(), MemberStatus.ACTIVE),
-                        tuple(duplicate.memberId(), MemberStatus.PENDING));
-        assertThat(memberOf(admin, team.teamId(), member.memberId()))
-                .satisfies(m -> assertThat(m.role()).isEqualTo(Role.MEMBER));
-        // ... while the invitation of a team without a row is bound as usual.
-        assertThat(me.teams())
-                .extracting(summary -> summary.memberId())
-                .containsExactlyInAnyOrder(member.memberId(), elsewhere.memberId());
-        // The admin can clean up the duplicate.
-        send(
-                        HttpMethod.PUT,
-                        "/v1/teams/" + team.teamId() + "/members/" + duplicate.memberId(),
-                        admin,
-                        Map.of("status", "LEFT"))
-                .expectStatus()
-                .isOk();
-        assertThat(meWithToken(bearer(uid, newEmail)).teams()).hasSize(2);
-    }
-
-    @Test
-    void aDuplicateInvitationThatOtherRowsReferenceNeverBreaksTheSignIn() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var oldEmail = uniqueEmail("old");
-        final var newEmail = uniqueEmail("new");
-        final var uid = TestJwts.uidOf(oldEmail);
-        final var member = addMember(admin, team.teamId(), oldEmail, Role.MEMBER);
-        me(oldEmail);
-        final var duplicate = addMember(admin, team.teamId(), newEmail, Role.MEMBER);
-        // Money that was charged to the pending duplicate (a payment from it to the admin).
-        jdbc.update(
-                """
-                INSERT INTO t_payment (fk_team_id, fk_from_member_id, fk_to_member_id, amount, paid_at,
-                                       fk_created_by_member_id)
-                VALUES (?, ?, ?, 5.00, now(), ?)
-                """,
-                team.teamId(),
-                duplicate.memberId(),
-                team.memberId(),
-                team.memberId());
-
-        for (var attempt = 0; attempt < 3; attempt++) {
-            assertThat(meWithToken(bearer(uid, newEmail)).teams())
-                    .extracting(summary -> summary.memberId())
-                    .containsExactly(member.memberId());
-        }
-
-        assertThat(
-                        jdbc.queryForObject(
-                                "SELECT count(*) FROM t_payment WHERE fk_from_member_id = ?",
-                                Integer.class,
-                                duplicate.memberId()))
-                .isEqualTo(1);
-        assertThat(memberOf(admin, team.teamId(), duplicate.memberId()).status())
-                .isEqualTo(MemberStatus.PENDING);
-        send(
-                        HttpMethod.PUT,
-                        "/v1/teams/" + team.teamId() + "/members/" + duplicate.memberId(),
-                        admin,
-                        Map.of("status", "LEFT"))
-                .expectStatus()
-                .isOk();
-        assertThat(meWithToken(bearer(uid, newEmail)).teams()).hasSize(1);
-    }
-
-    @Test
-    void anUnverifiedEmailNeverBindsAnInvitation() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var person = uniqueEmail("person");
-        final var uid = TestJwts.uidOf(person);
-        final var invited = addMember(admin, team.teamId(), person, Role.MEMBER);
-
-        // The decoder rejects unverified tokens when required; this is the second line of defence.
-        final var user = userService.resolveAuthenticated(uid, person, false, null);
-
-        assertThat(userService.me(user).teams()).isEmpty();
-        assertThat(memberOf(admin, team.teamId(), invited.memberId()).status())
-                .isEqualTo(MemberStatus.PENDING);
-
-        userService.resolveAuthenticated(uid, person, true, null);
-
-        assertThat(userService.me(user).teams()).hasSize(1);
-        assertThat(memberOf(admin, team.teamId(), invited.memberId()).status())
-                .isEqualTo(MemberStatus.ACTIVE);
-    }
-
-    @Test
-    void aWithdrawnInvitationIsBoundButStaysLeftUntilTheAdminAddsThePersonAgain() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var person = uniqueEmail("person");
-        final var invited = addMember(admin, team.teamId(), person, Role.MEMBER);
-        send(
-                        HttpMethod.PUT,
-                        "/v1/teams/" + team.teamId() + "/members/" + invited.memberId(),
-                        admin,
-                        Map.of("status", "LEFT"))
-                .expectStatus()
-                .isOk();
-
-        assertThat(me(person).teams()).isEmpty();
-
-        send(HttpMethod.GET, "/v1/teams/" + team.teamId(), person, null)
-                .expectStatus()
-                .isNotFound();
-        assertThat(memberOf(admin, team.teamId(), invited.memberId()).status())
-                .isEqualTo(MemberStatus.LEFT);
-        // Now a known user: the same row is reactivated (no second row for the person).
-        final var again = addMember(admin, team.teamId(), person, Role.MEMBER);
-        assertThat(again.memberId()).isEqualTo(invited.memberId());
-        assertThat(again.status()).isEqualTo(MemberStatus.ACTIVE);
-        assertThat(members(admin, team.teamId())).hasSize(2);
-        assertThat(me(person).teams()).hasSize(1);
-    }
-
     // --- concurrency ----------------------------------------------------------------------
 
     @Test
@@ -375,23 +167,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
                                 Integer.class,
                                 TestJwts.uidOf(email)))
                 .isEqualTo(1);
-    }
-
-    @Test
-    void parallelFirstSignInsOfAnInvitedPersonBindTheMembershipOnce() {
-        final var admin = uniqueEmail("admin");
-        final var team = createTeam(admin);
-        final var person = uniqueEmail("person");
-        final var invited = addMember(admin, team.teamId(), person, Role.MEMBER);
-
-        final var statuses = inParallel(8, () -> statusOfMe(person));
-
-        assertThat(statuses).containsOnly(200);
-        assertThat(members(admin, team.teamId()))
-                .extracting(Member::memberId, Member::status)
-                .containsExactlyInAnyOrder(
-                        tuple(team.memberId(), MemberStatus.ACTIVE),
-                        tuple(invited.memberId(), MemberStatus.ACTIVE));
     }
 
     private int statusOfMe(final String email) {

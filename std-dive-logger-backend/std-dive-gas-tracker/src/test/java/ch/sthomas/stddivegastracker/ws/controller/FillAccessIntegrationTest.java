@@ -262,14 +262,14 @@ final class FillAccessIntegrationTest extends AbstractFillIntegrationTest {
         assertThat(count("SELECT count(*) FROM t_fill WHERE fk_team_id = ?", room.teamId()))
                 .isZero();
 
-        // the limits themselves, and a PENDING member (no user yet), are fine
-        final var pending =
-                addMember(room.adminEmail(), room.teamId(), uniqueEmail("pending"), Role.MEMBER);
+        // the limits themselves are fine
+        final var another =
+                addMember(room.adminEmail(), room.teamId(), uniqueEmail("another"), Role.MEMBER);
         createFill(
                 room.adminEmail(),
                 room.teamId(),
                 fillBody(
-                        with(cylinder(5000, pending.memberId()), "cylinderLabel", "x".repeat(60)),
+                        with(cylinder(5000, another.memberId()), "cylinderLabel", "x".repeat(60)),
                         0,
                         fromBank(he, 1)));
     }

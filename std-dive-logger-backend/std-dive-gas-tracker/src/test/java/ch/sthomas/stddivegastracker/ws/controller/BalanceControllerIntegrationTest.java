@@ -143,8 +143,8 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
         final var admin = uniqueEmail("admin");
         final var team = createTeam(admin);
         final var b = addActiveMember(admin, team.teamId());
-        final var pending =
-                addMember(admin, team.teamId(), uniqueEmail("pending"), Role.MEMBER).memberId();
+        final var another =
+                addMember(admin, team.teamId(), uniqueEmail("another"), Role.MEMBER).memberId();
         final var leaver = addActiveMember(admin, team.teamId());
         leave(leaver, team.teamId());
         final var bank = createO2Bank(admin, team.teamId(), team.memberId(), "POOLED");
@@ -169,10 +169,10 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
         final var balances = balancesOf(admin, team.teamId());
 
         // DOMAIN §7.3 POOLED: rate = C / V_in, loss = C - rate * D, split equally among the
-        // members who have not left - A, B and the PENDING one
+        // members who have not left - A, B and the other one
         final var charge = BANK_COST.divide(oxygenInflow(), MC).multiply(drawnBy(fill), MC);
         final var share = BANK_COST.subtract(charge, MC).divide(BigDecimal.valueOf(3), MC);
-        for (final var memberId : List.of(team.memberId(), b.memberId(), pending)) {
+        for (final var memberId : List.of(team.memberId(), b.memberId(), another)) {
             assertThat(balanceOf(balances, memberId).lossShares().toPlainString())
                     .isEqualTo(money(share));
         }
@@ -182,7 +182,7 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
                 .isEqualTo(money(BANK_COST.subtract(share, MC)));
         assertThat(balanceOf(balances, b.memberId()).balance().toPlainString())
                 .isEqualTo(money(charge.negate().subtract(share, MC)));
-        assertThat(balanceOf(balances, pending).balance().toPlainString())
+        assertThat(balanceOf(balances, another).balance().toPlainString())
                 .isEqualTo(money(share.negate()));
         // closed and drawn from: nothing is left in stock, Σ balances = 0
         assertThat(balances.inventoryValue().toPlainString()).isEqualTo("0.00");
@@ -214,7 +214,7 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
         setDisplayName(emailOf(sam1), "Sam");
         final var sam2 = addActiveMember(admin, team.teamId());
         setDisplayName(emailOf(sam2), "sam");
-        final var pending = addMember(admin, team.teamId(), uniqueEmail("dave"), Role.MEMBER);
+        final var another = addMember(admin, team.teamId(), uniqueEmail("dave"), Role.MEMBER);
         leave(addActiveMember(admin, team.teamId()), team.teamId());
 
         final var balances = balancesOf(admin, team.teamId());
@@ -222,17 +222,17 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
         assertThat(balances.currency()).isEqualTo("EUR");
         assertThat(balances.inventoryValue().toPlainString()).isEqualTo("0.00");
         assertThat(balances.suggestions()).isEmpty();
-        // ACTIVE and PENDING members show with all-zero rows; the LEFT one at 0.00 is hidden
+        // ACTIVE members show with all-zero rows; the LEFT one at 0.00 is hidden
         assertThat(balances.members())
                 .extracting(row -> row.member())
                 .containsExactly(
                         new MemberRef(alice.memberId(), "alice"),
                         new MemberRef(bob.memberId(), "Bob"),
                         new MemberRef(team.memberId(), "carol"),
-                        new MemberRef(pending.memberId(), pending.displayName()),
+                        new MemberRef(another.memberId(), another.displayName()),
                         new MemberRef(sam1.memberId(), "Sam"),
                         new MemberRef(sam2.memberId(), "sam"));
-        assertThat(pending.displayName()).startsWith("dave");
+        assertThat(another.displayName()).startsWith("dave");
         for (final var row : balances.members()) {
             assertThat(
                             List.of(

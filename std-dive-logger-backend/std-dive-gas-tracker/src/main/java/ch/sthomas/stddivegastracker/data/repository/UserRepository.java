@@ -13,8 +13,6 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
-    Optional<UserEntity> findByEmail(String email);
-
     /**
      * Serialises writes to one user's row until the transaction ends. Needed because the upsert's
      * {@code ON CONFLICT} only covers the primary key: two first requests of one user inserting at

@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
-import java.util.Objects;
 
 /** API.md §1 (teams) and §2 (members); authorization per DOMAIN §10. */
 @Service
@@ -50,20 +49,9 @@ public final class TeamService {
         return teamDataService.members(teamId);
     }
 
-    /**
-     * By username: someone already using the app. By email: known user -> ACTIVE, unknown email ->
-     * PENDING until that person signs in (DOMAIN §2).
-     */
     public Member addMember(final long teamId, final GasUser user, final AddMemberRequest request) {
         teamAccess.requireAdmin(teamId, user);
-        final var username = request.username();
-        if (username != null && !username.isEmpty()) {
-            return teamDataService.addMemberByUsername(teamId, username, request.role());
-        }
-        return teamDataService.addMember(
-                teamId,
-                UserService.normalizeEmail(Objects.requireNonNull(request.email())),
-                request.role());
+        return teamDataService.addMember(teamId, request.username(), request.role());
     }
 
     public InviteLink inviteLink(final long teamId, final GasUser user) {

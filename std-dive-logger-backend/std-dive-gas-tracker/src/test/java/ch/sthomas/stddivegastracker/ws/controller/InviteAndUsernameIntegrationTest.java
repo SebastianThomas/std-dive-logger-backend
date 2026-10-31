@@ -14,6 +14,7 @@ import ch.sthomas.stddivegastracker.support.TestJwts;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -31,7 +32,7 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
         assertThat(me.username()).isEqualTo(username);
         assertThat(me.displayName()).isEqualTo(username);
 
-        final var added = addByUsername(admin, team.teamId(), username.toLowerCase());
+        final var added = addByUsername(admin, team.teamId(), username.toLowerCase(Locale.ROOT));
         assertThat(added.status()).isEqualTo(MemberStatus.ACTIVE);
         assertThat(added.username()).isEqualTo(username);
         assertThat(added.displayName()).isEqualTo(username);
@@ -81,7 +82,7 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
         final var username = "Kept" + email.hashCode();
         signIn(email, username);
 
-        assertThat(me(email).username()).isEqualTo(username);
+        assertThat(meWithoutUsername(email).username()).isEqualTo(username);
     }
 
     @Test
@@ -93,7 +94,7 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
         final var second = signIn(uniqueEmail("second"), username);
 
         assertThat(second.username()).isEqualTo(username);
-        assertThat(me(firstEmail).username()).isNull();
+        assertThat(meWithoutUsername(firstEmail).username()).isNull();
     }
 
     @Test
@@ -195,6 +196,15 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
                         + TestJwts.sign(
                                 TestJwts.builder(TestJwts.uidOf(email), email)
                                         .claim("username", username)));
+    }
+
+    /** A token from before the claim existed. */
+    private MeResponse meWithoutUsername(final String email) {
+        return meWithToken(
+                "Bearer "
+                        + TestJwts.sign(
+                                TestJwts.builder(TestJwts.uidOf(email), email)
+                                        .claim("username", null)));
     }
 
     private Member addByUsername(final String admin, final long teamId, final String username) {

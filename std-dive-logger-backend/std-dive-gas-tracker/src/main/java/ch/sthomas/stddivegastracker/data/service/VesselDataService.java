@@ -139,10 +139,10 @@ public class VesselDataService {
     }
 
     /**
-     * Writes the closing participants (DOMAIN §7.3): members of the team who are not LEFT (ACTIVE
-     * or PENDING) and had joined by the closing time. The engine applies the fallbacks. The closing
-     * time lies after the opening and after every fill and reading of the bank, so they all stay
-     * inside its service window (DOMAIN §5.6, §6).
+     * Writes the closing participants (DOMAIN §7.3): members of the team who are not LEFT and had
+     * joined by the closing time. The engine applies the fallbacks. The closing time lies after the
+     * opening and after every fill and reading of the bank, so they all stay inside its service
+     * window (DOMAIN §5.6, §6).
      */
     @Transactional
     public void close(final long teamId, final long vesselId, final CloseVesselRequest request) {
@@ -221,7 +221,7 @@ public class VesselDataService {
                 .orElseThrow(() -> new NoSuchElementException("Bank not found."));
     }
 
-    /** The payer must belong to this team and not be LEFT; PENDING is fine (DOMAIN §2). */
+    /** The payer must belong to this team and not be LEFT (DOMAIN §2). */
     private VesselCostLineEntity newCostLine(final long teamId, final CostLineInput input) {
         final var payer =
                 memberRepository

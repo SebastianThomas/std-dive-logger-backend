@@ -302,7 +302,7 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
         final var admin = uniqueEmail("admin");
         final var team = createTeam(admin);
         final var active = addActiveMember(admin, team.teamId());
-        final var pending = addMember(admin, team.teamId(), uniqueEmail("pending"), Role.MEMBER);
+        final var another = addMember(admin, team.teamId(), uniqueEmail("another"), Role.MEMBER);
         final var later = addMember(admin, team.teamId(), uniqueEmail("later"), Role.MEMBER);
         jdbc.update(
                 "UPDATE t_team_member SET joined_at = now() + interval '1 day' WHERE pk_team_member_id = ?",
@@ -319,9 +319,9 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
 
         close(admin, team.teamId(), bank.vesselId(), 25, null);
 
-        // ACTIVE and PENDING, not LEFT, not someone who joins after the closing time
+        // not LEFT, not someone who joins after the closing time
         assertThat(participants(bank.vesselId()))
-                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), pending.memberId());
+                .containsExactlyInAnyOrder(team.memberId(), active.memberId(), another.memberId());
     }
 
     @Test
@@ -744,7 +744,7 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
         final var admin = uniqueEmail("admin");
         final var team = createTeam(admin);
         final var diver = addActiveMember(admin, team.teamId());
-        final var pending = addMember(admin, team.teamId(), uniqueEmail("pending"), Role.MEMBER);
+        final var another = addMember(admin, team.teamId(), uniqueEmail("another"), Role.MEMBER);
         final var leaver = addActiveMember(admin, team.teamId());
         send(
                         HttpMethod.POST,
@@ -764,8 +764,8 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
         assertThat(own.costLines().getFirst().payer().memberId()).isEqualTo(diver.memberId());
         assertThat(own.costLines().getFirst().note()).isNull();
 
-        // an admin books for a PENDING member: fine, shown by the invited address' local part
-        final var forPending =
+        // an admin books for another member: fine
+        final var forAnother =
                 detailOf(
                         vesselRequest(
                                 HttpMethod.POST,
@@ -774,19 +774,19 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
                                 path,
                                 Map.of(
                                         "payerMemberId",
-                                        pending.memberId(),
+                                        another.memberId(),
                                         "amount",
                                         "9.50",
                                         "note",
                                         " rental ",
                                         "paidAt",
                                         T0.toEpochMilli())));
-        assertThat(forPending.totalCost().toPlainString()).isEqualTo("50.00");
-        final var pendingLine = forPending.costLines().getFirst();
-        assertThat(pendingLine.payer())
-                .isEqualTo(new MemberRef(pending.memberId(), nameOf(emailOf(pending))));
-        assertThat(pendingLine.note()).isEqualTo("rental");
-        assertThat(pendingLine.paidAt()).isEqualTo(T0);
+        assertThat(forAnother.totalCost().toPlainString()).isEqualTo("50.00");
+        final var anotherLine = forAnother.costLines().getFirst();
+        assertThat(anotherLine.payer())
+                .isEqualTo(new MemberRef(another.memberId(), nameOf(emailOf(another))));
+        assertThat(anotherLine.note()).isEqualTo("rental");
+        assertThat(anotherLine.paidAt()).isEqualTo(T0);
 
         for (final var payerId :
                 List.of(leaver.memberId(), otherTeam.memberId(), 0L, 999_999_999L)) {

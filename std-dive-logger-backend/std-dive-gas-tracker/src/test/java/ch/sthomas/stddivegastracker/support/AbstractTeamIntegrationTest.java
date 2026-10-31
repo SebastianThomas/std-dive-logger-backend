@@ -31,6 +31,11 @@ public abstract class AbstractTeamIntegrationTest extends AbstractIntegrationTes
         return Objects.requireNonNull(EMAILS.get(member.memberId()));
     }
 
+    /** The username test tokens carry for an address (TestJwts). */
+    protected static String usernameOf(final String email) {
+        return email.substring(0, email.indexOf('@'));
+    }
+
     /** A fresh address per call: the DB is shared by all test classes and never reset. */
     protected static String uniqueEmail(final String name) {
         return name + SEQUENCE.incrementAndGet() + "@team.test";
@@ -99,13 +104,14 @@ public abstract class AbstractTeamIntegrationTest extends AbstractIntegrationTes
     /** Adds {@code email} to the team as {@code adminEmail}, expecting success. */
     protected Member addMember(
             final String adminEmail, final long teamId, final String email, final Role role) {
+        me(email);
         final var member =
                 Objects.requireNonNull(
                         send(
                                         HttpMethod.POST,
                                         "/v1/teams/" + teamId + "/members",
                                         adminEmail,
-                                        Map.of("email", email, "role", role))
+                                        Map.of("username", usernameOf(email), "role", role))
                                 .expectStatus()
                                 .isOk()
                                 .expectBody(Member.class)
