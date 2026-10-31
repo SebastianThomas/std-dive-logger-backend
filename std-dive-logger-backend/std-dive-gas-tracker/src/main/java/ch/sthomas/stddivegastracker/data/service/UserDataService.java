@@ -6,6 +6,7 @@ import ch.sthomas.stddivegastracker.data.repository.UserRepository;
 import ch.sthomas.stddivegastracker.model.entity.UserEntity;
 import ch.sthomas.stddivegastracker.model.user.GasUser;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,16 +37,19 @@ public class UserDataService {
      * {@code emailVerified} address - invitations to that email become memberships, in the teams
      * where the user has no row yet. Reads first, so a request that changes nothing writes nothing.
      * Nothing is ever deleted here: authentication must not be able to fail on data references.
-     * {@code email} must be normalised.
+     * {@code email} must be normalised. {@code username}: the token's, absent on older tokens.
      */
     @Transactional
     public GasUser syncAuthenticated(
-            final long userId, final String email, final boolean emailVerified) {
-        final var user = refresh(userId, email);
+            final long userId,
+            final String email,
+            final boolean emailVerified,
+            final @Nullable String username) {
+        final var user = refresh(userId, email, username);
         if (emailVerified && memberRepository.existsBindable(email, userId)) {
             bindInvitations(userId, email);
         }
-        return new GasUser(userId, email, user.getDisplayName());
+        return new GasUser(userId, email, user.getDisplayName(), user.getUsername());
     }
 
     @Transactional
@@ -56,7 +60,9 @@ public class UserDataService {
                 .setDisplayName(displayName);
     }
 
-    /** The display name a user starts with (and a PENDING member shows): the email's local part. */
+    /**
+     * A new user starts with their username; without one, the email's local part (also PENDING).
+     */
     static String defaultDisplayName(final String email) {
         final var localPart = email.substring(0, email.indexOf('@'));
         return localPart.length() > MAX_DISPLAY_NAME_LENGTH
@@ -64,14 +70,30 @@ public class UserDataService {
                 : localPart;
     }
 
-    private UserEntity refresh(final long userId, final String email) {
+    private static String displayNameOfUsername(final String username) {
+        return username.length() > MAX_DISPLAY_NAME_LENGTH
+                ? username.substring(0, MAX_DISPLAY_NAME_LENGTH)
+                : username;
+    }
+
+    private UserEntity refresh(
+            final long userId, final String email, final @Nullable String username) {
         final var known = userRepository.findById(userId);
-        if (known.isPresent() && email.equals(known.get().getEmail())) {
+        if (known.isPresent()
+                && email.equals(known.get().getEmail())
+                && (username == null || username.equals(known.get().getUsername()))) {
             return known.get();
         }
         userRepository.lockUser(userId);
         userRepository.clearEmailOfOthers(email, userId);
-        userRepository.upsert(userId, email, defaultDisplayName(email));
+        if (username != null) {
+            userRepository.clearUsernameOfOthers(username, userId);
+        }
+        userRepository.upsert(
+                userId,
+                email,
+                username,
+                username != null ? displayNameOfUsername(username) : defaultDisplayName(email));
         return userRepository
                 .findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User row missing after upsert."));

@@ -82,7 +82,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
                 .satisfies(
                         member -> {
                             assertThat(member.memberId()).isEqualTo(team.memberId());
-                            assertThat(member.email()).isEqualTo(newEmail);
                             assertThat(member.displayName()).isEqualTo("Ulla");
                         });
         assertThat(storedEmail(uid)).isEqualTo(newEmail);
@@ -109,12 +108,11 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
 
         assertThat(storedEmail(claimerUid)).isEqualTo(holderEmail);
         assertThat(storedEmail(holderUid)).isNull();
-        // The holder keeps the membership; the team list has no email to show for them.
+        // The holder keeps the membership.
         assertThat(memberOf(admin, team.teamId(), holder.memberId()))
                 .satisfies(
                         member -> {
                             assertThat(member.status()).isEqualTo(MemberStatus.ACTIVE);
-                            assertThat(member.email()).isNull();
                             assertThat(member.displayName()).isEqualTo(holder.displayName());
                         });
         assertThat(
@@ -122,7 +120,7 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
                                 .expectBody(String.class)
                                 .returnResult()
                                 .getResponseBody())
-                .doesNotContain("\"email\":null", "\"email\":\"\"");
+                .doesNotContain("\"email\"");
 
         // The holder's next request carries their current address and sets it again.
         final var holderNewEmail = uniqueEmail("holder-new");
@@ -131,8 +129,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
         assertThat(back.teams()).hasSize(1);
         assertThat(storedEmail(holderUid)).isEqualTo(holderNewEmail);
         assertThat(storedEmail(claimerUid)).isEqualTo(holderEmail);
-        assertThat(memberOf(admin, team.teamId(), holder.memberId()).email())
-                .isEqualTo(holderNewEmail);
 
         // And the same address can move back: the claimer loses it in turn.
         meWithToken(bearer(holderUid, holderEmail));
@@ -190,7 +186,6 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
         assertThat(me.teams().getFirst().role()).isEqualTo(Role.ADMIN);
         final var bound = memberOf(admin, team.teamId(), invited.memberId());
         assertThat(bound.status()).isEqualTo(MemberStatus.ACTIVE);
-        assertThat(bound.email()).isEqualTo(person);
         assertThat(bound.displayName()).isEqualTo(invited.displayName());
         assertThat(bound.joinedAt()).isEqualTo(invited.joinedAt());
         assertThat(members(admin, team.teamId())).hasSize(2);
@@ -252,11 +247,7 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
                         tuple(member.memberId(), MemberStatus.ACTIVE),
                         tuple(duplicate.memberId(), MemberStatus.PENDING));
         assertThat(memberOf(admin, team.teamId(), member.memberId()))
-                .satisfies(
-                        m -> {
-                            assertThat(m.role()).isEqualTo(Role.MEMBER);
-                            assertThat(m.email()).isEqualTo(newEmail);
-                        });
+                .satisfies(m -> assertThat(m.role()).isEqualTo(Role.MEMBER));
         // ... while the invitation of a team without a row is bound as usual.
         assertThat(me.teams())
                 .extracting(summary -> summary.memberId())
@@ -327,13 +318,13 @@ final class IdentityIntegrationTest extends AbstractTeamIntegrationTest {
         final var invited = addMember(admin, team.teamId(), person, Role.MEMBER);
 
         // The decoder rejects unverified tokens when required; this is the second line of defence.
-        final var user = userService.resolveAuthenticated(uid, person, false);
+        final var user = userService.resolveAuthenticated(uid, person, false, null);
 
         assertThat(userService.me(user).teams()).isEmpty();
         assertThat(memberOf(admin, team.teamId(), invited.memberId()).status())
                 .isEqualTo(MemberStatus.PENDING);
 
-        userService.resolveAuthenticated(uid, person, true);
+        userService.resolveAuthenticated(uid, person, true, null);
 
         assertThat(userService.me(user).teams()).hasSize(1);
         assertThat(memberOf(admin, team.teamId(), invited.memberId()).status())

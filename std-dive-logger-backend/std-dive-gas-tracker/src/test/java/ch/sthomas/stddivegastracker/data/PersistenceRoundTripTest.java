@@ -75,7 +75,7 @@ final class PersistenceRoundTripTest extends AbstractIntegrationTest {
 
     private Long userId(final String email) {
         final var id = TestJwts.uidOf(email);
-        users.upsert(id, email, email);
+        users.upsert(id, email, null, email);
         return id;
     }
 

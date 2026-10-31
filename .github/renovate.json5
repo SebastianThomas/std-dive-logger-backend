@@ -26,6 +26,11 @@
   },
 
   packageRules: [
+    // Our own modules are built here, on no registry: looking them up only burns rate limit.
+    {
+      matchPackageNames: ['ch.sthomas.**'],
+      enabled: false,
+    },
     // What runs in the services: grouped, but a person looks at it.
     {
       matchManagers: ['maven'],

@@ -24,6 +24,10 @@ public class UserEntity {
     @Column(name = "email", unique = true, length = 320)
     private @Nullable String email;
 
+    /** The dive logger's username; null until a token carrying it was seen. */
+    @Column(name = "username", length = 255)
+    private @Nullable String username;
+
     @Column(name = "display_name", nullable = false, length = 60)
     private String displayName;
 
@@ -41,6 +45,10 @@ public class UserEntity {
 
     public @Nullable String getEmail() {
         return email;
+    }
+
+    public @Nullable String getUsername() {
+        return username;
     }
 
     public String getDisplayName() {

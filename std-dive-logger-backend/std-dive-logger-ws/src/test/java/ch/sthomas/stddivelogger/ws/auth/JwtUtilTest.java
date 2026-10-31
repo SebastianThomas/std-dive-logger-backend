@@ -78,6 +78,7 @@ class JwtUtilTest {
             assertThat(claims.getSubject()).isEqualTo(EMAIL);
             assertThat(claims.get("uid", Long.class)).isEqualTo(42L);
             assertThat(claims.get("email_verified", Boolean.class)).isEqualTo(verified);
+            assertThat(claims.get("username", String.class)).isEqualTo("Diver");
             assertThat(claims.getExpiration().getTime() - claims.getIssuedAt().getTime())
                     .isEqualTo(JwtUtil.ACCESS_TOKEN_LIFETIME.toMillis());
 

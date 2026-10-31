@@ -94,7 +94,7 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
 
         assertThat(body)
                 .contains("\"memberId\":" + team.memberId())
-                .contains("\"email\":\"" + admin + "\"")
+                .doesNotContain("\"email\"")
                 .contains("\"displayName\":\"" + admin.substring(0, admin.indexOf('@')) + "\"")
                 .contains("\"role\":\"ADMIN\"", "\"status\":\"ACTIVE\"", "\"joinedAt\":")
                 .doesNotContain("leftAt");
@@ -139,7 +139,6 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                                 .returnResult()
                                 .getResponseBody());
 
-        assertThat(member.email()).isEqualTo(diver);
         assertThat(member.role()).isEqualTo(Role.MEMBER);
         assertThat(member.status()).isEqualTo(MemberStatus.ACTIVE);
         assertThat(member.joinedAt()).isNotNull();
@@ -262,7 +261,6 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                                 .getResponseBody());
 
         assertThat(pending.status()).isEqualTo(MemberStatus.PENDING);
-        assertThat(pending.email()).isEqualTo(newcomer);
         assertThat(pending.displayName()).isEqualTo(newcomer.substring(0, newcomer.indexOf('@')));
         assertThat(pending.role()).isEqualTo(Role.ADMIN);
         assertThat(pending.joinedAt()).isNotNull();
@@ -381,13 +379,11 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                 updateOk(admin, team.teamId(), invited.memberId(), Map.of("role", "ADMIN"));
         assertThat(promoted.status()).isEqualTo(MemberStatus.PENDING);
         assertThat(promoted.role()).isEqualTo(Role.ADMIN);
-        assertThat(promoted.email()).isEqualTo(emailOf(invited));
 
         final var left =
                 updateOk(admin, team.teamId(), invited.memberId(), Map.of("status", "LEFT"));
         assertThat(left.status()).isEqualTo(MemberStatus.LEFT);
         assertThat(left.leftAt()).isNotNull();
-        assertThat(left.email()).isEqualTo(emailOf(invited));
         assertThat(left.displayName()).isEqualTo(invited.displayName());
 
         final var again = addMember(admin, team.teamId(), emailOf(invited), Role.MEMBER);
@@ -427,7 +423,7 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                 .isEqualTo(
                         new Member(
                                 diver.memberId(),
-                                emailOf(diver),
+                                null,
                                 diver.displayName(),
                                 Role.ADMIN,
                                 MemberStatus.ACTIVE,

@@ -39,6 +39,8 @@ public final class DiveLoggerJwtDecoder implements JwtDecoder {
 
     public static final String UID_CLAIM = "uid";
     public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+    public static final String USERNAME_CLAIM = "username";
+    private static final int MAX_USERNAME_LENGTH = 255;
     private static final String ALGORITHM = "EdDSA";
     private static final int KEY_ID_LENGTH = 16;
     private static final long CLOCK_SKEW_SECONDS = 30;
@@ -145,6 +147,11 @@ public final class DiveLoggerJwtDecoder implements JwtDecoder {
                         .expiresAt(expiration.toInstant())
                         .claim(UID_CLAIM, userId)
                         .claim(EMAIL_VERIFIED_CLAIM, Boolean.TRUE.equals(emailVerified));
+        // Older tokens have none; a broken one must not stop the sign-in.
+        final var username = claims.get(USERNAME_CLAIM, String.class);
+        if (username != null && !username.isBlank() && username.length() <= MAX_USERNAME_LENGTH) {
+            builder.claim(USERNAME_CLAIM, username);
+        }
         final var issuedAt = claims.getIssuedAt();
         if (issuedAt != null) {
             builder.issuedAt(issuedAt.toInstant());

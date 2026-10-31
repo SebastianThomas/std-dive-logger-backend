@@ -133,7 +133,7 @@ public class TeamMemberEntity {
      * {@code email} and {@code displayName} are the user's, or the invited address's while PENDING;
      * {@code email} is null for a user whose address moved to another account.
      */
-    public Member toRecord(final @Nullable String email, final String displayName) {
-        return new Member(id, email, displayName, role, status(), joinedAt, leftAt);
+    public Member toRecord(final @Nullable String username, final String displayName) {
+        return new Member(id, username, displayName, role, status(), joinedAt, leftAt);
     }
 }

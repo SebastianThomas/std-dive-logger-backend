@@ -6,6 +6,8 @@ import ch.sthomas.stddivegastracker.data.repository.UserRepository;
 import ch.sthomas.stddivegastracker.model.entity.TeamEntity;
 import ch.sthomas.stddivegastracker.model.entity.TeamMemberEntity;
 import ch.sthomas.stddivegastracker.model.entity.UserEntity;
+import ch.sthomas.stddivegastracker.model.team.InviteLink;
+import ch.sthomas.stddivegastracker.model.team.InvitePreview;
 import ch.sthomas.stddivegastracker.model.team.Member;
 import ch.sthomas.stddivegastracker.model.team.MemberStatus;
 import ch.sthomas.stddivegastracker.model.team.Role;
@@ -34,6 +36,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class TeamDataService {
+
+    private static final String INVALID_INVITE = "This invite link is not valid any more.";
 
     private static final Comparator<Member> MEMBER_ORDER =
             Comparator.comparing(Member::status)
@@ -129,6 +133,91 @@ public class TeamDataService {
     }
 
     /**
+     * Only someone who already uses the app: nothing to bind an unknown name to, and anyone could
+     * later register a mistyped one and join.
+     */
+    @Transactional
+    public Member addMemberByUsername(final long teamId, final String username, final Role role) {
+        lockTeam(teamId);
+        final var user =
+                userRepository
+                        .findByUsernameIgnoreCase(username)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Nobody with that username uses this app yet."
+                                                        + " Send them the invite link instead."));
+        final var existing = memberRepository.findByTeamIdAndUserId(teamId, user.getId());
+        if (existing.isPresent()) {
+            final var member = existing.get();
+            if (member.getLeftAt() == null) {
+                throw new IllegalStateException("Already a member of this team.");
+            }
+            member.setRole(role);
+            reactivate(member, Instant.now());
+            return toMembers(List.of(member)).getFirst();
+        }
+        return toMembers(
+                        List.of(
+                                memberRepository.save(
+                                        new TeamMemberEntity(
+                                                teamId, user.getId(), role, Instant.now()))))
+                .getFirst();
+    }
+
+    @Transactional(readOnly = true)
+    public InviteLink inviteLink(final long teamId) {
+        return new InviteLink(findTeam(teamId).getInviteToken());
+    }
+
+    /** Replaces the team's link (an old one stops working); {@code null} turns it off. */
+    @Transactional
+    public InviteLink setInviteToken(final long teamId, final @Nullable String token) {
+        findTeam(teamId).setInviteToken(token);
+        return new InviteLink(token);
+    }
+
+    @Transactional(readOnly = true)
+    public InvitePreview previewInvite(final String token, final long userId) {
+        final var team = findByInvite(token);
+        final var member = memberRepository.findByTeamIdAndUserId(team.getId(), userId);
+        return new InvitePreview(
+                team.getId(),
+                team.getName(),
+                member.filter(TeamMemberEntity::isActive).isPresent());
+    }
+
+    /**
+     * Joins as a plain member; a member already in is fine. Someone who left or was removed needs
+     * an admin: the link stays valid after a removal, so it must not undo one.
+     */
+    @Transactional
+    public long joinByInvite(final String token, final long userId) {
+        final var teamId = findByInvite(token).getId();
+        lockTeam(teamId);
+        // the team lock taken, the link may have been reset meanwhile
+        if (!teamId.equals(findByInvite(token).getId())) {
+            throw new NoSuchElementException(INVALID_INVITE);
+        }
+        final var existing = memberRepository.findByTeamIdAndUserId(teamId, userId);
+        if (existing.isPresent()) {
+            if (existing.get().getLeftAt() != null) {
+                throw new IllegalStateException(
+                        "You are no longer in this team. Ask an admin to add you again.");
+            }
+            return teamId;
+        }
+        memberRepository.save(new TeamMemberEntity(teamId, userId, Role.MEMBER, Instant.now()));
+        return teamId;
+    }
+
+    private TeamEntity findByInvite(final String token) {
+        return teamRepository
+                .findByInviteToken(token)
+                .orElseThrow(() -> new NoSuchElementException(INVALID_INVITE));
+    }
+
+    /**
      * Absent {@code role}/{@code status} stay as they are; LEFT -> ACTIVE resets joinedAt. A member
      * without a user (PENDING, or LEFT while pending) can be demoted or set LEFT, but only that
      * email's first sign-in makes it ACTIVE.
@@ -202,8 +291,8 @@ public class TeamDataService {
     }
 
     /**
-     * Joins the users' email/display name (the invited email while PENDING); ACTIVE first, then
-     * PENDING, then LEFT, each by name, then id.
+     * Joins the users' username and display name (from the invited email while PENDING); ACTIVE
+     * first, then PENDING, then LEFT, each by name, then id.
      */
     private List<Member> toMembers(final List<TeamMemberEntity> members) {
         final var users =
@@ -226,9 +315,9 @@ public class TeamDataService {
         final var userId = member.getUserId();
         if (userId == null) {
             final var invited = Objects.requireNonNull(member.getInvitedEmail());
-            return member.toRecord(invited, UserDataService.defaultDisplayName(invited));
+            return member.toRecord(null, UserDataService.defaultDisplayName(invited));
         }
         final var user = Objects.requireNonNull(users.get(userId));
-        return member.toRecord(user.getEmail(), user.getDisplayName());
+        return member.toRecord(user.getUsername(), user.getDisplayName());
     }
 }

@@ -67,6 +67,9 @@ public final class DevLoginController {
                         .subject(email)
                         .claim(DiveLoggerJwtDecoder.UID_CLAIM, devUserId(email))
                         .claim(DiveLoggerJwtDecoder.EMAIL_VERIFIED_CLAIM, true)
+                        .claim(
+                                DiveLoggerJwtDecoder.USERNAME_CLAIM,
+                                email.substring(0, email.indexOf('@')))
                         .issuedAt(Date.from(now))
                         .expiration(Date.from(now.plus(TOKEN_LIFETIME)))
                         .signWith(devLoginKey.privateKey(), Jwts.SIG.EdDSA)

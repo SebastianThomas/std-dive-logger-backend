@@ -40,6 +40,7 @@ public class JwtUtil {
     public static final String ISSUER = "std-dive-logger";
     public static final String UID_CLAIM = "uid";
     public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+    public static final String USERNAME_CLAIM = "username";
     static final String SIGNING_KEY_PROPERTY = "ch.sthomas.stddivelogger.ws.jwt-signing-key";
     static final String PUBLIC_KEY_PROPERTY = "ch.sthomas.stddivelogger.ws.jwt-public-key";
 
@@ -146,6 +147,7 @@ public class JwtUtil {
                 .subject(user.email())
                 .claim(UID_CLAIM, user.id())
                 .claim(EMAIL_VERIFIED_CLAIM, user.emailVerified())
+                .claim(USERNAME_CLAIM, user.name())
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + ACCESS_TOKEN_LIFETIME.toMillis()))
                 .signWith(signingKey, Jwts.SIG.EdDSA)

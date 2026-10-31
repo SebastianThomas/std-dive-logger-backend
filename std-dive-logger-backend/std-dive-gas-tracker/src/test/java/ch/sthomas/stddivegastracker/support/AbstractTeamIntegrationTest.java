@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.client.RestTestClient.ResponseSpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** Teams and members over HTTP, for every test class that needs a team to work in (D2+). */
@@ -22,9 +23,12 @@ public abstract class AbstractTeamIntegrationTest extends AbstractIntegrationTes
 
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 
+    /** The API shows teammates no email, so tests remember whom they added under which address. */
+    private static final Map<Long, String> EMAILS = new ConcurrentHashMap<>();
+
     /** The email of a member who was just added or has signed in (never null for those). */
     protected static String emailOf(final Member member) {
-        return Objects.requireNonNull(member.email());
+        return Objects.requireNonNull(EMAILS.get(member.memberId()));
     }
 
     /** A fresh address per call: the DB is shared by all test classes and never reset. */
@@ -95,17 +99,20 @@ public abstract class AbstractTeamIntegrationTest extends AbstractIntegrationTes
     /** Adds {@code email} to the team as {@code adminEmail}, expecting success. */
     protected Member addMember(
             final String adminEmail, final long teamId, final String email, final Role role) {
-        return Objects.requireNonNull(
-                send(
-                                HttpMethod.POST,
-                                "/v1/teams/" + teamId + "/members",
-                                adminEmail,
-                                Map.of("email", email, "role", role))
-                        .expectStatus()
-                        .isOk()
-                        .expectBody(Member.class)
-                        .returnResult()
-                        .getResponseBody());
+        final var member =
+                Objects.requireNonNull(
+                        send(
+                                        HttpMethod.POST,
+                                        "/v1/teams/" + teamId + "/members",
+                                        adminEmail,
+                                        Map.of("email", email, "role", role))
+                                .expectStatus()
+                                .isOk()
+                                .expectBody(Member.class)
+                                .returnResult()
+                                .getResponseBody());
+        EMAILS.put(member.memberId(), email);
+        return member;
     }
 
     protected List<Member> members(final String email, final long teamId) {

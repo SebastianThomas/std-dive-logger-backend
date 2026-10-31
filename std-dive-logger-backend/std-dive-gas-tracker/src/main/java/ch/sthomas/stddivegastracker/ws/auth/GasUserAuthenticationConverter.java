@@ -31,7 +31,8 @@ public final class GasUserAuthenticationConverter
                         Objects.requireNonNull(jwt.<Long>getClaim(DiveLoggerJwtDecoder.UID_CLAIM)),
                         Objects.requireNonNull(jwt.getSubject()),
                         Boolean.TRUE.equals(
-                                jwt.getClaimAsBoolean(DiveLoggerJwtDecoder.EMAIL_VERIFIED_CLAIM)));
+                                jwt.getClaimAsBoolean(DiveLoggerJwtDecoder.EMAIL_VERIFIED_CLAIM)),
+                        jwt.getClaimAsString(DiveLoggerJwtDecoder.USERNAME_CLAIM));
         return new GasUserAuthentication(user, jwt);
     }
 }

@@ -10,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 
@@ -40,6 +41,10 @@ public class TeamEntity {
 
     @Column(name = "default_residual_pressure_bar", nullable = false)
     private double defaultResidualPressureBar;
+
+    /** The current invite link's token (DOMAIN §2); null: no link. */
+    @Column(name = "invite_token", length = 64, unique = true)
+    private @Nullable String inviteToken;
 
     @Column(name = "gas_tracking_enabled", nullable = false)
     private boolean gasTrackingEnabled = true;
@@ -115,6 +120,14 @@ public class TeamEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public @Nullable String getInviteToken() {
+        return inviteToken;
+    }
+
+    public void setInviteToken(final @Nullable String inviteToken) {
+        this.inviteToken = inviteToken;
     }
 
     public void setGasTrackingEnabled(final boolean gasTrackingEnabled) {

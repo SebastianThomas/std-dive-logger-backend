@@ -1,11 +1,17 @@
 package ch.sthomas.stddivegastracker.model.team;
 
-/** API.md §2 {@code POST …/members}. The email is normalised by the service. */
-public record AddMemberRequest(String email, Role role) {
+import org.jspecify.annotations.Nullable;
+
+/**
+ * API.md §2 {@code POST …/members}: by username (someone already using the app), or by email. The
+ * service normalises the email.
+ */
+public record AddMemberRequest(@Nullable String username, @Nullable String email, Role role) {
 
     public AddMemberRequest {
-        if (email == null) {
-            throw new IllegalArgumentException("Email is required.");
+        username = username == null ? null : username.strip().replaceFirst("^@", "");
+        if ((username == null || username.isEmpty()) && email == null) {
+            throw new IllegalArgumentException("Enter a username.");
         }
         role = role == null ? Role.MEMBER : role;
     }

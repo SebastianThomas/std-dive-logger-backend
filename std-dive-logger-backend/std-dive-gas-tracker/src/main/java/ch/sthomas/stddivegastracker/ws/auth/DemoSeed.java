@@ -100,11 +100,13 @@ public final class DemoSeed {
         final var adminId = team.memberId();
         final var aliceId =
                 teamService
-                        .addMember(teamId, admin, new AddMemberRequest(ALICE_EMAIL, Role.MEMBER))
+                        .addMember(
+                                teamId, admin, new AddMemberRequest(null, ALICE_EMAIL, Role.MEMBER))
                         .memberId();
         final var bobId =
                 teamService
-                        .addMember(teamId, admin, new AddMemberRequest(BOB_EMAIL, Role.MEMBER))
+                        .addMember(
+                                teamId, admin, new AddMemberRequest(null, BOB_EMAIL, Role.MEMBER))
                         .memberId();
 
         // the nearly empty bank the team already had when it started using the app
@@ -181,7 +183,11 @@ public final class DemoSeed {
 
     private GasUser user(final String email, final String displayName) {
         final var user =
-                userService.resolveAuthenticated(DevLoginController.devUserId(email), email, true);
+                userService.resolveAuthenticated(
+                        DevLoginController.devUserId(email),
+                        email,
+                        true,
+                        email.substring(0, email.indexOf('@')));
         userService.updateMe(user, new UpdateMeRequest(displayName));
         return user;
     }

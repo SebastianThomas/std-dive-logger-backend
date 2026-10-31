@@ -167,7 +167,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
 
     private Long userId(final String email) {
         final var id = TestJwts.uidOf(email);
-        users.upsert(id, email, email);
+        users.upsert(id, email, null, email);
         return id;
     }
 
@@ -506,7 +506,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                         jdbc.queryForList(
                                 "SELECT version FROM flyway_schema_history ORDER BY installed_rank",
                                 String.class))
-                .containsExactly("1.0.0", "1.0.1", "1.0.2");
+                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3");
     }
 
     /** AGENTS.md "Migrations": Postgres creates no index for an FK, so each needs a leading one. */

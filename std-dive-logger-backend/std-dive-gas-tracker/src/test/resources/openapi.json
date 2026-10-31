@@ -9,9 +9,12 @@
           "role" : {
             "enum" : [ "ADMIN", "MEMBER" ],
             "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
           }
         },
-        "required" : [ "email", "role" ],
+        "required" : [ "role" ],
         "type" : "object"
       },
       "Balances" : {
@@ -465,6 +468,30 @@
         "required" : [ "he", "o2" ],
         "type" : "object"
       },
+      "InviteLink" : {
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "InvitePreview" : {
+        "properties" : {
+          "alreadyMember" : {
+            "type" : "boolean"
+          },
+          "teamId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "teamName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "alreadyMember", "teamId", "teamName" ],
+        "type" : "object"
+      },
       "LossReport" : {
         "properties" : {
           "drawnLitres" : {
@@ -556,6 +583,9 @@
           "userId" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "username" : {
+            "type" : "string"
           }
         },
         "required" : [ "displayName", "email", "teams", "userId" ],
@@ -564,9 +594,6 @@
       "Member" : {
         "properties" : {
           "displayName" : {
-            "type" : "string"
-          },
-          "email" : {
             "type" : "string"
           },
           "joinedAt" : {
@@ -589,6 +616,9 @@
           },
           "status" : {
             "enum" : [ "ACTIVE", "PENDING", "LEFT" ],
+            "type" : "string"
+          },
+          "username" : {
             "type" : "string"
           }
         },
@@ -1482,6 +1512,58 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/v1/invites/{token}" : {
+      "get" : {
+        "operationId" : "preview_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitePreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
+      }
+    },
+    "/v1/invites/{token}/join" : {
+      "post" : {
+        "operationId" : "join",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InvitePreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
+      }
+    },
     "/v1/me" : {
       "get" : {
         "operationId" : "me",
@@ -1913,6 +1995,83 @@
           }
         },
         "tags" : [ "fill-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/invite-link" : {
+      "delete" : {
+        "operationId" : "turnOffInviteLink",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteLink"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
+      },
+      "get" : {
+        "operationId" : "inviteLink",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteLink"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
+      },
+      "post" : {
+        "operationId" : "resetInviteLink",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteLink"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
       }
     },
     "/v1/teams/{teamId}/members" : {
