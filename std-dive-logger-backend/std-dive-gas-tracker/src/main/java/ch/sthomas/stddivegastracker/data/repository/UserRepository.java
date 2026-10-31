@@ -16,7 +16,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     /**
      * Serialises writes to one user's row until the transaction ends. Needed because the upsert's
      * {@code ON CONFLICT} only covers the primary key: two first requests of one user inserting at
-     * once could otherwise collide on the unique email instead, and fail.
+     * once could otherwise collide on the unique username instead, and fail.
      */
     @Query(value = "SELECT 1 FROM pg_advisory_xact_lock(:userId)", nativeQuery = true)
     int lockUser(long userId);
@@ -32,14 +32,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             nativeQuery = true)
     int clearUsernameOfOthers(String username, long userId);
 
-    /** The email is unique: its previous holder (a stale copy) must lose it first. */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query(
-            value =
-                    "UPDATE t_user SET email = NULL, updated_at = now() WHERE email = :email AND pk_user_id <> :userId",
-            nativeQuery = true)
-    int clearEmailOfOthers(String email, long userId);
-
     /**
      * An absent username keeps the known one. Inserts at most once, under {@link #lockUser}. Never
      * touches {@code display_name} of an existing row.
@@ -48,13 +40,12 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(
             value =
                     """
-                    INSERT INTO t_user (pk_user_id, email, username, display_name)
-                    VALUES (:userId, :email, :username, :displayName)
-                    ON CONFLICT (pk_user_id) DO UPDATE SET email = EXCLUDED.email,
+                    INSERT INTO t_user (pk_user_id, username, display_name)
+                    VALUES (:userId, :username, :displayName)
+                    ON CONFLICT (pk_user_id) DO UPDATE SET
                         username = COALESCE(EXCLUDED.username, t_user.username), updated_at = now()
-                    WHERE t_user.email IS DISTINCT FROM EXCLUDED.email
-                        OR t_user.username IS DISTINCT FROM COALESCE(EXCLUDED.username, t_user.username)
+                    WHERE t_user.username IS DISTINCT FROM COALESCE(EXCLUDED.username, t_user.username)
                     """,
             nativeQuery = true)
-    int upsert(long userId, String email, @Nullable String username, String displayName);
+    int upsert(long userId, @Nullable String username, String displayName);
 }

@@ -32,6 +32,6 @@ public final class GasUserAuthentication extends AbstractAuthenticationToken {
 
     @Override
     public String getName() {
-        return user.email();
+        return String.valueOf(user.userId());
     }
 }

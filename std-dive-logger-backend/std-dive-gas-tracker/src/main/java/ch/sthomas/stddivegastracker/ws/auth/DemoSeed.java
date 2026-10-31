@@ -192,7 +192,7 @@ public final class DemoSeed {
     private GasUser user(final String email, final String displayName) {
         final var user =
                 userService.resolveAuthenticated(
-                        DevLoginController.devUserId(email), email, usernameOf(email));
+                        DevLoginController.devUserId(email), usernameOf(email));
         userService.updateMe(user, new UpdateMeRequest(displayName));
         return user;
     }

@@ -167,7 +167,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
 
     private Long userId(final String email) {
         final var id = TestJwts.uidOf(email);
-        users.upsert(id, email, null, email);
+        users.upsert(id, null, email);
         return id;
     }
 
@@ -272,10 +272,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                     team         | default_loss_policy = 'FOO'                    | t_team_default_loss_policy_check
                     team         | name = ' '                                     | t_team_name_check
                     member       | role = 'OWNER'                                 | t_team_member_role_check
-                    # identity: lower-case emails only, unique; a member is always a user
-                    user         | email = 'Upper@Example.test'                   | t_user_email_check
-                    user         | email = 'no-at-sign'                           | t_user_email_check
-                    user         | email = (SELECT email FROM t_user WHERE email LIKE 'd1-c-alice%') | t_user_email_key
+                    # identity: a member is always a user
                     member       | fk_user_id = NULL                              | fk_user_id
                     vessel       | loss_policy = 'FOO'                            | t_vessel_loss_policy_check
                     vessel       | label = ' '                                    | t_vessel_label_check
@@ -331,7 +328,6 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                     costLine     | amount = 0.01
                     costLine     | amount = 999999999.99
                     payment      | amount = 0.01
-                    user         | email = NULL
                     team         | currency = 'USD'
                     """)
     void edgeValueIsAccepted(final String row, final String set) {
@@ -472,7 +468,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                         jdbc.queryForList(
                                 "SELECT version FROM flyway_schema_history ORDER BY installed_rank",
                                 String.class))
-                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4");
+                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4", "1.0.5");
     }
 
     /** AGENTS.md "Migrations": Postgres creates no index for an FK, so each needs a leading one. */

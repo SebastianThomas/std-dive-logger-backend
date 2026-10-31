@@ -279,7 +279,7 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
     void balancesAndPaymentsRunAFixedNumberOfQueriesWhateverTheNumberOfFillsAndPayments() {
         final var crew = crew();
         final var me = me(crew.adminEmail());
-        final var user = new GasUser(me.userId(), me.email(), me.displayName(), me.username());
+        final var user = new GasUser(me.userId(), me.displayName(), me.username());
         final var statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.setStatisticsEnabled(true);
         try {

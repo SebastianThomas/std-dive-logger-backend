@@ -8,8 +8,4 @@ import java.util.List;
 
 /** API.md §1 - {@code GET /v1/me}. */
 public record MeResponse(
-        long userId,
-        String email,
-        String displayName,
-        @Nullable String username,
-        List<TeamSummary> teams) {}
+        long userId, String displayName, @Nullable String username, List<TeamSummary> teams) {}

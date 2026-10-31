@@ -36,7 +36,7 @@ final class DevLoginIntegrationTest extends AbstractIntegrationTest {
 
         final var me = me("Bearer " + token);
 
-        assertThat(me.email()).isEqualTo("grace@example.test");
+        assertThat(me.username()).isEqualTo("grace");
     }
 
     @Test

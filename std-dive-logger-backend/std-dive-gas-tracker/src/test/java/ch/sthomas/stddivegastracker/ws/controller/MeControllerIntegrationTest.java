@@ -50,7 +50,6 @@ final class MeControllerIntegrationTest extends AbstractIntegrationTest {
                                 .returnResult()
                                 .getResponseBody());
         assertThat(me.userId()).isEqualTo(uid);
-        assertThat(me.email()).isEqualTo("alice.diver@example.test");
         // the username from the token, as the dive logger spells it
         assertThat(me.displayName()).isEqualTo(me.username());
         assertThat(me.teams()).isEmpty();
@@ -69,7 +68,6 @@ final class MeControllerIntegrationTest extends AbstractIntegrationTest {
         // the same user: this test's token spells the username differently, as it derives from the
         // address it is given
         assertThat(again.userId()).isEqualTo(me.userId());
-        assertThat(again.email()).isEqualTo(me.email());
         assertThat(again.displayName()).isEqualTo(me.displayName());
     }
 

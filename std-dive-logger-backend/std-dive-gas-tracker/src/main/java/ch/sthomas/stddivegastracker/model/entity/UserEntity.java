@@ -20,10 +20,6 @@ public class UserEntity {
     @Column(name = "pk_user_id", nullable = false)
     private Long id;
 
-    /** Null while another user holds this user's last known address (stale, DOMAIN §2). */
-    @Column(name = "email", unique = true, length = 320)
-    private @Nullable String email;
-
     /** The dive logger's username; null until a token carrying it was seen. */
     @Column(name = "username", length = 255)
     private @Nullable String username;
@@ -41,10 +37,6 @@ public class UserEntity {
 
     public Long getId() {
         return id;
-    }
-
-    public @Nullable String getEmail() {
-        return email;
     }
 
     public @Nullable String getUsername() {

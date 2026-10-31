@@ -27,20 +27,17 @@ public final class UserService {
 
     /**
      * The user behind a verified token: called once per authenticated request with the JWT claims
-     * {@code uid}, {@code sub} (email) and {@code username} (absent from tokens issued before it
-     * existed; see ws.auth). DOMAIN §2: creates the row on first sight, refreshes a changed email,
-     * binds invitations.
+     * {@code uid} and {@code username} (absent from tokens issued before it existed; see ws.auth).
+     * DOMAIN §2: creates the row on first sight, refreshes a changed username.
      */
-    public GasUser resolveAuthenticated(
-            final long userId, final String subject, final @Nullable String username) {
-        return userDataService.syncAuthenticated(userId, normalizeEmail(subject), username);
+    public GasUser resolveAuthenticated(final long userId, final @Nullable String username) {
+        return userDataService.syncAuthenticated(userId, username);
     }
 
     /** Lists the user's ACTIVE teams only (DOMAIN §10: LEFT members are non-members). */
     public MeResponse me(final GasUser user) {
         return new MeResponse(
                 user.userId(),
-                user.email(),
                 user.displayName(),
                 user.username(),
                 teamDataService.activeTeams(user.userId()));
@@ -52,7 +49,7 @@ public final class UserService {
             throw new IllegalArgumentException("displayName must not be blank.");
         }
         userDataService.updateDisplayName(user.userId(), displayName);
-        return me(new GasUser(user.userId(), user.email(), displayName, user.username()));
+        return me(new GasUser(user.userId(), displayName, user.username()));
     }
 
     /** Trim + lower-case; rejects anything that is not plausibly an email address. */

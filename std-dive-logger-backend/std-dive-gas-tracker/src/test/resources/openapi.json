@@ -568,9 +568,6 @@
           "displayName" : {
             "type" : "string"
           },
-          "email" : {
-            "type" : "string"
-          },
           "teams" : {
             "items" : {
               "$ref" : "#/components/schemas/TeamSummary"
@@ -585,7 +582,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "displayName", "email", "teams", "userId" ],
+        "required" : [ "displayName", "teams", "userId" ],
         "type" : "object"
       },
       "Member" : {

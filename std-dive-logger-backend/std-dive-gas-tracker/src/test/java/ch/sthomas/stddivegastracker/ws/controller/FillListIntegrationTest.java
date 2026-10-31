@@ -364,7 +364,7 @@ final class FillListIntegrationTest extends AbstractFillIntegrationTest {
 
     private GasUser userOf(final String email) {
         final var me = me(email);
-        return new GasUser(me.userId(), me.email(), me.displayName(), me.username());
+        return new GasUser(me.userId(), me.displayName(), me.username());
     }
 
     private static Map<String, Object> withLabel(final long chargedMemberId, final String label) {
