@@ -61,6 +61,33 @@ final class FillSolverTest {
     }
 
     @Test
+    void aBankDrawIsTheContentLostBetweenTheTwoGauges() {
+        final var mix = new GasMix(0.32, 0);
+
+        final var result = FillSolver.solveBankDraw(50, 200, 150, mix, IdealGas.INSTANCE);
+
+        final var stage = result.stages().getFirst();
+        final double expectedLitres = 50 * (200 - 150) / Units.P_ATM;
+        assertThat(stage.drawLitres()).isCloseTo(expectedLitres, within(1e-9));
+        assertThat(stage.addedLitres()).isEqualTo(stage.drawLitres());
+        assertThat(stage.addedO2Litres()).isCloseTo(expectedLitres * 0.32, within(1e-9));
+        assertThat(stage.addedHeLitres()).isZero();
+        assertThat(stage.lineLossLitres()).isZero();
+        assertThat(result.endPressureBar()).isEqualTo(150);
+        assertThat(result.endMix()).isEqualTo(mix);
+    }
+
+    @Test
+    void aBankDrawNeedsTheBankToHaveGoneDown() {
+        final var mix = new GasMix(0.32, 0);
+
+        assertThatThrownBy(() -> FillSolver.solveBankDraw(50, 150, 150, mix, IdealGas.INSTANCE))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> FillSolver.solveBankDraw(50, 150, 200, mix, IdealGas.INSTANCE))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void goldenFillMatchesTheWorkedExample() {
         final var result =
                 FillSolver.solve(goldenInput(null), IdealGas.INSTANCE, DEAD_VOLUME_LITRES);

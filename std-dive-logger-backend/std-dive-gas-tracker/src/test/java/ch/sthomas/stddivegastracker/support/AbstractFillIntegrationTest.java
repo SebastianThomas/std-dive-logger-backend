@@ -71,7 +71,9 @@ public abstract class AbstractFillIntegrationTest extends AbstractVesselIntegrat
         helium.put("initialPressureBar", 200);
         helium.put("expectedResidualPressureBar", 20);
         helium.put("openedAt", T0.toEpochMilli());
-        helium.put("initialCostLine", Map.of("payerMemberId", team.memberId(), "amount", "800.00"));
+        helium.put(
+                "initialCostLines",
+                List.of(Map.of("payerMemberId", team.memberId(), "amount", "800.00")));
         return new Room(
                 admin,
                 team,

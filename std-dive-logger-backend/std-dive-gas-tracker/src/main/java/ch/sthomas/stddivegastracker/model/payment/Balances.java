@@ -20,12 +20,17 @@ public record Balances(
         suggestions = List.copyOf(suggestions);
     }
 
-    /** {@code provisionalCharges}: the part of {@code fillCharges} that is still an estimate. */
+    /**
+     * {@code provisionalCharges}: the part of {@code fillCharges} and {@code scrubberCharges} that
+     * is still an estimate.
+     */
     public record MemberBalance(
             MemberRef member,
             BigDecimal paidCosts,
             BigDecimal fillCharges,
             BigDecimal lossShares,
+            BigDecimal scrubberPaid,
+            BigDecimal scrubberCharges,
             BigDecimal paymentsSent,
             BigDecimal paymentsReceived,
             BigDecimal balance,

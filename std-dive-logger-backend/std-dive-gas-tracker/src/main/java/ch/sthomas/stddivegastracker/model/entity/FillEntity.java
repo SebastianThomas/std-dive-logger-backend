@@ -154,6 +154,14 @@ public class FillEntity {
         this.chargedMemberId = chargedMemberId;
     }
 
+    /** Gas taken for a member, known from the bank's pressure drop: no cylinder, no vessel. */
+    public void setBankDrawTarget(final Long chargedMemberId) {
+        this.targetVesselId = null;
+        this.waterVolumeLitres = null;
+        this.cylinderLabel = null;
+        this.chargedMemberId = chargedMemberId;
+    }
+
     /** Targets a vessel (its water volume applies); clears the cylinder target. */
     public void setVesselTarget(final Long vesselId) {
         this.targetVesselId = vesselId;
@@ -285,9 +293,10 @@ public class FillEntity {
         if (targetVesselId != null) {
             return new FillTarget.Vessel(targetVesselId, null);
         }
+        if (waterVolumeLitres == null) {
+            return new FillTarget.BankDraw(Objects.requireNonNull(chargedMemberId));
+        }
         return new FillTarget.Cylinder(
-                Objects.requireNonNull(waterVolumeLitres),
-                cylinderLabel,
-                Objects.requireNonNull(chargedMemberId));
+                waterVolumeLitres, cylinderLabel, Objects.requireNonNull(chargedMemberId));
     }
 }

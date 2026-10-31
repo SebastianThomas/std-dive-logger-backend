@@ -40,6 +40,30 @@
         "required" : [ "currency", "inventoryValue", "members", "suggestions" ],
         "type" : "object"
       },
+      "CanisterCreate" : {
+        "properties" : {
+          "capacityKg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "initialCostLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CostLineInput"
+            },
+            "type" : "array"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "openedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "initialCostLines", "label" ],
+        "type" : "object"
+      },
       "CloseVesselRequest" : {
         "properties" : {
           "closedAt" : {
@@ -355,6 +379,7 @@
       "FillTarget" : {
         "discriminator" : {
           "mapping" : {
+            "BANK_DRAW" : "#/components/schemas/FillTargetBankDraw",
             "CYLINDER" : "#/components/schemas/FillTargetCylinder",
             "VESSEL" : "#/components/schemas/FillTargetVessel"
           },
@@ -364,6 +389,8 @@
           "$ref" : "#/components/schemas/FillTargetCylinder"
         }, {
           "$ref" : "#/components/schemas/FillTargetVessel"
+        }, {
+          "$ref" : "#/components/schemas/FillTargetBankDraw"
         } ],
         "properties" : {
           "type" : {
@@ -371,6 +398,20 @@
           }
         },
         "required" : [ "type" ]
+      },
+      "FillTargetBankDraw" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/FillTarget"
+        }, {
+          "properties" : {
+            "chargedMemberId" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "required" : [ "chargedMemberId" ],
+          "type" : "object"
+        } ]
       },
       "FillTargetCylinder" : {
         "allOf" : [ {
@@ -488,6 +529,16 @@
         "required" : [ "report", "vessel" ],
         "type" : "object"
       },
+      "MarkEmptyRequest" : {
+        "properties" : {
+          "emptiedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "MeResponse" : {
         "properties" : {
           "displayName" : {
@@ -583,9 +634,19 @@
             "description" : "Money, e.g. \"12.30\"",
             "format" : "decimal",
             "type" : "string"
+          },
+          "scrubberCharges" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "scrubberPaid" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
           }
         },
-        "required" : [ "balance", "fillCharges", "lossShares", "member", "paidCosts", "paymentsReceived", "paymentsSent", "provisionalCharges" ],
+        "required" : [ "balance", "fillCharges", "lossShares", "member", "paidCosts", "paymentsReceived", "paymentsSent", "provisionalCharges", "scrubberCharges", "scrubberPaid" ],
         "type" : "object"
       },
       "MemberRef" : {
@@ -769,6 +830,148 @@
         "required" : [ "pressureBar" ],
         "type" : "object"
       },
+      "ScrubberCanister" : {
+        "properties" : {
+          "canisterId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "capacityKg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "costLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ScrubberCostLine"
+            },
+            "type" : "array"
+          },
+          "createdBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "emptiedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "isEstimate" : {
+            "type" : "boolean"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "openedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pricePerKg" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "recordedKg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "remainingKg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "status" : {
+            "enum" : [ "OPEN", "EMPTY" ],
+            "type" : "string"
+          },
+          "totalCost" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "uses" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ScrubberUse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "canisterId", "capacityKg", "costLines", "createdBy", "isEstimate", "label", "openedAt", "pricePerKg", "recordedKg", "remainingKg", "status", "totalCost", "uses" ],
+        "type" : "object"
+      },
+      "ScrubberCostLine" : {
+        "properties" : {
+          "amount" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "costLineId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "paidAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "payer" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          }
+        },
+        "required" : [ "amount", "costLineId", "paidAt", "payer" ],
+        "type" : "object"
+      },
+      "ScrubberUse" : {
+        "properties" : {
+          "charge" : {
+            "description" : "Money, e.g. \"12.30\"",
+            "format" : "decimal",
+            "type" : "string"
+          },
+          "kg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "member" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "recordedBy" : {
+            "$ref" : "#/components/schemas/MemberRef"
+          },
+          "useId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "charge", "kg", "member", "recordedBy", "useId", "usedAt" ],
+        "type" : "object"
+      },
+      "ScrubberUseInput" : {
+        "properties" : {
+          "kg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "memberId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usedAt" : {
+            "description" : "Epoch milliseconds",
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "kg", "memberId" ],
+        "type" : "object"
+      },
       "StageResult" : {
         "properties" : {
           "addedHeLitres" : {
@@ -893,6 +1096,9 @@
             "format" : "double",
             "type" : "number"
           },
+          "gasTrackingEnabled" : {
+            "type" : "boolean"
+          },
           "lineDeadVolumeLitres" : {
             "format" : "double",
             "type" : "number"
@@ -908,12 +1114,15 @@
             "enum" : [ "ADMIN", "MEMBER" ],
             "type" : "string"
           },
+          "scrubberTrackingEnabled" : {
+            "type" : "boolean"
+          },
           "teamId" : {
             "format" : "int64",
             "type" : "integer"
           }
         },
-        "required" : [ "currency", "defaultLossPolicy", "defaultResidualPressureBar", "lineDeadVolumeLitres", "memberId", "name", "role", "teamId" ],
+        "required" : [ "currency", "defaultLossPolicy", "defaultResidualPressureBar", "gasTrackingEnabled", "lineDeadVolumeLitres", "memberId", "name", "role", "scrubberTrackingEnabled", "teamId" ],
         "type" : "object"
       },
       "TeamInput" : {
@@ -929,12 +1138,18 @@
             "format" : "double",
             "type" : "number"
           },
+          "gasTrackingEnabled" : {
+            "type" : "boolean"
+          },
           "lineDeadVolumeLitres" : {
             "format" : "double",
             "type" : "number"
           },
           "name" : {
             "type" : "string"
+          },
+          "scrubberTrackingEnabled" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "currency", "defaultLossPolicy", "defaultResidualPressureBar", "lineDeadVolumeLitres", "name" ],
@@ -991,8 +1206,11 @@
             "format" : "double",
             "type" : "number"
           },
-          "initialCostLine" : {
-            "$ref" : "#/components/schemas/CostLineInput"
+          "initialCostLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CostLineInput"
+            },
+            "type" : "array"
           },
           "initialPressureBar" : {
             "format" : "double",
@@ -1021,7 +1239,7 @@
             "type" : "number"
           }
         },
-        "required" : [ "label", "mix", "waterVolumeLitres" ],
+        "required" : [ "initialCostLines", "label", "mix", "waterVolumeLitres" ],
         "type" : "object"
       },
       "VesselDetail" : {
@@ -1427,7 +1645,7 @@
     },
     "/v1/teams/{teamId}/fills" : {
       "get" : {
-        "operationId" : "list_3",
+        "operationId" : "list_4",
         "parameters" : [ {
           "in" : "path",
           "name" : "teamId",
@@ -1494,7 +1712,7 @@
         "tags" : [ "fill-controller" ]
       },
       "post" : {
-        "operationId" : "create_2",
+        "operationId" : "create_3",
         "parameters" : [ {
           "in" : "path",
           "name" : "teamId",
@@ -1699,7 +1917,7 @@
     },
     "/v1/teams/{teamId}/members" : {
       "get" : {
-        "operationId" : "list_2",
+        "operationId" : "list_3",
         "parameters" : [ {
           "in" : "path",
           "name" : "teamId",
@@ -1829,7 +2047,7 @@
     },
     "/v1/teams/{teamId}/payments" : {
       "get" : {
-        "operationId" : "list_1",
+        "operationId" : "list_2",
         "parameters" : [ {
           "in" : "path",
           "name" : "teamId",
@@ -2015,6 +2233,361 @@
           }
         },
         "tags" : [ "report-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers" : {
+      "get" : {
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ScrubberCanister"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CanisterCreate"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}" : {
+      "get" : {
+        "operationId" : "get_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/cost-lines" : {
+      "post" : {
+        "operationId" : "addCostLine_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CostLineInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/cost-lines/{costLineId}" : {
+      "delete" : {
+        "operationId" : "deleteCostLine_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "costLineId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/empty" : {
+      "post" : {
+        "operationId" : "markEmpty",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MarkEmptyRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/reopen" : {
+      "post" : {
+        "operationId" : "reopen_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/uses" : {
+      "post" : {
+        "operationId" : "addUse",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ScrubberUseInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
+      }
+    },
+    "/v1/teams/{teamId}/scrubbers/{canisterId}/uses/{useId}" : {
+      "delete" : {
+        "operationId" : "deleteUse",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "canisterId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "path",
+          "name" : "useId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ScrubberCanister"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "scrubber-controller" ]
       }
     },
     "/v1/teams/{teamId}/vessels" : {

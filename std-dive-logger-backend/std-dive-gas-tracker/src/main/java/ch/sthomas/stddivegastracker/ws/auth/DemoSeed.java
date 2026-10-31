@@ -94,7 +94,8 @@ public final class DemoSeed {
 
         final var team =
                 teamService.create(
-                        admin, new TeamInput(TEAM_NAME, "CHF", LossPolicy.TRUE_UP, 0.05, 20));
+                        admin,
+                        new TeamInput(TEAM_NAME, "CHF", LossPolicy.TRUE_UP, 0.05, 20, null, null));
         final var teamId = team.teamId();
         final var adminId = team.memberId();
         final var aliceId =
@@ -215,7 +216,7 @@ public final class DemoSeed {
                                 null,
                                 openedAt,
                                 null,
-                                costLine))
+                                costLine == null ? List.of() : List.of(costLine)))
                 .vesselId();
     }
 

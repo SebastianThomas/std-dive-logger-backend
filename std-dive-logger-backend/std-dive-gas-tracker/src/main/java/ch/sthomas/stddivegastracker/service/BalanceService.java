@@ -1,9 +1,11 @@
 package ch.sthomas.stddivegastracker.service;
 
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationResult.VesselAllocation;
+import ch.sthomas.stddivegastracker.calc.scrubber.ScrubberPricing;
 import ch.sthomas.stddivegastracker.calc.settlement.BalanceCalculator;
 import ch.sthomas.stddivegastracker.calc.settlement.SettlementSuggester;
 import ch.sthomas.stddivegastracker.data.service.PaymentDataService;
+import ch.sthomas.stddivegastracker.data.service.ScrubberDataService;
 import ch.sthomas.stddivegastracker.data.service.TeamDataService;
 import ch.sthomas.stddivegastracker.model.Money;
 import ch.sthomas.stddivegastracker.model.payment.Balances;
@@ -40,16 +42,19 @@ public final class BalanceService {
     private final TeamAccessService teamAccess;
     private final TeamDataService teamDataService;
     private final PaymentDataService paymentDataService;
+    private final ScrubberDataService scrubberDataService;
     private final TeamSnapshotService snapshots;
 
     public BalanceService(
             final TeamAccessService teamAccess,
             final TeamDataService teamDataService,
             final PaymentDataService paymentDataService,
+            final ScrubberDataService scrubberDataService,
             final TeamSnapshotService snapshots) {
         this.teamAccess = teamAccess;
         this.teamDataService = teamDataService;
         this.paymentDataService = paymentDataService;
+        this.scrubberDataService = scrubberDataService;
         this.snapshots = snapshots;
     }
 
@@ -64,7 +69,13 @@ public final class BalanceService {
         final var currency = teamDataService.getTeam(caller).currency();
         final var state = snapshots.snapshot(caller);
 
-        final var rows = BalanceCalculator.calculate(state.input(), state.allocation(), payments);
+        final var canisters = ScrubberService.calcCanisters(scrubberDataService.list(teamId));
+        final var rows =
+                BalanceCalculator.calculate(
+                        state.input(),
+                        state.allocation(),
+                        payments,
+                        ScrubberPricing.memberTotals(canisters));
         final var rowsByMember =
                 rows.stream()
                         .collect(
@@ -96,7 +107,14 @@ public final class BalanceService {
                 Money.amount(
                         state.allocation().vessels().stream()
                                 .map(VesselAllocation::unallocated)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add)),
+                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                                .add(
+                                        canisters.stream()
+                                                .map(
+                                                        canister ->
+                                                                ScrubberPricing.price(canister)
+                                                                        .unallocated())
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add))),
                 suggestions);
     }
 
@@ -122,6 +140,8 @@ public final class BalanceService {
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
                 BigDecimal.ZERO);
     }
 
@@ -132,6 +152,8 @@ public final class BalanceService {
                 Money.amount(row.paidCosts()),
                 Money.amount(row.fillCharges()),
                 Money.amount(row.lossShares()),
+                Money.amount(row.scrubberPaid()),
+                Money.amount(row.scrubberCharges()),
                 Money.amount(row.paymentsSent()),
                 Money.amount(row.paymentsReceived()),
                 Money.amount(row.balance()),

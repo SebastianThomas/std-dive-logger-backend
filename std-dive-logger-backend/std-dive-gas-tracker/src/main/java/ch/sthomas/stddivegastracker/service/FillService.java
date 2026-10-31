@@ -206,6 +206,10 @@ public final class FillService {
             final @Nullable StoredFill previous) {
         final var state = snapshots.snapshot(caller);
         final var team = teamDataService.getTeam(caller);
+        // corrections of what exists stay possible, like a member who left since
+        if (previous == null && !team.gasTrackingEnabled()) {
+            throw new IllegalStateException("Fill tracking is off for this team.");
+        }
         final long fillId = previous == null ? NEW_FILL : previous.fillId();
         final var filledAt = filledAt(input, previous);
         final var target = resolveTarget(input.target(), filledAt, state, previous);
@@ -231,17 +235,29 @@ public final class FillService {
                     fillId);
         }
 
-        final var startMix = Objects.requireNonNullElse(input.startMix(), target.defaultStart());
+        final boolean bankDraw = input.target() instanceof FillTarget.BankDraw;
+        final var startMix =
+                bankDraw
+                        ? requireOneBank(sources).mix()
+                        : Objects.requireNonNullElse(input.startMix(), target.defaultStart());
         final var solved =
-                FillSolver.solve(
-                        new FillSolver.Input(
-                                target.waterVolumeLitres(),
+                bankDraw
+                        ? FillSolver.solveBankDraw(
+                                bank(state, Objects.requireNonNull(sources.getFirst().vesselId()))
+                                        .waterVolumeLitres(),
                                 input.startPressureBar(),
+                                input.stages().getFirst().pressureAfterBar(),
                                 startMix,
-                                solverStages,
-                                input.endAnalysis()),
-                        VirialFit.INSTANCE,
-                        team.lineDeadVolumeLitres());
+                                VirialFit.INSTANCE)
+                        : FillSolver.solve(
+                                new FillSolver.Input(
+                                        target.waterVolumeLitres(),
+                                        input.startPressureBar(),
+                                        startMix,
+                                        solverStages,
+                                        input.endAnalysis()),
+                                VirialFit.INSTANCE,
+                                team.lineDeadVolumeLitres());
 
         final var stages = new ArrayList<FillContent.Stage>();
         for (int i = 0; i < solved.stages().size(); i++) {
@@ -259,9 +275,7 @@ public final class FillService {
                             result.addedHeLitres(),
                             result.lineLossLitres(),
                             result.drawLitres(),
-                            sources.get(i).vesselId() == null
-                                    ? null
-                                    : stage.sourcePressureAfterBar()));
+                            sourceGauge(stage, sources.get(i), bankDraw)));
         }
         final var content =
                 new FillContent(
@@ -271,7 +285,7 @@ public final class FillService {
                         startMix,
                         solved.endPressureBar(),
                         solved.endMix(),
-                        input.endAnalysis(),
+                        bankDraw ? null : input.endAnalysis(),
                         input.notes(),
                         VirialFit.MODEL_VERSION,
                         stages);
@@ -283,6 +297,23 @@ public final class FillService {
         return new Draft(content, previewOf(content, prices, warnings, state), state);
     }
 
+    /** DOMAIN §5.7: a bank-draw fill takes its gas from exactly one bank. */
+    private static ResolvedSource requireOneBank(final List<ResolvedSource> sources) {
+        if (sources.size() != 1 || sources.getFirst().vesselId() == null) {
+            throw new IllegalArgumentException("Record the drop of one bank at a time.");
+        }
+        return sources.getFirst();
+    }
+
+    /** The gauge kept as a reading: none for AIR, and for a bank draw its pressure afterwards. */
+    private static @Nullable Double sourceGauge(
+            final FillInput.Stage stage, final ResolvedSource source, final boolean bankDraw) {
+        if (source.vesselId() == null) {
+            return null;
+        }
+        return bankDraw ? stage.pressureAfterBar() : stage.sourcePressureAfterBar();
+    }
+
     private static Instant filledAt(final FillInput input, final @Nullable StoredFill previous) {
         final var given = input.filledAt();
         if (given != null) {
@@ -292,10 +323,10 @@ public final class FillService {
     }
 
     /**
-     * A cylinder is charged to a member of the team who has not left (PENDING is fine). A bank
-     * target is in service now and was open at {@code filledAt} (DOMAIN §5.6). An update may keep
-     * the target it had - a member who left since, a bank closed since (then {@code filledAt} stays
-     * before the closing) - so a wrong pressure can still be corrected.
+     * A cylinder or bank draw is charged to a member of the team who has not left (PENDING is
+     * fine). A bank target is in service now and was open at {@code filledAt} (DOMAIN §5.6). An
+     * update may keep the target it had - a member who left since, a bank closed since (then {@code
+     * filledAt} stays before the closing) - so a wrong pressure can still be corrected.
      */
     private static ResolvedTarget resolveTarget(
             final FillTarget target,
@@ -305,21 +336,12 @@ public final class FillService {
         final var before = previous == null ? null : previous.content().target();
         return switch (target) {
             case FillTarget.Cylinder(final var volume, _, final var memberId) -> {
-                final var kept =
-                        before instanceof FillTarget.Cylinder(_, _, final var previousMemberId)
-                                && previousMemberId == memberId;
-                final var chargeable =
-                        state.facts().members().stream()
-                                .anyMatch(
-                                        member ->
-                                                member.memberId() == memberId
-                                                        && (kept
-                                                                || member.status()
-                                                                        != MemberStatus.LEFT));
-                if (!chargeable) {
-                    throw new IllegalArgumentException("Unknown member.");
-                }
+                requireChargeable(memberId, before, state);
                 yield new ResolvedTarget(target, volume, GasMix.AIR);
+            }
+            case FillTarget.BankDraw(final var memberId) -> {
+                requireChargeable(memberId, before, state);
+                yield new ResolvedTarget(target, 0, GasMix.AIR);
             }
             case FillTarget.Vessel(final var vesselId, _) -> {
                 final var bank = bank(state, vesselId);
@@ -341,6 +363,21 @@ public final class FillService {
                         bank.mix());
             }
         };
+    }
+
+    private static void requireChargeable(
+            final long memberId, final @Nullable FillTarget before, final TeamState state) {
+        final var kept =
+                before != null && Long.valueOf(memberId).equals(FillTarget.chargedMemberOf(before));
+        final var chargeable =
+                state.facts().members().stream()
+                        .anyMatch(
+                                member ->
+                                        member.memberId() == memberId
+                                                && (kept || member.status() != MemberStatus.LEFT));
+        if (!chargeable) {
+            throw new IllegalArgumentException("Unknown member.");
+        }
     }
 
     /**
@@ -457,8 +494,8 @@ public final class FillService {
     /** DOMAIN §10: its recorder, the member it is charged to, or an ADMIN. */
     private static void requireMayChange(final TeamMembership caller, final StoredFill fill) {
         final boolean charged =
-                fill.content().target() instanceof FillTarget.Cylinder(_, _, final var memberId)
-                        && memberId == caller.memberId();
+                Long.valueOf(caller.memberId())
+                        .equals(FillTarget.chargedMemberOf(fill.content().target()));
         if (caller.role() != Role.ADMIN
                 && fill.recordedByMemberId() != caller.memberId()
                 && !charged) {
@@ -545,7 +582,7 @@ public final class FillService {
                 fill.fillId(),
                 content.filledAt(),
                 chargedMember(content.target(), state),
-                targetLabel(content.target(), state),
+                targetLabel(content, state),
                 content.endPressureBar(),
                 content.endMix(),
                 bankLitres(content, FillContent.Stage::addedHeLitres),
@@ -563,22 +600,28 @@ public final class FillService {
                 .sum();
     }
 
-    private static String targetLabel(final FillTarget target, final TeamState state) {
-        return switch (target) {
+    private static String targetLabel(final FillContent content, final TeamState state) {
+        return switch (content.target()) {
             case FillTarget.Cylinder(final var volume, final var label, _) ->
                     label != null
                             ? label
                             : BigDecimal.valueOf(volume).stripTrailingZeros().toPlainString()
                                     + " L cylinder";
             case FillTarget.Vessel(final var vesselId, _) -> bank(state, vesselId).label();
+            case FillTarget.BankDraw _ ->
+                    "From "
+                            + bank(
+                                            state,
+                                            Objects.requireNonNull(
+                                                    content.stages().getFirst().sourceVesselId()))
+                                    .label();
         };
     }
 
     private static @Nullable MemberRef chargedMember(
             final FillTarget target, final TeamState state) {
-        return target instanceof FillTarget.Cylinder(_, _, final var memberId)
-                ? state.member(memberId)
-                : null;
+        final var memberId = FillTarget.chargedMemberOf(target);
+        return memberId == null ? null : state.member(memberId);
     }
 
     private static FillStatus status(final StoredFill fill) {

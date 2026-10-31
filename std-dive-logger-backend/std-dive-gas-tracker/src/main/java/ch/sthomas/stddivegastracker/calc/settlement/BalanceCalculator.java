@@ -7,6 +7,7 @@ import ch.sthomas.stddivegastracker.calc.allocation.AllocationInput.Draw;
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationInput.Vessel;
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationResult;
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationResult.MemberAllocation;
+import ch.sthomas.stddivegastracker.calc.scrubber.ScrubberPricing;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -46,23 +47,35 @@ public final class BalanceCalculator {
     /**
      * One member's balance and its components (DOMAIN §8). {@code provisionalCharges} is the part
      * of {@code fillCharges} drawn from vessels whose rate can still change (open TRUE_UP, or fed
-     * by such a vessel; {@code VesselAllocation.provisional}).
+     * by such a vessel; {@code VesselAllocation.provisional}) and of {@code scrubberCharges} from
+     * canisters not yet empty.
      */
     public record MemberBalance(
             long memberId,
             BigDecimal paidCosts,
             BigDecimal fillCharges,
             BigDecimal lossShares,
+            BigDecimal scrubberPaid,
+            BigDecimal scrubberCharges,
             BigDecimal paymentsSent,
             BigDecimal paymentsReceived,
             BigDecimal balance,
             BigDecimal provisionalCharges) {}
 
-    /** One row per member named anywhere (input, result or payments), sorted by member id. */
+    /** {@link #calculate(AllocationInput, AllocationResult, List, List)} without any scrubber. */
     public static List<MemberBalance> calculate(
             final AllocationInput input,
             final AllocationResult result,
             final List<Payment> payments) {
+        return calculate(input, result, payments, List.of());
+    }
+
+    /** One row per member named anywhere (input, result, payments, scrubbers), by member id. */
+    public static List<MemberBalance> calculate(
+            final AllocationInput input,
+            final AllocationResult result,
+            final List<Payment> payments,
+            final List<ScrubberPricing.MemberTotal> scrubbers) {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(result, "result");
 
@@ -89,6 +102,9 @@ public final class BalanceCalculator {
         memberIds.addAll(sent.keySet());
         memberIds.addAll(received.keySet());
         result.members().forEach(member -> memberIds.add(member.memberId()));
+        final var scrubberTotals = new TreeMap<Long, ScrubberPricing.MemberTotal>();
+        scrubbers.forEach(total -> scrubberTotals.put(total.memberId(), total));
+        memberIds.addAll(scrubberTotals.keySet());
 
         final var allocations = new TreeMap<Long, MemberAllocation>();
         result.members().forEach(member -> allocations.put(member.memberId(), member));
@@ -102,6 +118,11 @@ public final class BalanceCalculator {
             final var paidCosts = paid.getOrDefault(memberId, BigDecimal.ZERO);
             final var fillCharges = allocation.fillCharges();
             final var lossShares = allocation.lossShares();
+            final var scrubber =
+                    scrubberTotals.getOrDefault(
+                            memberId,
+                            new ScrubberPricing.MemberTotal(
+                                    memberId, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
             final var paymentsSent = sent.getOrDefault(memberId, BigDecimal.ZERO);
             final var paymentsReceived = received.getOrDefault(memberId, BigDecimal.ZERO);
             balances.add(
@@ -110,14 +131,20 @@ public final class BalanceCalculator {
                             paidCosts,
                             fillCharges,
                             lossShares,
+                            scrubber.paid(),
+                            scrubber.charged(),
                             paymentsSent,
                             paymentsReceived,
                             paidCosts
                                     .subtract(fillCharges, MC)
                                     .subtract(lossShares, MC)
+                                    .add(scrubber.paid(), MC)
+                                    .subtract(scrubber.charged(), MC)
                                     .add(paymentsSent, MC)
                                     .subtract(paymentsReceived, MC),
-                            provisional.getOrDefault(memberId, BigDecimal.ZERO)));
+                            provisional
+                                    .getOrDefault(memberId, BigDecimal.ZERO)
+                                    .add(scrubber.provisionalCharged(), MC)));
         }
         return balances;
     }

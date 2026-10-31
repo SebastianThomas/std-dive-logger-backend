@@ -79,6 +79,9 @@ public class VesselDataService {
                 teamRepository
                         .findById(caller.teamId())
                         .orElseThrow(() -> new NoSuchElementException("Team not found."));
+        if (!team.isGasTrackingEnabled()) {
+            throw new IllegalStateException("Fill tracking is off for this team.");
+        }
         final var vessel =
                 new VesselEntity(
                         caller.teamId(),
@@ -94,8 +97,7 @@ public class VesselDataService {
                                 request.lossPolicy(), team.getDefaultLossPolicy()),
                         Objects.requireNonNullElseGet(request.openedAt(), Instant::now));
         vessel.setNotes(request.notes());
-        final var costLine = request.initialCostLine();
-        if (costLine != null) {
+        for (final var costLine : request.initialCostLines()) {
             vessel.getCostLines().add(newCostLine(caller.teamId(), costLine));
         }
         return vesselRepository.save(vessel).getId();

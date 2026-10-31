@@ -41,6 +41,12 @@ public class TeamEntity {
     @Column(name = "default_residual_pressure_bar", nullable = false)
     private double defaultResidualPressureBar;
 
+    @Column(name = "gas_tracking_enabled", nullable = false)
+    private boolean gasTrackingEnabled = true;
+
+    @Column(name = "scrubber_tracking_enabled", nullable = false)
+    private boolean scrubberTrackingEnabled = true;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -111,6 +117,18 @@ public class TeamEntity {
         return updatedAt;
     }
 
+    public void setGasTrackingEnabled(final boolean gasTrackingEnabled) {
+        this.gasTrackingEnabled = gasTrackingEnabled;
+    }
+
+    public void setScrubberTrackingEnabled(final boolean scrubberTrackingEnabled) {
+        this.scrubberTrackingEnabled = scrubberTrackingEnabled;
+    }
+
+    public boolean isGasTrackingEnabled() {
+        return gasTrackingEnabled;
+    }
+
     /** The team as seen by {@code caller} (API.md §1 {@code Team} carries the caller's role). */
     public Team toRecord(final TeamMembership caller) {
         return new Team(
@@ -121,6 +139,8 @@ public class TeamEntity {
                 currency,
                 defaultLossPolicy,
                 lineDeadVolumeLitres,
-                defaultResidualPressureBar);
+                defaultResidualPressureBar,
+                gasTrackingEnabled,
+                scrubberTrackingEnabled);
     }
 }

@@ -157,7 +157,9 @@ final class TeamControllerIntegrationTest extends AbstractTeamIntegrationTest {
                                 "USD",
                                 LossPolicy.POOLED,
                                 0.5,
-                                25));
+                                25,
+                                true,
+                                true));
     }
 
     @Test

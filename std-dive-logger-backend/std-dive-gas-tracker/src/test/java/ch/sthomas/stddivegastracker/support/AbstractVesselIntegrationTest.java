@@ -81,7 +81,9 @@ public abstract class AbstractVesselIntegrationTest extends AbstractTeamIntegrat
         body.put("expectedResidualPressureBar", 20);
         body.put("lossPolicy", lossPolicy);
         body.put("openedAt", T0.toEpochMilli());
-        body.put("initialCostLine", Map.of("payerMemberId", payerMemberId, "amount", "600.00"));
+        body.put(
+                "initialCostLines",
+                List.of(Map.of("payerMemberId", payerMemberId, "amount", "600.00")));
         return createVessel(email, teamId, body);
     }
 

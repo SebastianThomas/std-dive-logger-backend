@@ -228,6 +228,7 @@ public class FillDataService {
             case FillTarget.Cylinder(final var volume, final var label, final var memberId) ->
                     fill.setCylinderTarget(volume, label, memberId);
             case FillTarget.Vessel(final var vesselId, _) -> fill.setVesselTarget(vesselId);
+            case FillTarget.BankDraw(final var memberId) -> fill.setBankDrawTarget(memberId);
         }
         fill.setStartPressureBar(content.startPressureBar());
         fill.setStartMix(content.startMix());

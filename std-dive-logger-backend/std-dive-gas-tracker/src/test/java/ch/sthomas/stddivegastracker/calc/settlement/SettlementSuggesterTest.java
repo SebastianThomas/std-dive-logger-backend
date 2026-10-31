@@ -35,6 +35,8 @@ final class SettlementSuggesterTest {
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
                 balance,
                 BigDecimal.ZERO);
     }

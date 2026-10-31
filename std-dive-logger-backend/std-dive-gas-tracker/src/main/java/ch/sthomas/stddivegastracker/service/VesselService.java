@@ -96,11 +96,10 @@ public final class VesselService {
         return detail(teamAccess.requireMember(teamId, user), vesselId);
     }
 
-    /** An initial cost line follows the same payer rule as any other (DOMAIN §10). */
+    /** Initial cost lines follow the same payer rule as any other (DOMAIN §10). */
     public VesselDetail create(final long teamId, final GasUser user, final VesselCreate request) {
         final var caller = teamAccess.requireMember(teamId, user);
-        final var costLine = request.initialCostLine();
-        if (costLine != null) {
+        for (final var costLine : request.initialCostLines()) {
             requirePayerAllowed(caller, user, costLine);
         }
         return detail(caller, vesselDataService.create(caller, request));

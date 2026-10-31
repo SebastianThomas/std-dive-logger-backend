@@ -2,19 +2,24 @@ package ch.sthomas.stddivegastracker.model.team;
 
 import ch.sthomas.stddivegastracker.calc.allocation.LossPolicy;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
  * API.md §1 {@code TeamInput} (create and full update). Jackson passes null for absent fields and 0
- * for absent numbers; the constructor applies the defaults and validates (DOMAIN §2, §3).
+ * for absent numbers; the constructor applies the defaults and validates (DOMAIN §2, §3). An absent
+ * tracking switch stays as it is (on, for a new team).
  */
 public record TeamInput(
         String name,
         String currency,
         LossPolicy defaultLossPolicy,
         double lineDeadVolumeLitres,
-        double defaultResidualPressureBar) {
+        double defaultResidualPressureBar,
+        @Nullable Boolean gasTrackingEnabled,
+        @Nullable Boolean scrubberTrackingEnabled) {
 
     private static final int MAX_NAME_LENGTH = 60;
     private static final double MAX_LINE_DEAD_VOLUME_LITRES = 10;

@@ -174,6 +174,14 @@ public class TeamDataService {
         team.setDefaultLossPolicy(input.defaultLossPolicy());
         team.setLineDeadVolumeLitres(input.lineDeadVolumeLitres());
         team.setDefaultResidualPressureBar(input.defaultResidualPressureBar());
+        final var gas = input.gasTrackingEnabled();
+        if (gas != null) {
+            team.setGasTrackingEnabled(gas);
+        }
+        final var scrubber = input.scrubberTrackingEnabled();
+        if (scrubber != null) {
+            team.setScrubberTrackingEnabled(scrubber);
+        }
     }
 
     private static void reactivate(final TeamMemberEntity member, final Instant now) {

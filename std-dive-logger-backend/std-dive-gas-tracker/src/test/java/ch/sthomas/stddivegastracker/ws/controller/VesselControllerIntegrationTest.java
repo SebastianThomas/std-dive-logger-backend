@@ -1,6 +1,7 @@
 package ch.sthomas.stddivegastracker.ws.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
 import ch.sthomas.stddivegastracker.calc.allocation.LossPolicy;
@@ -28,6 +29,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -581,7 +583,9 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
         }
         // a member creating a vessel cannot book the first cost line to someone else either
         final var body = bank("Mine", GasMix.AIR);
-        body.put("initialCostLine", Map.of("payerMemberId", team.memberId(), "amount", "5.00"));
+        body.put(
+                "initialCostLines",
+                List.of(Map.of("payerMemberId", team.memberId(), "amount", "5.00")));
         vesselRequest(HttpMethod.POST, emailOf(diver), team.teamId(), "", body)
                 .expectStatus()
                 .isForbidden();
@@ -590,6 +594,32 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
                 .extracting(VesselDetail::label, VesselDetail::lossPolicy, VesselDetail::status)
                 .containsExactly("O2 bank", LossPolicy.TRUE_UP, VesselStatus.IN_SERVICE);
         assertThat(getVessel(admin, team.teamId(), bank.vesselId()).costLines()).hasSize(1);
+    }
+
+    @Test
+    void aBankCanBePaidBySeveralPeopleWithDifferentOrTheSameAmounts() {
+        final var admin = uniqueEmail("admin");
+        final var team = createTeam(admin);
+        final var other = addActiveMember(admin, team.teamId());
+        final var third = addActiveMember(admin, team.teamId());
+        final var body = bank("Shared", GasMix.OXYGEN);
+        body.put(
+                "initialCostLines",
+                List.of(
+                        Map.of("payerMemberId", team.memberId(), "amount", "100.00"),
+                        Map.of("payerMemberId", other.memberId(), "amount", "50.00"),
+                        Map.of("payerMemberId", third.memberId(), "amount", "50.00")));
+
+        final var created = createVessel(admin, team.teamId(), body);
+
+        final var detail = getVessel(admin, team.teamId(), created.vesselId());
+        assertThat(detail.totalCost()).isEqualByComparingTo("200.00");
+        assertThat(detail.costLines())
+                .extracting(line -> line.payer().memberId(), line -> line.amount().toPlainString())
+                .containsExactlyInAnyOrder(
+                        tuple(team.memberId(), "100.00"),
+                        tuple(other.memberId(), "50.00"),
+                        tuple(third.memberId(), "50.00"));
     }
 
     @Test
@@ -925,13 +955,25 @@ final class VesselControllerIntegrationTest extends AbstractVesselIntegrationTes
         bodies.add(
                 with(
                         bank("Cost", GasMix.AIR),
-                        "initialCostLine",
-                        Map.of("payerMemberId", team.memberId(), "amount", "0")));
+                        "initialCostLines",
+                        List.of(Map.of("payerMemberId", team.memberId(), "amount", "0"))));
         bodies.add(
                 with(
                         bank("Payer", GasMix.AIR),
-                        "initialCostLine",
-                        Map.of("payerMemberId", 999_999_999L, "amount", "5.00")));
+                        "initialCostLines",
+                        List.of(Map.of("payerMemberId", 999_999_999L, "amount", "5.00"))));
+        bodies.add(
+                with(
+                        bank("One bad payer", GasMix.AIR),
+                        "initialCostLines",
+                        List.of(
+                                Map.of("payerMemberId", team.memberId(), "amount", "5.00"),
+                                Map.of("payerMemberId", 999_999_999L, "amount", "5.00"))));
+        bodies.add(
+                with(
+                        bank("No payer", GasMix.AIR),
+                        "initialCostLines",
+                        Collections.singletonList(null)));
 
         for (final var body : bodies) {
             vesselRequest(HttpMethod.POST, admin, team.teamId(), "", body)

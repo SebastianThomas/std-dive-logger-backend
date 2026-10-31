@@ -211,9 +211,9 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
             quoteCharacter = '"',
             textBlock =
                     """
-                    # fill target: vessel xor (water volume + charged member)
+                    # fill target: vessel xor charged member; a cylinder label needs a water volume
                     cylinderFill | fk_charged_member_id = NULL                    | ck_fill_target
-                    cylinderFill | water_volume_litres = NULL                     | ck_fill_target
+                    cylinderFill | water_volume_litres = NULL, cylinder_label = 'D12' | ck_fill_target
                     cylinderFill | fk_target_vessel_id = (SELECT max(pk_vessel_id) FROM t_vessel) | ck_fill_target
                     vesselFill   | water_volume_litres = 12                       | ck_fill_target
                     vesselFill   | cylinder_label = 'D12'                         | ck_fill_target
@@ -494,13 +494,19 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                         "t_vessel_loss_participant",
                         "t_fill",
                         "t_fill_stage",
-                        "t_payment");
+                        "t_payment",
+                        "t_scrubber_canister",
+                        "t_scrubber_cost_line",
+                        "t_scrubber_use");
     }
 
     @Test
-    void initIsTheOnlyMigration() {
-        assertThat(jdbc.queryForList("SELECT version FROM flyway_schema_history", String.class))
-                .containsExactly("1.0.0");
+    void theMigrationsApplyInOrder() {
+        assertThat(
+                        jdbc.queryForList(
+                                "SELECT version FROM flyway_schema_history ORDER BY installed_rank",
+                                String.class))
+                .containsExactly("1.0.0", "1.0.1", "1.0.2");
     }
 
     /** AGENTS.md "Migrations": Postgres creates no index for an FK, so each needs a leading one. */

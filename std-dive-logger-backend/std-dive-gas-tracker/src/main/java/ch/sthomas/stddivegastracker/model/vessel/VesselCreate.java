@@ -6,11 +6,13 @@ import ch.sthomas.stddivegastracker.calc.gas.GasMix;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * API.md §3 {@code VesselCreate}. Absent optionals stay null: the data service applies the defaults
  * (0 bar, the team's residual pressure and loss policy, now). {@code mix} validates itself ({@link
- * GasMix}); a missing {@code waterVolumeLitres} is 0 and fails the range check.
+ * GasMix}); a missing {@code waterVolumeLitres} is 0 and fails the range check. No initial cost
+ * lines is an empty list; each one is a person who paid part of the bank.
  */
 public record VesselCreate(
         String label,
@@ -21,7 +23,7 @@ public record VesselCreate(
         @Nullable LossPolicy lossPolicy,
         @Nullable Instant openedAt,
         @Nullable String notes,
-        @Nullable CostLineInput initialCostLine) {
+        List<CostLineInput> initialCostLines) {
 
     private static final int MAX_NOTES_LENGTH = 1000;
 
@@ -38,5 +40,6 @@ public record VesselCreate(
             Limits.pressureBar(expectedResidualPressureBar, "Residual pressure");
         }
         notes = Limits.text(notes, MAX_NOTES_LENGTH, "Notes");
+        initialCostLines = initialCostLines == null ? List.of() : List.copyOf(initialCostLines);
     }
 }

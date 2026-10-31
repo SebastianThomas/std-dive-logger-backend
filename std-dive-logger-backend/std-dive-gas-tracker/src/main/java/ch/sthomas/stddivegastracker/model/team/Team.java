@@ -11,4 +11,6 @@ public record Team(
         String currency,
         LossPolicy defaultLossPolicy,
         double lineDeadVolumeLitres,
-        double defaultResidualPressureBar) {}
+        double defaultResidualPressureBar,
+        boolean gasTrackingEnabled,
+        boolean scrubberTrackingEnabled) {}

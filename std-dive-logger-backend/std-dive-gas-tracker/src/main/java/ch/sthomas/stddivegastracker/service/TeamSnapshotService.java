@@ -88,8 +88,7 @@ public final class TeamSnapshotService {
                         facts.stages().stream().filter(row -> row.fillId() != fillId).toList());
         final var target = content.target();
         final var targetVesselId = target instanceof FillTarget.Vessel(final var id, _) ? id : null;
-        final var chargedMemberId =
-                target instanceof FillTarget.Cylinder(_, _, final var id) ? id : null;
+        final var chargedMemberId = FillTarget.chargedMemberOf(target);
         for (final var stage : content.stages()) {
             stages.add(
                     new StageRow(

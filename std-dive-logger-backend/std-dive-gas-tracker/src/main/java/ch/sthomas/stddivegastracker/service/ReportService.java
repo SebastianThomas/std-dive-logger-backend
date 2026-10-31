@@ -3,9 +3,11 @@ package ch.sthomas.stddivegastracker.service;
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationEngine;
 import ch.sthomas.stddivegastracker.calc.allocation.AllocationInput;
 import ch.sthomas.stddivegastracker.calc.allocation.LossPolicy;
+import ch.sthomas.stddivegastracker.calc.scrubber.ScrubberPricing;
 import ch.sthomas.stddivegastracker.calc.settlement.BalanceCalculator;
 import ch.sthomas.stddivegastracker.data.service.FillDataService;
 import ch.sthomas.stddivegastracker.data.service.PaymentDataService;
+import ch.sthomas.stddivegastracker.data.service.ScrubberDataService;
 import ch.sthomas.stddivegastracker.model.Money;
 import ch.sthomas.stddivegastracker.model.report.ConsumptionReport;
 import ch.sthomas.stddivegastracker.model.report.LossesReport;
@@ -39,16 +41,19 @@ public final class ReportService {
     private final TeamSnapshotService snapshots;
     private final FillDataService fillDataService;
     private final PaymentDataService paymentDataService;
+    private final ScrubberDataService scrubberDataService;
 
     public ReportService(
             final TeamAccessService teamAccess,
             final TeamSnapshotService snapshots,
             final FillDataService fillDataService,
-            final PaymentDataService paymentDataService) {
+            final PaymentDataService paymentDataService,
+            final ScrubberDataService scrubberDataService) {
         this.teamAccess = teamAccess;
         this.snapshots = snapshots;
         this.fillDataService = fillDataService;
         this.paymentDataService = paymentDataService;
+        this.scrubberDataService = scrubberDataService;
     }
 
     /**
@@ -143,9 +148,13 @@ public final class ReportService {
     public PolicyComparison policyComparison(final long teamId, final GasUser user) {
         final var caller = teamAccess.requireMember(teamId, user);
         final var payments = BalanceService.calcPayments(paymentDataService.list(teamId));
+        // scrubbers do not depend on the loss policy, but the balances compared include them
+        final var scrubbers =
+                ScrubberPricing.memberTotals(
+                        ScrubberService.calcCanisters(scrubberDataService.list(teamId)));
         final var state = snapshots.snapshot(caller);
-        final var trueUp = balancesUnder(LossPolicy.TRUE_UP, state, payments);
-        final var pooled = balancesUnder(LossPolicy.POOLED, state, payments);
+        final var trueUp = balancesUnder(LossPolicy.TRUE_UP, state, payments, scrubbers);
+        final var pooled = balancesUnder(LossPolicy.POOLED, state, payments, scrubbers);
 
         final var rows =
                 state.facts().members().stream()
@@ -192,7 +201,8 @@ public final class ReportService {
     private static Map<Long, BigDecimal> balancesUnder(
             final LossPolicy policy,
             final TeamState state,
-            final List<BalanceCalculator.Payment> payments) {
+            final List<BalanceCalculator.Payment> payments,
+            final List<ScrubberPricing.MemberTotal> scrubbers) {
         final var input = state.input();
         final var overridden =
                 new AllocationInput(
@@ -211,7 +221,7 @@ public final class ReportService {
                         input.draws(),
                         input.activeMemberIds());
         return BalanceCalculator.calculate(
-                        overridden, AllocationEngine.allocate(overridden), payments)
+                        overridden, AllocationEngine.allocate(overridden), payments, scrubbers)
                 .stream()
                 .collect(
                         Collectors.toMap(

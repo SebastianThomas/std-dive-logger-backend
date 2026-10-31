@@ -183,10 +183,9 @@ check is reported with its output, never rounded up to "done".
 
 ## Migrations
 
-`src/main/resources/db/migration/postgresql/`, `V1_0_<n>__snake_case.sql`. **Until the first
-deployment (task P1), `V1_0_0__init.sql` is the only migration and is edited in place**; after
-editing it, reset the local DB (`docker compose down -v`). After P1, never edit an applied
-migration — add the next version. Naming: `t_<entity>`, `pk_<entity>_id BIGINT GENERATED ALWAYS
+`src/main/resources/db/migration/postgresql/`, `V1_0_<n>__snake_case.sql`. **Dev is deployed, so
+never edit an applied migration — add the next version** (and add it to
+`SchemaConstraintTest.theMigrationsApplyInOrder`). Naming: `t_<entity>`, `pk_<entity>_id BIGINT GENERATED ALWAYS
 AS IDENTITY`, `fk_<entity>_id`, **an index on every FK column** (Postgres creates none),
 `created_at/updated_at TIMESTAMPTZ`, enums as `VARCHAR` + `CHECK`, money `NUMERIC(12,2)`.
 

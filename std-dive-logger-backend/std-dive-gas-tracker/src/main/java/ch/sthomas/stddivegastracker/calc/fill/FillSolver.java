@@ -11,7 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.DoubleUnaryOperator;
 
-/** Computes a fill from stage pressures, stage by stage (DOMAIN §5.2, §5.4, §5.5). */
+/**
+ * Computes a fill from stage pressures, stage by stage (DOMAIN §5.2, §5.4, §5.5), or from a bank's
+ * pressure drop (DOMAIN §5.7).
+ */
 public final class FillSolver {
 
     private static final double TOLERANCE_LITRES = 1e-6;
@@ -142,6 +145,36 @@ public final class FillSolver {
                 analysisMismatch(endMix, input.endAnalysis())
                         ? List.of(Warning.ANALYSIS_MISMATCH)
                         : List.of());
+    }
+
+    /**
+     * DOMAIN §5.7: the gas a bank lost between two gauge readings. No target gauge is involved, so
+     * the drop is the draw itself, and any line loss is already part of it.
+     */
+    public static Result solveBankDraw(
+            final double bankWaterVolumeLitres,
+            final double beforeBar,
+            final double afterBar,
+            final GasMix bankMix,
+            final CompressibilityModel model) {
+        if (!(afterBar < beforeBar)) {
+            throw new IllegalArgumentException(
+                    "The bank's pressure now must be below its pressure before.");
+        }
+        final double drawLitres =
+                GasContent.contentLitres(bankWaterVolumeLitres, beforeBar, bankMix, model)
+                        - GasContent.contentLitres(bankWaterVolumeLitres, afterBar, bankMix, model);
+        return new Result(
+                List.of(
+                        new StageResult(
+                                drawLitres,
+                                drawLitres * bankMix.o2(),
+                                drawLitres * bankMix.he(),
+                                0.0,
+                                drawLitres)),
+                afterBar,
+                bankMix,
+                List.of());
     }
 
     /** DOMAIN §5.2: the analysed O2 or He differs from the computed end mix by more than 0.01. */

@@ -13,7 +13,9 @@ import java.util.List;
 /**
  * API.md §4 {@code FillInput} for preview, create and update (DOMAIN §5.1). Absent optionals stay
  * null: the service applies the defaults (now, AIR or the bank's mix). Ids are checked against the
- * team there; the pressures' order is checked by the solver.
+ * team there; the pressures' order is checked by the solver. For a {@link FillTarget.BankDraw} the
+ * pressures are the bank's: {@code startPressureBar} before, the one stage's {@code
+ * pressureAfterBar} after (DOMAIN §5.7).
  */
 public record FillInput(
         @Nullable Instant filledAt,

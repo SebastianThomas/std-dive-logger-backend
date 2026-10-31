@@ -12,12 +12,13 @@ public final class Limits {
 
     static final int MAX_LABEL_LENGTH = 60;
     private static final double MAX_PRESSURE_BAR = 400;
+    private static final double MAX_KG = 1000;
     private static final double MAX_WATER_VOLUME_LITRES = 5000;
     private static final BigDecimal MAX_MONEY = new BigDecimal("1000000000");
 
     private Limits() {}
 
-    static String label(final @Nullable String raw) {
+    public static String label(final @Nullable String raw) {
         final var label = raw == null ? "" : raw.strip();
         if (label.isEmpty() || label.length() > MAX_LABEL_LENGTH) {
             throw new IllegalArgumentException(
@@ -31,6 +32,14 @@ public final class Limits {
         if (!(value > 0 && value <= MAX_WATER_VOLUME_LITRES)) {
             throw new IllegalArgumentException(
                     "Water volume must be above 0 and at most 5000 litres.");
+        }
+        return value;
+    }
+
+    /** Absorbent in (0, 1000] kg; written as !(in range) so NaN fails too. */
+    public static double kg(final double value, final String name) {
+        if (!(value > 0 && value <= MAX_KG)) {
+            throw new IllegalArgumentException(name + " must be above 0 and at most 1000 kg.");
         }
         return value;
     }

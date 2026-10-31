@@ -305,9 +305,9 @@ final class BalanceControllerIntegrationTest extends AbstractPaymentIntegrationT
             assertThat(busy.members()).hasSize(3);
             assertThat(balanceOf(busy, crew.b().memberId()).paymentsSent().toPlainString())
                     .isEqualTo("6.00");
-            // membership, payments, team (currency), then the snapshot's 7 (see D3)
-            assertThat(withNothing).isEqualTo(10);
-            assertThat(withSix).isEqualTo(10);
+            // membership, payments, team (currency), canisters, then the snapshot's 7 (see D3)
+            assertThat(withNothing).isEqualTo(11);
+            assertThat(withSix).isEqualTo(11);
             // the payments list: membership, payments, members, their users
             assertThat(listed).hasSize(6);
             assertThat(listQueries).isEqualTo(4);
