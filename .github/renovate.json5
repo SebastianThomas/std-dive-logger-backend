@@ -1,0 +1,75 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    ':dependencyDashboard',
+    ':semanticCommitsDisabled',
+  ],
+
+  // Same rhythm as the homelab repos: batch the noise, auto-merge only the safe stuff.
+  timezone: 'Europe/Zurich',
+  schedule: ['before 6am on monday'],
+  prConcurrentLimit: 5,
+  labels: ['dependencies'],
+
+  // Every PR lands in my assigned and review-requested lists, auto-merged ones included.
+  assignees: ['SebastianThomas'],
+  reviewers: ['SebastianThomas'],
+  assignAutomerge: true,
+
+  // Renovate's kubernetes manager has no default file list.
+  kubernetes: {
+    managerFilePatterns: [
+      '/(^|/)manifests/.+\\.ya?ml$/',
+      '/^deploy/.+\\.ya?ml$/',
+    ],
+  },
+
+  packageRules: [
+    // What runs in the services: grouped, but a person looks at it.
+    {
+      matchManagers: ['maven'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'backend dependencies',
+    },
+    // Test and build tooling: the branch build runs every test, and merging to main deploys
+    // nothing (only a v* tag does).
+    {
+      matchManagers: ['maven'],
+      matchDepTypes: ['test', 'build'],
+      matchUpdateTypes: ['minor', 'patch'],
+      groupName: 'backend test and build tooling',
+      automerge: true,
+    },
+    // Spring Boot moves on its own: it manages most other versions.
+    {
+      matchPackageNames: ['org.springframework.boot:**'],
+      groupName: 'spring boot',
+      automerge: false,
+    },
+    // GitHub Actions: group, auto-merge minor/patch.
+    {
+      matchManagers: ['github-actions'],
+      matchUpdateTypes: ['minor', 'patch', 'digest'],
+      groupName: 'github-actions',
+      automerge: true,
+    },
+    // Deployed sidecar and init images: no test covers them, so a person looks.
+    {
+      matchManagers: ['kubernetes'],
+      groupName: 'kubernetes images',
+    },
+    // Never across a Postgres major: compose.yaml holds real data in its volume, which a new major
+    // cannot read without a migration. Done by hand, like the CNPG catalog in homelab-infra.
+    {
+      matchPackageNames: ['postgres', 'postgis/postgis'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    // Java moves by hand: the workflows, java.version in the pom and the image base go together.
+    {
+      matchDatasources: ['java-version'],
+      enabled: false,
+    },
+  ],
+}
