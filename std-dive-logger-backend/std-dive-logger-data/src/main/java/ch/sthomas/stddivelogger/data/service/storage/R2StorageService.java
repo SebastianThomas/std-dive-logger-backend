@@ -1,12 +1,7 @@
 package ch.sthomas.stddivelogger.data.service.storage;
 
-import io.minio.GetObjectArgs;
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
+import io.minio.*;
 import io.minio.errors.*;
-import io.minio.http.Method;
 
 import jakarta.validation.constraints.NotNull;
 
@@ -24,8 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.Objects;
@@ -99,8 +92,8 @@ public class R2StorageService implements ObjectStorageService {
         try (output) {
             Objects.requireNonNull(contentType, "contentType must not be null");
 
-            final var fallbackPartSize = 8 * 1024 * 1024;
-            final var partSize = contentLength > 0 ? -1 : fallbackPartSize;
+            final var fallbackPartSize = 8L * 1024 * 1024;
+            // final var partSize = contentLength > 0 ? -1 : fallbackPartSize;
 
             logger.info("Put Object: bucket {} -> {}", bucket, path);
             final var putObjectArgs =
@@ -109,18 +102,10 @@ public class R2StorageService implements ObjectStorageService {
                             .object(path)
                             .contentType(contentType)
                             // .headers(Map.of())
-                            .stream(output, -1, fallbackPartSize) // contentLength, partSize)
+                            .stream(output, -1L, fallbackPartSize) // contentLength, partSize)
                             .build();
             client.putObject(putObjectArgs);
-        } catch (final ErrorResponseException
-                | InsufficientDataException
-                | InternalException
-                | InvalidKeyException
-                | InvalidResponseException
-                | NoSuchAlgorithmException
-                | ServerException
-                | XmlParserException
-                | IOException e) {
+        } catch (final MinioException | IOException e) {
             throw new IOException(MessageFormat.format("failed to write for path={0}", path), e);
         }
     }
@@ -133,21 +118,13 @@ public class R2StorageService implements ObjectStorageService {
             final var url =
                     client.getPresignedObjectUrl(
                             GetPresignedObjectUrlArgs.builder()
-                                    .method(Method.PUT)
+                                    .method(Http.Method.PUT)
                                     .bucket(bucket)
                                     .object(path)
                                     .expiry(expirySeconds)
                                     .build());
             return new PresignedUpload(url);
-        } catch (final ErrorResponseException
-                | InsufficientDataException
-                | InternalException
-                | InvalidKeyException
-                | InvalidResponseException
-                | NoSuchAlgorithmException
-                | ServerException
-                | XmlParserException
-                | IOException e) {
+        } catch (final MinioException e) {
             throw new IOException(
                     MessageFormat.format(
                             "failed to create presigned upload url for path={0}", path),
@@ -159,15 +136,7 @@ public class R2StorageService implements ObjectStorageService {
     public InputStream download(final String path) throws IOException {
         try {
             return client.getObject(GetObjectArgs.builder().bucket(bucket).object(path).build());
-        } catch (final ErrorResponseException
-                | InsufficientDataException
-                | InternalException
-                | InvalidKeyException
-                | InvalidResponseException
-                | NoSuchAlgorithmException
-                | ServerException
-                | XmlParserException
-                | IOException e) {
+        } catch (final MinioException e) {
             throw new IOException(MessageFormat.format("failed to read for path={0}", path), e);
         }
     }
@@ -176,15 +145,7 @@ public class R2StorageService implements ObjectStorageService {
     public void delete(final String path) throws IOException {
         try {
             client.removeObject(RemoveObjectArgs.builder().bucket(bucket).object(path).build());
-        } catch (final ErrorResponseException
-                | InsufficientDataException
-                | InternalException
-                | InvalidKeyException
-                | InvalidResponseException
-                | NoSuchAlgorithmException
-                | ServerException
-                | XmlParserException
-                | IOException e) {
+        } catch (final MinioException e) {
             throw new IOException(MessageFormat.format("failed to delete for path={0}", path), e);
         }
     }

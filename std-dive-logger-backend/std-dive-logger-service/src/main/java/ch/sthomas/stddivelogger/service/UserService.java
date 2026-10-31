@@ -3,7 +3,6 @@ package ch.sthomas.stddivelogger.service;
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
-import ch.sthomas.stddivelogger.data.repository.AccountRequestRepository;
 import ch.sthomas.stddivelogger.data.repository.GroupMemberRepository;
 import ch.sthomas.stddivelogger.data.service.UserDataService;
 import ch.sthomas.stddivelogger.data.service.storage.ObjectStorageService;
@@ -23,6 +22,12 @@ import jakarta.validation.constraints.NotBlank;
 
 import org.jspecify.annotations.Nullable;
 import org.passay.*;
+import org.passay.data.EnglishCharacterData;
+import org.passay.data.EnglishSequenceData;
+import org.passay.rule.CharacterRule;
+import org.passay.rule.IllegalSequenceRule;
+import org.passay.rule.LengthRule;
+import org.passay.rule.WhitespaceRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -60,9 +65,9 @@ public class UserService {
     private final StorageService storageService;
     private final ObjectStorageService objectStorageService;
 
-    private final Pattern emailPattern = Pattern.compile("(?<name>.*)@(?<domain>.*)");
+    private final Pattern emailPattern = Pattern.compile("(?<name>[^@]*)@(?<domain>[^@]*)");
     private final PasswordValidator passwordValidator =
-            new PasswordValidator(
+            new DefaultPasswordValidator(
                     new LengthRule(8, 64),
                     new CharacterRule(EnglishCharacterData.UpperCase, 1),
                     new CharacterRule(EnglishCharacterData.LowerCase, 1),
@@ -72,21 +77,18 @@ public class UserService {
                     new IllegalSequenceRule(EnglishSequenceData.Numerical, 4, false),
                     new IllegalSequenceRule(EnglishSequenceData.USQwerty, 4, false),
                     new WhitespaceRule());
-    private final AccountRequestRepository accountRequestRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final ImportFileService importFileService;
 
     public UserService(
             final UserDataService userDataService,
             final PasswordEncoder passwordEncoder,
-            final AccountRequestRepository accountRequestRepository,
-            GroupMemberRepository groupMemberRepository,
+            final GroupMemberRepository groupMemberRepository,
             final StorageService storageService,
             @Lazy final ObjectStorageService objectStorageService,
             final ImportFileService importFileService) {
         this.userDataService = userDataService;
         this.passwordEncoder = passwordEncoder;
-        this.accountRequestRepository = accountRequestRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.storageService = storageService;
         this.objectStorageService = objectStorageService;
@@ -114,7 +116,10 @@ public class UserService {
             throw new IllegalArgumentException(
                     "This username is already in use, please choose a unique username.");
         }
-        final var user = userDataService.saveUser(email, passwordEncoder.encode(password), name);
+        final var encodedPassword =
+                Objects.requireNonNull(
+                        passwordEncoder.encode(password), "The password cannot be null.");
+        final var user = userDataService.saveUser(email, encodedPassword, name);
         if (userDataService.createAccountRequest(AccountRequestType.VERIFY_EMAIL, user)) {
             return user;
         }
@@ -159,7 +164,7 @@ public class UserService {
                 && !domain.substring(domain.lastIndexOf('.')).isBlank();
     }
 
-    private RuleResult isValidPassword(final String password) {
+    private ValidationResult isValidPassword(final String password) {
         return passwordValidator.validate(new PasswordData(password));
     }
 
