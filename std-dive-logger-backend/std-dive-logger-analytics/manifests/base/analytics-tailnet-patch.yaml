@@ -10,7 +10,7 @@ spec:
       containers:
         - name: analytics
         - name: tailscale
-          image: docker.io/tailscale/tailscale:v1.102.3
+          image: docker.io/tailscale/tailscale:v1.104.4
           env:
             - name: TS_AUTHKEY
               valueFrom:
@@ -34,7 +34,7 @@ spec:
             - {name: tailnet-state, mountPath: /var/lib/tailscale}
             - {name: dev-net-tun, mountPath: /dev/net/tun}
         - name: tailnet-tls
-          image: docker.io/nginx:1.31.5-alpine
+          image: docker.io/nginx:1.31.8-alpine
           ports:
             - {name: tailnet-https, containerPort: 443}
           readinessProbe:
