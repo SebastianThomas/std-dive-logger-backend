@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface TeamRepository extends JpaRepository<TeamEntity, Long> {
 
-    Optional<TeamEntity> findByInviteToken(String inviteToken);
+    Optional<TeamEntity> findByInviteTokenAndInviteLinkOnTrue(String inviteToken);
 
     /**
      * Serialises membership changes of one team (last-admin guard); hold it for the transaction.

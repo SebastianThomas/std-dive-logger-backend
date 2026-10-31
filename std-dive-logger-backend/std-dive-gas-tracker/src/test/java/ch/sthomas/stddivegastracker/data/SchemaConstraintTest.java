@@ -468,7 +468,7 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
                         jdbc.queryForList(
                                 "SELECT version FROM flyway_schema_history ORDER BY installed_rank",
                                 String.class))
-                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4", "1.0.5");
+                .containsExactly("1.0.0", "1.0.1", "1.0.2", "1.0.3", "1.0.4", "1.0.5", "1.0.6");
     }
 
     /** AGENTS.md "Migrations": Postgres creates no index for an FK, so each needs a leading one. */

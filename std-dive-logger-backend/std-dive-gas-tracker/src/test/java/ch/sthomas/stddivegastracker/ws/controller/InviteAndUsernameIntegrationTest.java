@@ -138,7 +138,9 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
         link(HttpMethod.POST, admin, team.teamId());
 
         for (final var method :
-                new HttpMethod[] {HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE}) {
+                new HttpMethod[] {
+                    HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE
+                }) {
             send(method, linkUri(team.teamId()), memberEmail, null).expectStatus().isForbidden();
         }
     }
@@ -162,6 +164,52 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
                 .expectStatus()
                 .isNotFound();
         assertThat(me(person).teams()).isEmpty();
+    }
+
+    @Test
+    void aLinkTurnedBackOnIsTheSameOneAndWorksAgain() {
+        final var admin = uniqueEmail("admin");
+        final var team = createTeam(admin);
+        final var token = newToken(admin, team.teamId());
+
+        final var off = link(HttpMethod.DELETE, admin, team.teamId());
+        assertThat(off.token()).isNull();
+        assertThat(off.canTurnBackOn()).isTrue();
+        assertThat(link(HttpMethod.GET, admin, team.teamId())).isEqualTo(off);
+
+        final var on = link(HttpMethod.PUT, admin, team.teamId());
+        assertThat(on.token()).isEqualTo(token);
+        assertThat(on.canTurnBackOn()).isFalse();
+        final var person = uniqueEmail("person");
+        assertThat(invite(HttpMethod.POST, person, token, "/join").alreadyMember()).isTrue();
+    }
+
+    @Test
+    void aNewLinkWhileOffLeavesTheOldOneDeadForGood() {
+        final var admin = uniqueEmail("admin");
+        final var team = createTeam(admin);
+        final var old = newToken(admin, team.teamId());
+        link(HttpMethod.DELETE, admin, team.teamId());
+
+        final var current = newToken(admin, team.teamId());
+
+        assertThat(current).isNotEqualTo(old);
+        assertThat(link(HttpMethod.PUT, admin, team.teamId()).token()).isEqualTo(current);
+        send(HttpMethod.GET, "/v1/invites/" + old, uniqueEmail("person"), null)
+                .expectStatus()
+                .isNotFound();
+    }
+
+    @Test
+    void thereIsNothingToTurnOnWithoutAnEarlierLink() {
+        final var admin = uniqueEmail("admin");
+        final var team = createTeam(admin);
+        assertThat(link(HttpMethod.GET, admin, team.teamId()).canTurnBackOn()).isFalse();
+
+        send(HttpMethod.PUT, linkUri(team.teamId()), admin, null).expectStatus().isNotFound();
+
+        // turning off a link that never existed leaves nothing to turn on either
+        assertThat(link(HttpMethod.DELETE, admin, team.teamId()).canTurnBackOn()).isFalse();
     }
 
     @Test

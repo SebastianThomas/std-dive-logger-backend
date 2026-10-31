@@ -136,14 +136,41 @@ public class TeamDataService {
 
     @Transactional(readOnly = true)
     public InviteLink inviteLink(final long teamId) {
-        return new InviteLink(findTeam(teamId).getInviteToken());
+        return inviteLinkOf(findTeam(teamId));
     }
 
-    /** Replaces the team's link (an old one stops working); {@code null} turns it off. */
+    /** Replaces the team's link (an old one stops working for good) and turns it on. */
     @Transactional
-    public InviteLink setInviteToken(final long teamId, final @Nullable String token) {
-        findTeam(teamId).setInviteToken(token);
-        return new InviteLink(token);
+    public InviteLink replaceInviteToken(final long teamId, final String token) {
+        final var team = findTeam(teamId);
+        team.setInviteToken(token);
+        team.setInviteLinkOn(true);
+        return inviteLinkOf(team);
+    }
+
+    /** Keeps the token, for {@link #turnOnInviteLink}. */
+    @Transactional
+    public InviteLink turnOffInviteLink(final long teamId) {
+        final var team = findTeam(teamId);
+        team.setInviteLinkOn(false);
+        return inviteLinkOf(team);
+    }
+
+    /** The last link works again, for everyone who still has it. */
+    @Transactional
+    public InviteLink turnOnInviteLink(final long teamId) {
+        final var team = findTeam(teamId);
+        if (team.getInviteToken() == null) {
+            throw new NoSuchElementException("This team has no earlier invite link.");
+        }
+        team.setInviteLinkOn(true);
+        return inviteLinkOf(team);
+    }
+
+    private static InviteLink inviteLinkOf(final TeamEntity team) {
+        return team.isInviteLinkOn()
+                ? new InviteLink(team.getInviteToken(), false)
+                : new InviteLink(null, team.getInviteToken() != null);
     }
 
     @Transactional(readOnly = true)
@@ -182,7 +209,7 @@ public class TeamDataService {
 
     private TeamEntity findByInvite(final String token) {
         return teamRepository
-                .findByInviteToken(token)
+                .findByInviteTokenAndInviteLinkOnTrue(token)
                 .orElseThrow(() -> new NoSuchElementException(INVALID_INVITE));
     }
 

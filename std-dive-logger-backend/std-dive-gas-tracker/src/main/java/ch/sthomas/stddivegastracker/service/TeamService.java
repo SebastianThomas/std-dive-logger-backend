@@ -64,13 +64,18 @@ public final class TeamService {
         teamAccess.requireAdmin(teamId, user);
         final var bytes = new byte[INVITE_TOKEN_BYTES];
         RANDOM.nextBytes(bytes);
-        return teamDataService.setInviteToken(
+        return teamDataService.replaceInviteToken(
                 teamId, Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
     }
 
     public InviteLink turnOffInviteLink(final long teamId, final GasUser user) {
         teamAccess.requireAdmin(teamId, user);
-        return teamDataService.setInviteToken(teamId, null);
+        return teamDataService.turnOffInviteLink(teamId);
+    }
+
+    public InviteLink turnOnInviteLink(final long teamId, final GasUser user) {
+        teamAccess.requireAdmin(teamId, user);
+        return teamDataService.turnOnInviteLink(teamId);
     }
 
     public InvitePreview previewInvite(final String token, final GasUser user) {

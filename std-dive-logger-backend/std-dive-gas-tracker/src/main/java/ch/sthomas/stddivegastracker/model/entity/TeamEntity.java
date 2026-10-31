@@ -42,9 +42,12 @@ public class TeamEntity {
     @Column(name = "default_residual_pressure_bar", nullable = false)
     private double defaultResidualPressureBar;
 
-    /** The current invite link's token (DOMAIN §2); null: no link. */
+    /** The invite link's latest token (DOMAIN §2), kept while it is off; null: never had one. */
     @Column(name = "invite_token", length = 64, unique = true)
     private @Nullable String inviteToken;
+
+    @Column(name = "invite_link_on", nullable = false)
+    private boolean inviteLinkOn;
 
     @Column(name = "gas_tracking_enabled", nullable = false)
     private boolean gasTrackingEnabled = true;
@@ -126,8 +129,16 @@ public class TeamEntity {
         return inviteToken;
     }
 
-    public void setInviteToken(final @Nullable String inviteToken) {
+    public void setInviteToken(final String inviteToken) {
         this.inviteToken = inviteToken;
+    }
+
+    public boolean isInviteLinkOn() {
+        return inviteLinkOn;
+    }
+
+    public void setInviteLinkOn(final boolean inviteLinkOn) {
+        this.inviteLinkOn = inviteLinkOn;
     }
 
     public void setGasTrackingEnabled(final boolean gasTrackingEnabled) {

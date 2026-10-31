@@ -467,10 +467,14 @@
       },
       "InviteLink" : {
         "properties" : {
+          "canTurnBackOn" : {
+            "type" : "boolean"
+          },
           "token" : {
             "type" : "string"
           }
         },
+        "required" : [ "canTurnBackOn" ],
         "type" : "object"
       },
       "InvitePreview" : {
@@ -2044,6 +2048,31 @@
       },
       "post" : {
         "operationId" : "resetInviteLink",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "teamId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteLink"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-controller" ]
+      },
+      "put" : {
+        "operationId" : "turnOnInviteLink",
         "parameters" : [ {
           "in" : "path",
           "name" : "teamId",
