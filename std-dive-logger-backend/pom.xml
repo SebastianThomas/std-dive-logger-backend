@@ -27,7 +27,7 @@
         <sentry-version>8.16.0</sentry-version>
 
         <explicit-null-marking-level>ERROR</explicit-null-marking-level>
-        <spotless.version>3.4.0</spotless.version>
+        <spotless.version>3.10.4</spotless.version>
         <test.excludedGroups>slow</test.excludedGroups>
     </properties>
 
@@ -334,7 +334,7 @@
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
                 <scope>test</scope>
-                <version>1.19.0</version>
+                <version>1.23.0</version>
             </dependency>
 
             <dependency>
@@ -420,7 +420,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.15.0</version>
+                    <version>3.16.0</version>
                     <configuration>
                         <fork>true</fork>
 
@@ -487,7 +487,7 @@
                 <plugin>
                     <groupId>com.google.cloud.tools</groupId>
                     <artifactId>jib-maven-plugin</artifactId>
-                    <version>3.5.1</version>
+                    <version>3.5.2</version>
 
                     <dependencies>
                         <dependency>
