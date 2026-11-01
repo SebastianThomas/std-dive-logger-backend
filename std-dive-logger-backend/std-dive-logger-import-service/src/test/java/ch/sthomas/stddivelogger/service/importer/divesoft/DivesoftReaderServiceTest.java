@@ -168,6 +168,60 @@ class DivesoftReaderServiceTest {
     }
 
     @Test
+    void alignsSparseCcrSetpointTimelineByTimestamp() {
+        final var graphData =
+                new DivesoftGraphData(
+                        List.of(
+                                new DivesoftDepthSample(0, 1.0),
+                                new DivesoftDepthSample(10, 5.0),
+                                new DivesoftDepthSample(20, 10.0)),
+                        List.of(),
+                        List.of(),
+                        // Setpoint changes are sparse and do not have one entry per depth sample.
+                        List.of(
+                                new DivesoftPressureSample(0, 0.7),
+                                new DivesoftPressureSample(15, 1.2)),
+                        List.of(),
+                        List.of(),
+                        List.of(new DivesoftGraphMix(0, "21", "0", "air")));
+        final var dive =
+                new DivesoftDive(
+                        "synthetic-setpoint",
+                        "serial",
+                        "",
+                        "",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "00:00:20",
+                        "Mon Jan 1 2024 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        graphData);
+
+        final var profile = service.getDiveProfile(computer, dive);
+
+        assertEquals(
+                0.7,
+                Objects.requireNonNull(
+                        Objects.requireNonNull(profile.measurements().get(0).po2()).maxSetPoint()),
+                0.0001);
+        assertEquals(
+                0.7,
+                Objects.requireNonNull(
+                        Objects.requireNonNull(profile.measurements().get(1).po2()).maxSetPoint()),
+                0.0001);
+        assertEquals(
+                1.2,
+                Objects.requireNonNull(
+                        Objects.requireNonNull(profile.measurements().get(2).po2()).maxSetPoint()),
+                0.0001);
+    }
+
+    @Test
     void rawGraphDataHasNoTtsOrRemainingTimeField() throws IOException {
         // Confirmed directly against the raw JSON, not the already-mapped DivesoftGraphData model
         // (which uses @JsonIgnoreProperties(ignoreUnknown = true) and so would silently swallow an

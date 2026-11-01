@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 @Service
@@ -176,6 +177,30 @@ public class DivesoftReaderService extends BaseReaderService {
                 graph != null && graph.ppo2() != null
                         ? graph.ppo2()
                         : List.<DivesoftPressureSample>of();
+        // Every graph series is a timestamped timeline.  The series do not necessarily have the
+        // same sample count or cadence as depth (setpoint changes in particular are sparse), so
+        // never align them by array index.  Sorting also makes malformed/out-of-order API data
+        // deterministic before the timestamp lookup below.
+        final var sortedDepthSamples =
+                depthSamples.stream()
+                        .sorted(Comparator.comparingLong(DivesoftDepthSample::timestamp))
+                        .toList();
+        final var sortedTemperatureSamples =
+                temperatureSamples.stream()
+                        .sorted(Comparator.comparingLong(DivesoftTemperatureSample::timestamp))
+                        .toList();
+        final var sortedCeilingSamples =
+                ceilingSamples.stream()
+                        .sorted(Comparator.comparingLong(DivesoftCeilingSample::timestamp))
+                        .toList();
+        final var sortedSetpointSamples =
+                setpointSamples.stream()
+                        .sorted(Comparator.comparingLong(DivesoftPressureSample::timestamp))
+                        .toList();
+        final var sortedPpo2Samples =
+                ppo2Samples.stream()
+                        .sorted(Comparator.comparingLong(DivesoftPressureSample::timestamp))
+                        .toList();
         // Not guaranteed to arrive in timestamp order (observed: the initial timestamp=0 mix can
         // be the *last* entry), so sort explicitly before walking it as a timeline.
         final var mixes =
@@ -202,13 +227,13 @@ public class DivesoftReaderService extends BaseReaderService {
         final var duration = parseDuration(dive.duration());
         final var end = duration != null ? start.plus(duration) : start;
 
-        final var measurements = new ArrayList<DiveMeasurement>(depthSamples.size());
+        final var measurements = new ArrayList<DiveMeasurement>(sortedDepthSamples.size());
         var mixIndex = 0;
         Gas currentGas = mixes.isEmpty() ? null : toGas(mixes.getFirst());
         var modeIndex = 0;
         DiveMode currentMode = modes.isEmpty() ? null : toMode(modes.getFirst());
-        for (var i = 0; i < depthSamples.size(); i++) {
-            final var depthSample = depthSamples.get(i);
+        for (var i = 0; i < sortedDepthSamples.size(); i++) {
+            final var depthSample = sortedDepthSamples.get(i);
             final var timestamp = depthSample.timestamp();
             while (mixIndex + 1 < mixes.size()
                     && mixes.get(mixIndex + 1).timestamp() <= timestamp) {
@@ -220,11 +245,19 @@ public class DivesoftReaderService extends BaseReaderService {
                 modeIndex++;
                 currentMode = toMode(modes.get(modeIndex));
             }
-            final var temperature = getSampleAt(temperatureSamples, i);
-            final var ceiling = getSampleAt(ceilingSamples, i);
-            final var setpoint = getSampleAt(setpointSamples, i);
-            final var ppo2 = getSampleAt(ppo2Samples, i);
-            final var isLast = i == depthSamples.size() - 1;
+            final var temperature =
+                    getSampleAt(
+                            sortedTemperatureSamples,
+                            timestamp,
+                            DivesoftTemperatureSample::timestamp);
+            final var ceiling =
+                    getSampleAt(sortedCeilingSamples, timestamp, DivesoftCeilingSample::timestamp);
+            final var setpoint =
+                    getSampleAt(
+                            sortedSetpointSamples, timestamp, DivesoftPressureSample::timestamp);
+            final var ppo2 =
+                    getSampleAt(sortedPpo2Samples, timestamp, DivesoftPressureSample::timestamp);
+            final var isLast = i == sortedDepthSamples.size() - 1;
             measurements.add(
                     new DiveMeasurement(
                             start.plusSeconds(timestamp),
@@ -260,8 +293,23 @@ public class DivesoftReaderService extends BaseReaderService {
         return new DiveProfileUpload(computer.id(), start, end, measurements);
     }
 
-    private static <T> @Nullable T getSampleAt(final List<T> samples, final int index) {
-        return index < samples.size() ? samples.get(index) : null;
+    private static <T> @Nullable T getSampleAt(
+            final List<T> samples, final long timestamp, final ToLongFunction<T> timestampOf) {
+        // Graph values are sparse state/value timelines.  Hold the latest value until the next
+        // sample, while leaving the period before the first sample unknown.
+        var low = 0;
+        var high = samples.size() - 1;
+        var resultIndex = -1;
+        while (low <= high) {
+            final var middle = (low + high) >>> 1;
+            if (timestampOf.applyAsLong(samples.get(middle)) <= timestamp) {
+                resultIndex = middle;
+                low = middle + 1;
+            } else {
+                high = middle - 1;
+            }
+        }
+        return resultIndex >= 0 ? samples.get(resultIndex) : null;
     }
 
     private static @Nullable DiveMode toMode(final DivesoftModeSample sample) {
