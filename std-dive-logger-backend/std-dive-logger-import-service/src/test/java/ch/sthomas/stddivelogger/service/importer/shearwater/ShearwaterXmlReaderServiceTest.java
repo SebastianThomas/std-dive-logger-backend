@@ -112,7 +112,8 @@ class ShearwaterXmlReaderServiceTest {
         // ShearwaterDiveLogRecord's sensor1/2/3Millivolts fields), the one case that belongs
         // under `measured`.
         final var record =
-                new ShearwaterDiveLogRecord(0, 20.0, 22.0, 0, 0, 0, 0, 0.21, 0.0, 1.2, "CC");
+                new ShearwaterDiveLogRecord(
+                        0, 20.0, 22.0, 0, 0, 0, 0, 0.21, 0.0, 1.2, "CC", 32, 33, 31);
         final var log =
                 new ShearwaterDiveLog(
                         1,
@@ -135,6 +136,34 @@ class ShearwaterXmlReaderServiceTest {
         final var po2 = Objects.requireNonNull(profile.measurements().getFirst().po2());
         assertThat(po2.measured()).isEqualTo(1.2);
         assertThat(po2.calculated()).isNull();
+    }
+
+    @Test
+    void bailoutComputerReportsSetpointButNoMeasuredPpo2() {
+        final var record =
+                new ShearwaterDiveLogRecord(0, 20.0, 22.0, 0, 0, 0, 0, 0.21, 0.0, 1.2, "CC/BO");
+        final var log =
+                new ShearwaterDiveLog(
+                        1,
+                        "8/22/2026 10:00:00 AM",
+                        "8/22/2026 10:30:00 AM",
+                        20.0,
+                        1800,
+                        0.0,
+                        "1000000099",
+                        "2",
+                        java.util.List.of(record));
+        final var service =
+                new ShearwaterXmlReaderService(xmlMapper, diveServiceReturningComputer());
+        final var computer =
+                new DiveComputer(
+                        1L, new DiveComputerManufacturer(1L, "Shearwater"), "serial", "id", null);
+
+        final var measurement = service.getDiveProfile(computer, log).measurements().getFirst();
+
+        assertThat(measurement.mode()).isEqualTo(DiveMode.CC);
+        assertThat(Objects.requireNonNull(measurement.po2()).measured()).isNull();
+        assertThat(Objects.requireNonNull(measurement.po2()).maxSetPoint()).isEqualTo(1.2);
     }
 
     @Test

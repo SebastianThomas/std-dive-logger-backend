@@ -146,16 +146,13 @@ public class ShearwaterXmlReaderService extends BaseReaderService {
                                                     Math.round(record.firstStopTime() * 60)))
                                     : List.of(),
                             new Gas(record.fractionO2(), record.fractionHe()),
-                            // averagePPO2 is a real sensor reading only on a closed-circuit
-                            // sample (this device's redundant O2 cells, see the record's own
-                            // sensor1/2/3Millivolts fields) - on open circuit there's no PO2
-                            // sensor at all, so the same field is Shearwater's own on-device
-                            // FO2 x ambient-pressure estimate instead. The native XML format
-                            // doesn't split this into two fields the way UDDF's
-                            // measuredpo2/calculatedpo2 pair does, so the split has to be
-                            // inferred from the circuit mode instead.
+                            // In CC mode, a BO computer may report only the diver-selected
+                            // setpoint and have no O2-cell telemetry. Treat that as setpoint-only;
+                            // use measured only when the native record contains cell readings.
                             mode == DiveMode.CC
-                                    ? new PO2(null, record.averagePPO2(), null)
+                                    ? record.hasOxygenCellTelemetry()
+                                            ? new PO2(null, record.averagePPO2(), null)
+                                            : new PO2(record.averagePPO2(), null, null)
                                     : new PO2(null, null, record.averagePPO2()),
                             // Tank pressure/SAC aren't modeled (see ShearwaterDiveLogRecord) - no
                             // AI transmitter paired in the exports seen so far.
