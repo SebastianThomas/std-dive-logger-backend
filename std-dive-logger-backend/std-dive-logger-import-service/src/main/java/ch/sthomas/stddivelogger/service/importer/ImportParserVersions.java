@@ -13,13 +13,13 @@ public final class ImportParserVersions {
 
     public static int current(final PendingImportSource source) {
         return switch (source) {
-            case DIVESOFT -> 1;
+            case DIVESOFT -> 2;
             case FIT_GARMIN -> 1;
             case FIT_SUUNTO -> 1;
             case JSON_SUUNTO -> 1;
             case UDDF_SHEARWATER -> 2;
             case XML_SUBSURFACE -> 1;
-            case XML_SHEARWATER -> 2;
+            case XML_SHEARWATER -> 3;
             case DL7_SHEARWATER -> 1;
             case DB_SHEARWATER -> 2;
         };
