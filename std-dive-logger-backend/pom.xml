@@ -290,7 +290,7 @@
             <dependency>
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
-                <version>9.0.3</version>
+                <version>9.0.4</version>
             </dependency>
             <!-- OkHttp 5's `okhttp` artifact, which minio declares, holds no classes under Maven:
                  they are in okhttp-jvm. Same version as minio's. -->
