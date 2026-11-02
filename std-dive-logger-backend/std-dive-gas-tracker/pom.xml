@@ -20,7 +20,7 @@
         <start-class>ch.sthomas.stddivegastracker.StdDiveGasTrackerApplication</start-class>
         <archunit.version>1.5.1</archunit.version>
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-        <checkstyle.version>14.3.0</checkstyle.version>
+        <checkstyle.version>14.4.0</checkstyle.version>
     </properties>
 
     <dependencies>
