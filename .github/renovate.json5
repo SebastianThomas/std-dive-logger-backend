@@ -25,6 +25,8 @@
     ],
   },
 
+  // Auto-merged rules wait until a release is 3 days old, so a broken or compromised one can
+  // be yanked first. Updates without a release date (some digests) are not held back forever.
   packageRules: [
     // Our own modules are built here, on no registry: looking them up only burns rate limit.
     {
@@ -51,6 +53,8 @@
       matchUpdateTypes: ['minor', 'patch'],
       groupName: 'backend test and build tooling',
       automerge: true,
+      minimumReleaseAge: '3 days',
+      minimumReleaseAgeBehaviour: 'timestamp-optional',
     },
     // Spring Boot moves on its own: it manages most other versions.
     {
@@ -64,6 +68,8 @@
       matchUpdateTypes: ['minor', 'patch', 'digest'],
       groupName: 'github-actions',
       automerge: true,
+      minimumReleaseAge: '3 days',
+      minimumReleaseAgeBehaviour: 'timestamp-optional',
     },
     // Deployed sidecar and init images: no test covers them, so a person looks.
     {
