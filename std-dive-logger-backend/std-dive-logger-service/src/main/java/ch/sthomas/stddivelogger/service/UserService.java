@@ -54,6 +54,7 @@ public class UserService {
 
     public static final int USERS_PAGE_SIZE = 10;
     public static final int GROUPS_PAGE_SIZE = 10;
+    public static final int MAX_NAME_LENGTH = 64;
 
     private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES =
             Set.of("image/png", "image/jpeg", "image/webp");
@@ -149,6 +150,99 @@ public class UserService {
         userDataService.updatePassword(
                 userId, Objects.requireNonNull(passwordEncoder.encode(newPassword)));
         return user;
+    }
+
+    public AccountSettings getAccountSettings(final long userId) {
+        final var user = userDataService.findUserById(userId);
+        return new AccountSettings(
+                user.id(),
+                user.name(),
+                user.email(),
+                user.emailVerified(),
+                user.createdAt(),
+                userDataService.findPendingEmailChange(userId).orElse(null));
+    }
+
+    /**
+     * Same uniqueness rule as signup (case-insensitive); a case-only change of one's own is fine.
+     */
+    @Transactional
+    public User changeName(final long userId, final String nameParam) {
+        final var name = nameParam.strip();
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("The username must not be empty.");
+        }
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    "The username can be at most " + MAX_NAME_LENGTH + " characters long.");
+        }
+        if (userDataService
+                .findUserByName(name)
+                .filter(other -> other.id() != userId)
+                .isPresent()) {
+            throw new IllegalArgumentException(
+                    "This username is already in use, please choose a unique username.");
+        }
+        return userDataService.updateName(userId, name);
+    }
+
+    /**
+     * Re-checks the password, then mails a confirmation link to {@code newEmailParam}; the account
+     * keeps its current address until the link is opened ({@link #confirmEmailChange}).
+     */
+    @Transactional
+    public AccountSettings requestEmailChange(
+            final long userId, final String currentPassword, final String newEmailParam) {
+        final var user = userDataService.findUserById(userId);
+        if (!passwordEncoder.matches(currentPassword, user.password())) {
+            throw new IllegalArgumentException("The current password is not correct.");
+        }
+        final var newEmail = newEmailParam.strip();
+        if (!isValidEmail(newEmail)) {
+            throw new IllegalArgumentException("This email address seems to be invalid");
+        }
+        if (newEmail.equalsIgnoreCase(user.email())) {
+            throw new IllegalArgumentException("This is already your email address.");
+        }
+        if (userDataService.findUserByEmail(newEmail).isPresent()) {
+            throw new IllegalArgumentException(
+                    "This email address is already used by another account.");
+        }
+        userDataService.createEmailChangeRequest(user, newEmail);
+        return getAccountSettings(userId);
+    }
+
+    public AccountSettings cancelEmailChange(final long userId) {
+        userDataService.cancelEmailChange(userId);
+        return getAccountSettings(userId);
+    }
+
+    /**
+     * Applies the change a confirmation link stands for. The caller revokes the account's sessions
+     * - they name the old address (see {@code AuthService.confirmEmailChange}).
+     */
+    @Transactional
+    public User confirmEmailChange(final String token) {
+        final var request =
+                userDataService
+                        .findAndDeleteAccountRequestEntityById(SecurityUtils.hashToken(token))
+                        .filter(r -> r.type() == AccountRequestType.CHANGE_EMAIL)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "This link is invalid or has expired - please"
+                                                        + " request the change again."));
+        final var newEmail =
+                Objects.requireNonNull(request.newEmail(), "An email change names its address.");
+        return userDataService.changeEmail(request.user().id(), newEmail);
+    }
+
+    public void resendVerificationEmail(final long userId) {
+        final var user = userDataService.findUserById(userId);
+        if (user.emailVerified()) {
+            throw new IllegalArgumentException("Your email address is already verified.");
+        }
+        userDataService.createAccountRequest(AccountRequestType.VERIFY_EMAIL, user);
     }
 
     private boolean isValidEmail(final String email) {

@@ -100,7 +100,9 @@ public class WsSecurityConfig {
                                             HttpMethod.POST,
                                             "/api/auth/deregister",
                                             "/api/auth/password",
-                                            "/api/auth/logout-all")
+                                            "/api/auth/logout-all",
+                                            "/api/auth/email",
+                                            "/api/auth/verify-email/resend")
                                     .authenticated()
                                     .requestMatchers(HttpMethod.POST, "/api/auth/**")
                                     .permitAll()

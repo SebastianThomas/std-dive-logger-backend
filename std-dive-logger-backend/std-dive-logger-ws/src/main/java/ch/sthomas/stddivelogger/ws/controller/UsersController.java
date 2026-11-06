@@ -4,10 +4,12 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 import ch.sthomas.stddivelogger.data.model.PagedResponse;
 import ch.sthomas.stddivelogger.model.exception.UnauthorizedException;
+import ch.sthomas.stddivelogger.model.user.AccountSettings;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.UserService;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -36,6 +38,20 @@ public class UsersController {
             throw new UnauthorizedException("You must be logged in to access users.");
         }
         return user.toFrontendModel();
+    }
+
+    @GetMapping("/me/account")
+    public AccountSettings accountSettings(@AuthenticationPrincipal final User user) {
+        return userService.getAccountSettings(user.id());
+    }
+
+    public record ChangeNameRequest(@NotBlank String name) {}
+
+    @PutMapping("/me/name")
+    public FrontendUser changeName(
+            @AuthenticationPrincipal final User user,
+            @Valid @RequestBody final ChangeNameRequest request) {
+        return userService.changeName(user.id(), request.name()).toFrontendModel();
     }
 
     @GetMapping("/{id}")

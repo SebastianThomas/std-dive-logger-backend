@@ -27,6 +27,10 @@ public class EmailEntity {
     @Column(name = "original_receiver", nullable = false, updatable = false)
     private String originalReceiver;
 
+    // Overrides `receiver` as the address it goes to (see V0_4_25).
+    @Column(name = "send_to", updatable = false)
+    private @Nullable String sendTo;
+
     @Column(name = "subject", nullable = false)
     private String subject;
 
@@ -56,9 +60,19 @@ public class EmailEntity {
         this.content = content;
     }
 
+    /** An email to an address other than the account's current one (an email change). */
+    public EmailEntity(
+            final UserEntity receiver,
+            final String sendTo,
+            final String subject,
+            final String content) {
+        this(receiver, subject, content);
+        this.sendTo = sendTo;
+    }
+
     public Email toRecord() {
         return new Email(
-                receiver.getEmail(),
+                sendTo != null ? sendTo : receiver.getEmail(),
                 subject,
                 content,
                 Optional.ofNullable(sentAt).map(OffsetDateTime::toInstant),

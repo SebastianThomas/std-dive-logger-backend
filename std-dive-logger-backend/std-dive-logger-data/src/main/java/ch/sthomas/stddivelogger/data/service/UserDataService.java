@@ -259,8 +259,97 @@ public class UserDataService {
         return switch (type) {
             case VERIFY_EMAIL -> frontendBaseUrl + "/user/email?token=" + token;
             case LOGIN -> frontendBaseUrl + "/auth/magic-login?token=" + token;
+            case CHANGE_EMAIL -> frontendBaseUrl + "/user/email/change?token=" + token;
             case CHANGE_PASSWORD -> throw new NotImplementedException();
         };
+    }
+
+    /**
+     * Stages a switch to {@code newEmail}: the confirmation link goes to that address. Replaces any
+     * earlier pending change of the account, so only the newest link works.
+     */
+    @Transactional
+    public void createEmailChangeRequest(final User user, final String newEmail) {
+        cancelEmailChange(user.id());
+        final var requestId = SecurityUtils.createToken();
+        final var type = AccountRequestType.CHANGE_EMAIL;
+        final var payload =
+                EmailNotificationPayload.createChangeEmailPayload(
+                        user, newEmail, getCallbackUrl(type, requestId));
+        final var userEntity = userRepository.findById(user.id()).orElseThrow();
+        final var email =
+                emailRepository.save(
+                        new EmailEntity(userEntity, newEmail, payload.subject(), payload.body()));
+        // Flushed: findPendingEmailChange reads it back through plain JDBC.
+        accountRequestRepository.saveAndFlush(
+                new AccountRequestEntity(
+                        SecurityUtils.hashToken(requestId),
+                        userEntity,
+                        email,
+                        type,
+                        Instant.now().plus(type.getValidDuration()),
+                        newEmail));
+    }
+
+    /** The address of the account's newest unexpired, unconfirmed email change. */
+    @Transactional(readOnly = true)
+    public Optional<String> findPendingEmailChange(final long userId) {
+        return namedParameterJdbcTemplate
+                .query(
+                        """
+                        SELECT new_email FROM t_account_request
+                        WHERE fk_user_id = :userId AND request_type = :type
+                          AND valid_until > now() AND new_email IS NOT NULL
+                        ORDER BY created_at DESC LIMIT 1
+                        """,
+                        new MapSqlParameterSource(
+                                Map.of(
+                                        "userId",
+                                        userId,
+                                        "type",
+                                        AccountRequestType.CHANGE_EMAIL.name())),
+                        (r, _) -> Objects.requireNonNull(r.getString("new_email")))
+                .stream()
+                .findFirst();
+    }
+
+    @Transactional
+    public void cancelEmailChange(final long userId) {
+        namedParameterJdbcTemplate.update(
+                "DELETE FROM t_account_request WHERE fk_user_id = :userId AND request_type = :type",
+                new MapSqlParameterSource(
+                        Map.of("userId", userId, "type", AccountRequestType.CHANGE_EMAIL.name())));
+    }
+
+    /**
+     * Switches the account to a confirmed address (verified by the confirmation itself) and queues
+     * a notice to the address it left. 400 when another account took the address in the meantime.
+     */
+    @Transactional
+    public User changeEmail(final long userId, final String newEmail) {
+        final var entity = userRepository.findById(userId).orElseThrow();
+        final var previous = entity.toRecord();
+        if (userRepository
+                .findByEmailIgnoreCase(newEmail)
+                .filter(other -> other.getId() != userId)
+                .isPresent()) {
+            throw new IllegalArgumentException(
+                    "This email address is already used by another account.");
+        }
+        entity.setVerifiedEmail(newEmail);
+        userRepository.flush();
+        final var notice =
+                EmailNotificationPayload.createEmailChangedNoticePayload(previous, newEmail);
+        emailRepository.save(
+                new EmailEntity(entity, previous.email(), notice.subject(), notice.body()));
+        return entity.toRecord();
+    }
+
+    @Transactional
+    public User updateName(final long userId, final String name) {
+        final var entity = userRepository.findById(userId).orElseThrow();
+        entity.setName(name);
+        return userRepository.save(entity).toRecord();
     }
 
     @Transactional
@@ -331,7 +420,8 @@ public class UserDataService {
                                                 .findById(r.getLong("fk_email_id"))
                                                 .orElseThrow(),
                                         AccountRequestType.valueOf(r.getString("request_type")),
-                                        r.getTimestamp("valid_until").toInstant()));
+                                        r.getTimestamp("valid_until").toInstant(),
+                                        r.getString("new_email")));
         return result.stream()
                 .collect(MoreCollectors.toOptional())
                 .flatMap(AccountRequestEntity::toRecord);

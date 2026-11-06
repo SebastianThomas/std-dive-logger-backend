@@ -110,6 +110,13 @@ public class AuthService {
         return createLoginResponse(user.email());
     }
 
+    /** Every session names the old address (the token subject), so all of them end. */
+    @Transactional
+    public void confirmEmailChange(final String token) {
+        final var user = userService.confirmEmailChange(token);
+        revokeAllSessions(user.id());
+    }
+
     /** "Log out on all devices": every refresh token and push subscription of the account. */
     @Transactional
     public void revokeAllSessions(final long userId) {

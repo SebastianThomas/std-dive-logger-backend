@@ -106,6 +106,16 @@ public class UserEntity {
         this.customBackgroundUrl = customBackgroundUrl;
     }
 
+    /** A confirmed change: the new address is verified by the confirmation link itself. */
+    public void setVerifiedEmail(final String email) {
+        this.email = email;
+        this.verified = true;
+    }
+
+    public void setName(final String name) {
+        this.name = name;
+    }
+
     /** Takes an already-encoded hash, never a raw password. */
     public void setPassword(final String encodedPassword) {
         this.password = encodedPassword;

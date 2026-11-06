@@ -6,6 +6,7 @@ import ch.sthomas.stddivelogger.model.notification.AccountRequestType;
 import jakarta.persistence.*;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -35,6 +36,10 @@ public class AccountRequestEntity {
     @Column(name = "valid_until", nullable = false, updatable = false)
     private OffsetDateTime validUntil;
 
+    // CHANGE_EMAIL only: the address the account switches to once confirmed.
+    @Column(name = "new_email", updatable = false)
+    private @Nullable String newEmail;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -54,12 +59,24 @@ public class AccountRequestEntity {
         this.validUntil = validUntil.atOffset(ZoneOffset.UTC);
     }
 
+    public AccountRequestEntity(
+            final String id,
+            final UserEntity user,
+            final EmailEntity email,
+            final AccountRequestType requestType,
+            final Instant validUntil,
+            @Nullable final String newEmail) {
+        this(id, user, email, requestType, validUntil);
+        this.newEmail = newEmail;
+    }
+
     public Optional<AccountRequest> toRecord() {
         if (id == null
                 || validUntil == null
                 || validUntil.isBefore(Instant.now().atOffset(ZoneOffset.UTC))) {
             return Optional.empty();
         }
-        return Optional.of(new AccountRequest(user.toRecord(), email.toRecord(), requestType));
+        return Optional.of(
+                new AccountRequest(user.toRecord(), email.toRecord(), requestType, newEmail));
     }
 }

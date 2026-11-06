@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -68,6 +69,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
+        } catch (final UsernameNotFoundException e) {
+            // Valid token for an address the account no longer has (email changed, deleted): 401.
+            logger.debug("Access token for an unknown user");
         } catch (final JwtException | IllegalArgumentException e) {
             // Unusable token (other key, HS256, no iss, malformed): unauthenticated -> 401.
             if (!(e instanceof ExpiredJwtException)) {

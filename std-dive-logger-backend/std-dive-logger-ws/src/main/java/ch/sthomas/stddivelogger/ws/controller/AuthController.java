@@ -5,6 +5,7 @@ import static ch.sthomas.stddivelogger.utils.LogSanitizer.sanitizePassword;
 
 import ch.sthomas.stddivelogger.model.controller.auth.AuthRequest;
 import ch.sthomas.stddivelogger.model.controller.auth.AuthResponse;
+import ch.sthomas.stddivelogger.model.user.AccountSettings;
 import ch.sthomas.stddivelogger.model.user.FrontendUser;
 import ch.sthomas.stddivelogger.model.user.User;
 import ch.sthomas.stddivelogger.service.UserService;
@@ -145,6 +146,53 @@ public class AuthController {
             @Valid @RequestBody final ChangePasswordRequest request) {
         return authService.changePassword(
                 user.id(), request.currentPassword(), request.newPassword());
+    }
+
+    public record ChangeEmailRequest(@NotBlank String currentPassword, @NotBlank String newEmail) {
+        @NotNull
+        @Override
+        public String toString() {
+            return String.format(
+                    "ChangeEmailRequest {currentPassword: %s, newEmail: %s}",
+                    sanitizePassword(currentPassword), sanitizeEmail(newEmail));
+        }
+    }
+
+    @Operation(
+            summary = "Request an email change",
+            description =
+                    "Mails a confirmation link to the new address; the account keeps its current"
+                            + " one until the link is opened.")
+    @PostMapping("/email")
+    public AccountSettings requestEmailChange(
+            @AuthenticationPrincipal final User user,
+            @Valid @RequestBody final ChangeEmailRequest request) {
+        return userService.requestEmailChange(
+                user.id(), request.currentPassword(), request.newEmail());
+    }
+
+    @Operation(summary = "Cancel a pending email change")
+    @DeleteMapping("/email")
+    public AccountSettings cancelEmailChange(@AuthenticationPrincipal final User user) {
+        return userService.cancelEmailChange(user.id());
+    }
+
+    @Operation(
+            summary = "Confirm an email change (the link from the email)",
+            description = "Switches the address and signs the account out on every device.")
+    @PostMapping("/email/confirm")
+    public ResponseEntity<Void> confirmEmailChange(@Valid @RequestBody final TokenBody token) {
+        authService.confirmEmailChange(token.token());
+        final var deleteCookie = authService.createRefreshTokenCookie("", Duration.ofSeconds(0));
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .build();
+    }
+
+    @Operation(summary = "Send the email verification link again")
+    @PostMapping("/verify-email/resend")
+    public void resendVerificationEmail(@AuthenticationPrincipal final User user) {
+        userService.resendVerificationEmail(user.id());
     }
 
     @Operation(summary = "Log out on all devices (every session + push subscription)")
