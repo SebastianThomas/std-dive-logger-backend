@@ -303,7 +303,7 @@
             <dependency>
                 <groupId>com.garmin</groupId>
                 <artifactId>fit</artifactId>
-                <version>21.221.0</version>
+                <version>21.222.0</version>
             </dependency>
 
             <!-- Offline lat/lon -> IANA timezone lookup, for correcting dive-computer exports
@@ -366,7 +366,7 @@
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
-                <version>1.86</version>
+                <version>1.87</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -453,7 +453,7 @@
                             <path>
                                 <groupId>com.uber.nullaway</groupId>
                                 <artifactId>nullaway</artifactId>
-                                <version>0.14.3</version>
+                                <version>0.14.4</version>
                             </path>
                             <annotationProcessorPath>
                                 <groupId>org.springframework.boot</groupId>
