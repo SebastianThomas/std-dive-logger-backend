@@ -124,6 +124,9 @@ jobs:
                     name: m2-reactor-artifacts
                     path: ~/.m2/repository/ch/sthomas/stddivelogger
 
+            # -XX:-UseBASE64Intrinsics: CVE-2026-114938 ("Java4Shell", x86-64 AVX-512 Base64
+            # intrinsic heap overflow) mitigation, baked in so no deployment can drop it. Remove once
+            # the base image ships a fixed JDK. Not -XX:UseAVX=2: ARM JVMs refuse to start with it.
             -   name: Build and push docker image
                 shell: bash
                 run: |
@@ -137,7 +140,7 @@ jobs:
                     -Djib.to.auth.password=${{ secrets.container_registry_password }} \
                     -Djib.container.volumes='/config/' \
                     -Djib.container.environment=VERSION_TAG_NAME="${{ env.docker_image_tag }}",SPRING_CONFIG_LOCATION="/config/",SPRING_DOCKER_COMPOSE_ENABLED=false \
-                    -Djib.container.entrypoint='sh,-c,exec java -XX:MinRAMPercentage=60.0 -XX:MaxRAMPercentage=80.0 $ADDITIONAL_JAVA_OPTS -cp @/app/jib-classpath-file @/app/jib-main-class-file $@'
+                    -Djib.container.entrypoint='sh,-c,exec java -XX:-UseBASE64Intrinsics -XX:MinRAMPercentage=60.0 -XX:MaxRAMPercentage=80.0 $ADDITIONAL_JAVA_OPTS -cp @/app/jib-classpath-file @/app/jib-main-class-file $@'
 
     release:
         runs-on: ubuntu-latest

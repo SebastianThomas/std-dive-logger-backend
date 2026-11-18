@@ -44,7 +44,7 @@ spec:
             - { name: LOGGING_CONFIG, value: "/config/std-dive-gas-tracker-dev-logback.xml" }
             - { name: SPRING_APPLICATION_NAME, value: std-dive-gas-tracker }
             - { name: SERVER_PORT, value: "8080" }
-            - { name: ADDITIONAL_JAVA_OPTS, value: "-Xms32m -XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC -XX:G1PeriodicGCInterval=120000 -XX:G1PeriodicGCSystemLoadThreshold=0 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+UseCompactObjectHeaders" }
+            - { name: ADDITIONAL_JAVA_OPTS, value: "-XX:-UseBASE64Intrinsics -Xms32m -XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC -XX:G1PeriodicGCInterval=120000 -XX:G1PeriodicGCSystemLoadThreshold=0 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=30 -XX:+UseCompactObjectHeaders" }
             - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://std-dive-logger-db-rw:5432/std_dive_gas_tracker" }
             - { name: SPRING_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: std-dive-gas-tracker-db-credentials, key: username } } }
             - { name: SPRING_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: std-dive-gas-tracker-db-credentials, key: password } } }
