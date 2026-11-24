@@ -103,12 +103,12 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT t_dives.*
-                            FROM t_dive_privileges_groups
-                            INNER JOIN t_dives
-                                ON fk_dive_id = pk_dive_id
-                                AND fk_group_id = :groupId
-                            """,
+                    SELECT t_dives.*
+                    FROM t_dive_privileges_groups
+                    INNER JOIN t_dives
+                        ON fk_dive_id = pk_dive_id
+                        AND fk_group_id = :groupId
+                    """,
             countQuery =
                     "SELECT COUNT(*) FROM t_dive_privileges_groups WHERE fk_group_id = :groupId",
             nativeQuery = true)
@@ -126,15 +126,15 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT t_dives.*
-                            FROM t_dive_privileges_groups
-                            INNER JOIN t_dives
-                                ON fk_dive_id = pk_dive_id
-                                AND fk_group_id = :groupId
-                            LEFT JOIN t_dive_summary ON t_dive_summary.fk_dive_id = pk_dive_id
-                            ORDER BY CASE WHEN :ascending THEN t_dive_summary.dive_start END ASC,
-                                     CASE WHEN NOT :ascending THEN t_dive_summary.dive_start END DESC
-                            """,
+                    SELECT t_dives.*
+                    FROM t_dive_privileges_groups
+                    INNER JOIN t_dives
+                        ON fk_dive_id = pk_dive_id
+                        AND fk_group_id = :groupId
+                    LEFT JOIN t_dive_summary ON t_dive_summary.fk_dive_id = pk_dive_id
+                    ORDER BY CASE WHEN :ascending THEN t_dive_summary.dive_start END ASC,
+                             CASE WHEN NOT :ascending THEN t_dive_summary.dive_start END DESC
+                    """,
             countQuery =
                     "SELECT COUNT(*) FROM t_dive_privileges_groups WHERE fk_group_id = :groupId",
             nativeQuery = true)
@@ -171,18 +171,18 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT (f.dive).*
-                            FROM fuzzy_search_dives_for_user(
-                                    CAST(:query AS TEXT),
-                                    CAST(:userId AS INTEGER))
-                                AS f(dive, relevance_score)
-                            ORDER BY f.relevance_score DESC
-                            """,
+                    SELECT (f.dive).*
+                    FROM fuzzy_search_dives_for_user(
+                            CAST(:query AS TEXT),
+                            CAST(:userId AS INTEGER))
+                        AS f(dive, relevance_score)
+                    ORDER BY f.relevance_score DESC
+                    """,
             countQuery =
                     """
-                            SELECT COUNT(*)
-                            FROM fuzzy_search_dives_for_user(CAST(:query AS TEXT), CAST(:userId AS INTEGER)) AS f(dive, relevance_score)
-                            """,
+                    SELECT COUNT(*)
+                    FROM fuzzy_search_dives_for_user(CAST(:query AS TEXT), CAST(:userId AS INTEGER)) AS f(dive, relevance_score)
+                    """,
             nativeQuery = true)
     Page<DiveEntity> searchDives(long userId, String query, Pageable pageable);
 
@@ -196,12 +196,12 @@ public interface DiveRepository extends JpaRepository<DiveEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT d.*
-                            FROM v_readers r
-                            INNER JOIN t_dives d ON r.pk_user_id = :userId
-                            WHERE d.pk_dive_id = r.dive_id
-                                AND d.pk_dive_id IN (:ids)
-                            """,
+                    SELECT d.*
+                    FROM v_readers r
+                    INNER JOIN t_dives d ON r.pk_user_id = :userId
+                    WHERE d.pk_dive_id = r.dive_id
+                        AND d.pk_dive_id IN (:ids)
+                    """,
             nativeQuery = true)
     List<DiveEntity> findAllByIdAndIsReader(long userId, List<Long> ids);
 

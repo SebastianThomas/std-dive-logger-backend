@@ -111,11 +111,10 @@ public class TeamDataService {
         final var user =
                 userRepository
                         .findByUsernameIgnoreCase(username)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Nobody with that username uses this app yet."
-                                                        + " Send them the invite link instead."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Nobody with that username uses this app yet."
+                                                + " Send them the invite link instead."));
         final var existing = memberRepository.findByTeamIdAndUserId(teamId, user.getId());
         if (existing.isPresent()) {
             final var member = existing.get();

@@ -150,11 +150,9 @@ class HttpMessageNotReadableAdviceIntegrationTest {
                 .expectStatus()
                 .isBadRequest()
                 .expectBody(String.class)
-                .value(
-                        responseBody -> {
-                            assertThat(responseBody)
-                                    .contains("\"detail\":\"Gas must consist of 100%\"");
-                            assertThat(responseBody).doesNotContain("Failed to read request");
-                        });
+                .value(responseBody -> {
+                    assertThat(responseBody).contains("\"detail\":\"Gas must consist of 100%\"");
+                    assertThat(responseBody).doesNotContain("Failed to read request");
+                });
     }
 }

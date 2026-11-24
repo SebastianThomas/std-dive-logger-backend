@@ -214,10 +214,9 @@ public class UserDataService {
         groupMemberRepository.save(
                 groupMemberRepository
                         .findByGroup_IdAndUser_Id(groupId, userId)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "User was not member of this group, cannot change role."))
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "User was not member of this group, cannot change role."))
                         .setRole(role));
         return groupRepository
                 .findById(groupId)
@@ -392,11 +391,9 @@ public class UserDataService {
     @Transactional(readOnly = true)
     public List<GroupRequest> findAdminGroupRequests(final User user) {
         return groupMemberRepository.findRequests(user.id(), ADMIN, GroupRole.REQUESTED).stream()
-                .map(
-                        e ->
-                                new GroupRequest(
-                                        e.getUserEntity().toRecord().toFrontendModel(),
-                                        e.getRole()))
+                .map(e ->
+                        new GroupRequest(
+                                e.getUserEntity().toRecord().toFrontendModel(), e.getRole()))
                 .toList();
     }
 
@@ -405,10 +402,10 @@ public class UserDataService {
         final var result =
                 namedParameterJdbcTemplate.query(
                         """
-                                DELETE FROM t_account_request
-                                WHERE pk_account_request_id = :id
-                                RETURNING t_account_request.*
-                                """,
+                        DELETE FROM t_account_request
+                        WHERE pk_account_request_id = :id
+                        RETURNING t_account_request.*
+                        """,
                         new MapSqlParameterSource(Map.of("id", id)),
                         (r, _) ->
                                 new AccountRequestEntity(
@@ -441,14 +438,12 @@ public class UserDataService {
         final var result =
                 Optional.ofNullable(role)
                         .map(findGroupsWithRole(user, pageRequest))
-                        .or(
-                                () ->
-                                        Optional.ofNullable(exclRole)
-                                                .map(findGroupsWithoutRole(user, pageRequest)))
-                        .orElseGet(
-                                () ->
-                                        groupMemberRepository.findByUser_IdOrderById(
-                                                user.id(), pageRequest));
+                        .or(() ->
+                                Optional.ofNullable(exclRole)
+                                        .map(findGroupsWithoutRole(user, pageRequest)))
+                        .orElseGet(() ->
+                                groupMemberRepository.findByUser_IdOrderById(
+                                        user.id(), pageRequest));
         return PagedResponse.of(result, GroupMemberEntity::toRecordWithRole);
     }
 

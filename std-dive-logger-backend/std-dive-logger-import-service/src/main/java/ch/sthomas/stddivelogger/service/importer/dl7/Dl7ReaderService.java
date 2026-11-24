@@ -97,30 +97,27 @@ public class Dl7ReaderService extends BaseReaderService {
     DiveProfileUpload getDiveProfile(final DiveComputer computer, final Dl7Export export) {
         final var measurements =
                 export.samples().stream()
-                        .map(
-                                s ->
-                                        new DiveMeasurement(
-                                                export.startTime()
-                                                        .plusMillis(
-                                                                Math.round(
-                                                                        s.elapsedMinutes()
-                                                                                * 60_000)),
-                                                s.temperatureCelsius() != null
-                                                        ? new Temperature(
-                                                                s.temperatureCelsius(),
-                                                                Temperature.TemperatureUnit.CELSIUS)
-                                                        : null,
-                                                s.depthMeters(),
-                                                null,
-                                                List.of(),
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null))
+                        .map(s ->
+                                new DiveMeasurement(
+                                        export.startTime()
+                                                .plusMillis(
+                                                        Math.round(s.elapsedMinutes() * 60_000)),
+                                        s.temperatureCelsius() != null
+                                                ? new Temperature(
+                                                        s.temperatureCelsius(),
+                                                        Temperature.TemperatureUnit.CELSIUS)
+                                                : null,
+                                        s.depthMeters(),
+                                        null,
+                                        List.of(),
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null))
                         .toList();
         final var end = measurements.isEmpty() ? export.startTime() : measurements.getLast().time();
         return new DiveProfileUpload(computer.id(), export.startTime(), end, measurements);

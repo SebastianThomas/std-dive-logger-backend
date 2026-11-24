@@ -31,14 +31,13 @@ class XmlReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 

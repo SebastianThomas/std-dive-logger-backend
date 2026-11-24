@@ -104,24 +104,20 @@ class DivePhotoImportUrlIntegrationTest {
 
     @Test
     void rejectsLoopbackAddresses() {
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.importFromUrl(
-                                        owner, diveId, "http://127.0.0.1:1/photo.jpg"))
+        assertThatThrownBy(() ->
+                        divePhotoService.importFromUrl(
+                                owner, diveId, "http://127.0.0.1:1/photo.jpg"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsPrivateAddresses() {
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.importFromUrl(
-                                        owner, diveId, "http://10.0.0.5/photo.jpg"))
+        assertThatThrownBy(() ->
+                        divePhotoService.importFromUrl(owner, diveId, "http://10.0.0.5/photo.jpg"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.importFromUrl(
-                                        owner, diveId, "http://192.168.1.1/photo.jpg"))
+        assertThatThrownBy(() ->
+                        divePhotoService.importFromUrl(
+                                owner, diveId, "http://192.168.1.1/photo.jpg"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -140,10 +136,9 @@ class DivePhotoImportUrlIntegrationTest {
                 userRepository
                         .save(new UserEntity("photo-url-it-stranger@test.ch", "hash", "S"))
                         .toRecord();
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.importFromUrl(
-                                        stranger, diveId, "http://example.com/photo.jpg"))
+        assertThatThrownBy(() ->
+                        divePhotoService.importFromUrl(
+                                stranger, diveId, "http://example.com/photo.jpg"))
                 .isInstanceOf(ForbiddenException.class);
     }
 }

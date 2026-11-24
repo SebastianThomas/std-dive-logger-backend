@@ -87,15 +87,10 @@ public final class BalanceCalculator {
                         Comparator.comparingLong(Payment::fromMemberId)
                                 .thenComparingLong(Payment::toMemberId)
                                 .thenComparing(Payment::amount))
-                .forEach(
-                        payment -> {
-                            sent.merge(
-                                    payment.fromMemberId(),
-                                    payment.amount(),
-                                    BalanceCalculator::add);
-                            received.merge(
-                                    payment.toMemberId(), payment.amount(), BalanceCalculator::add);
-                        });
+                .forEach(payment -> {
+                    sent.merge(payment.fromMemberId(), payment.amount(), BalanceCalculator::add);
+                    received.merge(payment.toMemberId(), payment.amount(), BalanceCalculator::add);
+                });
         final var provisional = provisionalCharges(input, result);
 
         final var memberIds = new TreeSet<Long>(paid.keySet());
@@ -162,12 +157,8 @@ public final class BalanceCalculator {
                 .sorted(
                         Comparator.comparingLong(CostLine::payerMemberId)
                                 .thenComparing(CostLine::amount))
-                .forEach(
-                        line ->
-                                paid.merge(
-                                        line.payerMemberId(),
-                                        line.amount(),
-                                        BalanceCalculator::add));
+                .forEach(line ->
+                        paid.merge(line.payerMemberId(), line.amount(), BalanceCalculator::add));
         return paid;
     }
 
@@ -177,16 +168,15 @@ public final class BalanceCalculator {
         final var provisional = new TreeMap<Long, BigDecimal>();
         input.draws().stream()
                 .sorted(Comparator.comparingLong(Draw::drawId))
-                .forEach(
-                        draw -> {
-                            if (draw.beneficiary() instanceof ToMember(final var memberId)
-                                    && result.vessel(draw.sourceVesselId()).provisional()) {
-                                provisional.merge(
-                                        memberId,
-                                        result.drawCharge(draw.drawId()).charge(),
-                                        BalanceCalculator::add);
-                            }
-                        });
+                .forEach(draw -> {
+                    if (draw.beneficiary() instanceof ToMember(final var memberId)
+                            && result.vessel(draw.sourceVesselId()).provisional()) {
+                        provisional.merge(
+                                memberId,
+                                result.drawCharge(draw.drawId()).charge(),
+                                BalanceCalculator::add);
+                    }
+                });
         return provisional;
     }
 }

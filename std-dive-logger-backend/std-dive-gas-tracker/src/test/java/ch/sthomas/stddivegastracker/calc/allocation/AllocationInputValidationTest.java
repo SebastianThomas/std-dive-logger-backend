@@ -41,44 +41,29 @@ final class AllocationInputValidationTest {
     @ParameterizedTest
     @ValueSource(doubles = {-1, Double.NaN, Double.POSITIVE_INFINITY})
     void vesselInflowAndResidualMustBeFiniteAndNotNegative(final double litres) {
-        assertThatThrownBy(
-                        () ->
-                                vessel(
-                                        1,
-                                        LossPolicy.POOLED,
-                                        VesselStatus.IN_SERVICE,
-                                        litres,
-                                        0,
-                                        List.of()))
+        assertThatThrownBy(() ->
+                        vessel(1, LossPolicy.POOLED, VesselStatus.IN_SERVICE, litres, 0, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inflowLitres");
-        assertThatThrownBy(
-                        () ->
-                                vessel(
-                                        1,
-                                        LossPolicy.POOLED,
-                                        VesselStatus.IN_SERVICE,
-                                        0,
-                                        litres,
-                                        List.of()))
+        assertThatThrownBy(() ->
+                        vessel(1, LossPolicy.POOLED, VesselStatus.IN_SERVICE, 0, litres, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("residualLitres");
     }
 
     @Test
     void zeroLitresAndZeroAmountsAreValid() {
-        assertThatCode(
-                        () ->
-                                input(
-                                        List.of(
-                                                vessel(
-                                                        1,
-                                                        LossPolicy.POOLED,
-                                                        VesselStatus.IN_SERVICE,
-                                                        0,
-                                                        0,
-                                                        List.of(paid(1, "0")))),
-                                        List.of(fill(1, 1, 0, 1))))
+        assertThatCode(() ->
+                        input(
+                                List.of(
+                                        vessel(
+                                                1,
+                                                LossPolicy.POOLED,
+                                                VesselStatus.IN_SERVICE,
+                                                0,
+                                                0,
+                                                List.of(paid(1, "0")))),
+                                List.of(fill(1, 1, 0, 1))))
                 .doesNotThrowAnyException();
     }
 
@@ -105,11 +90,10 @@ final class AllocationInputValidationTest {
 
     @Test
     void duplicateDrawIdsAreRejected() {
-        assertThatThrownBy(
-                        () ->
-                                input(
-                                        List.of(simpleVessel(1)),
-                                        List.of(fill(5, 1, 10, 1), fill(5, 1, 20, 2))))
+        assertThatThrownBy(() ->
+                        input(
+                                List.of(simpleVessel(1)),
+                                List.of(fill(5, 1, 10, 1), fill(5, 1, 20, 2))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Duplicate draw id 5");
     }
@@ -130,17 +114,16 @@ final class AllocationInputValidationTest {
 
     @Test
     void duplicateClosingParticipantIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                vessel(
-                                        1,
-                                        LossPolicy.POOLED,
-                                        VesselStatus.CLOSED,
-                                        100,
-                                        0,
-                                        List.of(),
-                                        4L,
-                                        4L))
+        assertThatThrownBy(() ->
+                        vessel(
+                                1,
+                                LossPolicy.POOLED,
+                                VesselStatus.CLOSED,
+                                100,
+                                0,
+                                List.of(),
+                                4L,
+                                4L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Vessel 1");
     }

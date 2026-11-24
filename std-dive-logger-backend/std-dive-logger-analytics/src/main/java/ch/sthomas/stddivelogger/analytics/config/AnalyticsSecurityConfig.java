@@ -36,11 +36,8 @@ public class AnalyticsSecurityConfig {
     SecurityFilterChain swaggerFilterChain(final HttpSecurity http) throws Exception {
         // swagger-ui
         http.securityMatcher("/docs/**", "/docs.yaml")
-                .authorizeHttpRequests(
-                        customizer ->
-                                customizer
-                                        .requestMatchers("/docs/**", "/docs.yaml")
-                                        .hasRole(SWAGGER))
+                .authorizeHttpRequests(customizer ->
+                        customizer.requestMatchers("/docs/**", "/docs.yaml").hasRole(SWAGGER))
                 .httpBasic(withDefaults());
         return http.build();
     }

@@ -218,11 +218,10 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
     @Test
     void settingBothLeaderReferencesIsRejected() {
         final var diveId = createDive(owner, "buddy-role-conflict");
-        assertThatThrownBy(
-                        () ->
-                                new UpdateDiveBody(
-                                        diveId, 1, null, 0, null, null, null, null, null, null,
-                                        null, null, 1L, 2L, false, null, null))
+        assertThatThrownBy(() ->
+                        new UpdateDiveBody(
+                                diveId, 1, null, 0, null, null, null, null, null, null, null, null,
+                                1L, 2L, false, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -253,28 +252,27 @@ class BuddyRoleLeaderTerminologyIntegrationTest {
                                 null));
         final var foreignBuddyId = otherDiveWithBuddy.namedBuddies().getFirst().id();
 
-        assertThatThrownBy(
-                        () ->
-                                diveService.updateDive(
-                                        owner,
-                                        new UpdateDiveBody(
-                                                diveId,
-                                                1,
-                                                null,
-                                                0,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                null,
-                                                foreignBuddyId,
-                                                null,
-                                                false,
-                                                null,
-                                                null)))
+        assertThatThrownBy(() ->
+                        diveService.updateDive(
+                                owner,
+                                new UpdateDiveBody(
+                                        diveId,
+                                        1,
+                                        null,
+                                        0,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        foreignBuddyId,
+                                        null,
+                                        false,
+                                        null,
+                                        null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -245,9 +245,8 @@ public class MapsImportJobLauncher {
         return job.getStatus() != null
                 && job.getStatus().getConditions() != null
                 && job.getStatus().getConditions().stream()
-                        .anyMatch(
-                                condition ->
-                                        type.equals(condition.getType())
-                                                && "True".equals(condition.getStatus()));
+                        .anyMatch(condition ->
+                                type.equals(condition.getType())
+                                        && "True".equals(condition.getStatus()));
     }
 }

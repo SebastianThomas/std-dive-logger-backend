@@ -133,14 +133,13 @@ public class DiveTripDataService {
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         return trips.stream()
-                .map(
-                        entity -> {
-                            final var range = dateRangesByTripId.get(entity.getId());
-                            return new DiveTripListEntry(
-                                    entity.toRecord(),
-                                    range == null ? null : range.getKey(),
-                                    range == null ? null : range.getValue());
-                        })
+                .map(entity -> {
+                    final var range = dateRangesByTripId.get(entity.getId());
+                    return new DiveTripListEntry(
+                            entity.toRecord(),
+                            range == null ? null : range.getKey(),
+                            range == null ? null : range.getValue());
+                })
                 .sorted(
                         Comparator.comparing(
                                 DiveTripListEntry::lastDiveDate,
@@ -190,22 +189,19 @@ public class DiveTripDataService {
     @Transactional(readOnly = true)
     public List<DiveTripMember> findDirectMembers(final long tripId) {
         return diveTripMemberRepository.findByTrip_Id(tripId).stream()
-                .map(
-                        m -> {
-                            final var dive = m.getMemberDive();
-                            if (dive != null) {
-                                return new DiveTripMember(
-                                        DiveTripMember.MemberType.DIVE,
-                                        new BasicDiveInfo(
-                                                dive.getId(),
-                                                dive.getNumber(),
-                                                dive.getDiveIdentifier()),
-                                        null);
-                            }
-                            final var subTrip = Objects.requireNonNull(m.getMemberTrip());
-                            return new DiveTripMember(
-                                    DiveTripMember.MemberType.TRIP, null, subTrip.toRecord());
-                        })
+                .map(m -> {
+                    final var dive = m.getMemberDive();
+                    if (dive != null) {
+                        return new DiveTripMember(
+                                DiveTripMember.MemberType.DIVE,
+                                new BasicDiveInfo(
+                                        dive.getId(), dive.getNumber(), dive.getDiveIdentifier()),
+                                null);
+                    }
+                    final var subTrip = Objects.requireNonNull(m.getMemberTrip());
+                    return new DiveTripMember(
+                            DiveTripMember.MemberType.TRIP, null, subTrip.toRecord());
+                })
                 .toList();
     }
 
@@ -352,16 +348,15 @@ public class DiveTripDataService {
         diveTripDefaultTeamRepository.deleteByTrip_Id(tripId);
         diveTripDefaultTeamRepository.flush();
         return entries.stream()
-                .map(
-                        e ->
-                                diveTripDefaultTeamRepository.save(
-                                        new DiveTripDefaultTeamEntity(
-                                                trip,
-                                                Optional.ofNullable(e.buddyUserId())
-                                                        .flatMap(userRepository::findById)
-                                                        .orElse(null),
-                                                e.buddyName(),
-                                                e.role())))
+                .map(e ->
+                        diveTripDefaultTeamRepository.save(
+                                new DiveTripDefaultTeamEntity(
+                                        trip,
+                                        Optional.ofNullable(e.buddyUserId())
+                                                .flatMap(userRepository::findById)
+                                                .orElse(null),
+                                        e.buddyName(),
+                                        e.role())))
                 .map(DiveTripDefaultTeamEntity::toRecord)
                 .toList();
     }
@@ -384,14 +379,13 @@ public class DiveTripDataService {
         final var entities =
                 team.stream()
                         .map(DiveTripDefaultTeamEntity::toRecord)
-                        .map(
-                                member -> {
-                                    final var name =
-                                            member.buddyUser() != null
-                                                    ? member.buddyUser().name()
-                                                    : Objects.requireNonNull(member.buddyName());
-                                    return new DiveBuddyNameEntity(dive, name, member.role());
-                                })
+                        .map(member -> {
+                            final var name =
+                                    member.buddyUser() != null
+                                            ? member.buddyUser().name()
+                                            : Objects.requireNonNull(member.buddyName());
+                            return new DiveBuddyNameEntity(dive, name, member.role());
+                        })
                         .toList();
         if (!entities.isEmpty()) {
             diveBuddyNameRepository.saveAll(entities);

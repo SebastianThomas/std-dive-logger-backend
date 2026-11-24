@@ -14,11 +14,10 @@ public interface ConstraintViolationAdviceTrait {
                 ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Constraint violation");
         final var violations =
                 exception.getConstraintViolations().stream()
-                        .map(
-                                violation ->
-                                        new Violation(
-                                                violation.getPropertyPath().toString(),
-                                                violation.getMessage()))
+                        .map(violation ->
+                                new Violation(
+                                        violation.getPropertyPath().toString(),
+                                        violation.getMessage()))
                         .toList();
         body.setProperty("violations", violations);
         return body;

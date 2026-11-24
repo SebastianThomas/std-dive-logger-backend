@@ -27,14 +27,13 @@ class JsonReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 
@@ -61,12 +60,11 @@ class JsonReaderServiceTest {
     void validJsonOfAnUnknownShapeIsRejectedWithoutAssumingABrand() {
         // Some other, unrelated but valid JSON - must not be mistaken for Suunto just because it
         // has a .json extension, and the message must not name Suunto or any internal field name.
-        assertThatThrownBy(
-                        () ->
-                                parse(
-                                        """
-                {"id":"abc123","deviceSerial":"999"}
-                """))
+        assertThatThrownBy(() ->
+                        parse(
+                                """
+                                {"id":"abc123","deviceSerial":"999"}
+                                """))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("test.json")
                 .hasMessageNotContaining("Suunto")

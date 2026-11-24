@@ -125,10 +125,8 @@ public class DiverReminderDataService {
         reminderRepo
                 .findByDiverIdAndKindAndExpiresAtAfter(userId, ReminderKind.DIVE_AGAIN_NUDGE, now)
                 .stream()
-                .filter(
-                        r ->
-                                desired.stream()
-                                        .noneMatch(d -> d.dedupeKey().equals(r.getDedupeKey())))
+                .filter(r ->
+                        desired.stream().noneMatch(d -> d.dedupeKey().equals(r.getDedupeKey())))
                 .forEach(r -> r.expire(now));
 
         for (final var d : desired) {
@@ -155,11 +153,9 @@ public class DiverReminderDataService {
     public List<DiverReminder> getActiveReminders(final long userId) {
         final boolean stale =
                 runRepo.findByDiverId(userId)
-                        .map(
-                                r ->
-                                        !today().equals(r.getComputedOn())
-                                                || !fingerprint(userId)
-                                                        .equals(r.getSourceFingerprint()))
+                        .map(r ->
+                                !today().equals(r.getComputedOn())
+                                        || !fingerprint(userId).equals(r.getSourceFingerprint()))
                         .orElse(true);
         if (stale) {
             computeAndStore(userId);
@@ -180,11 +176,10 @@ public class DiverReminderDataService {
         return reminderRepo
                 .findById(reminderId)
                 .filter(r -> r.getDiverId() == userId)
-                .map(
-                        r -> {
-                            r.dismiss();
-                            return true;
-                        })
+                .map(r -> {
+                    r.dismiss();
+                    return true;
+                })
                 .orElse(false);
     }
 
@@ -192,15 +187,14 @@ public class DiverReminderDataService {
     @Transactional(readOnly = true)
     public List<PushableReminder> findDuePushes() {
         return reminderRepo.findDuePushes(today(), Instant.now()).stream()
-                .map(
-                        r ->
-                                new PushableReminder(
-                                        r.getId(),
-                                        r.getDiverId(),
-                                        r.getKind(),
-                                        r.getTitle(),
-                                        r.getBody(),
-                                        r.getDiveId()))
+                .map(r ->
+                        new PushableReminder(
+                                r.getId(),
+                                r.getDiverId(),
+                                r.getKind(),
+                                r.getTitle(),
+                                r.getBody(),
+                                r.getDiveId()))
                 .toList();
     }
 
@@ -243,11 +237,10 @@ public class DiverReminderDataService {
                 rows.stream()
                         .filter(r -> r.yearsAgo() >= 1 && r.yearsAgo() <= MAX_ANNIVERSARY_YEARS)
                         .max(
-                                java.util.Comparator.comparingInt(
-                                        (AnniversaryRow r) ->
-                                                (r.anyHighlighted() ? 100 : 0)
-                                                        + (r.yearsAgo() % 5 == 0 ? 30 : 0)
-                                                        + r.yearsAgo()))
+                                java.util.Comparator.comparingInt((AnniversaryRow r) ->
+                                        (r.anyHighlighted() ? 100 : 0)
+                                                + (r.yearsAgo() % 5 == 0 ? 30 : 0)
+                                                + r.yearsAgo()))
                         .orElse(null);
         if (pick == null) {
             return Optional.empty();

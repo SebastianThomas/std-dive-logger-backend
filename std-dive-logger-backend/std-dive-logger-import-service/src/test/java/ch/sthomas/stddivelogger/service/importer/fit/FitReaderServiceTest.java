@@ -81,14 +81,13 @@ public class FitReaderServiceTest {
     void emptyGasListFallsBackToNullGasInsteadOfThrowing() {
         final var record = recordAt(Instant.now());
         final var profile =
-                assertDoesNotThrow(
-                        () ->
-                                service.getDiveProfile(
-                                        List.of(record),
-                                        List.of(),
-                                        List.of(),
-                                        computer,
-                                        summaryAt(Instant.now())));
+                assertDoesNotThrow(() ->
+                        service.getDiveProfile(
+                                List.of(record),
+                                List.of(),
+                                List.of(),
+                                computer,
+                                summaryAt(Instant.now())));
         assertNull(profile.measurements().getFirst().gas());
     }
 
@@ -97,14 +96,13 @@ public class FitReaderServiceTest {
         final var record = recordAt(Instant.now());
         when(record.getField(RecordMesg.DepthFieldNum)).thenReturn(null);
         final var profile =
-                assertDoesNotThrow(
-                        () ->
-                                service.getDiveProfile(
-                                        List.of(record),
-                                        List.of(),
-                                        List.of(Gas.AIR),
-                                        computer,
-                                        summaryAt(Instant.now())));
+                assertDoesNotThrow(() ->
+                        service.getDiveProfile(
+                                List.of(record),
+                                List.of(),
+                                List.of(Gas.AIR),
+                                computer,
+                                summaryAt(Instant.now())));
         assertEquals(0.0, profile.measurements().getFirst().depth());
     }
 
@@ -282,14 +280,13 @@ public class FitReaderServiceTest {
         final var diveService = mock(DiveService.class);
         final var nextId = new AtomicLong(1);
         when(diveService.createDiveComputer(anyString(), anyString(), anyString(), anyLong()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        nextId.getAndIncrement(),
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(2)),
-                                        invocation.getArgument(0),
-                                        invocation.getArgument(1),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                nextId.getAndIncrement(),
+                                new DiveComputerManufacturer(1L, invocation.getArgument(2)),
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                null));
         return diveService;
     }
 

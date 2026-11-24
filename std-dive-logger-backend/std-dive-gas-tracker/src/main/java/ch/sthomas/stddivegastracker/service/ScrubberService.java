@@ -144,10 +144,8 @@ public final class ScrubberService {
                 canister.capacityKg(),
                 canister.emptiedAt() != null,
                 canister.costLines().stream()
-                        .map(
-                                line ->
-                                        new ScrubberPricing.CostLine(
-                                                line.payerMemberId(), line.amount()))
+                        .map(line ->
+                                new ScrubberPricing.CostLine(line.payerMemberId(), line.amount()))
                         .toList(),
                 canister.uses().stream()
                         .map(use -> new ScrubberPricing.Use(use.useId(), use.memberId(), use.kg()))
@@ -194,28 +192,25 @@ public final class ScrubberService {
                 canister.emptiedAt(),
                 ref(canister.createdByMemberId(), members),
                 canister.costLines().stream()
-                        .map(
-                                line ->
-                                        new ScrubberCanister.CostLine(
-                                                line.costLineId(),
-                                                ref(line.payerMemberId(), members),
-                                                line.amount(),
-                                                line.paidAt(),
-                                                line.note()))
+                        .map(line ->
+                                new ScrubberCanister.CostLine(
+                                        line.costLineId(),
+                                        ref(line.payerMemberId(), members),
+                                        line.amount(),
+                                        line.paidAt(),
+                                        line.note()))
                         .toList(),
                 canister.uses().stream()
-                        .map(
-                                use ->
-                                        new ScrubberCanister.Use(
-                                                use.useId(),
-                                                ref(use.memberId(), members),
-                                                use.kg(),
-                                                Money.amount(
-                                                        Objects.requireNonNull(
-                                                                priced.chargeByUseId()
-                                                                        .get(use.useId()))),
-                                                use.usedAt(),
-                                                ref(use.recordedByMemberId(), members)))
+                        .map(use ->
+                                new ScrubberCanister.Use(
+                                        use.useId(),
+                                        ref(use.memberId(), members),
+                                        use.kg(),
+                                        Money.amount(
+                                                Objects.requireNonNull(
+                                                        priced.chargeByUseId().get(use.useId()))),
+                                        use.usedAt(),
+                                        ref(use.recordedByMemberId(), members)))
                         .toList());
     }
 

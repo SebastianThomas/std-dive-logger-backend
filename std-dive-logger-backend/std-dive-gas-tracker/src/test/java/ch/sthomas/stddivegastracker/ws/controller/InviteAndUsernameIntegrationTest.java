@@ -117,11 +117,10 @@ final class InviteAndUsernameIntegrationTest extends AbstractTeamIntegrationTest
         assertThat(joined.alreadyMember()).isTrue();
         assertThat(me(joiner).teams())
                 .singleElement()
-                .satisfies(
-                        summary -> {
-                            assertThat(summary.teamId()).isEqualTo(team.teamId());
-                            assertThat(summary.role()).isEqualTo(Role.MEMBER);
-                        });
+                .satisfies(summary -> {
+                    assertThat(summary.teamId()).isEqualTo(team.teamId());
+                    assertThat(summary.role()).isEqualTo(Role.MEMBER);
+                });
 
         // joining twice changes nothing
         invite(HttpMethod.POST, joiner, token, "/join");

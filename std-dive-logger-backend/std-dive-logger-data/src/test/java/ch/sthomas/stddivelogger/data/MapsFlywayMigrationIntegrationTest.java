@@ -59,10 +59,10 @@ class MapsFlywayMigrationIntegrationTest {
                 Objects.requireNonNull(
                         jdbc.queryForObject(
                                 """
-                        INSERT INTO maps.import_run
-                            (source_url, kubernetes_job_name, status, state, finished_at)
-                        VALUES ('test://boundaries', 'maps-test-1', 'SUCCEEDED', 'test-state', now())
-                        RETURNING pk_import_run_id
+                                INSERT INTO maps.import_run
+                                    (source_url, kubernetes_job_name, status, state, finished_at)
+                                VALUES ('test://boundaries', 'maps-test-1', 'SUCCEEDED', 'test-state', now())
+                                RETURNING pk_import_run_id
                                 """,
                                 Long.class));
         jdbc.update(
@@ -278,10 +278,10 @@ class MapsFlywayMigrationIntegrationTest {
         return Objects.requireNonNull(
                 jdbc.queryForObject(
                         """
-                INSERT INTO public.t_dive_site (name, location)
-                VALUES (?, ST_SetSRID(ST_MakePoint(?, ?), 4326))
-                RETURNING pk_dive_site_id
-                """,
+                        INSERT INTO public.t_dive_site (name, location)
+                        VALUES (?, ST_SetSRID(ST_MakePoint(?, ?), 4326))
+                        RETURNING pk_dive_site_id
+                        """,
                         Long.class,
                         name,
                         longitude,

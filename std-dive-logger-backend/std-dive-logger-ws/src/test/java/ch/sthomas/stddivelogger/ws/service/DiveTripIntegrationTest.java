@@ -162,10 +162,9 @@ class DiveTripIntegrationTest {
 
         assertThatThrownBy(() -> diveTripService.getTrip(stranger, trip.id()))
                 .isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(
-                        () ->
-                                diveTripService.updateTrip(
-                                        stranger, trip.id(), "Hacked", DiveTripType.TRIP, null))
+        assertThatThrownBy(() ->
+                        diveTripService.updateTrip(
+                                stranger, trip.id(), "Hacked", DiveTripType.TRIP, null))
                 .isInstanceOf(ForbiddenException.class);
     }
 

@@ -113,11 +113,10 @@ class JwtUtilTest {
                         .signWith(WS_KEYS.getPrivate(), Jwts.SIG.EdDSA)
                         .compact());
 
-        tokens.forEach(
-                (name, token) ->
-                        assertThatThrownBy(() -> JwtUtil.extractUsername(token, parser))
-                                .as(name)
-                                .isInstanceOf(JwtException.class));
+        tokens.forEach((name, token) ->
+                assertThatThrownBy(() -> JwtUtil.extractUsername(token, parser))
+                        .as(name)
+                        .isInstanceOf(JwtException.class));
     }
 
     @Test

@@ -50,14 +50,13 @@ class ShearwaterDbReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 
@@ -152,17 +151,15 @@ class ShearwaterDbReaderServiceTest {
         assertThat(profile.end()).isEqualTo(Instant.ofEpochSecond(START).plusSeconds(15));
         assertThat(profile.measurements()).extracting("depth").containsExactly(5.0, 31.2, 3.0);
         assertThat(profile.measurements())
-                .allSatisfy(
-                        m -> {
-                            assertThat(m.mode()).isEqualTo(DiveMode.OC);
-                            // Open circuit has no O2 cell, so the device's PPO2 is a calculation,
-                            // never a reading.
-                            assertThat(Objects.requireNonNull(m.po2()).measured()).isNull();
-                            assertThat(Objects.requireNonNull(m.po2()).calculated())
-                                    .isEqualTo(0.21);
-                            assertThat(m.ndl()).isEqualTo(Duration.ofMinutes(99));
-                            assertThat(m.deco()).isEmpty();
-                        });
+                .allSatisfy(m -> {
+                    assertThat(m.mode()).isEqualTo(DiveMode.OC);
+                    // Open circuit has no O2 cell, so the device's PPO2 is a calculation,
+                    // never a reading.
+                    assertThat(Objects.requireNonNull(m.po2()).measured()).isNull();
+                    assertThat(Objects.requireNonNull(m.po2()).calculated()).isEqualTo(0.21);
+                    assertThat(m.ndl()).isEqualTo(Duration.ofMinutes(99));
+                    assertThat(m.deco()).isEmpty();
+                });
     }
 
     @Test
@@ -300,12 +297,11 @@ class ShearwaterDbReaderServiceTest {
     @Test
     void rejectsAFileThatIsNotASqliteDatabaseAtAll() {
         final var service = new ShearwaterDbReaderService(diveServiceReturningComputer());
-        assertThatThrownBy(
-                        () ->
-                                service.parse(
-                                        user,
-                                        "notes.db",
-                                        new ByteArrayInputStream("not a database".getBytes())))
+        assertThatThrownBy(() ->
+                        service.parse(
+                                user,
+                                "notes.db",
+                                new ByteArrayInputStream("not a database".getBytes())))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

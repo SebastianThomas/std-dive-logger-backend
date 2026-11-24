@@ -14,12 +14,10 @@ public class AnalyticsDashboardSecurity {
         // Access is restricted by the tailnet-only proxy; CSRF protects job submissions.
         return http.securityMatcher("/ops", "/ops/**")
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                .headers(
-                        headers ->
-                                headers.contentSecurityPolicy(
-                                        csp ->
-                                                csp.policyDirectives(
-                                                        "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'")))
+                .headers(headers ->
+                        headers.contentSecurityPolicy(csp ->
+                                csp.policyDirectives(
+                                        "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'")))
                 .build();
     }
 }

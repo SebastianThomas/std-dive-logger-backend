@@ -80,10 +80,8 @@ public class FillDataService {
                         .collect(Collectors.toMap(FillEntity::getId, Function.identity()));
         return new Page<>(
                 found.getContent().stream()
-                        .map(
-                                fill ->
-                                        Objects.requireNonNull(withStages.get(fill.getId()))
-                                                .toRecord())
+                        .map(fill ->
+                                Objects.requireNonNull(withStages.get(fill.getId())).toRecord())
                         .toList(),
                 page,
                 size,

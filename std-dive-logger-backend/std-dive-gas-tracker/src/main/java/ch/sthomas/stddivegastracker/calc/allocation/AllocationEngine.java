@@ -100,12 +100,11 @@ public final class AllocationEngine {
         }
 
         final var ready = new TreeSet<Long>();
-        inDegree.forEach(
-                (vesselId, degree) -> {
-                    if (degree == 0) {
-                        ready.add(vesselId);
-                    }
-                });
+        inDegree.forEach((vesselId, degree) -> {
+            if (degree == 0) {
+                ready.add(vesselId);
+            }
+        });
         final var order = new ArrayList<Long>();
         while (!ready.isEmpty()) {
             final long vesselId = ready.first();
@@ -249,14 +248,11 @@ public final class AllocationEngine {
                             + " member and no payer");
         }
         final var shares = new ArrayList<LossShare>();
-        paidByPayer.forEach(
-                (payerId, paid) -> {
-                    if (paid.signum() > 0) {
-                        shares.add(
-                                new LossShare(
-                                        payerId, amount.multiply(paid, MC).divide(totalPaid, MC)));
-                    }
-                });
+        paidByPayer.forEach((payerId, paid) -> {
+            if (paid.signum() > 0) {
+                shares.add(new LossShare(payerId, amount.multiply(paid, MC).divide(totalPaid, MC)));
+            }
+        });
         return shares;
     }
 

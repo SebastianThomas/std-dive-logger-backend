@@ -76,13 +76,12 @@ class ProfileMeasurementMergeTest {
     void theResultDoesNotDependOnWhichRecordingCameFirst() {
         final var conflicting =
                 xml().stream()
-                        .map(
-                                m ->
-                                        sample(
-                                                m.time().getEpochSecond() - START.getEpochSecond(),
-                                                11,
-                                                null,
-                                                m.timeToSurface()))
+                        .map(m ->
+                                sample(
+                                        m.time().getEpochSecond() - START.getEpochSecond(),
+                                        11,
+                                        null,
+                                        m.timeToSurface()))
                         .toList();
 
         assertThat(ProfileMeasurementMerge.merge(uddf(), conflicting))

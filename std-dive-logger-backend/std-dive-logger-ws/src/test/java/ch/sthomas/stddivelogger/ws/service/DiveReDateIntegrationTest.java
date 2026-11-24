@@ -153,10 +153,8 @@ class DiveReDateIntegrationTest {
                 .as("both fixtures should resolve to one shared computer")
                 .isEqualTo(diveA.profiles().getFirst().diveComputer().id());
 
-        assertThatThrownBy(
-                        () ->
-                                diveService.setDiveStartTime(
-                                        user, diveB.id(), diveA.summary().start()))
+        assertThatThrownBy(() ->
+                        diveService.setDiveStartTime(user, diveB.id(), diveA.summary().start()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already starts at that exact time");
     }

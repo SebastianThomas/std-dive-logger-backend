@@ -477,10 +477,8 @@ final class MemberControllerIntegrationTest extends AbstractTeamIntegrationTest 
                             second.memberId(),
                             Map.of("role", "MEMBER")));
             assertThat(members(emailOf(second), team.teamId()))
-                    .filteredOn(
-                            member ->
-                                    member.role() == Role.ADMIN
-                                            && member.status() == MemberStatus.ACTIVE)
+                    .filteredOn(member ->
+                            member.role() == Role.ADMIN && member.status() == MemberStatus.ACTIVE)
                     .extracting(Member::memberId)
                     .containsExactly(second.memberId());
         }

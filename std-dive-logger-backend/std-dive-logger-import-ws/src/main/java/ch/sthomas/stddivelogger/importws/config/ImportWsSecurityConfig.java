@@ -44,11 +44,8 @@ public class ImportWsSecurityConfig {
     SecurityFilterChain swaggerFilterChain(final HttpSecurity http) {
         // swagger-ui
         http.securityMatcher("/docs/**", "/docs.yaml")
-                .authorizeHttpRequests(
-                        customizer ->
-                                customizer
-                                        .requestMatchers("/docs/**", "/docs.yaml")
-                                        .hasRole(SWAGGER))
+                .authorizeHttpRequests(customizer ->
+                        customizer.requestMatchers("/docs/**", "/docs.yaml").hasRole(SWAGGER))
                 .httpBasic(withDefaults());
         return http.build();
     }
@@ -65,22 +62,20 @@ public class ImportWsSecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(
-                        ex ->
-                                ex.authenticationEntryPoint(
-                                        (request, response, ex1) -> response.sendError(401)))
-                .authorizeHttpRequests(
-                        auth ->
-                                auth.requestMatchers(HttpMethod.OPTIONS)
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.GET, "/v1/explore/**")
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
-                                        .authenticated()
-                                        .requestMatchers(HttpMethod.POST, "/api/auth/**")
-                                        .permitAll()
-                                        .anyRequest()
-                                        .authenticated())
+                .exceptionHandling(ex ->
+                        ex.authenticationEntryPoint(
+                                (request, response, ex1) -> response.sendError(401)))
+                .authorizeHttpRequests(auth ->
+                        auth.requestMatchers(HttpMethod.OPTIONS)
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/v1/explore/**")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/auth/deregister")
+                                .authenticated()
+                                .requestMatchers(HttpMethod.POST, "/api/auth/**")
+                                .permitAll()
+                                .anyRequest()
+                                .authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

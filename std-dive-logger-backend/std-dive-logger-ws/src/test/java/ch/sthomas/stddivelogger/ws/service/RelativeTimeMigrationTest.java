@@ -30,18 +30,18 @@ class RelativeTimeMigrationTest {
                 final var statement = connection.createStatement()) {
             statement.execute(
                     """
-                CREATE TABLE t_dive_profiles(pk_dive_profile_id bigint, dive_profile_start timestamptz);
-                CREATE TABLE t_dive_measurements(fk_dive_profile_id bigint, time timestamptz);
-                CREATE TABLE t_dive_summary(fk_dive_id bigint, dive_start timestamptz);
-                CREATE TABLE t_dive_configuration_cylinder(pk_configuration_cylinder_id bigint, fk_dive_id bigint);
-                CREATE TABLE t_dive_configuration_cylinder_usage_window(fk_configuration_cylinder_id bigint, window_start timestamptz, window_end timestamptz);
-                CREATE TABLE t_dive_site(pk_dive_site_id bigint);
-                INSERT INTO t_dive_profiles VALUES (1, '2026-01-01T10:00:00Z');
-                INSERT INTO t_dive_measurements VALUES (1, '2026-01-01T10:00:01.250Z');
-                INSERT INTO t_dive_summary VALUES (2, '2026-01-01T10:00:00Z');
-                INSERT INTO t_dive_configuration_cylinder VALUES (3, 2);
-                INSERT INTO t_dive_configuration_cylinder_usage_window VALUES (3, '2026-01-01T09:59:59.500Z', null);
-                """);
+                    CREATE TABLE t_dive_profiles(pk_dive_profile_id bigint, dive_profile_start timestamptz);
+                    CREATE TABLE t_dive_measurements(fk_dive_profile_id bigint, time timestamptz);
+                    CREATE TABLE t_dive_summary(fk_dive_id bigint, dive_start timestamptz);
+                    CREATE TABLE t_dive_configuration_cylinder(pk_configuration_cylinder_id bigint, fk_dive_id bigint);
+                    CREATE TABLE t_dive_configuration_cylinder_usage_window(fk_configuration_cylinder_id bigint, window_start timestamptz, window_end timestamptz);
+                    CREATE TABLE t_dive_site(pk_dive_site_id bigint);
+                    INSERT INTO t_dive_profiles VALUES (1, '2026-01-01T10:00:00Z');
+                    INSERT INTO t_dive_measurements VALUES (1, '2026-01-01T10:00:01.250Z');
+                    INSERT INTO t_dive_summary VALUES (2, '2026-01-01T10:00:00Z');
+                    INSERT INTO t_dive_configuration_cylinder VALUES (3, 2);
+                    INSERT INTO t_dive_configuration_cylinder_usage_window VALUES (3, '2026-01-01T09:59:59.500Z', null);
+                    """);
             try (final var input =
                     Objects.requireNonNull(
                             getClass()

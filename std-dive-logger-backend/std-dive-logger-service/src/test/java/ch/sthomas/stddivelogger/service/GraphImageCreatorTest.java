@@ -412,24 +412,23 @@ public class GraphImageCreatorTest {
 
         final var noDecoMeasurements =
                 measurements.stream()
-                        .map(
-                                m ->
-                                        new DiveMeasurementWithId(
-                                                new DiveMeasurement(
-                                                        m.measurement().time(),
-                                                        m.measurement().temperature(),
-                                                        m.measurement().depth(),
-                                                        null,
-                                                        noDeco,
-                                                        Gas.AIR,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        null,
-                                                        null),
-                                                m.id()))
+                        .map(m ->
+                                new DiveMeasurementWithId(
+                                        new DiveMeasurement(
+                                                m.measurement().time(),
+                                                m.measurement().temperature(),
+                                                m.measurement().depth(),
+                                                null,
+                                                noDeco,
+                                                Gas.AIR,
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                null),
+                                        m.id()))
                         .toList();
         final var noDecoDive =
                 new Dive(

@@ -227,11 +227,10 @@ public class UserService {
                 userDataService
                         .findAndDeleteAccountRequestEntityById(SecurityUtils.hashToken(token))
                         .filter(r -> r.type() == AccountRequestType.CHANGE_EMAIL)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "This link is invalid or has expired - please"
-                                                        + " request the change again."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "This link is invalid or has expired - please"
+                                                + " request the change again."));
         final var newEmail =
                 Objects.requireNonNull(request.newEmail(), "An email change names its address.");
         return userDataService.changeEmail(request.user().id(), newEmail);
@@ -392,11 +391,9 @@ public class UserService {
                         .findAndDeleteAccountRequestEntityById(SecurityUtils.hashToken(token))
                         .filter(r -> r.type() == AccountRequestType.VERIFY_EMAIL)
                         .map(AccountRequest::user)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "There is no open account request for token "
-                                                        + token));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "There is no open account request for token " + token));
         return userDataService.setVerified(user);
     }
 
@@ -426,10 +423,8 @@ public class UserService {
         final var group =
                 userDataService
                         .findGroupById(getGroupByIdOrName(groupId))
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "No group found with name " + groupId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("No group found with name " + groupId));
         if (!userDataService.isGroupAdmin(group.id(), user)) {
             throw new UnauthorizedException("User does not have permission to delete this group.");
         }

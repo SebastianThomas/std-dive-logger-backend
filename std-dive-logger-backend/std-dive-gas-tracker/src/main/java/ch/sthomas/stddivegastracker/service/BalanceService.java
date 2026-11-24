@@ -94,12 +94,11 @@ public final class BalanceService {
 
         final var suggestions =
                 SettlementSuggester.suggest(rows).stream()
-                        .map(
-                                transfer ->
-                                        new Suggestion(
-                                                state.member(transfer.fromMemberId()),
-                                                state.member(transfer.toMemberId()),
-                                                transfer.amount()))
+                        .map(transfer ->
+                                new Suggestion(
+                                        state.member(transfer.fromMemberId()),
+                                        state.member(transfer.toMemberId()),
+                                        transfer.amount()))
                         .toList();
         return new Balances(
                 currency,
@@ -110,10 +109,9 @@ public final class BalanceService {
                                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                                 .add(
                                         canisters.stream()
-                                                .map(
-                                                        canister ->
-                                                                ScrubberPricing.price(canister)
-                                                                        .unallocated())
+                                                .map(canister ->
+                                                        ScrubberPricing.price(canister)
+                                                                .unallocated())
                                                 .reduce(BigDecimal.ZERO, BigDecimal::add))),
                 suggestions);
     }
@@ -121,12 +119,9 @@ public final class BalanceService {
     /** The team's payments as {@link BalanceCalculator} input (also used by the reports). */
     static List<BalanceCalculator.Payment> calcPayments(final List<StoredPayment> payments) {
         return payments.stream()
-                .map(
-                        payment ->
-                                new BalanceCalculator.Payment(
-                                        payment.fromMemberId(),
-                                        payment.toMemberId(),
-                                        payment.amount()))
+                .map(payment ->
+                        new BalanceCalculator.Payment(
+                                payment.fromMemberId(), payment.toMemberId(), payment.amount()))
                 .toList();
     }
 

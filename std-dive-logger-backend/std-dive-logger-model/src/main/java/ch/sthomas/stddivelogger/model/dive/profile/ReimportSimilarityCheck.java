@@ -146,13 +146,10 @@ public final class ReimportSimilarityCheck {
                         newStart,
                         newEnd,
                         newMeasurements)
-                .ifPresent(
-                        reason -> {
-                            throw new IllegalArgumentException(
-                                    NOT_SAME_DIVE_MESSAGE_PREFIX
-                                            + reason
-                                            + NOT_SAME_DIVE_MESSAGE_SUFFIX);
-                        });
+                .ifPresent(reason -> {
+                    throw new IllegalArgumentException(
+                            NOT_SAME_DIVE_MESSAGE_PREFIX + reason + NOT_SAME_DIVE_MESSAGE_SUFFIX);
+                });
         return Optional.empty();
     }
 

@@ -414,28 +414,25 @@ final class InventoryReplayTest {
 
     @Test
     void rejectsAnInvalidVessel() {
-        assertThatThrownBy(
-                        () ->
-                                InventoryReplay.replay(
-                                        new Vessel(0, GasMix.AIR, 0, 0, null),
-                                        List.of(),
-                                        IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        InventoryReplay.replay(
+                                new Vessel(0, GasMix.AIR, 0, 0, null),
+                                List.of(),
+                                IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Water volume");
-        assertThatThrownBy(
-                        () ->
-                                InventoryReplay.replay(
-                                        new Vessel(10, GasMix.AIR, -1, 0, null),
-                                        List.of(),
-                                        IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        InventoryReplay.replay(
+                                new Vessel(10, GasMix.AIR, -1, 0, null),
+                                List.of(),
+                                IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Pressure");
-        assertThatThrownBy(
-                        () ->
-                                InventoryReplay.replay(
-                                        new Vessel(10, GasMix.AIR, 0, 0, Double.NaN),
-                                        List.of(),
-                                        IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        InventoryReplay.replay(
+                                new Vessel(10, GasMix.AIR, 0, 0, Double.NaN),
+                                List.of(),
+                                IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Pressure");
     }

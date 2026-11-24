@@ -24,18 +24,18 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
     @Query(
             value =
                     """
-                            SELECT *
-                            FROM t_dive_site
-                            WHERE starts_with(name, :name)
-                               OR name % :name
-                            ORDER BY CASE
-                                         WHEN starts_with(name, :name)
-                                             THEN 1
-                                         ELSE 0
-                                         END DESC,
-                                     similarity(name, :name) DESC,
-                                     LENGTH(name);
-                            """,
+                    SELECT *
+                    FROM t_dive_site
+                    WHERE starts_with(name, :name)
+                       OR name % :name
+                    ORDER BY CASE
+                                 WHEN starts_with(name, :name)
+                                     THEN 1
+                                 ELSE 0
+                                 END DESC,
+                             similarity(name, :name) DESC,
+                             LENGTH(name);
+                    """,
             countQuery = "SELECT * FROM t_dive_site WHERE starts_with(name, :name) OR name % :name",
             nativeQuery = true)
     Page<DiveSiteEntity> findByClosestMatchName(String name, Pageable pageable);
@@ -55,25 +55,25 @@ public interface DiveSiteRepository extends JpaRepository<DiveSiteEntity, Long> 
     @NativeQuery(
             value =
                     """
-                                SELECT d.*, ARRAY_AGG(de.pk_dive_id) AS dive_ids, ARRAY_AGG(de.dive_number) AS dive_numbers, ARRAY_AGG(de.dive_identifier) AS dive_identifiers
-                                FROM t_dives de
-                                INNER JOIN t_dive_site d
-                                    ON de.fk_diver_id = :userId AND de.dive_site = d.pk_dive_site_id
-                                GROUP BY d.pk_dive_site_id
-                            """,
+                        SELECT d.*, ARRAY_AGG(de.pk_dive_id) AS dive_ids, ARRAY_AGG(de.dive_number) AS dive_numbers, ARRAY_AGG(de.dive_identifier) AS dive_identifiers
+                        FROM t_dives de
+                        INNER JOIN t_dive_site d
+                            ON de.fk_diver_id = :userId AND de.dive_site = d.pk_dive_site_id
+                        GROUP BY d.pk_dive_site_id
+                    """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
     List<Object[]> findSitesByDiveWithUserId(long userId);
 
     @NativeQuery(
             value =
                     """
-                                SELECT d.*, ARRAY_AGG(r.dive_id) AS dive_ids, ARRAY_AGG(de.dive_number) AS dive_numbers, ARRAY_AGG(de.dive_identifier) AS dive_identifiers
-                                FROM v_readers r
-                                INNER JOIN t_dives de
-                                    ON r.pk_user_id = :userId AND r.dive_id = de.pk_dive_id
-                                INNER JOIN t_dive_site d ON de.dive_site = d.pk_dive_site_id
-                                GROUP BY d.pk_dive_site_id
-                            """,
+                        SELECT d.*, ARRAY_AGG(r.dive_id) AS dive_ids, ARRAY_AGG(de.dive_number) AS dive_numbers, ARRAY_AGG(de.dive_identifier) AS dive_identifiers
+                        FROM v_readers r
+                        INNER JOIN t_dives de
+                            ON r.pk_user_id = :userId AND r.dive_id = de.pk_dive_id
+                        INNER JOIN t_dive_site d ON de.dive_site = d.pk_dive_site_id
+                        GROUP BY d.pk_dive_site_id
+                    """,
             sqlResultSetMapping = "DiveSiteWithIdsMapping")
     List<Object[]> findSitesByDiveWithReaderUserId(long userId);
 }

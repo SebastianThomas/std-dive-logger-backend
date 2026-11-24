@@ -132,11 +132,8 @@ public class FitReaderService extends BaseReaderService {
             final FitMessages messages, final List<DiveComputer> computers) {
         final var computerIds =
                 messages.getRecordMesgs().stream()
-                        .map(
-                                record ->
-                                        record.getDeviceIndex() != null
-                                                ? record.getDeviceIndex()
-                                                : 0)
+                        .map(record ->
+                                record.getDeviceIndex() != null ? record.getDeviceIndex() : 0)
                         .map(computers::get)
                         .mapToLong(DiveComputer::id)
                         .sorted()
@@ -152,15 +149,12 @@ public class FitReaderService extends BaseReaderService {
 
     static @NonNull List<Gas> getGases(final FitMessages messages) {
         return messages.getDiveGasMesgs().stream()
-                .map(
-                        gasMsg ->
-                                new Gas(
-                                        Objects.requireNonNullElse(
-                                                        gasMsg.getOxygenContent(), (short) 21)
-                                                / 100.0,
-                                        Objects.requireNonNullElse(
-                                                        gasMsg.getHeliumContent(), (short) 0)
-                                                / 100.0))
+                .map(gasMsg ->
+                        new Gas(
+                                Objects.requireNonNullElse(gasMsg.getOxygenContent(), (short) 21)
+                                        / 100.0,
+                                Objects.requireNonNullElse(gasMsg.getHeliumContent(), (short) 0)
+                                        / 100.0))
                 .toList();
     }
 
@@ -326,16 +320,14 @@ public class FitReaderService extends BaseReaderService {
         return Optional.ofNullable(record.getVolumeSac())
                 .or(() -> Optional.ofNullable(record.getRmv()))
                 .map(Float::doubleValue)
-                .or(
-                        () ->
-                                Optional.ofNullable(gas)
-                                        .map(Gas::size)
-                                        .map(CylinderSize::liters)
-                                        .flatMap(
-                                                l ->
-                                                        // Assertion: Pressure = Bar
-                                                        Optional.ofNullable(record.getPressureSac())
-                                                                .map(p -> p * l)))
+                .or(() ->
+                        Optional.ofNullable(gas)
+                                .map(Gas::size)
+                                .map(CylinderSize::liters)
+                                .flatMap(l ->
+                                        // Assertion: Pressure = Bar
+                                        Optional.ofNullable(record.getPressureSac())
+                                                .map(p -> p * l)))
                 .orElse(null);
     }
 
@@ -481,14 +473,13 @@ public class FitReaderService extends BaseReaderService {
         }
         return IntStream.range(0, count)
                 .sequential()
-                .mapToObj(
-                        i ->
-                                getComputer(
-                                        user,
-                                        manufacturers.get(i),
-                                        serialNumbers.get(i),
-                                        products.get(i),
-                                        timesCreated.get(i)))
+                .mapToObj(i ->
+                        getComputer(
+                                user,
+                                manufacturers.get(i),
+                                serialNumbers.get(i),
+                                products.get(i),
+                                timesCreated.get(i)))
                 .filter(Objects::nonNull)
                 .toList();
     }

@@ -204,24 +204,19 @@ final class FillListIntegrationTest extends AbstractFillIntegrationTest {
         final var room = room();
         final var ids =
                 IntStream.rangeClosed(1, 5)
-                        .mapToObj(
-                                n ->
-                                        createFill(
-                                                        room.adminEmail(),
-                                                        room.teamId(),
-                                                        at(
-                                                                fillBody(
-                                                                        cylinder(
-                                                                                12,
-                                                                                room
-                                                                                        .adminMemberId()),
-                                                                        0,
-                                                                        fromBank(
-                                                                                room.o2()
-                                                                                        .vesselId(),
-                                                                                20 + n)),
-                                                                day(n)))
-                                                .fillId())
+                        .mapToObj(n ->
+                                createFill(
+                                                room.adminEmail(),
+                                                room.teamId(),
+                                                at(
+                                                        fillBody(
+                                                                cylinder(12, room.adminMemberId()),
+                                                                0,
+                                                                fromBank(
+                                                                        room.o2().vesselId(),
+                                                                        20 + n)),
+                                                        day(n)))
+                                        .fillId())
                         .toList();
         final var newestFirst = ids.reversed();
 
@@ -353,10 +348,8 @@ final class FillListIntegrationTest extends AbstractFillIntegrationTest {
                 input.startPressureBar(),
                 input.startMix(),
                 input.stages().stream()
-                        .map(
-                                stage ->
-                                        new FillInput.Stage(
-                                                stage.source(), stage.pressureAfterBar(), null))
+                        .map(stage ->
+                                new FillInput.Stage(stage.source(), stage.pressureAfterBar(), null))
                         .toList(),
                 input.endAnalysis(),
                 input.notes());

@@ -90,12 +90,10 @@ public class ReprocessConflictDataService {
                                             .orElse("")));
                 });
         return open.stream()
-                .map(
-                        c -> {
-                            final var label =
-                                    labels.getOrDefault(c.getDiveId(), new DiveLabel(0, ""));
-                            return c.toRecord(label.number(), label.identifier());
-                        })
+                .map(c -> {
+                    final var label = labels.getOrDefault(c.getDiveId(), new DiveLabel(0, ""));
+                    return c.toRecord(label.number(), label.identifier());
+                })
                 .toList();
     }
 

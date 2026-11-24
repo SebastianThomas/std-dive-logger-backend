@@ -53,27 +53,26 @@ final class FillConcurrencyIntegrationTest extends AbstractFillIntegrationTest {
             // lets them run one after the other, the second one against what the first committed.
             final var calls =
                     new TransactionTemplate(transactionManager)
-                            .execute(
-                                    _ -> {
-                                        jdbc.queryForList(
-                                                "SELECT pk_team_id FROM t_team"
-                                                        + " WHERE pk_team_id = ? FOR UPDATE",
-                                                room.teamId());
-                                        final var started =
-                                                List.of(
-                                                        pool.submit(
-                                                                post(
-                                                                        room.adminEmail(),
-                                                                        room.teamId(),
-                                                                        aIntoB)),
-                                                        pool.submit(
-                                                                post(
-                                                                        room.adminEmail(),
-                                                                        room.teamId(),
-                                                                        bIntoA)));
-                                        awaitLockWaiters(2);
-                                        return started;
-                                    });
+                            .execute(_ -> {
+                                jdbc.queryForList(
+                                        "SELECT pk_team_id FROM t_team"
+                                                + " WHERE pk_team_id = ? FOR UPDATE",
+                                        room.teamId());
+                                final var started =
+                                        List.of(
+                                                pool.submit(
+                                                        post(
+                                                                room.adminEmail(),
+                                                                room.teamId(),
+                                                                aIntoB)),
+                                                pool.submit(
+                                                        post(
+                                                                room.adminEmail(),
+                                                                room.teamId(),
+                                                                bIntoA)));
+                                awaitLockWaiters(2);
+                                return started;
+                            });
 
             final var started = Objects.requireNonNull(calls);
             final var statuses =

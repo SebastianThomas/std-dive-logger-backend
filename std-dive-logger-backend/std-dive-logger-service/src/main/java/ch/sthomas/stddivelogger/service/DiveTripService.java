@@ -39,10 +39,8 @@ public class DiveTripService {
         final var trip =
                 diveTripDataService
                         .findTripById(tripId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive trip " + tripId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find dive trip " + tripId));
         if (trip.ownerUserId() != user.id()) {
             throw ForbiddenException.forDiveTrip(user, tripId);
         }

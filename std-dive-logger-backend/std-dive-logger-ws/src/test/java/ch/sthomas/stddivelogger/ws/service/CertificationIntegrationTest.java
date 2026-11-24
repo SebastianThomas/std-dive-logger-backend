@@ -128,14 +128,13 @@ class CertificationIntegrationTest {
 
     @Test
     void creatingADuplicateAgencyNameIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                certificationService.createAgency(
-                                        new CreateCertificationAgencyBody(
-                                                "tdi",
-                                                "Technical Diving International",
-                                                "https://www.tdisdi.com",
-                                                null)))
+        assertThatThrownBy(() ->
+                        certificationService.createAgency(
+                                new CreateCertificationAgencyBody(
+                                        "tdi",
+                                        "Technical Diving International",
+                                        "https://www.tdisdi.com",
+                                        null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -188,10 +187,9 @@ class CertificationIntegrationTest {
                         null,
                         null,
                         null);
-        assertThatThrownBy(
-                        () ->
-                                certificationService.updateCertification(
-                                        other, created.id(), otherUsersEdit))
+        assertThatThrownBy(() ->
+                        certificationService.updateCertification(
+                                other, created.id(), otherUsersEdit))
                 .isInstanceOf(NoSuchElementException.class);
         assertThatThrownBy(() -> certificationService.deleteCertification(other, created.id()))
                 .isInstanceOf(NoSuchElementException.class);

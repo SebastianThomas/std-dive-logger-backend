@@ -503,30 +503,26 @@ public class DiveService {
     public Dive createEmptyDive(final User user, @Valid @NotNull final UploadDiveBody body) {
         final var diveSiteId =
                 Optional.ofNullable(body.diveSiteId())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Dive Site is required to save dive manually."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Dive Site is required to save dive manually."));
         final var maxDepth =
                 Optional.ofNullable(body.maxDepth())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Maximum depth is required to save dive manually."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Maximum depth is required to save dive manually."));
         final var duration =
                 Optional.ofNullable(body.duration())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Duration is required to save dive manually."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Duration is required to save dive manually."));
         final var diveNumber =
                 Optional.ofNullable(body.diveNumber()).orElseGet(() -> getNextDiveNumber(user));
         final var diveIdentifier =
                 Optional.ofNullable(body.diveIdentifier())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Dive Identifier is required to save dive manually."));
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Dive Identifier is required to save dive manually."));
         final var start = Optional.ofNullable(body.startTime()).orElseGet(Instant::now);
         final var end = start.plus(duration);
         final var mid = start.plus(duration.dividedBy(2));
@@ -593,27 +589,22 @@ public class DiveService {
         final var existingByName = diveDataService.findDiveSiteByName(name);
         return existingByName
                 .filter(e -> LocationUtils.isClose(e.getCoordinate(), location.toCoordinate()))
-                .or(
-                        () ->
-                                diveDataService.findDiveSitesByLocation(location).stream()
-                                        .filter(e -> isSimilarName(e.name(), name))
-                                        .min(
-                                                Comparator.comparing(
-                                                        e ->
-                                                                levenshteinDistance.apply(
-                                                                        e.name(), name))))
-                .or(
-                        () ->
-                                existingByName.map(
-                                        _ ->
-                                                diveDataService.saveDiveSite(
-                                                        name
-                                                                + " ("
-                                                                + df.format(location.lat())
-                                                                + ", "
-                                                                + df.format(location.lon())
-                                                                + ")",
-                                                        location)))
+                .or(() ->
+                        diveDataService.findDiveSitesByLocation(location).stream()
+                                .filter(e -> isSimilarName(e.name(), name))
+                                .min(
+                                        Comparator.comparing(
+                                                e -> levenshteinDistance.apply(e.name(), name))))
+                .or(() ->
+                        existingByName.map(_ ->
+                                diveDataService.saveDiveSite(
+                                        name
+                                                + " ("
+                                                + df.format(location.lat())
+                                                + ", "
+                                                + df.format(location.lon())
+                                                + ")",
+                                        location)))
                 .orElseGet(() -> diveDataService.saveDiveSite(name, location));
     }
 
@@ -829,10 +820,9 @@ public class DiveService {
             final User user, final long computerId, final DiveSort diveSort, final int page) {
         final var computer =
                 getDiveComputerById(user, computerId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Cannot find computer with id " + computerId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Cannot find computer with id " + computerId));
         return diveDataService.findDivesByUserAndComputer(
                 user, computer, diveSort, page, SIMPLIFIED_DIVE_PAGE_SIZE);
     }
@@ -931,10 +921,8 @@ public class DiveService {
         final var dive =
                 diveDataService
                         .findDiveById(diveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + diveId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find dive by id " + diveId));
         final var profiles = dive.profiles();
         final var referenceProfile =
                 profiles.stream()
@@ -959,10 +947,8 @@ public class DiveService {
         final var dive =
                 diveDataService
                         .findDiveById(diveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + diveId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find dive by id " + diveId));
         final var profiles =
                 dive.profiles().stream()
                         .filter(p -> profileIds.contains(p.id()))

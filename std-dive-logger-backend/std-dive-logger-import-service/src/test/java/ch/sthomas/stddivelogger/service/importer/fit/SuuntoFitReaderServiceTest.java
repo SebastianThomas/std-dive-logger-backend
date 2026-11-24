@@ -44,14 +44,13 @@ class SuuntoFitReaderServiceTest {
         final var diveService = mock(DiveService.class);
         final var nextId = new AtomicLong(1);
         when(diveService.createDiveComputer(anyString(), anyString(), anyString(), anyLong()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        nextId.getAndIncrement(),
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(2)),
-                                        invocation.getArgument(0),
-                                        invocation.getArgument(1),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                nextId.getAndIncrement(),
+                                new DiveComputerManufacturer(1L, invocation.getArgument(2)),
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                null));
         return diveService;
     }
 
@@ -101,13 +100,12 @@ class SuuntoFitReaderServiceTest {
         final var result = parseFixture(fixture);
         final var profile = result.payload().profiles().getFirst();
         assertThat(profile.measurements())
-                .allSatisfy(
-                        m -> {
-                            final var gas = m.gas();
-                            assertThat(gas).isNotNull();
-                            assertThat(Objects.requireNonNull(gas).o2())
-                                    .isCloseTo(0.21, Offset.offset(0.001));
-                        });
+                .allSatisfy(m -> {
+                    final var gas = m.gas();
+                    assertThat(gas).isNotNull();
+                    assertThat(Objects.requireNonNull(gas).o2())
+                            .isCloseTo(0.21, Offset.offset(0.001));
+                });
     }
 
     @ParameterizedTest
@@ -121,11 +119,10 @@ class SuuntoFitReaderServiceTest {
         final var result = parseFixture(fixture);
         final var profile = result.payload().profiles().getFirst();
         assertThat(profile.measurements())
-                .allSatisfy(
-                        m -> {
-                            assertThat(m.deco()).isEmpty();
-                            assertThat(m.timeToSurface()).isNull();
-                        });
+                .allSatisfy(m -> {
+                    assertThat(m.deco()).isEmpty();
+                    assertThat(m.timeToSurface()).isNull();
+                });
     }
 
     private static Stream<Arguments> knownValues() {

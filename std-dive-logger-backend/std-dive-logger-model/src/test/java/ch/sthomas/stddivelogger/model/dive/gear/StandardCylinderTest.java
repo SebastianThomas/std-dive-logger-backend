@@ -20,13 +20,12 @@ class StandardCylinderTest {
                 .extracting(StandardCylinder::key)
                 .doesNotHaveDuplicates();
         assertThat(StandardCylinder.CATALOG)
-                .allSatisfy(
-                        c -> {
-                            assertThat(c.label()).isNotBlank();
-                            assertThat(c.size().unit()).isEqualTo(CylinderSizeUnit.LITER);
-                            assertThat(c.size().value()).isPositive();
-                            assertThat(StandardCylinder.byKey(c.key())).contains(c);
-                        });
+                .allSatisfy(c -> {
+                    assertThat(c.label()).isNotBlank();
+                    assertThat(c.size().unit()).isEqualTo(CylinderSizeUnit.LITER);
+                    assertThat(c.size().value()).isPositive();
+                    assertThat(StandardCylinder.byKey(c.key())).contains(c);
+                });
     }
 
     @Test

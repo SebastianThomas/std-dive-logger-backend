@@ -68,7 +68,7 @@ public class GraphImageCreator {
                         .orElseThrow()
                         .toEpochMilli();
         final DoubleUnaryOperator widthCalculator =
-                (a) -> width * (a - start) / (end - start) + PADDING;
+                a -> width * (a - start) / (end - start) + PADDING;
         final var canvasSize =
                 new Dimension(
                         (int) Math.ceil(widthCalculator.applyAsDouble(end) + PADDING),
@@ -81,27 +81,26 @@ public class GraphImageCreator {
         // scaled against depth's own min/max so the zone lines up with the depth line beneath it.
         drawDecoZone(dive, graphics, widthCalculator, height);
 
-        extractorsAndLegendTypes.forEach(
-                (property, extractorAndType) -> {
-                    graphics.setFont(new Font("SansSerif", Font.BOLD, FONT_SIZE));
-                    final var color = getColor(property);
-                    final var data = getDataRow(dive, extractorAndType.getLeft()).data().getFirst();
-                    graphics.setColor(color);
-                    final var lines = data.getLines(widthCalculator, height, PADDING);
-                    lines.forEach(graphics::draw);
-                    final var legendType = extractorAndType.getRight();
-                    if (legendType == LegendType.NO_LEGEND) {
-                        return;
-                    }
-                    final var min = data.min();
-                    final var max = data.max();
-                    logger.info("MinMax for {}: ({}, {})", property, min, max);
-                    if (min == max) {
-                        drawSingleLegend(graphics, legendType, min, canvasSize.width, height);
-                    } else {
-                        drawLegend(graphics, legendType, 5, min, max, canvasSize.width, height);
-                    }
-                });
+        extractorsAndLegendTypes.forEach((property, extractorAndType) -> {
+            graphics.setFont(new Font("SansSerif", Font.BOLD, FONT_SIZE));
+            final var color = getColor(property);
+            final var data = getDataRow(dive, extractorAndType.getLeft()).data().getFirst();
+            graphics.setColor(color);
+            final var lines = data.getLines(widthCalculator, height, PADDING);
+            lines.forEach(graphics::draw);
+            final var legendType = extractorAndType.getRight();
+            if (legendType == LegendType.NO_LEGEND) {
+                return;
+            }
+            final var min = data.min();
+            final var max = data.max();
+            logger.info("MinMax for {}: ({}, {})", property, min, max);
+            if (min == max) {
+                drawSingleLegend(graphics, legendType, min, canvasSize.width, height);
+            } else {
+                drawLegend(graphics, legendType, 5, min, max, canvasSize.width, height);
+            }
+        });
 
         graphics.stream(writer, true);
     }
@@ -136,24 +135,19 @@ public class GraphImageCreator {
             final int height) {
         IntStream.rangeClosed(0, nrOfEntries)
                 .mapToObj(i -> Pair.of(i, min + (max - min) * i / nrOfEntries))
-                .forEach(
-                        p -> {
-                            final var string = String.valueOf(p.getRight());
-                            final var fontMetrics = graphics.getFontMetrics();
-                            final var y =
-                                    (int)
-                                            ((double) p.getLeft() / nrOfEntries * height
-                                                    + fontMetrics.getAscent()
-                                                            * FONT_ASCENT_MULTIPLIER
-                                                    + PADDING);
-                            final var x =
-                                    legendType.getX(
-                                            width,
-                                            fontMetrics.stringWidth(string),
-                                            PADDING,
-                                            TEXT_PADDING);
-                            graphics.drawString(string, (int) x, y);
-                        });
+                .forEach(p -> {
+                    final var string = String.valueOf(p.getRight());
+                    final var fontMetrics = graphics.getFontMetrics();
+                    final var y =
+                            (int)
+                                    ((double) p.getLeft() / nrOfEntries * height
+                                            + fontMetrics.getAscent() * FONT_ASCENT_MULTIPLIER
+                                            + PADDING);
+                    final var x =
+                            legendType.getX(
+                                    width, fontMetrics.stringWidth(string), PADDING, TEXT_PADDING);
+                    graphics.drawString(string, (int) x, y);
+                });
     }
 
     /**
@@ -216,11 +210,9 @@ public class GraphImageCreator {
                                 "Graph generation requires a profile fetched with measurements"
                                         + " included")
                         .stream()
-                        .map(
-                                m ->
-                                        new MeasurementData(
-                                                m.measurement().time(),
-                                                extractor.apply(m.measurement())))
+                        .map(m ->
+                                new MeasurementData(
+                                        m.measurement().time(), extractor.apply(m.measurement())))
                         .toList();
         return new ProfileRow(start, end, measurements);
     }
@@ -245,26 +237,23 @@ public class GraphImageCreator {
             final var max = max();
             final DoubleUnaryOperator getHeight =
                     min == max
-                            ? (_) -> height / 2.0
-                            : (a) -> height * (a - min) / (max - min) + padding;
+                            ? _ -> height / 2.0
+                            : a -> height * (a - min) / (max - min) + padding;
 
             return Streams.zip(data.stream(), data.stream().skip(1), Pair::of)
                     .filter(Objects::nonNull)
-                    .map(
-                            pair ->
-                                    Pair.of(
-                                            Objects.requireNonNull(pair.getLeft()),
-                                            Objects.requireNonNull(pair.getRight())))
-                    .map(
-                            pair ->
-                                    new Line2D.Double(
-                                            getXCoordinateFromTime.applyAsDouble(
-                                                    pair.getLeft().time().toEpochMilli()),
-                                            getHeight.applyAsDouble(pair.getLeft().measurement()),
-                                            getXCoordinateFromTime.applyAsDouble(
-                                                    pair.getRight().time().toEpochMilli()),
-                                            getHeight.applyAsDouble(
-                                                    pair.getRight().measurement())));
+                    .map(pair ->
+                            Pair.of(
+                                    Objects.requireNonNull(pair.getLeft()),
+                                    Objects.requireNonNull(pair.getRight())))
+                    .map(pair ->
+                            new Line2D.Double(
+                                    getXCoordinateFromTime.applyAsDouble(
+                                            pair.getLeft().time().toEpochMilli()),
+                                    getHeight.applyAsDouble(pair.getLeft().measurement()),
+                                    getXCoordinateFromTime.applyAsDouble(
+                                            pair.getRight().time().toEpochMilli()),
+                                    getHeight.applyAsDouble(pair.getRight().measurement())));
         }
 
         /**
@@ -283,8 +272,8 @@ public class GraphImageCreator {
             final var max = max();
             final DoubleUnaryOperator getHeight =
                     min == max
-                            ? (_) -> height / 2.0
-                            : (a) -> height * (a - min) / (max - min) + padding;
+                            ? _ -> height / 2.0
+                            : a -> height * (a - min) / (max - min) + padding;
             final var surfaceY = getHeight.applyAsDouble(0.0);
 
             final var path = new Path2D.Double();

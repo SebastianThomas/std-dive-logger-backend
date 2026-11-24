@@ -13,11 +13,10 @@ class DiveSiteTimezoneListenerTest {
     void readsReuseStoredZoneButWritesRecomputeIt() {
         final var calls = new AtomicInteger();
         final var listener =
-                new DiveSiteTimezoneListener(
-                        (lat, lon) -> {
-                            calls.incrementAndGet();
-                            return "Europe/Zurich";
-                        });
+                new DiveSiteTimezoneListener((lat, lon) -> {
+                    calls.incrementAndGet();
+                    return "Europe/Zurich";
+                });
         final var site =
                 new DiveSiteEntity(
                         "Lake", new GeometryFactory().createPoint(new Coordinate(8.5, 47.3)));

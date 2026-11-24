@@ -228,11 +228,10 @@ public class DivePhotoService {
                 final var location =
                         response.headers()
                                 .firstValue("Location")
-                                .orElseThrow(
-                                        () ->
-                                                new IllegalArgumentException(
-                                                        "Redirect with no Location header from "
-                                                                + requestedUri));
+                                .orElseThrow(() ->
+                                        new IllegalArgumentException(
+                                                "Redirect with no Location header from "
+                                                        + requestedUri));
                 current = current.resolve(location);
                 continue;
             }

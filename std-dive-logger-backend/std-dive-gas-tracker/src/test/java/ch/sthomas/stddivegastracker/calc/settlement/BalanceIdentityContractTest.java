@@ -123,11 +123,10 @@ final class BalanceIdentityContractTest {
         result.members().forEach(m -> named.add(m.memberId()));
         input.vessels()
                 .forEach(v -> v.costLines().forEach(line -> named.add(line.payerMemberId())));
-        payments.forEach(
-                p -> {
-                    named.add(p.fromMemberId());
-                    named.add(p.toMemberId());
-                });
+        payments.forEach(p -> {
+            named.add(p.fromMemberId());
+            named.add(p.toMemberId());
+        });
         assertThat(rows)
                 .extracting(MemberBalance::memberId)
                 .isSorted()

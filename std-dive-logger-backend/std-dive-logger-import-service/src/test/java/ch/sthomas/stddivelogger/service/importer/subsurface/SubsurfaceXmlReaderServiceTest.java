@@ -34,23 +34,23 @@ class SubsurfaceXmlReaderServiceTest {
         // Two <site> elements sharing the same uuid, which can happen with manually
         // merged/edited Subsurface exports.
         return """
-                <divelog>
-                  <divesites uuid="dup-uuid" name="First Site" gps="1.0 2.0"/>
-                  <divesites uuid="dup-uuid" name="Second Site" gps="3.0 4.0"/>
-                  <dives>
-                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
-                rating="0" divesiteid="dup-uuid" visibility="0" current="0">
-                      <buddy>Test Buddy</buddy>
-                      <cylinder description="AL80" o2="21%"/>
-                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
-                time="10:00:00" duration="0:10 min">
-                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
-                        <sample time="0:00 min" depth="0.0 m"/>
-                      </divecomputer>
-                    </dive>
-                  </dives>
-                </divelog>
-                """;
+        <divelog>
+          <divesites uuid="dup-uuid" name="First Site" gps="1.0 2.0"/>
+          <divesites uuid="dup-uuid" name="Second Site" gps="3.0 4.0"/>
+          <dives>
+            <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
+        rating="0" divesiteid="dup-uuid" visibility="0" current="0">
+              <buddy>Test Buddy</buddy>
+              <cylinder description="AL80" o2="21%"/>
+              <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+        time="10:00:00" duration="0:10 min">
+                <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                <sample time="0:00 min" depth="0.0 m"/>
+              </divecomputer>
+            </dive>
+          </dives>
+        </divelog>
+        """;
     }
 
     private DiveService diveServiceReturningComputer() {
@@ -78,12 +78,11 @@ class SubsurfaceXmlReaderServiceTest {
         try (final var inputStream =
                 new ByteArrayInputStream(duplicateSiteUuidXml().getBytes(StandardCharsets.UTF_8))) {
             final var result =
-                    assertDoesNotThrow(
-                            () ->
-                                    service.parse(user, "duplicate-sites.xml", inputStream)
-                                            .reduce(ParsedImportResultStreaming::concat)
-                                            .orElseThrow()
-                                            .toResult());
+                    assertDoesNotThrow(() ->
+                            service.parse(user, "duplicate-sites.xml", inputStream)
+                                    .reduce(ParsedImportResultStreaming::concat)
+                                    .orElseThrow()
+                                    .toResult());
 
             // The dive itself parses successfully (using whichever of the two duplicate sites
             // Collectors.toMap's merge function kept), it is not swallowed as an error.
@@ -95,24 +94,24 @@ class SubsurfaceXmlReaderServiceTest {
     private static String withEndOfDiveTotalsXml() {
         // otu/cns are attributes on <dive>, not child elements - the whole point of this test.
         return """
-                <divelog>
-                  <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
-                  <dives>
-                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:20 min" \
-                rating="0" divesiteid="site-1" visibility="0" current="0" otu="12" cns="11%">
-                      <buddy>Test Buddy</buddy>
-                      <cylinder description="AL80" o2="21%"/>
-                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
-                time="10:00:00" duration="0:20 min">
-                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
-                        <sample time="0:00 min" depth="0.0 m"/>
-                        <sample time="0:10 min" depth="10.0 m"/>
-                        <sample time="0:20 min" depth="0.0 m"/>
-                      </divecomputer>
-                    </dive>
-                  </dives>
-                </divelog>
-                """;
+        <divelog>
+          <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
+          <dives>
+            <dive number="1" date="2024-01-01" time="10:00:00" duration="0:20 min" \
+        rating="0" divesiteid="site-1" visibility="0" current="0" otu="12" cns="11%">
+              <buddy>Test Buddy</buddy>
+              <cylinder description="AL80" o2="21%"/>
+              <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+        time="10:00:00" duration="0:20 min">
+                <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                <sample time="0:00 min" depth="0.0 m"/>
+                <sample time="0:10 min" depth="10.0 m"/>
+                <sample time="0:20 min" depth="0.0 m"/>
+              </divecomputer>
+            </dive>
+          </dives>
+        </divelog>
+        """;
     }
 
     @Test
@@ -147,25 +146,25 @@ class SubsurfaceXmlReaderServiceTest {
         // A trimix-ish back gas with both start and end pressure, plus a bailout cylinder whose
         // pressure is given in psi to verify unit conversion.
         return """
-                <divelog>
-                  <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
-                  <dives>
-                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
-                rating="0" divesiteid="site-1" visibility="0" current="0">
-                      <buddy>Test Buddy</buddy>
-                      <cylinder description="Backgas" size="12.0 l" workpressure="232.0 bar" \
-                start="200 bar" end="80 bar" o2="21%" he="35%"/>
-                      <cylinder description="Bailout" size="80.0 cuft" workpressure="3000.0 psi" \
-                start="3000 psi" end="2000 psi" o2="32%"/>
-                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
-                time="10:00:00" duration="0:10 min">
-                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
-                        <sample time="0:00 min" depth="0.0 m"/>
-                      </divecomputer>
-                    </dive>
-                  </dives>
-                </divelog>
-                """;
+        <divelog>
+          <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
+          <dives>
+            <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
+        rating="0" divesiteid="site-1" visibility="0" current="0">
+              <buddy>Test Buddy</buddy>
+              <cylinder description="Backgas" size="12.0 l" workpressure="232.0 bar" \
+        start="200 bar" end="80 bar" o2="21%" he="35%"/>
+              <cylinder description="Bailout" size="80.0 cuft" workpressure="3000.0 psi" \
+        start="3000 psi" end="2000 psi" o2="32%"/>
+              <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+        time="10:00:00" duration="0:10 min">
+                <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                <sample time="0:00 min" depth="0.0 m"/>
+              </divecomputer>
+            </dive>
+          </dives>
+        </divelog>
+        """;
     }
 
     @Test
@@ -210,23 +209,23 @@ class SubsurfaceXmlReaderServiceTest {
         // Subsurface's <sample> already carries a distinct tts attribute from ndl/stoptime -
         // this dive has no real deco (no stopdepth/stoptime/in_deco), only a plain-ascent TTS.
         return """
-                <divelog>
-                  <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
-                  <dives>
-                    <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
-                rating="0" divesiteid="site-1" visibility="0" current="0">
-                      <buddy>Test Buddy</buddy>
-                      <cylinder description="AL80" o2="21%"/>
-                      <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
-                time="10:00:00" duration="0:10 min">
-                        <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
-                        <sample time="0:00 min" depth="0.0 m" tts="0:01 min"/>
-                        <sample time="0:05 min" depth="20.0 m" tts="0:08 min"/>
-                      </divecomputer>
-                    </dive>
-                  </dives>
-                </divelog>
-                """;
+        <divelog>
+          <divesites uuid="site-1" name="Test Site" gps="1.0 2.0"/>
+          <dives>
+            <dive number="1" date="2024-01-01" time="10:00:00" duration="0:10 min" \
+        rating="0" divesiteid="site-1" visibility="0" current="0">
+              <buddy>Test Buddy</buddy>
+              <cylinder description="AL80" o2="21%"/>
+              <divecomputer model="Test 123" deviceid="1" diveid="1" date="2024-01-01" \
+        time="10:00:00" duration="0:10 min">
+                <event time="0:00 min" type="0" name="gaschange" cylinder="0"/>
+                <sample time="0:00 min" depth="0.0 m" tts="0:01 min"/>
+                <sample time="0:05 min" depth="20.0 m" tts="0:08 min"/>
+              </divecomputer>
+            </dive>
+          </dives>
+        </divelog>
+        """;
     }
 
     @Test

@@ -44,8 +44,8 @@ class HttpLoggingTest {
                 request(
                         "application/json",
                         """
-                {"page":2,"password":"secret","token":"secret","cookies":{"session":"secret"},"blob":"secret","nested":{"password":"secret"}}
-                """);
+                        {"page":2,"password":"secret","token":"secret","cookies":{"session":"secret"},"blob":"secret","nested":{"password":"secret"}}
+                        """);
         request.addHeader("Authorization", "Bearer secret");
         request.addHeader("Cookie", "session=secret");
         request.setQueryString("password=secret&access_token=secret");

@@ -224,15 +224,14 @@ public final class VesselService {
         final var costLines =
                 state.facts().costLines().stream()
                         .filter(line -> line.vesselId() == row.vesselId())
-                        .map(
-                                line ->
-                                        new CostLine(
-                                                line.costLineId(),
-                                                line.payerMemberId(),
-                                                line.amount(),
-                                                line.paidAt(),
-                                                line.note(),
-                                                state.member(line.payerMemberId())))
+                        .map(line ->
+                                new CostLine(
+                                        line.costLineId(),
+                                        line.payerMemberId(),
+                                        line.amount(),
+                                        line.paidAt(),
+                                        line.note(),
+                                        state.member(line.payerMemberId())))
                         .toList();
         final var bookByReading =
                 inventory.readings().stream()
@@ -240,19 +239,17 @@ public final class VesselService {
         final var readings =
                 state.facts().readings().stream()
                         .filter(reading -> reading.vesselId() == row.vesselId())
-                        .map(
-                                reading -> {
-                                    final var book =
-                                            Objects.requireNonNull(
-                                                    bookByReading.get(reading.readingId()));
-                                    return new Reading(
-                                            reading.readingId(),
-                                            reading.pressureBar(),
-                                            reading.measuredAt(),
-                                            state.member(reading.createdByMemberId()),
-                                            book.bookPressureBar(),
-                                            book.discrepancyLitres());
-                                })
+                        .map(reading -> {
+                            final var book =
+                                    Objects.requireNonNull(bookByReading.get(reading.readingId()));
+                            return new Reading(
+                                    reading.readingId(),
+                                    reading.pressureBar(),
+                                    reading.measuredAt(),
+                                    state.member(reading.createdByMemberId()),
+                                    book.bookPressureBar(),
+                                    book.discrepancyLitres());
+                        })
                         .toList();
         return new VesselDetail(
                 summary.vesselId(),

@@ -175,9 +175,8 @@ public class UddfReaderService extends BaseReaderService {
         return diveService
                 .getDiveComputerBySerialNumber(user, manufacturer, serialNumber)
                 .or(() -> diveService.getDiveComputer(user, customIdentifier))
-                .orElseGet(
-                        () ->
-                                diveService.createDiveComputer(
-                                        serialNumber, customIdentifier, manufacturer, user.id()));
+                .orElseGet(() ->
+                        diveService.createDiveComputer(
+                                serialNumber, customIdentifier, manufacturer, user.id()));
     }
 }

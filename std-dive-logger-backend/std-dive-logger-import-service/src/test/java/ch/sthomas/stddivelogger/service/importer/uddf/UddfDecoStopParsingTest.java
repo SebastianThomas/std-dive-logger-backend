@@ -65,10 +65,9 @@ class UddfDecoStopParsingTest {
 
         assertTrue(
                 withDeco.stream()
-                        .allMatch(
-                                m ->
-                                        Objects.requireNonNull(m.deco()).stream()
-                                                .allMatch(d -> d.seconds() > 0)));
+                        .allMatch(m ->
+                                Objects.requireNonNull(m.deco()).stream()
+                                        .allMatch(d -> d.seconds() > 0)));
         assertTrue(measurements.stream().allMatch(m -> m.timeToSurface() == null));
     }
 }

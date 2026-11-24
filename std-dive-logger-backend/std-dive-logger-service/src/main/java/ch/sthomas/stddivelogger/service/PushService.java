@@ -83,22 +83,20 @@ public class PushService {
         final var subscription =
                 repository
                         .findByEndpoint(request.endpoint())
-                        .map(
-                                existing ->
-                                        existing.refresh(
+                        .map(existing ->
+                                existing.refresh(
+                                        userId,
+                                        request.keys().p256dh(),
+                                        request.keys().auth(),
+                                        userAgent))
+                        .orElseGet(() ->
+                                repository.save(
+                                        new PushSubscriptionEntity(
                                                 userId,
+                                                request.endpoint(),
                                                 request.keys().p256dh(),
                                                 request.keys().auth(),
-                                                userAgent))
-                        .orElseGet(
-                                () ->
-                                        repository.save(
-                                                new PushSubscriptionEntity(
-                                                        userId,
-                                                        request.endpoint(),
-                                                        request.keys().p256dh(),
-                                                        request.keys().auth(),
-                                                        userAgent)));
+                                                userAgent)));
         if (request.logbookSync() != null) {
             subscription.setLogbookSync(request.logbookSync());
         }
@@ -150,16 +148,15 @@ public class PushService {
             final var futures = new ArrayList<Future<Outcome>>(targets.size());
             for (final var target : targets) {
                 futures.add(
-                        executor.submit(
-                                () -> {
-                                    permits.acquire();
-                                    try {
-                                        return new Outcome(
-                                                target.getId(), safeSend(target, payload, options));
-                                    } finally {
-                                        permits.release();
-                                    }
-                                }));
+                        executor.submit(() -> {
+                            permits.acquire();
+                            try {
+                                return new Outcome(
+                                        target.getId(), safeSend(target, payload, options));
+                            } finally {
+                                permits.release();
+                            }
+                        }));
             }
             for (final var future : futures) {
                 try {

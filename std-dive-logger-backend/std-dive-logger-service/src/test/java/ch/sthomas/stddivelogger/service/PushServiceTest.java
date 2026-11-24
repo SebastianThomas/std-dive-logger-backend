@@ -104,22 +104,20 @@ class PushServiceTest {
         final var sendsDone = new AtomicInteger();
         final var transactionOpenedEarly = new AtomicBoolean();
         when(transactions.getTransaction(any()))
-                .thenAnswer(
-                        _ -> {
-                            // Outcomes are written only once every HTTP call has finished.
-                            transactionOpenedEarly.set(sendsDone.get() < 3);
-                            return null;
-                        });
+                .thenAnswer(_ -> {
+                    // Outcomes are written only once every HTTP call has finished.
+                    transactionOpenedEarly.set(sendsDone.get() < 3);
+                    return null;
+                });
         final WebPushSender sender =
-                fakeSender(
-                        (subscription, _) -> {
-                            sendsDone.incrementAndGet();
-                            return switch (subscription.getEndpoint()) {
-                                case "https://push.example/ok" -> PushSendResult.SENT;
-                                case "https://push.example/gone" -> PushSendResult.GONE;
-                                default -> PushSendResult.FAILED;
-                            };
-                        });
+                fakeSender((subscription, _) -> {
+                    sendsDone.incrementAndGet();
+                    return switch (subscription.getEndpoint()) {
+                        case "https://push.example/ok" -> PushSendResult.SENT;
+                        case "https://push.example/gone" -> PushSendResult.GONE;
+                        default -> PushSendResult.FAILED;
+                    };
+                });
 
         final int delivered =
                 service(sender, "k")
@@ -140,18 +138,17 @@ class PushServiceTest {
         final var inFlight = new AtomicInteger();
         final var maxInFlight = new AtomicInteger();
         final WebPushSender sender =
-                fakeSender(
-                        (_, _) -> {
-                            final int now = inFlight.incrementAndGet();
-                            maxInFlight.accumulateAndGet(now, Math::max);
-                            try {
-                                Thread.sleep(100);
-                            } catch (final InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            }
-                            inFlight.decrementAndGet();
-                            return PushSendResult.SENT;
-                        });
+                fakeSender((_, _) -> {
+                    final int now = inFlight.incrementAndGet();
+                    maxInFlight.accumulateAndGet(now, Math::max);
+                    try {
+                        Thread.sleep(100);
+                    } catch (final InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    inFlight.decrementAndGet();
+                    return PushSendResult.SENT;
+                });
         final var targets =
                 new ArrayList<>(
                         IntStream.range(0, 40)
@@ -175,10 +172,9 @@ class PushServiceTest {
         final var target = subscription(1, "https://push.example/boom");
         when(repository.findAllById(anyCollection())).thenReturn(List.of(target));
         final WebPushSender sender =
-                fakeSender(
-                        (_, _) -> {
-                            throw new IllegalStateException("boom");
-                        });
+                fakeSender((_, _) -> {
+                    throw new IllegalStateException("boom");
+                });
 
         final int delivered =
                 service(sender, "k")

@@ -75,20 +75,14 @@ public class HttpLoggingConfiguration {
     @Bean
     PathFilter routePathFilter(final ObjectProvider<RequestMappingHandlerMapping> mappings) {
         final var patterns =
-                Suppliers.memoize(
-                        () ->
-                                mappings.orderedStream()
-                                        .flatMap(
-                                                mapping ->
-                                                        mapping
-                                                                .getHandlerMethods()
-                                                                .keySet()
-                                                                .stream())
-                                        .flatMap(info -> info.getPatternValues().stream())
-                                        .distinct()
-                                        .map(PathPatternParser.defaultInstance::parse)
-                                        .sorted(PathPattern.SPECIFICITY_COMPARATOR)
-                                        .toList());
+                Suppliers.memoize(() ->
+                        mappings.orderedStream()
+                                .flatMap(mapping -> mapping.getHandlerMethods().keySet().stream())
+                                .flatMap(info -> info.getPatternValues().stream())
+                                .distinct()
+                                .map(PathPatternParser.defaultInstance::parse)
+                                .sorted(PathPattern.SPECIFICITY_COMPARATOR)
+                                .toList());
         return path -> {
             try {
                 final var container = PathContainer.parsePath(path);

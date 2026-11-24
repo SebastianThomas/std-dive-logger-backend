@@ -210,30 +210,25 @@ final class TeamSnapshotServiceIntegrationTest extends AbstractVesselIntegration
         final var team = createTeam(admin);
         addActiveMember(admin, team.teamId());
         IntStream.range(0, banks)
-                .forEach(
-                        _ -> {
-                            final var bank =
-                                    createO2Bank(admin, team.teamId(), team.memberId(), "TRUE_UP");
-                            cylinderDraw(
-                                    team.teamId(),
-                                    team.memberId(),
-                                    bank.vesselId(),
-                                    GasMix.OXYGEN,
-                                    T0.plus(Duration.ofDays(1)),
-                                    100,
-                                    1,
-                                    false);
-                            send(
-                                            HttpMethod.POST,
-                                            vesselsUri(team.teamId())
-                                                    + "/"
-                                                    + bank.vesselId()
-                                                    + "/readings",
-                                            admin,
-                                            Map.of("pressureBar", 150))
-                                    .expectStatus()
-                                    .isOk();
-                        });
+                .forEach(_ -> {
+                    final var bank = createO2Bank(admin, team.teamId(), team.memberId(), "TRUE_UP");
+                    cylinderDraw(
+                            team.teamId(),
+                            team.memberId(),
+                            bank.vesselId(),
+                            GasMix.OXYGEN,
+                            T0.plus(Duration.ofDays(1)),
+                            100,
+                            1,
+                            false);
+                    send(
+                                    HttpMethod.POST,
+                                    vesselsUri(team.teamId()) + "/" + bank.vesselId() + "/readings",
+                                    admin,
+                                    Map.of("pressureBar", 150))
+                            .expectStatus()
+                            .isOk();
+                });
         return team;
     }
 

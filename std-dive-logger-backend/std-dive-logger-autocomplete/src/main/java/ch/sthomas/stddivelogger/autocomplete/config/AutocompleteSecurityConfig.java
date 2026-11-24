@@ -36,11 +36,8 @@ public class AutocompleteSecurityConfig {
     SecurityFilterChain swaggerFilterChain(final HttpSecurity http) throws Exception {
         // swagger-ui
         http.securityMatcher("/docs/**", "/docs.yaml")
-                .authorizeHttpRequests(
-                        customizer ->
-                                customizer
-                                        .requestMatchers("/docs/**", "/docs.yaml")
-                                        .hasRole(SWAGGER))
+                .authorizeHttpRequests(customizer ->
+                        customizer.requestMatchers("/docs/**", "/docs.yaml").hasRole(SWAGGER))
                 .httpBasic(withDefaults());
         return http.build();
     }
@@ -49,13 +46,12 @@ public class AutocompleteSecurityConfig {
     SecurityFilterChain autocompleteFilterChain(final HttpSecurity http) throws Exception {
         return http.cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(
-                        authorize ->
-                                authorize
-                                        .requestMatchers("/v1/autocomplete/**")
-                                        .permitAll()
-                                        .requestMatchers("/actuator/**")
-                                        .permitAll())
+                .authorizeHttpRequests(authorize ->
+                        authorize
+                                .requestMatchers("/v1/autocomplete/**")
+                                .permitAll()
+                                .requestMatchers("/actuator/**")
+                                .permitAll())
                 .build();
     }
 

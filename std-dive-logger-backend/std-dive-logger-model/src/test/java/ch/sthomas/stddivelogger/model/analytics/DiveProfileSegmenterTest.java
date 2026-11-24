@@ -74,10 +74,9 @@ class DiveProfileSegmenterTest {
         final var segments = DiveProfileSegmenter.segment(measurements);
         final var chatterSegments =
                 segments.stream()
-                        .filter(
-                                s ->
-                                        s.type() == DiveProfileSegmentType.ASCENT
-                                                || s.type() == DiveProfileSegmentType.DESCENT)
+                        .filter(s ->
+                                s.type() == DiveProfileSegmentType.ASCENT
+                                        || s.type() == DiveProfileSegmentType.DESCENT)
                         .filter(s -> s.startIdx() > 20)
                         .toList();
 

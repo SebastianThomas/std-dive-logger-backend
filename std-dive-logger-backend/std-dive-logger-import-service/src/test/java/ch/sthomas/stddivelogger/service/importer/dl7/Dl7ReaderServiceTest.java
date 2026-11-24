@@ -32,14 +32,13 @@ class Dl7ReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 
@@ -90,12 +89,11 @@ class Dl7ReaderServiceTest {
     void noMeasurementHasDecoOrTtsSinceNeitherColumnWasIdentifiable() throws IOException {
         final var result = parseFixture();
         assertThat(result.payload().profiles().getFirst().measurements())
-                .allSatisfy(
-                        m -> {
-                            assertThat(m.deco()).isEmpty();
-                            assertThat(m.timeToSurface()).isNull();
-                            assertThat(m.ndl()).isNull();
-                        });
+                .allSatisfy(m -> {
+                    assertThat(m.deco()).isEmpty();
+                    assertThat(m.timeToSurface()).isNull();
+                    assertThat(m.ndl()).isNull();
+                });
     }
 
     @Test

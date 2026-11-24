@@ -94,16 +94,15 @@ public final class ReportService {
         }
         final var rows =
                 fills.entrySet().stream()
-                        .map(
-                                entry ->
-                                        new ConsumptionReport.Row(
-                                                state.member(entry.getKey()),
-                                                o2Litres.getOrDefault(entry.getKey(), 0.0),
-                                                heLitres.getOrDefault(entry.getKey(), 0.0),
-                                                entry.getValue(),
-                                                Money.amount(
-                                                        charges.getOrDefault(
-                                                                entry.getKey(), BigDecimal.ZERO))))
+                        .map(entry ->
+                                new ConsumptionReport.Row(
+                                        state.member(entry.getKey()),
+                                        o2Litres.getOrDefault(entry.getKey(), 0.0),
+                                        heLitres.getOrDefault(entry.getKey(), 0.0),
+                                        entry.getValue(),
+                                        Money.amount(
+                                                charges.getOrDefault(
+                                                        entry.getKey(), BigDecimal.ZERO))))
                         .sorted(
                                 Comparator.comparing(ConsumptionReport.Row::charge)
                                         .reversed()
@@ -121,22 +120,20 @@ public final class ReportService {
                 state.facts().vessels().stream()
                         .filter(row -> row.closedAt() != null)
                         .sorted(
-                                Comparator.comparing(
-                                                (VesselRow row) ->
-                                                        Objects.requireNonNull(row.closedAt()))
+                                Comparator.comparing((VesselRow row) ->
+                                                Objects.requireNonNull(row.closedAt()))
                                         .reversed()
                                         .thenComparing(
                                                 VesselRow::vesselId, Comparator.reverseOrder()))
-                        .map(
-                                row ->
-                                        new LossesReport.Entry(
-                                                VesselService.summary(row, state),
-                                                Objects.requireNonNull(
-                                                        VesselService.lossReport(
-                                                                row,
-                                                                state.inventoryOf(row.vesselId()),
-                                                                state.allocation()
-                                                                        .vessel(row.vesselId())))))
+                        .map(row ->
+                                new LossesReport.Entry(
+                                        VesselService.summary(row, state),
+                                        Objects.requireNonNull(
+                                                VesselService.lossReport(
+                                                        row,
+                                                        state.inventoryOf(row.vesselId()),
+                                                        state.allocation()
+                                                                .vessel(row.vesselId())))))
                         .toList();
         return new LossesReport(closed);
     }
@@ -158,30 +155,28 @@ public final class ReportService {
 
         final var rows =
                 state.facts().members().stream()
-                        .map(
-                                member -> {
-                                    // delta of the shown (rounded) values, so the row adds up
-                                    final var withTrueUp =
-                                            Money.amount(
-                                                    trueUp.getOrDefault(
-                                                            member.memberId(), BigDecimal.ZERO));
-                                    final var withPool =
-                                            Money.amount(
-                                                    pooled.getOrDefault(
-                                                            member.memberId(), BigDecimal.ZERO));
-                                    return new Shown(
-                                            member.status(),
-                                            new PolicyComparison.Row(
-                                                    state.member(member.memberId()),
-                                                    withTrueUp,
-                                                    withPool,
-                                                    withPool.subtract(withTrueUp)));
-                                })
-                        .filter(
-                                shown ->
-                                        shown.status() != MemberStatus.LEFT
-                                                || shown.row().trueUp().signum() != 0
-                                                || shown.row().pooled().signum() != 0)
+                        .map(member -> {
+                            // delta of the shown (rounded) values, so the row adds up
+                            final var withTrueUp =
+                                    Money.amount(
+                                            trueUp.getOrDefault(
+                                                    member.memberId(), BigDecimal.ZERO));
+                            final var withPool =
+                                    Money.amount(
+                                            pooled.getOrDefault(
+                                                    member.memberId(), BigDecimal.ZERO));
+                            return new Shown(
+                                    member.status(),
+                                    new PolicyComparison.Row(
+                                            state.member(member.memberId()),
+                                            withTrueUp,
+                                            withPool,
+                                            withPool.subtract(withTrueUp)));
+                        })
+                        .filter(shown ->
+                                shown.status() != MemberStatus.LEFT
+                                        || shown.row().trueUp().signum() != 0
+                                        || shown.row().pooled().signum() != 0)
                         .map(Shown::row)
                         .sorted(
                                 Comparator.comparing(
@@ -207,16 +202,15 @@ public final class ReportService {
         final var overridden =
                 new AllocationInput(
                         input.vessels().stream()
-                                .map(
-                                        vessel ->
-                                                new AllocationInput.Vessel(
-                                                        vessel.vesselId(),
-                                                        policy,
-                                                        vessel.status(),
-                                                        vessel.costLines(),
-                                                        vessel.inflowLitres(),
-                                                        vessel.residualLitres(),
-                                                        vessel.closingParticipantIds()))
+                                .map(vessel ->
+                                        new AllocationInput.Vessel(
+                                                vessel.vesselId(),
+                                                policy,
+                                                vessel.status(),
+                                                vessel.costLines(),
+                                                vessel.inflowLitres(),
+                                                vessel.residualLitres(),
+                                                vessel.closingParticipantIds()))
                                 .toList(),
                         input.draws(),
                         input.activeMemberIds());

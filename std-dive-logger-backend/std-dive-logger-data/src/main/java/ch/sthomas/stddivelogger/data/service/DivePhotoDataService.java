@@ -88,20 +88,18 @@ public class DivePhotoDataService {
     public DivePhotoEntity findConfirmedOrThrow(final long diveId, final long photoId) {
         return divePhotoRepository
                 .findByIdAndDive_IdAndConfirmedTrue(photoId, diveId)
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        "Photo " + photoId + " not found on dive " + diveId));
+                .orElseThrow(() ->
+                        new NoSuchElementException(
+                                "Photo " + photoId + " not found on dive " + diveId));
     }
 
     @Transactional(readOnly = true)
     public DivePhotoEntity findOrThrow(final long diveId, final long photoId) {
         return divePhotoRepository
                 .findByIdAndDive_Id(photoId, diveId)
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        "Photo " + photoId + " not found on dive " + diveId));
+                .orElseThrow(() ->
+                        new NoSuchElementException(
+                                "Photo " + photoId + " not found on dive " + diveId));
     }
 
     @Transactional

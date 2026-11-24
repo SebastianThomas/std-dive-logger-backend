@@ -47,34 +47,28 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        authorize -> {
-                            authorize.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
-                            authorize
-                                    .requestMatchers(
-                                            "/actuator/health",
-                                            "/actuator/health/**",
-                                            "/actuator/prometheus",
-                                            "/error")
-                                    .permitAll();
-                            if (authProperties.devLoginEnabled()) {
-                                authorize
-                                        .requestMatchers(HttpMethod.POST, "/api/dev/login")
-                                        .permitAll();
-                            }
-                            if (docsEnabled) {
-                                authorize.requestMatchers("/docs", "/docs/**").permitAll();
-                            }
-                            authorize.requestMatchers("/v1/**").authenticated();
-                            authorize.anyRequest().denyAll();
-                        })
-                .oauth2ResourceServer(
-                        resourceServer ->
-                                resourceServer.jwt(
-                                        jwt ->
-                                                jwt.decoder(jwtDecoder)
-                                                        .jwtAuthenticationConverter(
-                                                                authenticationConverter)))
+                .authorizeHttpRequests(authorize -> {
+                    authorize.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+                    authorize
+                            .requestMatchers(
+                                    "/actuator/health",
+                                    "/actuator/health/**",
+                                    "/actuator/prometheus",
+                                    "/error")
+                            .permitAll();
+                    if (authProperties.devLoginEnabled()) {
+                        authorize.requestMatchers(HttpMethod.POST, "/api/dev/login").permitAll();
+                    }
+                    if (docsEnabled) {
+                        authorize.requestMatchers("/docs", "/docs/**").permitAll();
+                    }
+                    authorize.requestMatchers("/v1/**").authenticated();
+                    authorize.anyRequest().denyAll();
+                })
+                .oauth2ResourceServer(resourceServer ->
+                        resourceServer.jwt(jwt ->
+                                jwt.decoder(jwtDecoder)
+                                        .jwtAuthenticationConverter(authenticationConverter)))
                 .build();
     }
 

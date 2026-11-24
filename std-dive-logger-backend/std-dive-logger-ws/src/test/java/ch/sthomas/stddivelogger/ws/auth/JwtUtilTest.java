@@ -155,11 +155,10 @@ class JwtUtilTest {
                         .compact());
         tokens.put("a refresh token", jwtUtil.generateRefreshToken(42, EMAIL));
 
-        tokens.forEach(
-                (name, token) ->
-                        assertThatThrownBy(() -> jwtUtil.extractUsername(token, ACCESS_TOKEN))
-                                .as(name)
-                                .isInstanceOf(JwtException.class));
+        tokens.forEach((name, token) ->
+                assertThatThrownBy(() -> jwtUtil.extractUsername(token, ACCESS_TOKEN))
+                        .as(name)
+                        .isInstanceOf(JwtException.class));
     }
 
     @Test
@@ -173,10 +172,9 @@ class JwtUtilTest {
                         .parseSignedClaims(token);
         assertThat(jws.getHeader().getAlgorithm()).isEqualTo("HS384");
         assertThat(jwtUtil.extractUsername(token, REFRESH_TOKEN)).isEqualTo(EMAIL);
-        assertThatThrownBy(
-                        () ->
-                                jwtUtil.extractUsername(
-                                        jwtUtil.generateAccessToken(user(42, true)), REFRESH_TOKEN))
+        assertThatThrownBy(() ->
+                        jwtUtil.extractUsername(
+                                jwtUtil.generateAccessToken(user(42, true)), REFRESH_TOKEN))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -217,19 +215,13 @@ class JwtUtilTest {
                 .hasMessageContaining("is not the public key of");
 
         final var rsa = KeyPairGenerator.getInstance("RSA").generateKeyPair();
-        assertThatThrownBy(
-                        () ->
-                                jwtUtil(
-                                        pem("PRIVATE KEY", rsa.getPrivate().getEncoded()),
-                                        PUBLIC_KEY_PEM))
+        assertThatThrownBy(() ->
+                        jwtUtil(pem("PRIVATE KEY", rsa.getPrivate().getEncoded()), PUBLIC_KEY_PEM))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not an Ed25519");
         final var ed448 = KeyPairGenerator.getInstance("Ed448").generateKeyPair();
-        assertThatThrownBy(
-                        () ->
-                                jwtUtil(
-                                        PRIVATE_KEY_PEM,
-                                        pem("PUBLIC KEY", ed448.getPublic().getEncoded())))
+        assertThatThrownBy(() ->
+                        jwtUtil(PRIVATE_KEY_PEM, pem("PUBLIC KEY", ed448.getPublic().getEncoded())))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("jwt-public-key");
     }

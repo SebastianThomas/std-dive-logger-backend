@@ -154,17 +154,16 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
         // Same synthetic "Manual" computer + identical start -> would violate t_dive_profiles'
         // (fk_dive_computer, dive_profile_start) unique constraint. Must surface as a plain 400,
         // not the post-commit UnexpectedRollbackException it used to.
-        assertThatThrownBy(
-                        () ->
-                                diveService.createEmptyDive(
-                                        user,
-                                        new UploadDiveBody(
-                                                null,
-                                                "collision-2",
-                                                site.id(),
-                                                18.0,
-                                                Duration.ofMinutes(25),
-                                                start)))
+        assertThatThrownBy(() ->
+                        diveService.createEmptyDive(
+                                user,
+                                new UploadDiveBody(
+                                        null,
+                                        "collision-2",
+                                        site.id(),
+                                        18.0,
+                                        Duration.ofMinutes(25),
+                                        start)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exact date and time");
 
@@ -330,10 +329,8 @@ class DiveServiceCreateEmptyDiveIntegrationTest {
                                 Duration.ofMinutes(25),
                                 Instant.parse("2026-06-01T11:00:00Z")));
 
-        assertThatThrownBy(
-                        () ->
-                                diveService.setDiveStartTime(
-                                        user, second.id(), first.summary().start()))
+        assertThatThrownBy(() ->
+                        diveService.setDiveStartTime(user, second.id(), first.summary().start()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exact date and time");
     }

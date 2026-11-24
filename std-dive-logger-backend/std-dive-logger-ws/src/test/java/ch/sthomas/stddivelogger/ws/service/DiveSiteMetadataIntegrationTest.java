@@ -80,16 +80,15 @@ class DiveSiteMetadataIntegrationTest {
                                         "Site Meta IT A", new Location(1.0, 1.0).toPoint()))
                         .toRecord();
 
-        assertThatThrownBy(
-                        () ->
-                                diveService.updateDiveSite(
-                                        user,
-                                        site.id(),
-                                        "desc",
-                                        30.0,
-                                        DiveSiteType.WRECK,
-                                        WaterType.SALT,
-                                        List.of()))
+        assertThatThrownBy(() ->
+                        diveService.updateDiveSite(
+                                user,
+                                site.id(),
+                                "desc",
+                                30.0,
+                                DiveSiteType.WRECK,
+                                WaterType.SALT,
+                                List.of()))
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> diveService.setWaterTypeForSite(user, site.id(), WaterType.SALT))
                 .isInstanceOf(ForbiddenException.class);

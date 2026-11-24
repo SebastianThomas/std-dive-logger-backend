@@ -64,16 +64,15 @@ public class OpenApiConfig {
             }
             components
                     .getSchemas()
-                    .forEach(
-                            (name, schema) -> {
-                                final var type =
-                                        name.startsWith(PAGE_PREFIX) && !records.containsKey(name)
-                                                ? records.get(PAGE_PREFIX)
-                                                : records.get(name);
-                                if (type != null) {
-                                    markRequired(propertiesHolder(schema), type);
-                                }
-                            });
+                    .forEach((name, schema) -> {
+                        final var type =
+                                name.startsWith(PAGE_PREFIX) && !records.containsKey(name)
+                                        ? records.get(PAGE_PREFIX)
+                                        : records.get(name);
+                        if (type != null) {
+                            markRequired(propertiesHolder(schema), type);
+                        }
+                    });
         };
     }
 

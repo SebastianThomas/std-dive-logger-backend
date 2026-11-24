@@ -259,15 +259,14 @@ public class ImportReprocessService {
         return result.parsed().stream()
                 .filter(p -> wholeFile || locator.sameDive(p.locator()))
                 .findFirst()
-                .orElseThrow(
-                        () ->
-                                new IllegalStateException(
-                                        "Stored file "
-                                                + file.getId()
-                                                + " no longer contains "
-                                                + locator.dive()
-                                                + ": "
-                                                + String.join("; ", result.errors())));
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Stored file "
+                                        + file.getId()
+                                        + " no longer contains "
+                                        + locator.dive()
+                                        + ": "
+                                        + String.join("; ", result.errors())));
     }
 
     /**
@@ -444,12 +443,10 @@ public class ImportReprocessService {
     private boolean markDiveLinkProcessed(final long linkId) {
         importFileDataService
                 .findDiveLink(linkId)
-                .ifPresent(
-                        link -> {
-                            link.stampVersion(
-                                    ImportParserVersions.current(link.getFile().getSource()));
-                            importFileDataService.saveDiveLink(link);
-                        });
+                .ifPresent(link -> {
+                    link.stampVersion(ImportParserVersions.current(link.getFile().getSource()));
+                    importFileDataService.saveDiveLink(link);
+                });
         return true;
     }
 
@@ -575,10 +572,8 @@ public class ImportReprocessService {
         return conflictData
                 .findOwned(conflictId, user.id())
                 .filter(c -> c.getStatus() == ReprocessConflictStatus.OPEN)
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        "No open re-processing change " + conflictId));
+                .orElseThrow(() ->
+                        new NoSuchElementException("No open re-processing change " + conflictId));
     }
 
     private void applyFieldValue(
@@ -595,12 +590,11 @@ public class ImportReprocessService {
             final List<DiveProfileImportFileEntity> links,
             final Map<Long, Instant> rawStarts,
             final @Nullable Long siteId) {
-        links.forEach(
-                l ->
-                        l.stamp(
-                                version(l),
-                                rawStarts.getOrDefault(l.getId(), l.getRawActiveStart()),
-                                siteId));
+        links.forEach(l ->
+                l.stamp(
+                        version(l),
+                        rawStarts.getOrDefault(l.getId(), l.getRawActiveStart()),
+                        siteId));
         importFileDataService.saveProfileLinks(links);
     }
 

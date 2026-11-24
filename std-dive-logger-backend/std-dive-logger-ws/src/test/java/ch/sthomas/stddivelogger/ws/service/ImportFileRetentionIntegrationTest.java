@@ -249,16 +249,15 @@ class ImportFileRetentionIntegrationTest {
         final var sources = importFileService.listForDive(user, diveId);
         assertThat(sources)
                 .singleElement()
-                .satisfies(
-                        source -> {
-                            assertThat(source.file().id()).isEqualTo(file.id());
-                            assertThat(source.profileIds()).containsExactly(profileId);
-                            assertThat(source.fields())
-                                    .contains(
-                                            ImportedDiveField.NOTES,
-                                            ImportedDiveField.VISIBILITY,
-                                            ImportedDiveField.DIVE_IDENTIFIER);
-                        });
+                .satisfies(source -> {
+                    assertThat(source.file().id()).isEqualTo(file.id());
+                    assertThat(source.profileIds()).containsExactly(profileId);
+                    assertThat(source.fields())
+                            .contains(
+                                    ImportedDiveField.NOTES,
+                                    ImportedDiveField.VISIBILITY,
+                                    ImportedDiveField.DIVE_IDENTIFIER);
+                });
         assertThat(
                         jdbcTemplate.queryForObject(
                                 "SELECT import_files_complete FROM t_dive_profile_history"
@@ -327,12 +326,11 @@ class ImportFileRetentionIntegrationTest {
         final var open = reprocessService.listOpen(user);
         assertThat(open)
                 .singleElement()
-                .satisfies(
-                        conflict -> {
-                            assertThat(conflict.kind()).isEqualTo(ReprocessConflictKind.PROFILE);
-                            assertThat(conflict.profileId()).isEqualTo(profileId);
-                            assertThat(conflict.summary()).isEqualTo("Depth changes on 1 sample");
-                        });
+                .satisfies(conflict -> {
+                    assertThat(conflict.kind()).isEqualTo(ReprocessConflictKind.PROFILE);
+                    assertThat(conflict.profileId()).isEqualTo(profileId);
+                    assertThat(conflict.summary()).isEqualTo("Depth changes on 1 sample");
+                });
 
         assertThat(reprocessService.apply(user, open.getFirst().id())).isEmpty();
         assertThat(samples(user, diveId)).isEqualTo(before);
@@ -376,9 +374,8 @@ class ImportFileRetentionIntegrationTest {
         final var open = reprocessService.listOpen(user);
         assertThat(open)
                 .singleElement()
-                .satisfies(
-                        conflict ->
-                                assertThat(conflict.summary()).isEqualTo("Clock moves 3 h later"));
+                .satisfies(conflict ->
+                        assertThat(conflict.summary()).isEqualTo("Clock moves 3 h later"));
         assertThat(dive(user, diveId).profiles().getFirst().start())
                 .isEqualTo(Instant.parse("2026-08-22T05:13:49Z"));
 
@@ -530,13 +527,9 @@ class ImportFileRetentionIntegrationTest {
         final var user = user("files-it-19@test.ch", false);
         importAndCommit(user, "suunto-eon-core-dive-1-deco.json", "Files 19", SOMEWHERE);
 
-        assertThatThrownBy(
-                        () ->
-                                importAndCommit(
-                                        user,
-                                        "suunto-eon-core-dive-1-deco.json",
-                                        "Files 19",
-                                        SOMEWHERE))
+        assertThatThrownBy(() ->
+                        importAndCommit(
+                                user, "suunto-eon-core-dive-1-deco.json", "Files 19", SOMEWHERE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("trim each import to start at a different point");
     }
@@ -589,12 +582,11 @@ class ImportFileRetentionIntegrationTest {
         final var open = reprocessService.listOpen(user);
         assertThat(open)
                 .singleElement()
-                .satisfies(
-                        conflict -> {
-                            assertThat(conflict.kind()).isEqualTo(ReprocessConflictKind.DIVE_FIELD);
-                            assertThat(conflict.field()).isEqualTo(ImportedDiveField.VISIBILITY);
-                            assertThat(conflict.summary()).startsWith("Visibility: 4 m → 6 m");
-                        });
+                .satisfies(conflict -> {
+                    assertThat(conflict.kind()).isEqualTo(ReprocessConflictKind.DIVE_FIELD);
+                    assertThat(conflict.field()).isEqualTo(ImportedDiveField.VISIBILITY);
+                    assertThat(conflict.summary()).startsWith("Visibility: 4 m → 6 m");
+                });
         assertThat(dive(user, diveId).notes()).isEqualTo("My own notes");
 
         reprocessService.apply(user, open.getFirst().id());

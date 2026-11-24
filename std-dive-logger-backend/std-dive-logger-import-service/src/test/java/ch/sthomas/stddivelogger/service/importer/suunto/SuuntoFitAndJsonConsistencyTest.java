@@ -70,14 +70,13 @@ class SuuntoFitAndJsonConsistencyTest {
         final var diveService = mock(DiveService.class);
         final var nextId = new AtomicLong(1);
         when(diveService.createDiveComputer(anyString(), anyString(), anyString(), anyLong()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        nextId.getAndIncrement(),
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(2)),
-                                        invocation.getArgument(0),
-                                        invocation.getArgument(1),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                nextId.getAndIncrement(),
+                                new DiveComputerManufacturer(1L, invocation.getArgument(2)),
+                                invocation.getArgument(0),
+                                invocation.getArgument(1),
+                                null));
         final var service = new FitReaderService(diveService);
         try (final var in =
                 SuuntoFitAndJsonConsistencyTest.class
@@ -90,14 +89,13 @@ class SuuntoFitAndJsonConsistencyTest {
     private static ParsedImport parseJson(final String jsonFile) throws IOException {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         final var service = new JsonReaderService(new SuuntoJsonReaderService(diveService));
         try (final var in =
                 SuuntoFitAndJsonConsistencyTest.class

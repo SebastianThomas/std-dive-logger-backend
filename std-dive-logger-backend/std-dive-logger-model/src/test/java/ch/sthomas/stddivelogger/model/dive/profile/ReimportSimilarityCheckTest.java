@@ -209,15 +209,14 @@ class ReimportSimilarityCheckTest {
                 .contains(Duration.ofHours(3));
 
         final var otherDive = START.plus(Duration.ofHours(2));
-        assertThatThrownBy(
-                        () ->
-                                ReimportSimilarityCheck.requirePlausibleReimport(
-                                        START,
-                                        START.plus(Duration.ofMinutes(40)),
-                                        existing,
-                                        otherDive,
-                                        otherDive.plus(Duration.ofMinutes(40)),
-                                        triangularProfile(otherDive, Duration.ofMinutes(40), 10.0)))
+        assertThatThrownBy(() ->
+                        ReimportSimilarityCheck.requirePlausibleReimport(
+                                START,
+                                START.plus(Duration.ofMinutes(40)),
+                                existing,
+                                otherDive,
+                                otherDive.plus(Duration.ofMinutes(40)),
+                                triangularProfile(otherDive, Duration.ofMinutes(40), 10.0)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("doesn't look like the same dive")
                 .hasMessageContaining("merge profiles");
@@ -237,15 +236,14 @@ class ReimportSimilarityCheckTest {
                                 farOff.plus(Duration.ofMinutes(40)),
                                 triangularProfile(farOff, Duration.ofMinutes(40), 30.0)))
                 .isEmpty();
-        assertThatThrownBy(
-                        () ->
-                                ReimportSimilarityCheck.requirePlausibleReimport(
-                                        START,
-                                        START.plus(Duration.ofMinutes(40)),
-                                        existing,
-                                        farOff,
-                                        farOff.plus(Duration.ofMinutes(40)),
-                                        triangularProfile(farOff, Duration.ofMinutes(40), 30.0)))
+        assertThatThrownBy(() ->
+                        ReimportSimilarityCheck.requirePlausibleReimport(
+                                START,
+                                START.plus(Duration.ofMinutes(40)),
+                                existing,
+                                farOff,
+                                farOff.plus(Duration.ofMinutes(40)),
+                                triangularProfile(farOff, Duration.ofMinutes(40), 30.0)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

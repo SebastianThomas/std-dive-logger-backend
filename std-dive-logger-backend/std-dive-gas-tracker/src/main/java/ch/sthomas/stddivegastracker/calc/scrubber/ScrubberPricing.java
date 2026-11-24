@@ -93,12 +93,8 @@ public final class ScrubberPricing {
         for (final var canister : canisters) {
             final var priced = price(canister);
             canister.costLines()
-                    .forEach(
-                            line ->
-                                    paid.merge(
-                                            line.payerMemberId(),
-                                            line.amount(),
-                                            ScrubberPricing::add));
+                    .forEach(line ->
+                            paid.merge(line.payerMemberId(), line.amount(), ScrubberPricing::add));
             for (final var use : canister.uses()) {
                 final var charge = priced.chargeByUseId().get(use.useId());
                 charged.merge(use.memberId(), charge, ScrubberPricing::add);

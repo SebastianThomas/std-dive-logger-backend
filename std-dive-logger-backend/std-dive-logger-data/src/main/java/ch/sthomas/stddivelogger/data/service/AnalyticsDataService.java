@@ -120,11 +120,8 @@ public class AnalyticsDataService {
         final var pageIds = hasMore ? ids.subList(0, limit) : ids;
         // Read before the dives themselves: a change landing in between then counts as "after".
         final Map<Long, Long> generations = new HashMap<>();
-        pageIds.forEach(
-                id ->
-                        diveRepository
-                                .findAnalyticsGeneration(id)
-                                .ifPresent(g -> generations.put(id, g)));
+        pageIds.forEach(id ->
+                diveRepository.findAnalyticsGeneration(id).ifPresent(g -> generations.put(id, g)));
         final var dives =
                 diveRepository.findAllById(pageIds).stream()
                         .map(d -> d.toRecord(storageService.baseUrl(), false))
@@ -231,24 +228,22 @@ public class AnalyticsDataService {
         return analyticsDepthVarianceEntityRepository
                 .saveAll(
                         analytics.stream()
-                                .map(
-                                        a ->
-                                                new AnalyticsDepthVarianceEntity(
-                                                        a,
-                                                        // present by construction: same key set
-                                                        // as segmentsById, built just above.
-                                                        Objects.requireNonNull(
-                                                                segmentEntitiesById.get(
-                                                                        a.segmentWithId().id()))))
+                                .map(a ->
+                                        new AnalyticsDepthVarianceEntity(
+                                                a,
+                                                // present by construction: same key set
+                                                // as segmentsById, built just above.
+                                                Objects.requireNonNull(
+                                                        segmentEntitiesById.get(
+                                                                a.segmentWithId().id()))))
                                 .toList())
                 .stream()
-                .map(
-                        e ->
-                                new AnalyticsDepthVariance(
-                                        // present by construction: every saved entity's segment
-                                        // id originates from a key of segmentsById above.
-                                        Objects.requireNonNull(segmentsById.get(e.getSegmentId())),
-                                        e.toStats()))
+                .map(e ->
+                        new AnalyticsDepthVariance(
+                                // present by construction: every saved entity's segment
+                                // id originates from a key of segmentsById above.
+                                Objects.requireNonNull(segmentsById.get(e.getSegmentId())),
+                                e.toStats()))
                 .toList();
     }
 
@@ -268,16 +263,15 @@ public class AnalyticsDataService {
         // One load per profile, not per segment - a profile has dozens of segments.
         final Map<Long, List<DiveMeasurementEntity>> measurementsByProfile = new HashMap<>();
         return segments.stream()
-                .map(
-                        s ->
-                                toSegmentWithId(
+                .map(s ->
+                        toSegmentWithId(
+                                s,
+                                slice(
                                         s,
-                                        slice(
-                                                s,
-                                                measurementsByProfile.computeIfAbsent(
-                                                        s.getProfile().getId(),
-                                                        diveMeasurementRepository
-                                                                ::findAllByProfile_IdOrderByElapsedAsc))))
+                                        measurementsByProfile.computeIfAbsent(
+                                                s.getProfile().getId(),
+                                                diveMeasurementRepository
+                                                        ::findAllByProfile_IdOrderByElapsedAsc))))
                 .toList();
     }
 
@@ -319,12 +313,11 @@ public class AnalyticsDataService {
         final var ratePoints =
                 IntStream.range(0, measurements.size())
                         .filter(i -> Double.isFinite(measurements.get(i).measurement().depth()))
-                        .mapToObj(
-                                i ->
-                                        new DiveProfileRatesResponse.RatePoint(
-                                                measurements.get(i).measurement().time(),
-                                                measurements.get(i).measurement().depth(),
-                                                rates[i]))
+                        .mapToObj(i ->
+                                new DiveProfileRatesResponse.RatePoint(
+                                        measurements.get(i).measurement().time(),
+                                        measurements.get(i).measurement().depth(),
+                                        rates[i]))
                         .toList();
         return new DiveProfileRatesResponse(profileId, ratePoints);
     }
@@ -348,15 +341,13 @@ public class AnalyticsDataService {
                                         DiveMeasurementEntity::getId, Function.identity()));
         final var entities =
                 results.stream()
-                        .map(
-                                r -> {
-                                    final var measurement = measurementsById.get(r.measurementId());
-                                    if (measurement == null) {
-                                        return null;
-                                    }
-                                    return new DiveMeasurementGasEntity(
-                                            measurement, r.po2(), r.fo2());
-                                })
+                        .map(r -> {
+                            final var measurement = measurementsById.get(r.measurementId());
+                            if (measurement == null) {
+                                return null;
+                            }
+                            return new DiveMeasurementGasEntity(measurement, r.po2(), r.fo2());
+                        })
                         .filter(Objects::nonNull)
                         .toList();
         diveMeasurementGasRepository.saveAll(entities);
@@ -381,12 +372,11 @@ public class AnalyticsDataService {
                 diveMeasurementGasRepository
                         .findAllByMeasurement_Profile_IdOrderByMeasurement_TimeAsc(profileId)
                         .stream()
-                        .map(
-                                g ->
-                                        new DiveProfileGasResponse.GasPoint(
-                                                g.getMeasurement().getTime(),
-                                                g.getCalculatedPo2(),
-                                                g.getCalculatedFo2()))
+                        .map(g ->
+                                new DiveProfileGasResponse.GasPoint(
+                                        g.getMeasurement().getTime(),
+                                        g.getCalculatedPo2(),
+                                        g.getCalculatedFo2()))
                         .toList();
         return new DiveProfileGasResponse(profileId, points);
     }

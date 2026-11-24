@@ -319,10 +319,8 @@ public class ShearwaterDbReaderService extends BaseReaderService {
                 tankProfile == null || tankProfile.tankData() == null
                         ? null
                         : tankProfile.tankData().stream()
-                                .filter(
-                                        t ->
-                                                t.surfacePressureMbar() != null
-                                                        || t.salinity() != null)
+                                .filter(t ->
+                                        t.surfacePressureMbar() != null || t.salinity() != null)
                                 .findFirst()
                                 .orElse(null);
         final var cns =

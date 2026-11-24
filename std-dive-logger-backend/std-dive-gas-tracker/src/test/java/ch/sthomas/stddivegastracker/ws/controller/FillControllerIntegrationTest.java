@@ -463,11 +463,10 @@ final class FillControllerIntegrationTest extends AbstractFillIntegrationTest {
         assertThat(voided.voidReason()).isEqualTo("wrong cylinder");
         assertThat(voided.totalCharge().toPlainString()).isEqualTo("0.00");
         assertThat(voided.stages())
-                .allSatisfy(
-                        stage -> {
-                            assertThat(stage.charge().toPlainString()).isEqualTo("0.00");
-                            assertThat(stage.isEstimate()).isFalse();
-                        });
+                .allSatisfy(stage -> {
+                    assertThat(stage.charge().toPlainString()).isEqualTo("0.00");
+                    assertThat(stage.isEstimate()).isFalse();
+                });
         // the numbers it computed stay on the record
         assertThat(voided.stages().getFirst().drawLitres())
                 .isEqualTo(wrong.stages().getFirst().drawLitres());

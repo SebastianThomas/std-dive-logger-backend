@@ -338,14 +338,13 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
 
     @Test
     void duplicateMemberIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                members.saveAndFlush(
-                                        new TeamMemberEntity(
-                                                team.getId(),
-                                                Objects.requireNonNull(bob.getUserId()),
-                                                Role.MEMBER,
-                                                T0)))
+        assertThatThrownBy(() ->
+                        members.saveAndFlush(
+                                new TeamMemberEntity(
+                                        team.getId(),
+                                        Objects.requireNonNull(bob.getUserId()),
+                                        Role.MEMBER,
+                                        T0)))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("\"uq_team_member_team_user\"");
     }
@@ -372,55 +371,52 @@ final class SchemaConstraintTest extends AbstractIntegrationTest {
 
     @Test
     void paymentToOneselfIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                payments.saveAndFlush(
-                                        new PaymentEntity(
-                                                team.getId(),
-                                                alice.getId(),
-                                                alice.getId(),
-                                                new BigDecimal("5.00"),
-                                                T0,
-                                                null,
-                                                alice.getId())))
+        assertThatThrownBy(() ->
+                        payments.saveAndFlush(
+                                new PaymentEntity(
+                                        team.getId(),
+                                        alice.getId(),
+                                        alice.getId(),
+                                        new BigDecimal("5.00"),
+                                        T0,
+                                        null,
+                                        alice.getId())))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("\"ck_payment_from_to\"");
     }
 
     @Test
     void negativePressureIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                vessels.saveAndFlush(
-                                        new VesselEntity(
-                                                team.getId(),
-                                                alice.getId(),
-                                                "Leaky",
-                                                50,
-                                                GasMix.AIR,
-                                                -1,
-                                                0,
-                                                LossPolicy.TRUE_UP,
-                                                T0)))
+        assertThatThrownBy(() ->
+                        vessels.saveAndFlush(
+                                new VesselEntity(
+                                        team.getId(),
+                                        alice.getId(),
+                                        "Leaky",
+                                        50,
+                                        GasMix.AIR,
+                                        -1,
+                                        0,
+                                        LossPolicy.TRUE_UP,
+                                        T0)))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("\"t_vessel_initial_pressure_bar_check\"");
     }
 
     @Test
     void vesselOfAMissingTeamIsRejected() {
-        assertThatThrownBy(
-                        () ->
-                                vessels.saveAndFlush(
-                                        new VesselEntity(
-                                                -1L,
-                                                alice.getId(),
-                                                "Orphan",
-                                                50,
-                                                GasMix.AIR,
-                                                0,
-                                                0,
-                                                LossPolicy.TRUE_UP,
-                                                T0)))
+        assertThatThrownBy(() ->
+                        vessels.saveAndFlush(
+                                new VesselEntity(
+                                        -1L,
+                                        alice.getId(),
+                                        "Orphan",
+                                        50,
+                                        GasMix.AIR,
+                                        0,
+                                        0,
+                                        LossPolicy.TRUE_UP,
+                                        T0)))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("\"t_vessel_fk_team_id_fkey\"");
     }

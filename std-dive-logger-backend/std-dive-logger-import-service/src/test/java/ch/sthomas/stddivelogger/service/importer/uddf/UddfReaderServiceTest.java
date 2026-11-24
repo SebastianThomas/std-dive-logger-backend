@@ -35,22 +35,22 @@ class UddfReaderServiceTest {
     // <profiledata> section, which real malformed/incomplete exports can omit.
     private static String missingProfileDataXml() {
         return """
-                <uddf version="3.2.0">
-                  <generator>
-                    <name>Test</name>
-                    <version>1.0</version>
-                    <datetime>2024-01-01T00:00:00Z</datetime>
-                  </generator>
-                  <diver>
-                    <owner>
-                      <personal>
-                        <firstname>Test</firstname>
-                        <lastname>Diver</lastname>
-                      </personal>
-                    </owner>
-                  </diver>
-                </uddf>
-                """;
+        <uddf version="3.2.0">
+          <generator>
+            <name>Test</name>
+            <version>1.0</version>
+            <datetime>2024-01-01T00:00:00Z</datetime>
+          </generator>
+          <diver>
+            <owner>
+              <personal>
+                <firstname>Test</firstname>
+                <lastname>Diver</lastname>
+              </personal>
+            </owner>
+          </diver>
+        </uddf>
+        """;
     }
 
     @Test
@@ -60,12 +60,11 @@ class UddfReaderServiceTest {
                 new ByteArrayInputStream(
                         missingProfileDataXml().getBytes(StandardCharsets.UTF_8))) {
             final var result =
-                    assertDoesNotThrow(
-                            () ->
-                                    service.parse(user, "no-profiledata.uddf", inputStream)
-                                            .reduce(ParsedImportResultStreaming::concat)
-                                            .orElseThrow()
-                                            .toResult());
+                    assertDoesNotThrow(() ->
+                            service.parse(user, "no-profiledata.uddf", inputStream)
+                                    .reduce(ParsedImportResultStreaming::concat)
+                                    .orElseThrow()
+                                    .toResult());
 
             assertEquals(0, result.parsed().size());
             assertEquals(1, result.errors().size());
@@ -123,13 +122,12 @@ class UddfReaderServiceTest {
         // Two of six tankdata carry pressures (210->115, 195->105 bar); the rest are all-zero.
         assertThat(cylinders).hasSize(2);
         assertThat(cylinders)
-                .allSatisfy(
-                        c -> {
-                            assertThat(c.gas().o2()).isEqualTo(0.21);
-                            assertThat(c.role()).isEqualTo(CylinderRole.OC);
-                            // Shearwater's UDDF has no tankvolume.
-                            assertThat(c.size().liters()).isZero();
-                        });
+                .allSatisfy(c -> {
+                    assertThat(c.gas().o2()).isEqualTo(0.21);
+                    assertThat(c.role()).isEqualTo(CylinderRole.OC);
+                    // Shearwater's UDDF has no tankvolume.
+                    assertThat(c.size().liters()).isZero();
+                });
         assertThat(cylinders.getFirst().startBar()).isCloseTo(209.95, within(0.01));
         assertThat(cylinders.getFirst().endBar()).isCloseTo(114.94, within(0.01));
         assertThat(cylinders.get(1).startBar()).isCloseTo(194.98, within(0.01));

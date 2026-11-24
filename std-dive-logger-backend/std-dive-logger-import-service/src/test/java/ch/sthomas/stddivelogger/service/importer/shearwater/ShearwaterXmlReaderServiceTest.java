@@ -42,14 +42,13 @@ class ShearwaterXmlReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 
@@ -97,12 +96,11 @@ class ShearwaterXmlReaderServiceTest {
         final var measurements = parseFixture().payload().profiles().getFirst().measurements();
         assertThat(measurements).isNotEmpty();
         assertThat(measurements)
-                .allSatisfy(
-                        m -> {
-                            final var po2 = Objects.requireNonNull(m.po2());
-                            assertThat(po2.measured()).isNull();
-                            assertThat(po2.calculated()).isNotNull().isPositive();
-                        });
+                .allSatisfy(m -> {
+                    final var po2 = Objects.requireNonNull(m.po2());
+                    assertThat(po2.measured()).isNull();
+                    assertThat(po2.calculated()).isNotNull().isPositive();
+                });
     }
 
     @Test

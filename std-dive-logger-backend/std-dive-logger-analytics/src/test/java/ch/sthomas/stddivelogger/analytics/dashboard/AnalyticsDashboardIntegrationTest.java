@@ -123,11 +123,10 @@ class AnalyticsDashboardIntegrationTest {
         assertThat(status.jobs())
                 .filteredOn(job -> job.id().equals("MAPS_IMPORT"))
                 .singleElement()
-                .satisfies(
-                        job -> {
-                            assertThat(job.cron()).isEqualTo("0 0 2 * * SUN");
-                            assertThat(job.nextRun()).isNotNull();
-                        });
+                .satisfies(job -> {
+                    assertThat(job.cron()).isEqualTo("0 0 2 * * SUN");
+                    assertThat(job.nextRun()).isNotNull();
+                });
         client.get().uri("/ops").exchange().expectStatus().isOk();
         client.get().uri("/ops/app.js").exchange().expectStatus().isOk();
         client.get().uri("/ops/style.css").exchange().expectStatus().isOk();

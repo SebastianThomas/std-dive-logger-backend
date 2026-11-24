@@ -255,16 +255,15 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         final var gases =
                 dive.cylinders().stream().map(SubsurfaceXmlFile.SubsurfaceCylinder::toGas).toList();
         return dive.diveComputers().stream()
-                .map(
-                        computer ->
-                                getProfile(
-                                        computer,
-                                        // present by construction: computers is built from the
-                                        // union of every dive's computers in the file.
-                                        Objects.requireNonNull(computers.get(computer.deviceid())),
-                                        gases,
-                                        cns,
-                                        otu))
+                .map(computer ->
+                        getProfile(
+                                computer,
+                                // present by construction: computers is built from the
+                                // union of every dive's computers in the file.
+                                Objects.requireNonNull(computers.get(computer.deviceid())),
+                                gases,
+                                cns,
+                                otu))
                 .toList();
     }
 
@@ -277,11 +276,10 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
         final var gasChanges =
                 log.events().stream()
                         .filter(e -> "gaschange".equals(e.name()) && e.cylinder() != null)
-                        .map(
-                                c ->
-                                        Pair.of(
-                                                c.timeToDuration(),
-                                                gases.get(Integer.parseInt(c.cylinder()))))
+                        .map(c ->
+                                Pair.of(
+                                        c.timeToDuration(),
+                                        gases.get(Integer.parseInt(c.cylinder()))))
                         .sorted(Map.Entry.comparingByKey())
                         .toList();
         return new DiveProfileUpload(
@@ -413,18 +411,16 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
             final List<Pair<Duration, Gas>> gasChanges,
             final SubsurfaceXmlFile.SubsurfaceDiveComputer log) {
         return log.samples().stream()
-                .map(
-                        s ->
-                                toMeasurement(
-                                        log.start(),
-                                        gasChanges.stream()
-                                                .collect(
-                                                        MoreGatherers.lastWhile(
-                                                                g ->
-                                                                        s.timeToDuration()
-                                                                                .minus(g.getKey())
-                                                                                .isNegative())),
-                                        s))
+                .map(s ->
+                        toMeasurement(
+                                log.start(),
+                                gasChanges.stream()
+                                        .collect(
+                                                MoreGatherers.lastWhile(g ->
+                                                        s.timeToDuration()
+                                                                .minus(g.getKey())
+                                                                .isNegative())),
+                                s))
                 .toList();
     }
 
@@ -434,11 +430,9 @@ public class SubsurfaceXmlReaderService extends BaseReaderService {
             final SubsurfaceXmlFile.SubsurfaceSample sample) {
         final var temperature =
                 Optional.ofNullable(sample.temp())
-                        .map(
-                                t ->
-                                        new Temperature(
-                                                parseUntilSpace(t),
-                                                Temperature.TemperatureUnit.CELSIUS))
+                        .map(t ->
+                                new Temperature(
+                                        parseUntilSpace(t), Temperature.TemperatureUnit.CELSIUS))
                         .orElse(null);
         // Subsurface's <sample> elements carry no per-sample PO2/RMV/N2/O2Tox/CNS - only depth,
         // temperature, NDL, deco, TTS and gas switches are logged per sample; cns/otu exist only

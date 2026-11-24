@@ -210,87 +210,81 @@ final class FillSolverTest {
 
     @Test
     void addedLitresEqualContentGained() {
-        forEveryModelAndSeed(
-                c -> {
-                    final double endLitres =
-                            GasContent.contentLitres(
-                                    c.input().waterVolumeLitres(),
-                                    c.result().endPressureBar(),
-                                    c.result().endMix(),
-                                    c.model());
-                    assertThat(c.addedLitres())
-                            .as(c.context())
-                            .isCloseTo(endLitres - c.startLitres(), within(1e-6));
-                });
+        forEveryModelAndSeed(c -> {
+            final double endLitres =
+                    GasContent.contentLitres(
+                            c.input().waterVolumeLitres(),
+                            c.result().endPressureBar(),
+                            c.result().endMix(),
+                            c.model());
+            assertThat(c.addedLitres())
+                    .as(c.context())
+                    .isCloseTo(endLitres - c.startLitres(), within(1e-6));
+        });
     }
 
     @Test
     void endPressureReproducesTheComputedEndContent() {
-        forEveryModelAndSeed(
-                c ->
-                        assertThat(
-                                        GasContent.pressureFor(
-                                                c.input().waterVolumeLitres(),
-                                                c.startLitres() + c.addedLitres(),
-                                                c.result().endMix(),
-                                                c.model()))
-                                .as(c.context())
-                                .isCloseTo(c.result().endPressureBar(), within(1e-5)));
+        forEveryModelAndSeed(c ->
+                assertThat(
+                                GasContent.pressureFor(
+                                        c.input().waterVolumeLitres(),
+                                        c.startLitres() + c.addedLitres(),
+                                        c.result().endMix(),
+                                        c.model()))
+                        .as(c.context())
+                        .isCloseTo(c.result().endPressureBar(), within(1e-5)));
     }
 
     @Test
     void componentLitresAddUpToTheEndMix() {
-        forEveryModelAndSeed(
-                c -> {
-                    double o2Litres = c.startLitres() * c.input().startMix().o2();
-                    double heLitres = c.startLitres() * c.input().startMix().he();
-                    for (int k = 0; k < c.input().stages().size(); k++) {
-                        final var source = c.input().stages().get(k).sourceMix();
-                        final var stage = c.result().stages().get(k);
-                        assertThat(stage.addedLitres()).as(c.context()).isNotNegative();
-                        assertThat(stage.addedO2Litres())
-                                .as(c.context())
-                                .isCloseTo(stage.addedLitres() * source.o2(), within(1e-9));
-                        assertThat(stage.addedHeLitres())
-                                .as(c.context())
-                                .isCloseTo(stage.addedLitres() * source.he(), within(1e-9));
-                        o2Litres += stage.addedO2Litres();
-                        heLitres += stage.addedHeLitres();
-                    }
-                    final double totalLitres = c.startLitres() + c.addedLitres();
-                    assertThat(c.result().endMix().o2())
-                            .as(c.context())
-                            .isCloseTo(o2Litres / totalLitres, within(1e-9));
-                    assertThat(c.result().endMix().he())
-                            .as(c.context())
-                            .isCloseTo(heLitres / totalLitres, within(1e-9));
-                });
+        forEveryModelAndSeed(c -> {
+            double o2Litres = c.startLitres() * c.input().startMix().o2();
+            double heLitres = c.startLitres() * c.input().startMix().he();
+            for (int k = 0; k < c.input().stages().size(); k++) {
+                final var source = c.input().stages().get(k).sourceMix();
+                final var stage = c.result().stages().get(k);
+                assertThat(stage.addedLitres()).as(c.context()).isNotNegative();
+                assertThat(stage.addedO2Litres())
+                        .as(c.context())
+                        .isCloseTo(stage.addedLitres() * source.o2(), within(1e-9));
+                assertThat(stage.addedHeLitres())
+                        .as(c.context())
+                        .isCloseTo(stage.addedLitres() * source.he(), within(1e-9));
+                o2Litres += stage.addedO2Litres();
+                heLitres += stage.addedHeLitres();
+            }
+            final double totalLitres = c.startLitres() + c.addedLitres();
+            assertThat(c.result().endMix().o2())
+                    .as(c.context())
+                    .isCloseTo(o2Litres / totalLitres, within(1e-9));
+            assertThat(c.result().endMix().he())
+                    .as(c.context())
+                    .isCloseTo(heLitres / totalLitres, within(1e-9));
+        });
     }
 
     @Test
     void drawIsAddedPlusLineLossForVesselStagesAndZeroForAir() {
-        forEveryModelAndSeed(
-                c -> {
-                    for (int k = 0; k < c.input().stages().size(); k++) {
-                        final var in = c.input().stages().get(k);
-                        final var stage = c.result().stages().get(k);
-                        if (in.fromVessel()) {
-                            final double lineLossLitres =
-                                    c.deadVolumeLitres() * in.pressureAfterBar() / Units.P_ATM;
-                            assertThat(stage.lineLossLitres())
-                                    .as(c.context())
-                                    .isCloseTo(lineLossLitres, within(1e-12));
-                            assertThat(stage.drawLitres())
-                                    .as(c.context())
-                                    .isCloseTo(
-                                            stage.addedLitres() + stage.lineLossLitres(),
-                                            within(1e-12));
-                        } else {
-                            assertThat(stage.lineLossLitres()).as(c.context()).isZero();
-                            assertThat(stage.drawLitres()).as(c.context()).isZero();
-                        }
-                    }
-                });
+        forEveryModelAndSeed(c -> {
+            for (int k = 0; k < c.input().stages().size(); k++) {
+                final var in = c.input().stages().get(k);
+                final var stage = c.result().stages().get(k);
+                if (in.fromVessel()) {
+                    final double lineLossLitres =
+                            c.deadVolumeLitres() * in.pressureAfterBar() / Units.P_ATM;
+                    assertThat(stage.lineLossLitres())
+                            .as(c.context())
+                            .isCloseTo(lineLossLitres, within(1e-12));
+                    assertThat(stage.drawLitres())
+                            .as(c.context())
+                            .isCloseTo(stage.addedLitres() + stage.lineLossLitres(), within(1e-12));
+                } else {
+                    assertThat(stage.lineLossLitres()).as(c.context()).isZero();
+                    assertThat(stage.drawLitres()).as(c.context()).isZero();
+                }
+            }
+        });
     }
 
     private static FillSolver.Input randomInput(final Random random) {
@@ -322,14 +316,13 @@ final class FillSolverTest {
     @Test
     void rejectsAFirstStageThatIsNotAboveTheStartPressure() {
         for (final double firstBar : new double[] {40, 30}) {
-            assertThatThrownBy(
-                            () ->
-                                    new FillSolver.Input(
-                                            12,
-                                            40,
-                                            GasMix.AIR,
-                                            List.of(new StageInput(GasMix.HELIUM, firstBar, true)),
-                                            null))
+            assertThatThrownBy(() ->
+                            new FillSolver.Input(
+                                    12,
+                                    40,
+                                    GasMix.AIR,
+                                    List.of(new StageInput(GasMix.HELIUM, firstBar, true)),
+                                    null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Stage 1 pressure must be above the start pressure");
         }
@@ -338,16 +331,15 @@ final class FillSolverTest {
     @Test
     void rejectsStagePressuresThatDoNotIncrease() {
         for (final double secondBar : new double[] {70, 60}) {
-            assertThatThrownBy(
-                            () ->
-                                    new FillSolver.Input(
-                                            12,
-                                            0,
-                                            GasMix.AIR,
-                                            List.of(
-                                                    new StageInput(GasMix.HELIUM, 70, true),
-                                                    new StageInput(GasMix.OXYGEN, secondBar, true)),
-                                            null))
+            assertThatThrownBy(() ->
+                            new FillSolver.Input(
+                                    12,
+                                    0,
+                                    GasMix.AIR,
+                                    List.of(
+                                            new StageInput(GasMix.HELIUM, 70, true),
+                                            new StageInput(GasMix.OXYGEN, secondBar, true)),
+                                    null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Stage 2 pressure must be above stage 1");
         }
@@ -357,10 +349,9 @@ final class FillSolverTest {
     void rejectsAnInvalidLineDeadVolume() {
         for (final double deadVolumeLitres :
                 new double[] {-0.01, Double.NaN, Double.POSITIVE_INFINITY}) {
-            assertThatThrownBy(
-                            () ->
-                                    FillSolver.solve(
-                                            goldenInput(null), IdealGas.INSTANCE, deadVolumeLitres))
+            assertThatThrownBy(() ->
+                            FillSolver.solve(
+                                    goldenInput(null), IdealGas.INSTANCE, deadVolumeLitres))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Line dead volume must be a number of at least 0 litres");
         }

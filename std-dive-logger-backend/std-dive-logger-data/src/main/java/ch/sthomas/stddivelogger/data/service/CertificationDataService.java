@@ -133,12 +133,11 @@ public class CertificationDataService {
     private CertificationEntity findOwned(final long userId, final long certificationId) {
         return certificationRepository
                 .findByIdAndUser_Id(certificationId, userId)
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        "Certification "
-                                                + certificationId
-                                                + " not found or not owned by user "
-                                                + userId));
+                .orElseThrow(() ->
+                        new NoSuchElementException(
+                                "Certification "
+                                        + certificationId
+                                        + " not found or not owned by user "
+                                        + userId));
     }
 }

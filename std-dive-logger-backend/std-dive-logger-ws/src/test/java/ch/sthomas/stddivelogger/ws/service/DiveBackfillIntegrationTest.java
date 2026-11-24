@@ -204,10 +204,9 @@ class DiveBackfillIntegrationTest {
         // Per-reason bulk: VISIBILITY gone from every dive's outstanding set, others untouched.
         var queue = diveService.dismissAllBackfill(user, DiveBackfillField.VISIBILITY);
         assertThat(queue)
-                .allSatisfy(
-                        s ->
-                                assertThat(s.outstandingFields())
-                                        .doesNotContain(DiveBackfillField.VISIBILITY))
+                .allSatisfy(s ->
+                        assertThat(s.outstandingFields())
+                                .doesNotContain(DiveBackfillField.VISIBILITY))
                 .allSatisfy(
                         s -> assertThat(s.outstandingFields()).contains(DiveBackfillField.NOTES));
 

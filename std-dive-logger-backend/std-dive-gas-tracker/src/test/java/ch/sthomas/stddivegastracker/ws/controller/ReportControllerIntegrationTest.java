@@ -71,11 +71,10 @@ final class ReportControllerIntegrationTest extends AbstractPaymentIntegrationTe
 
         assertThat(report.rows())
                 .singleElement()
-                .satisfies(
-                        row -> {
-                            assertThat(row.fills()).isEqualTo(1);
-                            assertThat(row.o2Litres()).isCloseTo(o2Of(later), within(1e-6));
-                        });
+                .satisfies(row -> {
+                    assertThat(row.fills()).isEqualTo(1);
+                    assertThat(row.o2Litres()).isCloseTo(o2Of(later), within(1e-6));
+                });
         assertThat(consumption(crew.adminEmail(), crew.teamId(), day(6), day(10)).rows()).isEmpty();
     }
 
@@ -107,11 +106,10 @@ final class ReportControllerIntegrationTest extends AbstractPaymentIntegrationTe
         final var detail = getVessel(crew.adminEmail(), crew.teamId(), crew.bank().vesselId());
         assertThat(losses(crew.adminEmail(), crew.teamId()).vessels())
                 .singleElement()
-                .satisfies(
-                        entry -> {
-                            assertThat(entry.vessel().vesselId()).isEqualTo(crew.bank().vesselId());
-                            assertThat(entry.report()).isEqualTo(detail.lossReport());
-                        });
+                .satisfies(entry -> {
+                    assertThat(entry.vessel().vesselId()).isEqualTo(crew.bank().vesselId());
+                    assertThat(entry.report()).isEqualTo(detail.lossReport());
+                });
     }
 
     @Test

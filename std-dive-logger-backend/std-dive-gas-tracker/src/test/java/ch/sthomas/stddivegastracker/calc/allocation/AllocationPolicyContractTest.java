@@ -133,15 +133,11 @@ final class AllocationPolicyContractTest {
             coverage.expectedFailures++;
             assertThatThrownBy(() -> AllocationEngine.allocate(input))
                     .isInstanceOf(IllegalStateException.class)
-                    .satisfies(
-                            e -> {
-                                final var message = String.valueOf(e.getMessage());
-                                assertThat(unresolvable)
-                                        .anyMatch(
-                                                id ->
-                                                        message.contains(
-                                                                "Vessel " + id + " is closed"));
-                            });
+                    .satisfies(e -> {
+                        final var message = String.valueOf(e.getMessage());
+                        assertThat(unresolvable)
+                                .anyMatch(id -> message.contains("Vessel " + id + " is closed"));
+                    });
             return;
         }
 

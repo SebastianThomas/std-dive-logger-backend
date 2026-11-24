@@ -328,14 +328,13 @@ class ReimportProfileIntegrationTest {
         assertThat(Math.abs(clockOffset.offsetMinutes())).isEqualTo(300);
 
         // No choice for the offset -> refused, same as any other unresolved conflict.
-        assertThatThrownBy(
-                        () ->
-                                importService.commitReimportProfile(
-                                        user,
-                                        committedDive.id(),
-                                        profileId,
-                                        preview.pendingImportId(),
-                                        new ReimportResolution(null, null, null, null, null)))
+        assertThatThrownBy(() ->
+                        importService.commitReimportProfile(
+                                user,
+                                committedDive.id(),
+                                profileId,
+                                preview.pendingImportId(),
+                                new ReimportResolution(null, null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("start time");
 
@@ -423,14 +422,13 @@ class ReimportProfileIntegrationTest {
         final var profileId = fullDive.profiles().getFirst().id();
 
         // dive-2-nodeco is a real, but genuinely different (shorter, shallower), dive.
-        assertThatThrownBy(
-                        () ->
-                                importService.previewReimportProfile(
-                                        user,
-                                        committedDive.id(),
-                                        profileId,
-                                        0,
-                                        fixture("suunto-eon-core-dive-2-nodeco.json")))
+        assertThatThrownBy(() ->
+                        importService.previewReimportProfile(
+                                user,
+                                committedDive.id(),
+                                profileId,
+                                0,
+                                fixture("suunto-eon-core-dive-2-nodeco.json")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("doesn't look like the same dive")
                 .hasMessageContaining("merge profiles");

@@ -69,10 +69,9 @@ public class DivesoftReaderService extends BaseReaderService {
         // with either missing before this method ever runs (see DivesoftImportRequestTest).
         final var dives =
                 request.dives().stream()
-                        .map(
-                                d ->
-                                        Objects.requireNonNull(
-                                                Objects.requireNonNull(d.diveAndMixes()).dive()))
+                        .map(d ->
+                                Objects.requireNonNull(
+                                        Objects.requireNonNull(d.diveAndMixes()).dive()))
                         .toList();
         return dives.stream()
                 .map(dive -> parseOneSafe(user, dive))
@@ -110,11 +109,10 @@ public class DivesoftReaderService extends BaseReaderService {
                 hasCoordinates
                         ? Optional.ofNullable(dive.site())
                                 .filter(s -> !s.isBlank())
-                                .orElseGet(
-                                        () ->
-                                                MessageFormat.format(
-                                                        "unnamed-{0}-{1}",
-                                                        dive.latitude(), dive.longitude()))
+                                .orElseGet(() ->
+                                        MessageFormat.format(
+                                                "unnamed-{0}-{1}",
+                                                dive.latitude(), dive.longitude()))
                         : null;
         final var start =
                 parseStartDate(

@@ -386,11 +386,9 @@ public class DiveSiteSuggestionDataService {
         // violate the comparator contract and make the ranking non-reproducible mid-sort.
         final var ranked =
                 scored.stream()
-                        .map(
-                                s ->
-                                        new RankedScored(
-                                                s,
-                                                s.score() + random.nextGaussian() * JITTER_STDDEV))
+                        .map(s ->
+                                new RankedScored(
+                                        s, s.score() + random.nextGaussian() * JITTER_STDDEV))
                         .sorted(
                                 Comparator.comparingDouble(RankedScored::rankScore)
                                         .reversed()

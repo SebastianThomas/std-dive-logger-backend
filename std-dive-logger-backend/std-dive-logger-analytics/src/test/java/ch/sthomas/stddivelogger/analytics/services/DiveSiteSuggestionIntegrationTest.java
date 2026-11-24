@@ -245,10 +245,8 @@ class DiveSiteSuggestionIntegrationTest {
         final var suggestion = find(suggest(), "Deep Trench");
 
         assertThat(suggestion.reasons())
-                .anyMatch(
-                        r ->
-                                r.contains("notably deeper than your own logged max")
-                                        && r.contains("55"));
+                .anyMatch(r ->
+                        r.contains("notably deeper than your own logged max") && r.contains("55"));
     }
 
     @Test

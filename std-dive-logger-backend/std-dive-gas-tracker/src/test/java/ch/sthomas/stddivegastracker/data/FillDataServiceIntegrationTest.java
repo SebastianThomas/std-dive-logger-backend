@@ -56,13 +56,12 @@ final class FillDataServiceIntegrationTest extends AbstractFillIntegrationTest {
 
         // the second fill (c -> b), edited to feed b from a, would close a loop with the first
         // one (b -> a)
-        assertThatThrownBy(
-                        () ->
-                                fillDataService.update(
-                                        room.teamId(),
-                                        cToB.fillId(),
-                                        room.adminMemberId(),
-                                        transferContent(b, a)))
+        assertThatThrownBy(() ->
+                        fillDataService.update(
+                                room.teamId(),
+                                cToB.fillId(),
+                                room.adminMemberId(),
+                                transferContent(b, a)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(LOOP);
         // unchanged (the create response also carried a SOURCE_OVERDRAWN warning, a GET does not)

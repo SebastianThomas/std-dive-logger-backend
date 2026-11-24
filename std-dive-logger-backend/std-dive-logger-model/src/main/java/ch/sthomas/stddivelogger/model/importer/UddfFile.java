@@ -572,13 +572,10 @@ public record UddfFile(
                 @Nullable final Gas previousGas) {
             final var gas =
                     Optional.ofNullable(switchmix)
-                            .flatMap(
-                                    mix ->
-                                            mixes.stream()
-                                                    .filter(
-                                                            candidate ->
-                                                                    candidate.id().equals(mix.ref))
-                                                    .collect(MoreCollectors.toOptional()))
+                            .flatMap(mix ->
+                                    mixes.stream()
+                                            .filter(candidate -> candidate.id().equals(mix.ref))
+                                            .collect(MoreCollectors.toOptional()))
                             .map(mix -> new Gas(mix.o2, mix.he))
                             .orElse(previousGas);
             // RMV isn't in the UDDF waypoint schema - it only has a per-tank aggregate
@@ -809,12 +806,11 @@ public record UddfFile(
         }
 
         return getSeparator(buddies)
-                .map(
-                        separator ->
-                                Arrays.stream(buddies.trim().split(separator))
-                                        .map(String::trim)
-                                        .filter(String::isBlank)
-                                        .toList())
+                .map(separator ->
+                        Arrays.stream(buddies.trim().split(separator))
+                                .map(String::trim)
+                                .filter(String::isBlank)
+                                .toList())
                 .orElseGet(() -> List.of(buddies));
     }
 

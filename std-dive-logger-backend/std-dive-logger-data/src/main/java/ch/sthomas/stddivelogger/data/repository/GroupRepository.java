@@ -17,18 +17,18 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
     @Query(
             value =
                     """
-                            SELECT *
-                            FROM t_groups g
-                            WHERE starts_with(group_name, :name)
-                               OR g.group_name % :name
-                            ORDER BY CASE
-                                         WHEN starts_with(group_name, :name)
-                                             THEN 1
-                                         ELSE 0
-                                         END DESC,
-                                     similarity(g.group_name, :name) DESC,
-                                     LENGTH(g.group_name);
-                            """,
+                    SELECT *
+                    FROM t_groups g
+                    WHERE starts_with(group_name, :name)
+                       OR g.group_name % :name
+                    ORDER BY CASE
+                                 WHEN starts_with(group_name, :name)
+                                     THEN 1
+                                 ELSE 0
+                                 END DESC,
+                             similarity(g.group_name, :name) DESC,
+                             LENGTH(g.group_name);
+                    """,
             countQuery =
                     "SELECT COUNT(*) FROM t_groups g WHERE starts_with(group_name, :name) OR g.group_name % :name",
             nativeQuery = true)
@@ -46,12 +46,12 @@ public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
     @Modifying
     @Query(
             """
-                    DELETE FROM GroupEntity g
-                    WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM GroupMemberEntity m
-                        WHERE m.group.id = g.id AND m.role = :adminRole
-                    )
-                    """)
+            DELETE FROM GroupEntity g
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM GroupMemberEntity m
+                WHERE m.group.id = g.id AND m.role = :adminRole
+            )
+            """)
     int deleteAllByNoAdmin(GroupRole adminRole);
 }

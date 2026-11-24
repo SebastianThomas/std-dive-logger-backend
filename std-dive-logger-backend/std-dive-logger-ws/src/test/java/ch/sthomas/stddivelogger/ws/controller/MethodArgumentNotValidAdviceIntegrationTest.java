@@ -96,13 +96,10 @@ class MethodArgumentNotValidAdviceIntegrationTest {
                 .expectStatus()
                 .isBadRequest()
                 .expectBody(String.class)
-                .value(
-                        responseBody -> {
-                            assertThat(responseBody)
-                                    .contains(
-                                            "\"detail\":\"name: size must be between 2 and"
-                                                    + " 32\"");
-                            assertThat(responseBody).doesNotContain("Invalid request content.");
-                        });
+                .value(responseBody -> {
+                    assertThat(responseBody)
+                            .contains("\"detail\":\"name: size must be between 2 and" + " 32\"");
+                    assertThat(responseBody).doesNotContain("Invalid request content.");
+                });
     }
 }

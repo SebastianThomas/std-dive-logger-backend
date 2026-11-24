@@ -255,13 +255,9 @@ public class DiveDataService {
         return dive.getProfiles().stream()
                 .filter(p -> p.getId() == profileId)
                 .findFirst()
-                .orElseThrow(
-                        () ->
-                                new NoSuchElementException(
-                                        "Profile "
-                                                + profileId
-                                                + " not found on dive "
-                                                + dive.getId()));
+                .orElseThrow(() ->
+                        new NoSuchElementException(
+                                "Profile " + profileId + " not found on dive " + dive.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -316,10 +312,9 @@ public class DiveDataService {
             final var savedDive = diveRepository.save(entity);
             savedDive
                     .getProfiles()
-                    .forEach(
-                            profileEntity ->
-                                    diveProfileHistoryRepository.save(
-                                            new DiveProfileHistoryEntity(profileEntity)));
+                    .forEach(profileEntity ->
+                            diveProfileHistoryRepository.save(
+                                    new DiveProfileHistoryEntity(profileEntity)));
             return new DBResult<>(toRecord(savedDive), null);
         } catch (final DataIntegrityViolationException e) {
             return new DBResult<>(
@@ -346,10 +341,8 @@ public class DiveDataService {
         if (suit.id() != null) {
             return suitRepository
                     .findByIdAndUser_Id(suit.id(), user.getId())
-                    .orElseThrow(
-                            () ->
-                                    new NoSuchElementException(
-                                            "Could not find suit by id " + suit.id()));
+                    .orElseThrow(() ->
+                            new NoSuchElementException("Could not find suit by id " + suit.id()));
         }
         final var existing =
                 suitRepository.findByUser_IdAndTypeAndThicknessMMAndAdditionalNotes(
@@ -375,10 +368,9 @@ public class DiveDataService {
         if (ccrUnit.id() != null) {
             return ccrUnitRepository
                     .findByIdAndUser_Id(ccrUnit.id(), user.getId())
-                    .orElseThrow(
-                            () ->
-                                    new NoSuchElementException(
-                                            "Could not find CCR unit by id " + ccrUnit.id()));
+                    .orElseThrow(() ->
+                            new NoSuchElementException(
+                                    "Could not find CCR unit by id " + ccrUnit.id()));
         }
         final var existing =
                 ccrUnitRepository.findByUser_IdAndNameAndAdditionalNotes(
@@ -470,19 +462,18 @@ public class DiveDataService {
         diveProfileRepository
                 .findFirstByComputer_IdAndProfileStart(
                         computer.getId(), diveProfileUpload.start().atOffset(ZoneOffset.UTC))
-                .ifPresent(
-                        existing -> {
-                            throw new IllegalArgumentException(
-                                    "Dive #"
-                                            + diveRepository
-                                                    .findById(existing.getDiveId())
-                                                    .map(DiveEntity::getNumber)
-                                                    .orElse(0)
-                                            + " already has this computer's profile starting at "
-                                            + diveProfileUpload.start()
-                                            + ". To make several dives from one recording, trim"
-                                            + " each import to start at a different point.");
-                        });
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Dive #"
+                                    + diveRepository
+                                            .findById(existing.getDiveId())
+                                            .map(DiveEntity::getNumber)
+                                            .orElse(0)
+                                    + " already has this computer's profile starting at "
+                                    + diveProfileUpload.start()
+                                    + ". To make several dives from one recording, trim"
+                                    + " each import to start at a different point.");
+                });
         return new DiveProfileEntity(
                         computer,
                         diveProfileUpload.start(),
@@ -495,13 +486,9 @@ public class DiveDataService {
     private List<DiveMeasurementEntity> toMeasurementEntities(
             final List<DiveMeasurement> measurements) {
         return measurements.stream()
-                .map(
-                        m ->
-                                new DiveMeasurementEntity(
-                                        m,
-                                        Optional.ofNullable(m.gas())
-                                                .map(this::toEntity)
-                                                .orElse(null)))
+                .map(m ->
+                        new DiveMeasurementEntity(
+                                m, Optional.ofNullable(m.gas()).map(this::toEntity).orElse(null)))
                 .toList();
     }
 
@@ -660,29 +647,25 @@ public class DiveDataService {
     public Optional<ReprocessContext> findReprocessContext(final long profileId) {
         return diveProfileRepository
                 .findById(profileId)
-                .map(
-                        profile -> {
-                            final var dive = findDiveEntityById(profile.getDiveId());
-                            final var history = diveProfileHistoryRepository.findById(profileId);
-                            return new ReprocessContext(
-                                    dive.getId(),
-                                    dive.getUserId(),
-                                    profile.getComputer().getId(),
-                                    dive.getDiveSite().toRecord(),
-                                    profile.getStart(),
-                                    profile.getEnd(),
-                                    profile.toMeasurementRecords(),
-                                    profile.getDecoSettings(),
-                                    history.map(DiveProfileHistoryEntity::getTrimStartOffset)
-                                            .orElse(null),
-                                    history.map(DiveProfileHistoryEntity::getTrimEndOffset)
-                                            .orElse(null),
-                                    history.map(DiveProfileHistoryEntity::getTrimCuts)
-                                            .orElse(List.of()),
-                                    profile.getGaps(),
-                                    history.map(DiveProfileHistoryEntity::isImportFilesComplete)
-                                            .orElse(false));
-                        });
+                .map(profile -> {
+                    final var dive = findDiveEntityById(profile.getDiveId());
+                    final var history = diveProfileHistoryRepository.findById(profileId);
+                    return new ReprocessContext(
+                            dive.getId(),
+                            dive.getUserId(),
+                            profile.getComputer().getId(),
+                            dive.getDiveSite().toRecord(),
+                            profile.getStart(),
+                            profile.getEnd(),
+                            profile.toMeasurementRecords(),
+                            profile.getDecoSettings(),
+                            history.map(DiveProfileHistoryEntity::getTrimStartOffset).orElse(null),
+                            history.map(DiveProfileHistoryEntity::getTrimEndOffset).orElse(null),
+                            history.map(DiveProfileHistoryEntity::getTrimCuts).orElse(List.of()),
+                            profile.getGaps(),
+                            history.map(DiveProfileHistoryEntity::isImportFilesComplete)
+                                    .orElse(false));
+                });
     }
 
     /**
@@ -716,13 +699,12 @@ public class DiveDataService {
         if (!clockShift.isZero()) {
             diveProfileHistoryRepository
                     .findById(profileId)
-                    .ifPresent(
-                            history -> {
-                                history.updateOriginal(
-                                        history.getOriginalStart().plus(clockShift),
-                                        history.getOriginalEnd().plus(clockShift));
-                                diveProfileHistoryRepository.save(history);
-                            });
+                    .ifPresent(history -> {
+                        history.updateOriginal(
+                                history.getOriginalStart().plus(clockShift),
+                                history.getOriginalEnd().plus(clockShift));
+                        diveProfileHistoryRepository.save(history);
+                    });
         }
         dive.updateDiveSummary(dive.getProfiles().size() == 1 ? eventShift : Duration.ZERO);
         final var userId = dive.getUserEntity().getId();
@@ -741,22 +723,20 @@ public class DiveDataService {
             final List<DiveProfileHistoryEntity.TrimCut> cuts) {
         diveProfileHistoryRepository
                 .findById(profileId)
-                .ifPresent(
-                        history -> {
-                            history.recordTrim(startOffset, endOffset, cuts);
-                            diveProfileHistoryRepository.save(history);
-                        });
+                .ifPresent(history -> {
+                    history.recordTrim(startOffset, endOffset, cuts);
+                    diveProfileHistoryRepository.save(history);
+                });
     }
 
     @Transactional
     public void setImportFilesComplete(final long profileId, final boolean complete) {
         diveProfileHistoryRepository
                 .findById(profileId)
-                .ifPresent(
-                        history -> {
-                            history.setImportFilesComplete(complete);
-                            diveProfileHistoryRepository.save(history);
-                        });
+                .ifPresent(history -> {
+                    history.setImportFilesComplete(complete);
+                    diveProfileHistoryRepository.save(history);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -816,11 +796,10 @@ public class DiveDataService {
                 // "Shearwater" vs "Shearwater Research, Inc") - reuse it rather than creating a
                 // duplicate. Serial number must still match exactly; see the repository method's
                 // own doc comment for what counts as a fuzzy manufacturer match.
-                .or(
-                        () ->
-                                diveComputerRepository
-                                        .findByUser_IdAndSerialNumberAndManufacturer_NameFuzzy(
-                                                userId, serialNumber, manufacturer))
+                .or(() ->
+                        diveComputerRepository
+                                .findByUser_IdAndSerialNumberAndManufacturer_NameFuzzy(
+                                        userId, serialNumber, manufacturer))
                 .map(DiveComputerEntity::toRecord);
     }
 
@@ -834,10 +813,9 @@ public class DiveDataService {
         final var manufacturerEntity =
                 diveComputerManufacturerRepository
                         .findByNameIgnoreCase(manufacturer)
-                        .orElseGet(
-                                () ->
-                                        diveComputerManufacturerRepository.save(
-                                                new DiveComputerManufacturerEntity(manufacturer)));
+                        .orElseGet(() ->
+                                diveComputerManufacturerRepository.save(
+                                        new DiveComputerManufacturerEntity(manufacturer)));
         return diveComputerRepository
                 .save(
                         new DiveComputerEntity(
@@ -1050,10 +1028,9 @@ public class DiveDataService {
             final NamedBuddyInput input) {
         final var existing =
                 Optional.ofNullable(namedBuddies.get(input.name()))
-                        .or(
-                                () ->
-                                        diveBuddyNameRepository.findByDive_IdAndName(
-                                                dive.id(), input.name()));
+                        .or(() ->
+                                diveBuddyNameRepository.findByDive_IdAndName(
+                                        dive.id(), input.name()));
         if (existing.isPresent()) {
             final var entity = existing.get();
             entity.setRole(input.role());
@@ -1109,10 +1086,9 @@ public class DiveDataService {
         autoDetectDefs.stream()
                 .filter(def -> dive.matchesAutoDetect(def.getAutoDetectRule()))
                 .filter(def -> !manualDefIds.contains(def.getId()))
-                .map(
-                        def ->
-                                new DiveTagEntity(
-                                        dive, def, false, effectiveDismissed.contains(def.getId())))
+                .map(def ->
+                        new DiveTagEntity(
+                                dive, def, false, effectiveDismissed.contains(def.getId())))
                 .forEach(newTags::add);
 
         // Replace all existing rows atomically: delete then insert via repository,
@@ -1309,30 +1285,24 @@ public class DiveDataService {
         analyticsDataService.invalidateAnalyticsForDive(diveId);
         diveProfileHistoryRepository
                 .findById(profileId)
-                .ifPresent(
-                        history -> {
-                            // "Reset alignment" restores the original start: it moves with the
-                            // trimmed edge, or a reset would shift the samples by the trim.
-                            history.updateOriginal(
-                                    history.getOriginalStart()
-                                            .plus(Duration.between(oldStart, newStart)),
-                                    history.getOriginalEnd()
-                                            .plus(Duration.between(oldEnd, newEnd)));
-                            // Clock-independent, so re-processing from stored files keeps it.
-                            history.recordTrim(
-                                    trimStart == null ? null : Duration.between(anchor, trimStart),
-                                    trimEnd == null ? null : Duration.between(anchor, trimEnd),
-                                    cuts.stream()
-                                            .map(
-                                                    c ->
-                                                            DiveProfileHistoryEntity.TrimCut.of(
-                                                                    Duration.between(
-                                                                            anchor, c.start()),
-                                                                    Duration.between(
-                                                                            anchor, c.end())))
-                                            .toList());
-                            diveProfileHistoryRepository.save(history);
-                        });
+                .ifPresent(history -> {
+                    // "Reset alignment" restores the original start: it moves with the
+                    // trimmed edge, or a reset would shift the samples by the trim.
+                    history.updateOriginal(
+                            history.getOriginalStart().plus(Duration.between(oldStart, newStart)),
+                            history.getOriginalEnd().plus(Duration.between(oldEnd, newEnd)));
+                    // Clock-independent, so re-processing from stored files keeps it.
+                    history.recordTrim(
+                            trimStart == null ? null : Duration.between(anchor, trimStart),
+                            trimEnd == null ? null : Duration.between(anchor, trimEnd),
+                            cuts.stream()
+                                    .map(c ->
+                                            DiveProfileHistoryEntity.TrimCut.of(
+                                                    Duration.between(anchor, c.start()),
+                                                    Duration.between(anchor, c.end())))
+                                    .toList());
+                    diveProfileHistoryRepository.save(history);
+                });
 
         return toRecord(diveRepository.save(freshDive));
     }
@@ -1473,7 +1443,8 @@ public class DiveDataService {
                         WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
                         GROUP BY dt.fk_dive_id
                         HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
-                    )""");
+                    )\
+                    """);
             params.addValue("tagIds", filters.tagIds());
             params.addValue("tagCount", (long) filters.tagIds().size());
         }
@@ -1769,10 +1740,9 @@ public class DiveDataService {
         final var site =
                 diveSiteRepository
                         .findById(siteId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive site by id " + siteId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Could not find dive site by id " + siteId));
         site.setWaterType(waterType);
         return diveSiteRepository.save(site).toRecordWithLinks(true);
     }
@@ -1806,10 +1776,9 @@ public class DiveDataService {
         final var entity =
                 diveSiteRepository
                         .findById(siteId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive site by id " + siteId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Could not find dive site by id " + siteId));
         entity.setDescription(description);
         entity.setMaxDepth(maxDepth);
         entity.setSiteType(type);
@@ -1855,11 +1824,10 @@ public class DiveDataService {
         namedParameterJdbcTemplate.batchUpdate(
                 "INSERT INTO t_dive_privileges (fk_dive_id, fk_user_id) VALUES (:diveId, :userId)",
                 userIds.stream()
-                        .map(
-                                userId ->
-                                        new MapSqlParameterSource()
-                                                .addValue("diveId", diveId)
-                                                .addValue("userId", userId))
+                        .map(userId ->
+                                new MapSqlParameterSource()
+                                        .addValue("diveId", diveId)
+                                        .addValue("userId", userId))
                         .toArray(MapSqlParameterSource[]::new));
     }
 
@@ -1931,28 +1899,21 @@ public class DiveDataService {
         return diveRepository
                 .findByIdAndUser_Id(diveId, userId)
                 .map(DiveEntity::getNumber)
-                .map(
-                        number -> {
-                            final var previousId =
-                                    diveRepository
-                                            .findPreviousDiveNumber(userId, number)
-                                            .flatMap(
-                                                    n ->
-                                                            diveRepository.findByUser_IdAndNumber(
-                                                                    userId, n))
-                                            .map(DiveEntity::getId)
-                                            .orElse(null);
-                            final var nextId =
-                                    diveRepository
-                                            .findNextDiveNumber(userId, number)
-                                            .flatMap(
-                                                    n ->
-                                                            diveRepository.findByUser_IdAndNumber(
-                                                                    userId, n))
-                                            .map(DiveEntity::getId)
-                                            .orElse(null);
-                            return new AdjacentDives(previousId, nextId);
-                        });
+                .map(number -> {
+                    final var previousId =
+                            diveRepository
+                                    .findPreviousDiveNumber(userId, number)
+                                    .flatMap(n -> diveRepository.findByUser_IdAndNumber(userId, n))
+                                    .map(DiveEntity::getId)
+                                    .orElse(null);
+                    final var nextId =
+                            diveRepository
+                                    .findNextDiveNumber(userId, number)
+                                    .flatMap(n -> diveRepository.findByUser_IdAndNumber(userId, n))
+                                    .map(DiveEntity::getId)
+                                    .orElse(null);
+                    return new AdjacentDives(previousId, nextId);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -2066,19 +2027,16 @@ public class DiveDataService {
                         ? diveSiteRepository.findSitesByDiveWithUserId(userId)
                         : diveSiteRepository.findSitesByDiveWithReaderUserId(userId);
         return result.stream()
-                .map(
-                        row -> {
-                            if (row.length < 4) {
-                                throw new IllegalArgumentException(
-                                        "Could not read dives and dive sites");
-                            }
-                            final var site = (DiveSiteEntity) row[0];
-                            final var diveIds = getLongListFromSqlObject(row[1]);
-                            final var diveNumbers = getLongListFromSqlObject(row[2]);
-                            final var diveIdentifiers = getStringListFromSqlObject(row[3]);
-                            return DiveSiteWithDives.of(
-                                    site, diveIds, diveNumbers, diveIdentifiers);
-                        })
+                .map(row -> {
+                    if (row.length < 4) {
+                        throw new IllegalArgumentException("Could not read dives and dive sites");
+                    }
+                    final var site = (DiveSiteEntity) row[0];
+                    final var diveIds = getLongListFromSqlObject(row[1]);
+                    final var diveNumbers = getLongListFromSqlObject(row[2]);
+                    final var diveIdentifiers = getStringListFromSqlObject(row[3]);
+                    return DiveSiteWithDives.of(site, diveIds, diveNumbers, diveIdentifiers);
+                })
                 .toList();
     }
 
@@ -2154,20 +2112,18 @@ public class DiveDataService {
         final var userDive =
                 diveRepository
                         .findById(userDiveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + userDiveId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Could not find dive by id " + userDiveId));
         if (userDive.hasBuddyDive(buddyDiveId)) {
             return toRecord(userDive);
         }
         final var buddyDive =
                 diveRepository
                         .findById(buddyDiveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + buddyDiveId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Could not find dive by id " + buddyDiveId));
         // t_dive_buddy's CHECK constraint requires fk_dive_id < fk_buddy_dive_id - store
         // consistently regardless of which id the caller passed as "the dive" vs "the buddy", so
         // linking never fails just because the two ids were named in the "wrong" order.
@@ -2194,10 +2150,9 @@ public class DiveDataService {
         final var userDive =
                 diveRepository
                         .findById(userDiveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find dive by id " + userDiveId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Could not find dive by id " + userDiveId));
         final var link = diveBuddyRepository.findLink(userDiveId, buddyDiveId);
         if (link.isEmpty()) {
             return toRecord(userDive);
@@ -2216,14 +2171,13 @@ public class DiveDataService {
         final var link =
                 diveBuddyRepository
                         .findLink(viewpointDiveId, buddyDiveId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Dives "
-                                                        + viewpointDiveId
-                                                        + " and "
-                                                        + buddyDiveId
-                                                        + " are not linked buddy dives."));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Dives "
+                                                + viewpointDiveId
+                                                + " and "
+                                                + buddyDiveId
+                                                + " are not linked buddy dives."));
         link.setRoleAsSeenFrom(viewpointDiveId, role);
         diveBuddyRepository.save(link);
         return reloadDive(viewpointDiveId);
@@ -2311,13 +2265,9 @@ public class DiveDataService {
         // Aligning only some profiles: the cylinder windows taken from a moved profile's gas
         // switches must move with that profile instead of staying pinned to the dive's clock.
         if (profiles.size() != dive.getProfiles().size()) {
-            profiles.forEach(
-                    p ->
-                            moveUsageWindowsWithProfile(
-                                    dive,
-                                    p,
-                                    oldStart,
-                                    Duration.between(p.getStart(), alignToManual)));
+            profiles.forEach(p ->
+                    moveUsageWindowsWithProfile(
+                            dive, p, oldStart, Duration.between(p.getStart(), alignToManual)));
         }
         profiles.forEach(p -> p.alignProfileManual(alignToManual));
         dive.updateDiveSummary(
@@ -2363,26 +2313,24 @@ public class DiveDataService {
                         .min(Instant::compareTo)
                         .orElseThrow();
         if (profiles.size() != dive.getProfiles().size()) {
-            profiles.forEach(
-                    p ->
-                            moveUsageWindowsWithProfile(
-                                    dive,
-                                    p,
-                                    oldStart,
-                                    Duration.between(
-                                            p.getStart(),
-                                            diveProfileHistoryRepository
-                                                    .findById(p.getId())
-                                                    .orElseThrow()
-                                                    .getOriginalStart())));
+            profiles.forEach(p ->
+                    moveUsageWindowsWithProfile(
+                            dive,
+                            p,
+                            oldStart,
+                            Duration.between(
+                                    p.getStart(),
+                                    diveProfileHistoryRepository
+                                            .findById(p.getId())
+                                            .orElseThrow()
+                                            .getOriginalStart())));
         }
-        profiles.forEach(
-                p ->
-                        p.alignProfileManual(
-                                diveProfileHistoryRepository
-                                        .findById(p.getId())
-                                        .orElseThrow()
-                                        .getOriginalStart()));
+        profiles.forEach(p ->
+                p.alignProfileManual(
+                        diveProfileHistoryRepository
+                                .findById(p.getId())
+                                .orElseThrow()
+                                .getOriginalStart()));
         final var newStart =
                 dive.getProfiles().stream()
                         .map(DiveProfileEntity::getStart)
@@ -2428,10 +2376,8 @@ public class DiveDataService {
         final var existing =
                 suitRepository
                         .findByIdAndUser_Id(id, userId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find Suit by id " + id));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find Suit by id " + id));
         existing.setType(suit.type());
         existing.setThicknessMM(suit.thickness());
         existing.setAdditionalNotes(suit.notes());
@@ -2471,10 +2417,8 @@ public class DiveDataService {
         final var existing =
                 ccrUnitRepository
                         .findByIdAndUser_Id(id, userId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find CCR unit by id " + id));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find CCR unit by id " + id));
         existing.setName(ccrUnit.name());
         existing.setAdditionalNotes(ccrUnit.notes());
         existing.setPublic(ccrUnit.isPublic());
@@ -2493,10 +2437,8 @@ public class DiveDataService {
         final var existing =
                 ccrUnitRepository
                         .findByIdAndUser_Id(id, userId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Could not find CCR unit by id " + id));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("Could not find CCR unit by id " + id));
         diveRepository.clearCcrUnitFromConfigurations(id);
         diveRepository.clearSecondaryCcrUnitFromConfigurations(id);
         diveComputerRepository.clearCcrUnitFromComputers(id);
@@ -2559,10 +2501,9 @@ public class DiveDataService {
             computer.setCcrUnit(
                     ccrUnitRepository
                             .findByIdAndUser_Id(ccrUnitId, user.id())
-                            .orElseThrow(
-                                    () ->
-                                            new NoSuchElementException(
-                                                    "Could not find CCR unit by id " + ccrUnitId)));
+                            .orElseThrow(() ->
+                                    new NoSuchElementException(
+                                            "Could not find CCR unit by id " + ccrUnitId)));
         }
         return diveComputerRepository.save(computer).toRecord();
     }
@@ -2705,24 +2646,23 @@ public class DiveDataService {
     public int setLinkedBuddyRoleForUser(
             final long userId, final long buddyUserId, @Nullable final BuddyRole role) {
         final var links = diveBuddyRepository.findAllLinksBetweenUsers(userId, buddyUserId);
-        links.forEach(
-                l -> {
-                    // setRoleAsSeenFrom takes a *dive* id, not a user id - resolve which side of
-                    // this particular link row is the one userId actually owns.
-                    final var viewpointDiveId =
-                            l.getDive().getUserId() == userId
-                                    ? l.getDive().getId()
-                                    : l.getBuddyDive().getId();
-                    l.setRoleAsSeenFrom(viewpointDiveId, role);
-                });
+        links.forEach(l -> {
+            // setRoleAsSeenFrom takes a *dive* id, not a user id - resolve which side of
+            // this particular link row is the one userId actually owns.
+            final var viewpointDiveId =
+                    l.getDive().getUserId() == userId
+                            ? l.getDive().getId()
+                            : l.getBuddyDive().getId();
+            l.setRoleAsSeenFrom(viewpointDiveId, role);
+        });
         diveBuddyRepository.saveAll(links);
         return links.size();
     }
 
     /**
-     * Saves (or, when {@code role} is null, clears) the diver's default role for a named (free-
-     * text) buddy - applied automatically the next time this buddy is newly added to a dive, see
-     * {@link #applyDefaultBuddyRoles}. Distinct from {@link #setNamedBuddyRole}, which instead
+     * Saves (or, when {@code role} is null, clears) the diver's default role for a named
+     * (free-text) buddy - applied automatically the next time this buddy is newly added to a dive,
+     * see {@link #applyDefaultBuddyRoles}. Distinct from {@link #setNamedBuddyRole}, which instead
      * retroactively backfills every dive that already lists them.
      */
     @Transactional
@@ -2801,15 +2741,14 @@ public class DiveDataService {
                                 Collectors.toMap(
                                         DiveBuddyDefaultRoleEntity::getBuddyName,
                                         DiveBuddyDefaultRoleEntity::getRole));
-        buddies.forEach(
-                b -> {
-                    if (b.getRole() == null) {
-                        final var defaultRole = defaults.get(b.getName());
-                        if (defaultRole != null) {
-                            b.setRole(defaultRole);
-                        }
-                    }
-                });
+        buddies.forEach(b -> {
+            if (b.getRole() == null) {
+                final var defaultRole = defaults.get(b.getName());
+                if (defaultRole != null) {
+                    b.setRole(defaultRole);
+                }
+            }
+        });
     }
 
     /**
@@ -2933,12 +2872,11 @@ public class DiveDataService {
             final List<BuddyRoleAssignment> assignments,
             final Function<BuddyRoleAssignment, String> groupKey) {
         return assignments.stream().collect(Collectors.groupingBy(groupKey)).entrySet().stream()
-                .map(
-                        e ->
-                                new BuddyRoleBreakdown(
-                                        e.getKey(),
-                                        countByRole(e.getValue().stream()),
-                                        e.getValue().size()))
+                .map(e ->
+                        new BuddyRoleBreakdown(
+                                e.getKey(),
+                                countByRole(e.getValue().stream()),
+                                e.getValue().size()))
                 .sorted(Comparator.comparingLong(BuddyRoleBreakdown::total).reversed())
                 .toList();
     }

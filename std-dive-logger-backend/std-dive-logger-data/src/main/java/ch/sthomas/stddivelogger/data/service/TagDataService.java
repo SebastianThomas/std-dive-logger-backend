@@ -86,13 +86,12 @@ public class TagDataService {
         final var entity =
                 tagDefinitionRepository
                         .findByIdAndUser_Id(tagId, userId)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "Tag "
-                                                        + tagId
-                                                        + " not found or not owned by user "
-                                                        + userId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException(
+                                        "Tag "
+                                                + tagId
+                                                + " not found or not owned by user "
+                                                + userId));
         tagDefinitionRepository.delete(entity);
     }
 

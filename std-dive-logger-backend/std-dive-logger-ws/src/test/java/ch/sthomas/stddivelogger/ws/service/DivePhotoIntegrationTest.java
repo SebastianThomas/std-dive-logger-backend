@@ -152,33 +152,24 @@ class DivePhotoIntegrationTest {
         assertThat(downloaded.stream().readAllBytes()).isEqualTo(bytes);
 
         // Negative: a user with no read access to the dive gets refused by the download proxy.
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.download(
-                                        other, dive.id(), uploadUrlResponse.photoId()))
+        assertThatThrownBy(() ->
+                        divePhotoService.download(other, dive.id(), uploadUrlResponse.photoId()))
                 .isInstanceOf(ForbiddenException.class);
         assertThatThrownBy(() -> divePhotoService.list(other, dive.id()))
                 .isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.requestUploadUrl(
-                                        other,
-                                        dive.id(),
-                                        new DivePhotoUploadUrlBody("image/png", "x.png")))
+        assertThatThrownBy(() ->
+                        divePhotoService.requestUploadUrl(
+                                other, dive.id(), new DivePhotoUploadUrlBody("image/png", "x.png")))
                 .isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.delete(
-                                        other, dive.id(), uploadUrlResponse.photoId()))
+        assertThatThrownBy(() ->
+                        divePhotoService.delete(other, dive.id(), uploadUrlResponse.photoId()))
                 .isInstanceOf(ForbiddenException.class);
 
         // 6. Delete.
         divePhotoService.delete(owner, dive.id(), uploadUrlResponse.photoId());
         assertThat(divePhotoService.list(owner, dive.id())).isEmpty();
-        assertThatThrownBy(
-                        () ->
-                                divePhotoService.download(
-                                        owner, dive.id(), uploadUrlResponse.photoId()))
+        assertThatThrownBy(() ->
+                        divePhotoService.download(owner, dive.id(), uploadUrlResponse.photoId()))
                 .isInstanceOf(NoSuchElementException.class);
     }
 }

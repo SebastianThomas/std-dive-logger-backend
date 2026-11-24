@@ -222,10 +222,9 @@ class DiveConfigurationUpdateIntegrationTest {
                         .save(new UserEntity("config-it-other@test.ch", "hash", "IT other"))
                         .toRecord();
 
-        assertThatThrownBy(
-                        () ->
-                                diveService.previewCylinderConsumption(
-                                        other, diveId, List.of(cylinder(12.0, ""))))
+        assertThatThrownBy(() ->
+                        diveService.previewCylinderConsumption(
+                                other, diveId, List.of(cylinder(12.0, ""))))
                 .isInstanceOf(ForbiddenException.class);
     }
 

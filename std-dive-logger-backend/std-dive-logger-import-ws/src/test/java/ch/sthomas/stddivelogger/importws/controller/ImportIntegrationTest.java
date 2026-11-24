@@ -149,42 +149,42 @@ class ImportIntegrationTest {
 
     private static String syntheticDiveRequestBody(final String id) {
         return """
-                {
-                  "dives": [
-                    {
-                      "diveAndMixes": {
-                        "dive": {
-                          "id": "%s",
-                          "deviceSerial": "IT-SERIAL-%s",
-                          "description": "",
-                          "site": "Integration Test Lake",
-                          "latitude": 47.0,
-                          "longitude": 8.0,
-                          "maxDepth": 10.0,
-                          "averageDepth": 5.0,
-                          "duration": "00:01:00",
-                          "startDate": "Mon Jan 1 2024 00:00:00 GMT+0000 (Coordinated Universal Time)",
-                          "mixes": [
-                            { "id": 0, "o2": "21", "he": "0", "startPressure": 200, "endPressure": 180, "tankVolume": 12, "mixType": "air", "tankType": "oc" }
-                          ],
-                          "visibility": 5,
-                          "cns": 2,
-                          "diveData": { "avgDepth": 5.0, "startMode": "OC" },
-                          "graphData": {
-                            "depth": [ { "timestamp": 0, "value": 1.0 }, { "timestamp": 60, "value": 0.0 } ],
-                            "temperature": [ { "timestamp": 0, "temperature": 20.0 }, { "timestamp": 60, "temperature": 20.0 } ],
-                            "ceiling": [ { "timestamp": 0, "ceiling": 0.0 }, { "timestamp": 60, "ceiling": 0.0 } ],
-                            "setpoint": [ { "timestamp": 0, "pressureInBar": 0.0 }, { "timestamp": 60, "pressureInBar": 0.0 } ],
-                            "ppo2": [ { "timestamp": 0, "pressureInBar": 0.21 }, { "timestamp": 60, "pressureInBar": 0.21 } ],
-                            "modes": [ { "timestamp": 0, "mode": "oc" } ],
-                            "mixes": [ { "timestamp": 0, "mixO2": "21", "mixHe": "0", "mixType": "air" } ]
-                          }
-                        }
-                      }
-                    }
-                  ]
+        {
+          "dives": [
+            {
+              "diveAndMixes": {
+                "dive": {
+                  "id": "%s",
+                  "deviceSerial": "IT-SERIAL-%s",
+                  "description": "",
+                  "site": "Integration Test Lake",
+                  "latitude": 47.0,
+                  "longitude": 8.0,
+                  "maxDepth": 10.0,
+                  "averageDepth": 5.0,
+                  "duration": "00:01:00",
+                  "startDate": "Mon Jan 1 2024 00:00:00 GMT+0000 (Coordinated Universal Time)",
+                  "mixes": [
+                    { "id": 0, "o2": "21", "he": "0", "startPressure": 200, "endPressure": 180, "tankVolume": 12, "mixType": "air", "tankType": "oc" }
+                  ],
+                  "visibility": 5,
+                  "cns": 2,
+                  "diveData": { "avgDepth": 5.0, "startMode": "OC" },
+                  "graphData": {
+                    "depth": [ { "timestamp": 0, "value": 1.0 }, { "timestamp": 60, "value": 0.0 } ],
+                    "temperature": [ { "timestamp": 0, "temperature": 20.0 }, { "timestamp": 60, "temperature": 20.0 } ],
+                    "ceiling": [ { "timestamp": 0, "ceiling": 0.0 }, { "timestamp": 60, "ceiling": 0.0 } ],
+                    "setpoint": [ { "timestamp": 0, "pressureInBar": 0.0 }, { "timestamp": 60, "pressureInBar": 0.0 } ],
+                    "ppo2": [ { "timestamp": 0, "pressureInBar": 0.21 }, { "timestamp": 60, "pressureInBar": 0.21 } ],
+                    "modes": [ { "timestamp": 0, "mode": "oc" } ],
+                    "mixes": [ { "timestamp": 0, "mixO2": "21", "mixHe": "0", "mixType": "air" } ]
+                  }
                 }
-                """
+              }
+            }
+          ]
+        }
+        """
                 .formatted(id, id);
     }
 
@@ -640,20 +640,19 @@ class ImportIntegrationTest {
                                         ShearwaterPnfTestLogs.Sample.openCircuit(3.0, 13))));
         final var dives =
                 java.util.Arrays.stream(diveNumbers)
-                        .map(
-                                number ->
-                                        new ShearwaterDbTestDatabase.Dive(
-                                                "dive-" + number,
-                                                number,
-                                                "Integration Test Quarry",
-                                                "Yancy Wolf",
-                                                "staged from the Shearwater Cloud database",
-                                                "4m",
-                                                "4kg",
-                                                "12l",
-                                                "Single Tank",
-                                                TANK_PROFILE_DATA,
-                                                blob))
+                        .map(number ->
+                                new ShearwaterDbTestDatabase.Dive(
+                                        "dive-" + number,
+                                        number,
+                                        "Integration Test Quarry",
+                                        "Yancy Wolf",
+                                        "staged from the Shearwater Cloud database",
+                                        "4m",
+                                        "4kg",
+                                        "12l",
+                                        "Single Tank",
+                                        TANK_PROFILE_DATA,
+                                        blob))
                         .toList();
         final var file = Files.createTempFile("shearwater-integration", ".db");
         file.toFile().deleteOnExit();
@@ -686,13 +685,12 @@ class ImportIntegrationTest {
         assertThat(body.errors()).isEmpty();
         assertThat(body.staged()).hasSize(3);
         assertThat(body.staged())
-                .allSatisfy(
-                        staged -> {
-                            assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Quarry");
-                            assertThat(staged.computerSerial()).isEqualTo("A3B6F031");
-                            assertThat(staged.maxDepth()).isEqualTo(18.4);
-                            assertThat(staged.durationSeconds()).isNotNull().isPositive();
-                        });
+                .allSatisfy(staged -> {
+                    assertThat(staged.siteNameGuess()).isEqualTo("Integration Test Quarry");
+                    assertThat(staged.computerSerial()).isEqualTo("A3B6F031");
+                    assertThat(staged.maxDepth()).isEqualTo(18.4);
+                    assertThat(staged.durationSeconds()).isNotNull().isPositive();
+                });
         assertThat(body.staged())
                 .extracting(PendingImportSummary::diveNumberGuess)
                 .containsExactlyInAnyOrder(81, 82, 83);
@@ -860,9 +858,8 @@ class ImportIntegrationTest {
                 .expectStatus()
                 .isBadRequest()
                 .expectBody(String.class)
-                .value(
-                        response ->
-                                assertThat(response).contains("not a Shearwater Cloud database"));
+                .value(response ->
+                        assertThat(response).contains("not a Shearwater Cloud database"));
     }
 
     /** An account that keeps its files stores each Divesoft dive's JSON exactly as posted. */

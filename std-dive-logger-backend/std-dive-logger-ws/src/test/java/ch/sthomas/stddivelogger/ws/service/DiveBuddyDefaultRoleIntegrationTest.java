@@ -298,19 +298,16 @@ class DiveBuddyDefaultRoleIntegrationTest {
 
         assertThat(defaults).hasSize(2);
         assertThat(defaults)
-                .anySatisfy(
-                        d -> {
-                            assertThat(d.buddyName()).isEqualTo("Alex");
-                            assertThat(d.role()).isEqualTo(BuddyRole.INSTRUCTOR);
-                        });
+                .anySatisfy(d -> {
+                    assertThat(d.buddyName()).isEqualTo("Alex");
+                    assertThat(d.role()).isEqualTo(BuddyRole.INSTRUCTOR);
+                });
         assertThat(defaults)
-                .anySatisfy(
-                        d -> {
-                            final var buddyUser = d.buddyUser();
-                            assertThat(buddyUser).isNotNull();
-                            assertThat(Objects.requireNonNull(buddyUser).id())
-                                    .isEqualTo(buddyOwner.id());
-                            assertThat(d.role()).isEqualTo(BuddyRole.LESS_EXPERIENCED);
-                        });
+                .anySatisfy(d -> {
+                    final var buddyUser = d.buddyUser();
+                    assertThat(buddyUser).isNotNull();
+                    assertThat(Objects.requireNonNull(buddyUser).id()).isEqualTo(buddyOwner.id());
+                    assertThat(d.role()).isEqualTo(BuddyRole.LESS_EXPERIENCED);
+                });
     }
 }

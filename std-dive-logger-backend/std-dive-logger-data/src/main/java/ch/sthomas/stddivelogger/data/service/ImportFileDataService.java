@@ -67,20 +67,19 @@ public class ImportFileDataService {
             final @Nullable JsonNode metadata) {
         return files.findByUserIdAndSha256(userId, sha256)
                 .map(f -> files.save(f.reuploaded(filename, diveCount, profileCount)))
-                .orElseGet(
-                        () ->
-                                files.save(
-                                        new ImportFileEntity(
-                                                userId,
-                                                source,
-                                                filename,
-                                                contentType,
-                                                sizeBytes,
-                                                sha256,
-                                                storagePath,
-                                                diveCount,
-                                                profileCount,
-                                                metadata)));
+                .orElseGet(() ->
+                        files.save(
+                                new ImportFileEntity(
+                                        userId,
+                                        source,
+                                        filename,
+                                        contentType,
+                                        sizeBytes,
+                                        sha256,
+                                        storagePath,
+                                        diveCount,
+                                        profileCount,
+                                        metadata)));
     }
 
     @Transactional(readOnly = true)
@@ -113,10 +112,8 @@ public class ImportFileDataService {
             final @Nullable Long siteId) {
         final var existing =
                 profileLinks.findByProfileIdOrderByIdAsc(profileId).stream()
-                        .filter(
-                                l ->
-                                        l.getFile().getId() == fileId
-                                                && l.getLocator().equals(locator))
+                        .filter(l ->
+                                l.getFile().getId() == fileId && l.getLocator().equals(locator))
                         .findFirst();
         if (existing.isPresent()) {
             existing.get().stamp(parserVersion, rawActiveStart, siteId);
@@ -142,18 +139,15 @@ public class ImportFileDataService {
             final Map<ImportedDiveField, JsonNode> takenValues) {
         final var link =
                 diveLinks.findByDiveIdOrderByIdAsc(diveId).stream()
-                        .filter(
-                                l ->
-                                        l.getFile().getId() == fileId
-                                                && l.getLocator().equals(locator))
+                        .filter(l ->
+                                l.getFile().getId() == fileId && l.getLocator().equals(locator))
                         .findFirst()
-                        .orElseGet(
-                                () ->
-                                        new DiveImportFileEntity(
-                                                diveId,
-                                                files.getReferenceById(fileId),
-                                                locator,
-                                                parserVersion));
+                        .orElseGet(() ->
+                                new DiveImportFileEntity(
+                                        diveId,
+                                        files.getReferenceById(fileId),
+                                        locator,
+                                        parserVersion));
         link.stampVersion(parserVersion);
         final var saved = diveLinks.save(link);
         takenValues.forEach((field, value) -> saveField(saved.getId(), field, value));

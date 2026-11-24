@@ -37,11 +37,10 @@ public interface MethodArgumentNotValidAdviceTrait {
         final var globalErrors = exception.getBindingResult().getGlobalErrors();
         if (!globalErrors.isEmpty()) {
             return globalErrors.stream()
-                    .map(
-                            error ->
-                                    error.getDefaultMessage() != null
-                                            ? error.getDefaultMessage()
-                                            : "is invalid")
+                    .map(error ->
+                            error.getDefaultMessage() != null
+                                    ? error.getDefaultMessage()
+                                    : "is invalid")
                     .collect(Collectors.joining("; "));
         }
         return "The request body failed validation - check that every field meets its"

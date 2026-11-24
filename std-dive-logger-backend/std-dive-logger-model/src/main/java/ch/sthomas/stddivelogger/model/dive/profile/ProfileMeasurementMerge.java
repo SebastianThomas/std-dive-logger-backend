@@ -144,19 +144,18 @@ public final class ProfileMeasurementMerge {
 
     private static long filledFields(final List<DiveMeasurement> measurements) {
         return measurements.stream()
-                .mapToLong(
-                        m ->
-                                count(m.temperature())
-                                        + count(m.ndl())
-                                        + (m.deco() != null && !m.deco().isEmpty() ? 1 : 0)
-                                        + count(m.gas())
-                                        + count(m.po2())
-                                        + count(m.rmvLiters())
-                                        + count(m.n2())
-                                        + count(m.o2Tox())
-                                        + count(m.cns())
-                                        + count(m.mode())
-                                        + count(m.timeToSurface()))
+                .mapToLong(m ->
+                        count(m.temperature())
+                                + count(m.ndl())
+                                + (m.deco() != null && !m.deco().isEmpty() ? 1 : 0)
+                                + count(m.gas())
+                                + count(m.po2())
+                                + count(m.rmvLiters())
+                                + count(m.n2())
+                                + count(m.o2Tox())
+                                + count(m.cns())
+                                + count(m.mode())
+                                + count(m.timeToSurface()))
                 .sum();
     }
 

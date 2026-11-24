@@ -371,10 +371,9 @@ public final class FillService {
                 before != null && Long.valueOf(memberId).equals(FillTarget.chargedMemberOf(before));
         final var chargeable =
                 state.facts().members().stream()
-                        .anyMatch(
-                                member ->
-                                        member.memberId() == memberId
-                                                && (kept || member.status() != MemberStatus.LEFT));
+                        .anyMatch(member ->
+                                member.memberId() == memberId
+                                        && (kept || member.status() != MemberStatus.LEFT));
         if (!chargeable) {
             throw new IllegalArgumentException("Unknown member.");
         }

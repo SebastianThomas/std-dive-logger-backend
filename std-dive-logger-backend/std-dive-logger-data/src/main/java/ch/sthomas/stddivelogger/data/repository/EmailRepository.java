@@ -12,12 +12,12 @@ public interface EmailRepository extends JpaRepository<EmailEntity, Long> {
     @Query(
             value =
                     """
-                            UPDATE t_email
-                            SET sending = TRUE
-                            WHERE sending = false
-                              AND sent_at IS NULL
-                            RETURNING t_email.*;
-                            """,
+                    UPDATE t_email
+                    SET sending = TRUE
+                    WHERE sending = false
+                      AND sent_at IS NULL
+                    RETURNING t_email.*;
+                    """,
             nativeQuery = true)
     @Modifying
     List<EmailEntity> updateOutstandingEmailsAndGet();

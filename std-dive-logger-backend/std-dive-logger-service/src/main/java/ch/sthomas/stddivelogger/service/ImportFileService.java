@@ -168,12 +168,11 @@ public class ImportFileService {
                     .forEach(f -> builder.fields().add(f.getField()));
         }
         return byFile.values().stream()
-                .map(
-                        b ->
-                                new DiveSourceFile(
-                                        b.file().toInfo(),
-                                        List.copyOf(b.profileIds()),
-                                        List.copyOf(b.fields())))
+                .map(b ->
+                        new DiveSourceFile(
+                                b.file().toInfo(),
+                                List.copyOf(b.profileIds()),
+                                List.copyOf(b.fields())))
                 .sorted(Comparator.comparing(f -> f.file().createdAt()))
                 .toList();
     }

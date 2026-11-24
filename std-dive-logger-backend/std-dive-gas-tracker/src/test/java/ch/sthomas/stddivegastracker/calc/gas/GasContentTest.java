@@ -184,26 +184,23 @@ final class GasContentTest {
     void invalidWaterVolumeThrows(final double waterVolumeLitres) {
         final var message = "Water volume must be a number greater than 0";
 
-        assertThatThrownBy(
-                        () ->
-                                GasContent.contentLitres(
-                                        waterVolumeLitres, 100, GasMix.AIR, IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        GasContent.contentLitres(
+                                waterVolumeLitres, 100, GasMix.AIR, IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(message);
-        assertThatThrownBy(
-                        () ->
-                                GasContent.componentLitres(
-                                        waterVolumeLitres,
-                                        100,
-                                        GasMix.AIR,
-                                        IdealGas.INSTANCE,
-                                        GasComponent.O2))
+        assertThatThrownBy(() ->
+                        GasContent.componentLitres(
+                                waterVolumeLitres,
+                                100,
+                                GasMix.AIR,
+                                IdealGas.INSTANCE,
+                                GasComponent.O2))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(message);
-        assertThatThrownBy(
-                        () ->
-                                GasContent.pressureFor(
-                                        waterVolumeLitres, 1000, GasMix.AIR, IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        GasContent.pressureFor(
+                                waterVolumeLitres, 1000, GasMix.AIR, IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(message);
     }
@@ -214,20 +211,18 @@ final class GasContentTest {
     void invalidPressureThrows(final double pressureBarGauge) {
         final var message = "Pressure must be a number of at least 0 bar";
 
-        assertThatThrownBy(
-                        () ->
-                                GasContent.contentLitres(
-                                        VW, pressureBarGauge, GasMix.AIR, IdealGas.INSTANCE))
+        assertThatThrownBy(() ->
+                        GasContent.contentLitres(
+                                VW, pressureBarGauge, GasMix.AIR, IdealGas.INSTANCE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(message);
-        assertThatThrownBy(
-                        () ->
-                                GasContent.componentLitres(
-                                        VW,
-                                        pressureBarGauge,
-                                        GasMix.AIR,
-                                        IdealGas.INSTANCE,
-                                        GasComponent.HE))
+        assertThatThrownBy(() ->
+                        GasContent.componentLitres(
+                                VW,
+                                pressureBarGauge,
+                                GasMix.AIR,
+                                IdealGas.INSTANCE,
+                                GasComponent.HE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(message);
     }

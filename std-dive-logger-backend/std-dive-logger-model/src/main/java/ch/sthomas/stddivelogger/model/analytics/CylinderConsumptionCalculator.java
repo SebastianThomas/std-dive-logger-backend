@@ -48,8 +48,8 @@ import java.util.List;
  * independently: two cylinders with disjoint usage windows (a sequential twinset switch) union to
  * the same total as summing would give, but two cylinders sharing the same (or overlapping) window
  * - e.g. true simultaneous doubles on one manifold, the common case of no usage window set on
- * either - represent the *same* elapsed dive time, not twice as much of it. Summing pressure-
- * minutes for that case double-counts the denominator and understates RMV by roughly half.
+ * either - represent the *same* elapsed dive time, not twice as much of it. Summing
+ * pressure-minutes for that case double-counts the denominator and understates RMV by roughly half.
  *
  * <p>A cylinder with no usage window of its own is treated as the <b>complement</b> of the
  * same-role windowed cylinders - it was breathed over exactly the parts of the dive those don't
@@ -143,15 +143,9 @@ public final class CylinderConsumptionCalculator {
             final boolean isCcrDive,
             final Instant diveStart) {
         return cylinders.stream()
-                .map(
-                        c ->
-                                contributionFor(
-                                        c,
-                                        cylinders,
-                                        depthTimeline,
-                                        modeTimeline,
-                                        isCcrDive,
-                                        diveStart))
+                .map(c ->
+                        contributionFor(
+                                c, cylinders, depthTimeline, modeTimeline, isCcrDive, diveStart))
                 .toList();
     }
 
@@ -221,11 +215,10 @@ public final class CylinderConsumptionCalculator {
             final CylinderRole role,
             final Instant diveStart) {
         return cylinders.stream()
-                .filter(
-                        c ->
-                                c.role() == role
-                                        && consumedLiters(c) != null
-                                        && !c.usageWindows().isEmpty())
+                .filter(c ->
+                        c.role() == role
+                                && consumedLiters(c) != null
+                                && !c.usageWindows().isEmpty())
                 .flatMap(c -> c.usageWindows().stream())
                 .map(w -> UsageWindow.of(w, diveStart))
                 .toList();

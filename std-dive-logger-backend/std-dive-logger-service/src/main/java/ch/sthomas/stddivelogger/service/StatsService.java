@@ -43,11 +43,10 @@ public class StatsService {
 
     public List<UserDiveStatsBy<DiveSite>> getStatsForUserByDiveSite(final User user) {
         return statsDataService.getStatsByDiveSite(user).entrySet().stream()
-                .map(
-                        e ->
-                                new UserDiveStatsBy<>(
-                                        diveDataService.findDiveSiteById(e.getKey()).orElseThrow(),
-                                        e.getValue().withSites(null)))
+                .map(e ->
+                        new UserDiveStatsBy<>(
+                                diveDataService.findDiveSiteById(e.getKey()).orElseThrow(),
+                                e.getValue().withSites(null)))
                 .sorted(Comparator.reverseOrder())
                 .toList();
     }

@@ -411,14 +411,13 @@ class SuuntoJsonReaderServiceTest {
     private static DiveService diveServiceReturningComputer() {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         return diveService;
     }
 
@@ -533,13 +532,12 @@ class SuuntoJsonReaderServiceTest {
         final var result = parseFixture();
         final var profile = result.payload().profiles().getFirst();
         assertThat(profile.measurements())
-                .allSatisfy(
-                        m -> {
-                            final var gas = m.gas();
-                            assertThat(gas).isNotNull();
-                            assertThat(Objects.requireNonNull(gas).o2())
-                                    .isCloseTo(0.21, Offset.offset(0.001));
-                        });
+                .allSatisfy(m -> {
+                    final var gas = m.gas();
+                    assertThat(gas).isNotNull();
+                    assertThat(Objects.requireNonNull(gas).o2())
+                            .isCloseTo(0.21, Offset.offset(0.001));
+                });
     }
 
     @Test
@@ -550,13 +548,12 @@ class SuuntoJsonReaderServiceTest {
         // inspecting the raw fixture directly) - the bound below is deliberately wide to cover
         // that, not a sign the conversion is imprecise.
         assertThat(profile.measurements())
-                .allSatisfy(
-                        m -> {
-                            final var t = m.temperature();
-                            assertThat(t).isNotNull();
-                            final var celsius = Objects.requireNonNull(t).celsius();
-                            assertThat(celsius).isBetween(0.0, 30.0);
-                        });
+                .allSatisfy(m -> {
+                    final var t = m.temperature();
+                    assertThat(t).isNotNull();
+                    final var celsius = Objects.requireNonNull(t).celsius();
+                    assertThat(celsius).isBetween(0.0, 30.0);
+                });
     }
 
     @Test
@@ -568,21 +565,20 @@ class SuuntoJsonReaderServiceTest {
                 "Device":{"Name":"EON Core"},"Duration":20.0},"Samples":[]}}
                 """;
 
-        assertThatThrownBy(
-                        () ->
-                                service.parse(
-                                        new User(
-                                                0,
-                                                "",
-                                                "",
-                                                "",
-                                                true,
-                                                Instant.now(),
-                                                Instant.now(),
-                                                null,
-                                                null),
-                                        "test.json",
-                                        json.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+        assertThatThrownBy(() ->
+                        service.parse(
+                                new User(
+                                        0,
+                                        "",
+                                        "",
+                                        "",
+                                        true,
+                                        Instant.now(),
+                                        Instant.now(),
+                                        null,
+                                        null),
+                                "test.json",
+                                json.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("no serial number");
     }

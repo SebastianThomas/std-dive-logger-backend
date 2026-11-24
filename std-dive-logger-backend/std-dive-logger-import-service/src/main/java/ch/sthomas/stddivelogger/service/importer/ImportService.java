@@ -380,10 +380,8 @@ public class ImportService {
         final var entity =
                 pendingImportDataService
                         .findByIdAndUserForCommit(pendingImportId, user)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "No pending import " + pendingImportId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("No pending import " + pendingImportId));
         final var payload = applyProfileTrims(entity.getPayload(), overrides.profileTrims());
 
         final var attachToNumber = resolveAttachTarget(user, overrides, payload);
@@ -411,17 +409,13 @@ public class ImportService {
         final var profiles = payload.profiles();
         final var trimmedProfiles =
                 IntStream.range(0, profiles.size())
-                        .mapToObj(
-                                i -> {
-                                    final var trim = trimByIndex.get(i);
-                                    return trim == null
-                                            ? profiles.get(i)
-                                            : profiles.get(i)
-                                                    .trimmed(
-                                                            trim.trimStart(),
-                                                            trim.trimEnd(),
-                                                            trim.cuts());
-                                })
+                        .mapToObj(i -> {
+                            final var trim = trimByIndex.get(i);
+                            return trim == null
+                                    ? profiles.get(i)
+                                    : profiles.get(i)
+                                            .trimmed(trim.trimStart(), trim.trimEnd(), trim.cuts());
+                        })
                         .toList();
         return payload.withProfiles(trimmedProfiles);
     }
@@ -451,41 +445,29 @@ public class ImportService {
         final var entity =
                 pendingImportDataService
                         .findByIdAndUser(pendingImportId, user)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "No pending import " + pendingImportId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("No pending import " + pendingImportId));
         final var profiles = entity.getPayload().profiles();
         return IntStream.range(0, profiles.size())
-                .mapToObj(
-                        i -> {
-                            final var upload = profiles.get(i);
-                            final var computer =
-                                    diveService
-                                            .getDiveComputerById(user, upload.diveComputerId())
-                                            .orElseThrow(
-                                                    () ->
-                                                            new NoSuchElementException(
-                                                                    "Dive computer "
-                                                                            + upload
-                                                                                    .diveComputerId()
-                                                                            + " not found"));
-                            final var measurements = upload.measurements();
-                            final var measurementsWithIds =
-                                    IntStream.range(0, measurements.size())
-                                            .mapToObj(
-                                                    j ->
-                                                            new DiveMeasurementWithId(
-                                                                    measurements.get(j), j))
-                                            .toList();
-                            return new DiveProfile(
-                                    i,
-                                    computer,
-                                    upload.start(),
-                                    upload.end(),
-                                    measurementsWithIds,
-                                    true);
-                        })
+                .mapToObj(i -> {
+                    final var upload = profiles.get(i);
+                    final var computer =
+                            diveService
+                                    .getDiveComputerById(user, upload.diveComputerId())
+                                    .orElseThrow(() ->
+                                            new NoSuchElementException(
+                                                    "Dive computer "
+                                                            + upload.diveComputerId()
+                                                            + " not found"));
+                    final var measurements = upload.measurements();
+                    final var measurementsWithIds =
+                            IntStream.range(0, measurements.size())
+                                    .mapToObj(
+                                            j -> new DiveMeasurementWithId(measurements.get(j), j))
+                                    .toList();
+                    return new DiveProfile(
+                            i, computer, upload.start(), upload.end(), measurementsWithIds, true);
+                })
                 .toList();
     }
 
@@ -503,12 +485,11 @@ public class ImportService {
             final var target =
                     diveService
                             .getDiveById(user, overrides.linkToExistingDiveId())
-                            .orElseThrow(
-                                    () ->
-                                            new NoSuchElementException(
-                                                    "Dive "
-                                                            + overrides.linkToExistingDiveId()
-                                                            + " not found"));
+                            .orElseThrow(() ->
+                                    new NoSuchElementException(
+                                            "Dive "
+                                                    + overrides.linkToExistingDiveId()
+                                                    + " not found"));
             return new DiveNumber(target.number());
         }
         final var effective =
@@ -689,11 +670,10 @@ public class ImportService {
                         between(activeStart, trim.trimStart()),
                         between(activeStart, trim.trimEnd()),
                         trim.cuts().stream()
-                                .map(
-                                        c ->
-                                                DiveProfileHistoryEntity.TrimCut.of(
-                                                        Duration.between(activeStart, c.start()),
-                                                        Duration.between(activeStart, c.end())))
+                                .map(c ->
+                                        DiveProfileHistoryEntity.TrimCut.of(
+                                                Duration.between(activeStart, c.start()),
+                                                Duration.between(activeStart, c.end())))
                                 .toList());
             }
             if (fileId != null) {
@@ -724,12 +704,9 @@ public class ImportService {
             final List<DiveDataService.ProfileKey> keys, final DiveProfileUpload upload) {
         return keys.stream()
                 .filter(k -> k.computerId() == upload.diveComputerId())
-                .filter(
-                        k ->
-                                Duration.between(k.start(), upload.start())
-                                                .abs()
-                                                .compareTo(SAME_START)
-                                        <= 0)
+                .filter(k ->
+                        Duration.between(k.start(), upload.start()).abs().compareTo(SAME_START)
+                                <= 0)
                 .map(DiveDataService.ProfileKey::profileId)
                 .findFirst()
                 .orElse(null);
@@ -760,10 +737,8 @@ public class ImportService {
         }
         final var correctedProfiles =
                 payload.profiles().stream()
-                        .map(
-                                profile ->
-                                        profile.shifted(
-                                                timezoneOffset(profile.start(), zone.get())))
+                        .map(profile ->
+                                profile.shifted(timezoneOffset(profile.start(), zone.get())))
                         .toList();
         return payload.withProfiles(correctedProfiles);
     }
@@ -905,16 +880,14 @@ public class ImportService {
                 result.parsed().stream()
                         .filter(p -> knownDives.stream().anyMatch(l -> l.sameDive(p.locator())))
                         .findFirst()
-                        .or(
-                                () ->
-                                        result.parsed().size() == 1
-                                                ? Optional.of(result.parsed().getFirst())
-                                                : Optional.empty())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "Could not tell which dive of the stored file"
-                                                        + " belongs to this dive"));
+                        .or(() ->
+                                result.parsed().size() == 1
+                                        ? Optional.of(result.parsed().getFirst())
+                                        : Optional.empty())
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Could not tell which dive of the stored file"
+                                                + " belongs to this dive"));
         return previewReimport(user, diveId, profileId, parsed, file.getId());
     }
 
@@ -943,12 +916,11 @@ public class ImportService {
                         reimportedProfile.measurements());
         final var clockOffsetConflict =
                 clockOffset
-                        .map(
-                                off ->
-                                        new ReimportConflicts.ClockOffset(
-                                                context.profileStart(),
-                                                reimportedProfile.start(),
-                                                off.toMinutes()))
+                        .map(off ->
+                                new ReimportConflicts.ClockOffset(
+                                        context.profileStart(),
+                                        reimportedProfile.start(),
+                                        off.toMinutes()))
                         .orElse(null);
 
         final var conflicts =
@@ -985,10 +957,8 @@ public class ImportService {
         final var pendingImport =
                 pendingImportDataService
                         .findByIdAndUserForCommit(pendingImportId, user)
-                        .orElseThrow(
-                                () ->
-                                        new NoSuchElementException(
-                                                "No pending import " + pendingImportId));
+                        .orElseThrow(() ->
+                                new NoSuchElementException("No pending import " + pendingImportId));
         final var targetDiveId = pendingImport.getReimportTargetDiveId();
         final var targetProfileId = pendingImport.getReimportTargetProfileId();
         if (targetDiveId == null || targetProfileId == null) {

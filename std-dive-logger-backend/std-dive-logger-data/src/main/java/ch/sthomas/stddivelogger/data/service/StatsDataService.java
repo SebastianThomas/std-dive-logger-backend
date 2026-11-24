@@ -88,15 +88,15 @@ public class StatsDataService {
             """
                     + WATER_TYPE_EXPR
                     + """
-                 AS water_type
-                FROM t_dives d
-                JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
-                JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
-                JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
-                LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
-                WHERE d.fk_diver_id = :userId
-            )
-            """;
+                         AS water_type
+                        FROM t_dives d
+                        JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                        JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                        JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+                        LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
+                        WHERE d.fk_diver_id = :userId
+                    )
+                    """;
 
     /**
      * One row per (dive id, buddy name), deduplicated by name per dive via the outer query's {@code
@@ -465,22 +465,17 @@ public class StatsDataService {
                         .collect(Collectors.toMap(e -> e.getId(), e -> e));
 
         return rows.stream()
-                .map(
-                        row -> {
-                            final var tagId = row.getKey();
-                            final var stats = row.getValue();
-                            final var tagEntity = tagMap.get(tagId);
-                            final var tagDef =
-                                    tagEntity != null
-                                            ? tagEntity.toRecord(stats.diveCount())
-                                            : new TagDefinition(
-                                                    tagId,
-                                                    "Unknown",
-                                                    null,
-                                                    null,
-                                                    stats.diveCount());
-                            return new UserDiveStatsBy<>(tagDef, stats);
-                        })
+                .map(row -> {
+                    final var tagId = row.getKey();
+                    final var stats = row.getValue();
+                    final var tagEntity = tagMap.get(tagId);
+                    final var tagDef =
+                            tagEntity != null
+                                    ? tagEntity.toRecord(stats.diveCount())
+                                    : new TagDefinition(
+                                            tagId, "Unknown", null, null, stats.diveCount());
+                    return new UserDiveStatsBy<>(tagDef, stats);
+                })
                 .sorted(Comparator.reverseOrder())
                 .toList();
     }
@@ -505,7 +500,8 @@ public class StatsDataService {
                     WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
                     GROUP BY dt.fk_dive_id
                     HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
-                ), """
+                ),\
+                """
                         + DIVES_CTE
                         + ", "
                         + BUDDIES_CTE
@@ -632,7 +628,8 @@ public class StatsDataService {
                         WHERE dt.fk_tag_id IN (:tagIds) AND dt.dismissed = false
                         GROUP BY dt.fk_dive_id
                         HAVING COUNT(DISTINCT dt.fk_tag_id) = :tagCount
-                    )""");
+                    )\
+                    """);
             params.addValue("tagIds", filters.tagIds());
             params.addValue("tagCount", (long) filters.tagIds().size());
         }
@@ -671,16 +668,16 @@ public class StatsDataService {
                 """
                         + WATER_TYPE_EXPR
                         + """
-                     AS water_type
-                    FROM t_dives d
-                    JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
-                    LEFT JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
-                    LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
-                    LEFT JOIN t_dive_gas_consumption gc ON gc.fk_dive_id = d.pk_dive_id
-                    LEFT JOIN t_dive_visibility v ON v.fk_dive_id = d.pk_dive_id
-                    LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
-                    WHERE
-                """
+                             AS water_type
+                            FROM t_dives d
+                            JOIN t_dive_summary ds ON ds.fk_dive_id = d.pk_dive_id
+                            LEFT JOIN t_dive_site site ON site.pk_dive_site_id = d.dive_site
+                            LEFT JOIN t_dive_conditions cond ON cond.fk_dive_id = d.pk_dive_id
+                            LEFT JOIN t_dive_gas_consumption gc ON gc.fk_dive_id = d.pk_dive_id
+                            LEFT JOIN t_dive_visibility v ON v.fk_dive_id = d.pk_dive_id
+                            LEFT JOIN t_dive_configuration dc ON dc.fk_dive_id = d.pk_dive_id
+                            WHERE
+                        """
                         + where
                         + "\n)\n";
 
@@ -816,7 +813,8 @@ public class StatsDataService {
                     case WATER_TYPE ->
                             """
                             CASE fd.water_type WHEN 'SALT' THEN 'Salt' WHEN 'FRESH' THEN 'Fresh'
-                                WHEN 'BRACKISH' THEN 'Brackish' ELSE 'Not specified' END""";
+                                WHEN 'BRACKISH' THEN 'Brackish' ELSE 'Not specified' END\
+                            """;
                 };
         final var joinClause =
                 switch (dimension) {

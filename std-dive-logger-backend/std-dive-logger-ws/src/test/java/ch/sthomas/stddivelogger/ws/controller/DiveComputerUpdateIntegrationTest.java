@@ -91,10 +91,9 @@ class DiveComputerUpdateIntegrationTest {
 
     @Test
     void updateDiveComputerRejectsANonOwner() {
-        assertThatThrownBy(
-                        () ->
-                                diveDataService.updateDiveComputer(
-                                        attacker.toRecord(), computerId, "HIJACKED", null))
+        assertThatThrownBy(() ->
+                        diveDataService.updateDiveComputer(
+                                attacker.toRecord(), computerId, "HIJACKED", null))
                 .isInstanceOf(ForbiddenException.class);
     }
 

@@ -66,12 +66,10 @@ public class AnalyticsDashboardController {
         final var now = Instant.now();
         final var jobs =
                 Arrays.stream(JobKind.values())
-                        .map(
-                                job -> {
-                                    final Instant next = nextRun(job, now);
-                                    return new Job(
-                                            job.name(), job.label, job.description, job.cron, next);
-                                })
+                        .map(job -> {
+                            final Instant next = nextRun(job, now);
+                            return new Job(job.name(), job.label, job.description, job.cron, next);
+                        })
                         .toList();
         return new Status(now, schedulingEnabled, jobs, runs.recent());
     }

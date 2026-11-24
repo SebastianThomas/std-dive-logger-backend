@@ -182,14 +182,13 @@ class ShearwaterDbFixtureTest {
     void theReaderStagesEveryDiveInTheLogbook() throws Exception {
         final var diveService = mock(DiveService.class);
         when(diveService.getOrCreateDiveComputer(any(), anyString(), anyString(), anyString()))
-                .thenAnswer(
-                        invocation ->
-                                new DiveComputer(
-                                        1L,
-                                        new DiveComputerManufacturer(1L, invocation.getArgument(1)),
-                                        invocation.getArgument(2),
-                                        invocation.getArgument(3),
-                                        null));
+                .thenAnswer(invocation ->
+                        new DiveComputer(
+                                1L,
+                                new DiveComputerManufacturer(1L, invocation.getArgument(1)),
+                                invocation.getArgument(2),
+                                invocation.getArgument(3),
+                                null));
         final var service = new ShearwaterDbReaderService(diveService);
         final List<ParsedImport> parsed;
         final List<String> errors;
@@ -204,15 +203,13 @@ class ShearwaterDbFixtureTest {
         assertThat(errors).isEmpty();
         assertThat(parsed).hasSize(EXPECTED_DIVES);
         assertThat(parsed)
-                .allSatisfy(
-                        p -> {
-                            assertThat(p.payload().profiles()).hasSize(1);
-                            assertThat(p.payload().profiles().getFirst().measurements())
-                                    .isNotEmpty();
-                            assertThat(p.computerSerial()).isEqualTo("A3B6F031");
-                            assertThat(p.startDate()).isNotNull();
-                            assertThat(p.maxDepth()).isNotNull().isPositive();
-                        });
+                .allSatisfy(p -> {
+                    assertThat(p.payload().profiles()).hasSize(1);
+                    assertThat(p.payload().profiles().getFirst().measurements()).isNotEmpty();
+                    assertThat(p.computerSerial()).isEqualTo("A3B6F031");
+                    assertThat(p.startDate()).isNotNull();
+                    assertThat(p.maxDepth()).isNotNull().isPositive();
+                });
         // Dive numbers come straight from the app's free-text field, which in a real logbook holds
         // all three of its shapes: plain numbers, "10.1"-style markers for a second recording of an
         // already-numbered dive, and "-1" for dives the diver never numbered.
