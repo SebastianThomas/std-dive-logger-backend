@@ -31,11 +31,13 @@ import org.jspecify.annotations.Nullable;
         })
 public sealed interface FillTarget {
 
+    // Subtypes name the parent in allOf: springdoc 3.2.1 (swagger-core 3) stops inferring it and
+    // drops `type` from each subtype's schema (OpenApiSnapshotTest).
     /**
      * An absent {@code chargedMemberId} is 0, which no member has (400 "Unknown member" in the
      * service).
      */
-    @Schema(name = "FillTargetCylinder")
+    @Schema(name = "FillTargetCylinder", allOf = FillTarget.class)
     record Cylinder(double waterVolumeLitres, @Nullable String cylinderLabel, long chargedMemberId)
             implements FillTarget {
 
@@ -48,11 +50,11 @@ public sealed interface FillTarget {
     }
 
     /** An absent {@code vesselId} is 0, which no vessel has (400 "Unknown bank" in the service). */
-    @Schema(name = "FillTargetVessel")
+    @Schema(name = "FillTargetVessel", allOf = FillTarget.class)
     record Vessel(long vesselId, @Nullable String vesselLabel) implements FillTarget {}
 
     /** An absent {@code chargedMemberId} is 0: 400 "Unknown member", as for a cylinder. */
-    @Schema(name = "FillTargetBankDraw")
+    @Schema(name = "FillTargetBankDraw", allOf = FillTarget.class)
     record BankDraw(long chargedMemberId) implements FillTarget {}
 
     /** The member a fill is charged to; a fill into a vessel has none. */
